@@ -9,6 +9,6 @@
 	  "resolveJsonModule": true,
 	  "strict": true
 	},
-	"include": ["src", "../packages/price-scheduler/src", "lib"],
+	"include": ["src", "lib", "routes"],
 	"exclude": ["dist"]
   }

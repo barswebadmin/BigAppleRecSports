@@ -9,8 +9,8 @@
 	  "skipLibCheck": true,
 	  "baseUrl": ".",
 	  "paths": {
-		"@price-scheduler": ["packages/price-scheduler/src/index.ts"],
-		"@price-scheduler/*": ["packages/price-scheduler/src/*"],
+		"@packages/price-scheduler": ["packages/price-scheduler/src"],
+		"@packages/price-scheduler/*": ["packages/price-scheduler/src/*"],
       	"@product-creator/*": ["packages/product-creator/src/*"],
       	"@variant-manager/*": ["packages/variant-manager/src/*"],
 		"@shared/*": ["shared/src/*"]
