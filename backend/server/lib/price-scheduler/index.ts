@@ -32,6 +32,7 @@ export interface PriceSchedulePayload {
 }
 
 export const schedulePriceChange = async (payload: PriceSchedulePayload): Promise<string> => {
+	console.log(JSON.stringify(payload,null,2))
   const endpoint = process.env.PRICE_SCHEDULER_ENDPOINT;
   if (!endpoint) throw new Error("Missing PRICE_SCHEDULER_ENDPOINT in env");
 
@@ -40,6 +41,7 @@ export const schedulePriceChange = async (payload: PriceSchedulePayload): Promis
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+  console.log('sending')
 
   const text = await response.text();
   if (!response.ok) throw new Error(`Error scheduling price change: ${text}`);

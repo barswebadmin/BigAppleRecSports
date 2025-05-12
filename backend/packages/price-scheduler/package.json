@@ -2,17 +2,20 @@
   "name": "price-scheduler",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx --require tsconfig-paths/register src/index.ts",
+    "build": "tsc -b"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "tsx": "^4.6.0",
+    "tsconfig-paths": "^4.2.0",
     "@types/node": "^22.15.17",
-    "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }
 }

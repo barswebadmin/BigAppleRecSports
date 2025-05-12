@@ -16,6 +16,8 @@
     "dotenv": "^16.5.0"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
+    "localtunnel": "^2.0.2",
     "tsx": "^4.19.4"
   }
 }

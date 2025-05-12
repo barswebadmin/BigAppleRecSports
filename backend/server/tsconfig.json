@@ -1,0 +1,14 @@
+{
+	"extends": "../tsconfig.base.json",
+	"compilerOptions": {
+	  "outDir": "./dist",
+	  "module": "ESNext",
+	  "target": "ES2020",
+	  "moduleResolution": "Node",
+	  "esModuleInterop": true,
+	  "resolveJsonModule": true,
+	  "strict": true
+	},
+	"include": ["src", "../packages/price-scheduler/src", "lib"],
+	"exclude": ["dist"]
+  }

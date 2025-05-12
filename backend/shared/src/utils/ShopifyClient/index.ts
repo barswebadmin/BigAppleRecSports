@@ -1,4 +1,3 @@
-// shared/src/utils/ShopifyClient/index.ts
 import { ShopifyClientCore } from "./core";
 import { CREATE_PRODUCT_MUTATION } from "./mutations/createProduct";
 import { GET_CUSTOMER_BY_EMAIL } from "./queries/getCustomerByEmail";
