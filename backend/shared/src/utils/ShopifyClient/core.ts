@@ -1,4 +1,3 @@
-// shared/src/utils/ShopifyClient/core.ts
 import { loadEnv } from "../loadEnv";
 loadEnv();
 
