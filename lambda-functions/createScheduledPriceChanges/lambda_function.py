@@ -1,5 +1,8 @@
+__version__ = "1.0.0"
+
 import boto3
 import json
+import traceback
 
 from bars_common_utils.event_utils import parse_event_body, validate_required_fields, get_field_safe
 from bars_common_utils.response_utils import format_response, format_error
