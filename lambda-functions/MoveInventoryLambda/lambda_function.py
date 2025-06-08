@@ -1,4 +1,7 @@
+__version__ = "1.0.0"
+
 import json
+import traceback
 
 def lambda_handler(event, context):
     """
