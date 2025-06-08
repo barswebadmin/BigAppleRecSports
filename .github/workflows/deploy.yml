@@ -5,6 +5,7 @@ on:
         branches:
             - main
         paths:
+            - ".github/workflows/deploy.yml"
             - "lambda-functions/**/*.py"
             - "lambda-functions/**/requirements.txt"
             - "lambda-layers/**/*"
