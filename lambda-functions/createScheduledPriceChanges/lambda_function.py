@@ -3,7 +3,7 @@ import datetime
 import json
 
 def lambda_handler(event, context):
-    # joe test 6.7.25 - deployed via GitHub!
+    # joe test 6.7.25 - testing GitHub deployment - deployed via GitHub - take 2
     scheduler = boto3.client('scheduler')
     print("🔵 Raw event received:", json.dumps(event, indent=2))
 
