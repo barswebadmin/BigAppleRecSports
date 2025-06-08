@@ -95,14 +95,24 @@ jobs:
                       cd ..
                       
                       # Update function configuration with layer
+                      echo "Updating function configuration for $func_dir..."
                       aws lambda update-function-configuration \
                         --function-name "$func_dir" \
                         --layers "$LAYER_VERSION"
                       
+                      # Wait for update to complete
+                      echo "Waiting for function configuration update to complete..."
+                      aws lambda wait function-updated --function-name "$func_dir"
+                      
                       # Deploy to AWS Lambda
+                      echo "Updating function code for $func_dir..."
                       aws lambda update-function-code \
                         --function-name "$func_dir" \
                         --zip-file fileb://"${func_dir}.zip"
+                      
+                      # Wait for code update to complete
+                      echo "Waiting for function code update to complete..."
+                      aws lambda wait function-updated --function-name "$func_dir"
                       
                       # Clean up
                       rm -rf temp_$func_dir "${func_dir}.zip"
