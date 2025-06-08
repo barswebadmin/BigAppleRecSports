@@ -38,6 +38,7 @@ def lambda_handler(event, context):
         
         # Update schedules
         failed_updates = send_scheduled_price_updates(
+            action=event_body["action"],
             updated_price_schedule=updated_price_schedule,
             product_gid=event_body["productGid"],
             open_variant_gid=event_body["openVariantGid"],
