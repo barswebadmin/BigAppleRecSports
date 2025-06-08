@@ -9,6 +9,7 @@ from send_scheduled_price_updates import send_scheduled_price_updates
 def lambda_handler(event, context):
     """
     Handle scheduling price changes for a sport season
+    Testing deployment with common utils layer - 6/7/25
     """
     try:
         print("🔵 Raw event received:", json.dumps(event, indent=2))
