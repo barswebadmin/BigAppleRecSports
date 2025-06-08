@@ -79,11 +79,18 @@ jobs:
                     if [ -d "$func_dir" ] && [ -f "$func_dir/lambda_function.py" ]; then
                       echo "✅ Deploying function: $func_dir"
                       
+                      # Extract version from lambda_function.py
+                      VERSION=$(grep "__version__" "$func_dir/lambda_function.py" | cut -d'"' -f2)
+                      if [ -z "$VERSION" ]; then
+                        VERSION="1.0.0"
+                      fi
+                      echo "Current version: $VERSION"
+                      
                       # Create temporary directory for packaging
                       mkdir -p temp_$func_dir
                       
-                      # Copy function code
-                      cp $func_dir/lambda_function.py temp_$func_dir/
+                      # Copy all Python files
+                      cp $func_dir/*.py temp_$func_dir/
                       
                       # Install dependencies if requirements.txt exists
                       if [ -f "$func_dir/requirements.txt" ]; then
@@ -95,10 +102,12 @@ jobs:
                       zip -r "../${func_dir}.zip" .
                       cd ..
                       
-                      # Update function configuration with layer
+                      # Update function configuration with layer and version in description
                       echo "Updating function configuration for $func_dir..."
+                      DESCRIPTION="Version ${VERSION} - Updated $(date '+%Y-%m-%d %H:%M:%S')"
                       aws lambda update-function-configuration \
                         --function-name "$func_dir" \
+                        --description "$DESCRIPTION" \
                         --layers "$LAYER_VERSION"
                       
                       # Wait for update to complete
@@ -109,7 +118,8 @@ jobs:
                       echo "Updating function code for $func_dir..."
                       aws lambda update-function-code \
                         --function-name "$func_dir" \
-                        --zip-file fileb://"${func_dir}.zip"
+                        --zip-file fileb://"${func_dir}.zip" \
+                        --publish
                       
                       # Wait for code update to complete
                       echo "Waiting for function code update to complete..."
@@ -118,6 +128,6 @@ jobs:
                       # Clean up
                       rm -rf temp_$func_dir "${func_dir}.zip"
                       
-                      echo "Successfully deployed $func_dir"
+                      echo "Successfully deployed $func_dir version $VERSION"
                     fi
                   done
