@@ -1,8 +1,11 @@
+__version__ = "1.0.0"
+
 import boto3
 import json
 from datetime import datetime
 from datetime import timedelta
 from zoneinfo import ZoneInfo
+import traceback
 
 # Initialize EventBridge Scheduler client
 scheduler_client = boto3.client("scheduler")
