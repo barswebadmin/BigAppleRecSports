@@ -1,47 +1,54 @@
 import boto3
-import datetime
 import json
 
+from bars_common_utils.event_utils import parse_event_body, validate_required_fields, get_field_safe
+from bars_common_utils.response_utils import format_response, format_error
+from bars_common_utils.scheduler_utils import create_schedule_target
+
 def lambda_handler(event, context):
-    # joe test 6.7.25 - testing GitHub deployment - take 3 with debug
+    """Create a new scheduled price change"""
     scheduler = boto3.client('scheduler')
     print("🔵 Raw event received:", json.dumps(event, indent=2))
 
-    event_body = json.loads(event["body"]) if "body" in event else event
-    print("🔵 Parsed event body:", json.dumps(event_body, indent=2))
-
-    schedule_name = event_body["scheduleName"] if "scheduleName" in event_body else NONE
-    group_name = event_body["groupName"] if "groupName" in event_body else None
-    schedule_time = "2025-06-02T12:00:00"  # ISO 8601
-    timezone = "America/New_York"
-
     try:
+        # Parse and validate event
+        event_body = parse_event_body(event)
+        required_fields = ["scheduleName", "groupName"]
+        event_body = validate_required_fields(event_body, required_fields)
+        
+        # Extract fields with defaults
+        schedule_name = event_body["scheduleName"]
+        group_name = event_body["groupName"]
+        schedule_time = get_field_safe(event_body, "scheduleTime", "2025-06-02T12:00:00")
+        timezone = get_field_safe(event_body, "timezone", "America/New_York")
+        
+        # Create target configuration
+        target = create_schedule_target(
+            function_arn="arn:aws:lambda:us-east-1:084375563770:function:changePricesOfOpenAndWaitlistVariants",
+            role_arn="arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
+            input_data=event_body,
+            description="Created by createScheduledPriceChanges Lambda"
+        )
+
+        # Create schedule
         response = scheduler.create_schedule(
             Name=schedule_name,
             GroupName=group_name,
             ScheduleExpression=f"at({schedule_time})",
             ScheduleExpressionTimezone=timezone,
             FlexibleTimeWindow={ "Mode": "OFF" },
-            Target={
-                "Arn": "arn:aws:lambda:us-east-1:084375563770:function:changePricesOfOpenAndWaitlistVariants",
-                "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
-                "Input": "{}"
-            },
-            ActionAfterCompletion="NONE",
-            Description="Created by Lambda"
+            Target=target,
+            ActionAfterCompletion="NONE"
         )
-        return {
-            "statusCode": 200,
-            "body": f"✅ Schedule created: {response['ScheduleArn']}"
-        }
+        
+        return format_response(200, {
+            "message": "✅ Schedule created successfully",
+            "scheduleArn": response["ScheduleArn"]
+        })
 
+    except ValueError as e:
+        return format_error(400, str(e))
     except scheduler.exceptions.ConflictException:
-        return {
-            "statusCode": 400,
-            "body": "❌ Schedule with this name already exists."
-        }
+        return format_error(400, "Schedule with this name already exists")
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": f"❌ Failed to create schedule: {str(e)}"
-        }
+        return format_error(500, "Failed to create schedule", str(e))
