@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-def send_scheduled_price_updates(updated_price_schedule, product_gid, open_variant_gid, waitlist_variant_gid, sport, day, division, season_start_date, off_dates_comma_separated):
+def send_scheduled_price_updates(action, updated_price_schedule, product_gid, open_variant_gid, waitlist_variant_gid, sport, day, division, season_start_date, off_dates_comma_separated):
     print("📍 Entered send_scheduled_price_updates()")
 
     scheduler_client = boto3.client("scheduler")
@@ -26,32 +26,12 @@ def send_scheduled_price_updates(updated_price_schedule, product_gid, open_varia
             timestamp = updated_price_schedule[i]["timestamp"]
             updated_price = updated_price_schedule[i]["updated_price"]
 
-            safe_division = division.lower().replace('+', '').replace(' ', '')  # remove '+' and any spaces if needed
+            safe_division = division.lower().replace('+', '').replace(' ', '')
             schedule_name = f"adjust-prices-{sport_slug}-{day.lower()}-{safe_division}Div-week-{i+1}"
             group_name = f"adjust-prices-week-{i+1}"
 
-            print(f"🔵 Checking existing schedule: {schedule_name} in {group_name}")
-
-            try:
-                existing_schedule = scheduler_client.get_schedule(
-                    Name=schedule_name,
-                    GroupName=group_name
-                )
-                print(f"✅ Found existing schedule: {existing_schedule}")
-            except scheduler_client.exceptions.ResourceNotFoundException:
-                msg = f"⚠️ Schedule {schedule_name} not found. Skipping."
-                print(msg)
-                failed_updates.append(msg)
-                scheduled_updates.append(msg)
-                continue
-            except Exception as e:
-                print(f"❌ Error fetching existing schedule: {e}")
-                raise
-
-            current_target = existing_schedule.get("Target", {})
-            schedule_timezone = existing_schedule.get("ScheduleExpressionTimezone", "America/New_York")
-
             updated_input = json.dumps({
+                "action": action,
                 "scheduleName": schedule_name,
                 "productGid": product_gid,
                 "openVariantGid": open_variant_gid,
@@ -61,9 +41,13 @@ def send_scheduled_price_updates(updated_price_schedule, product_gid, open_varia
                 "offDatesCommaSeparated": off_dates_comma_separated
             })
 
-            print(f"📤 Updating schedule {schedule_name} with timestamp {timestamp} and new price {updated_price}")
+            print(f"🔍 Checking or updating schedule {schedule_name} for {timestamp}")
 
             try:
+                existing_schedule = scheduler_client.get_schedule(Name=schedule_name, GroupName=group_name)
+                current_target = existing_schedule.get("Target", {})
+                schedule_timezone = existing_schedule.get("ScheduleExpressionTimezone", "America/New_York")
+
                 response = scheduler_client.update_schedule(
                     Name=schedule_name,
                     GroupName=group_name,
@@ -73,8 +57,7 @@ def send_scheduled_price_updates(updated_price_schedule, product_gid, open_varia
                     Target={**current_target, "Input": updated_input},
                     State="ENABLED"
                 )
-                print(f"✅ Updated schedule: {response}")
-
+                print(f"✅ Updated existing schedule: {schedule_name}")
                 scheduled_updates.append({
                     "name": schedule_name,
                     "group": group_name,
@@ -82,15 +65,43 @@ def send_scheduled_price_updates(updated_price_schedule, product_gid, open_varia
                     "price": updated_price,
                     "status": "✅ updated successfully"
                 })
-            except Exception as update_err:
+
+            except scheduler_client.exceptions.ResourceNotFoundException:
+                print(f"⚠️ Schedule {schedule_name} not found. Creating new one...")
+
+                response = scheduler_client.create_schedule(
+                    Name=schedule_name,
+                    GroupName=group_name,
+                    ScheduleExpression=f"at({timestamp})",
+                    ScheduleExpressionTimezone="America/New_York",
+                    FlexibleTimeWindow={"Mode": "OFF"},
+                    Target={
+                        "Arn": "arn:aws:lambda:us-east-1:084375563770:function:changePricesOfOpenAndWaitlistVariants",
+                        "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
+                        "Input": updated_input
+                    },
+                    ActionAfterCompletion="NONE",
+                    State="ENABLED",
+                    Description=""
+                )
+                print(f"✅ Created new schedule: {schedule_name}")
+                scheduled_updates.append({
+                    "name": schedule_name,
+                    "group": group_name,
+                    "timestamp": timestamp,
+                    "price": updated_price,
+                    "status": "✅ created successfully"
+                })
+
+            except Exception as e:
                 msg = {
                     "name": schedule_name,
                     "group": group_name,
                     "timestamp": timestamp,
                     "price": updated_price,
-                    "status": f"❌ Failed to update: {str(update_err)}"
+                    "status": f"❌ Failed to update or create: {str(e)}"
                 }
-                print(f"❌ Failed to update schedule: {msg}")
+                print(f"❌ Update/Create error: {msg}")
                 failed_updates.append(msg)
                 scheduled_updates.append(msg)
 
