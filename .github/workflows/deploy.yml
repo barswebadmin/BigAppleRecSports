@@ -7,6 +7,7 @@ on:
         paths:
             - "lambda-functions/**/*.py"
             - "lambda-functions/**/requirements.txt"
+            - "lambda-layers/**/*"
 
 jobs:
     deploy:
@@ -31,6 +32,31 @@ jobs:
                   aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
                   aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
                   aws-region: ${{ env.AWS_REGION }}
+
+            - name: Deploy Lambda Layer
+              run: |
+                  echo "Deploying bars-common-utils layer..."
+                  cd lambda-layers/bars-common-utils
+
+                  # Install layer dependencies
+                  if [ -f "requirements.txt" ]; then
+                    pip install -r requirements.txt -t python/
+                  fi
+
+                  # Create layer package
+                  zip -r bars-common-utils.zip python/
+
+                  # Deploy layer
+                  LAYER_VERSION=$(aws lambda publish-layer-version \
+                    --layer-name bars-common-utils \
+                    --description "Common utilities for BARS Lambda functions" \
+                    --zip-file fileb://bars-common-utils.zip \
+                    --compatible-runtimes python3.9 \
+                    --query 'LayerVersionArn' \
+                    --output text)
+
+                  echo "LAYER_VERSION=${LAYER_VERSION}" >> $GITHUB_ENV
+                  echo "✅ Deployed layer: ${LAYER_VERSION}"
 
             - name: Determine changed functions
               id: changes
@@ -67,6 +93,11 @@ jobs:
                       cd temp_$func_dir
                       zip -r "../${func_dir}.zip" .
                       cd ..
+                      
+                      # Update function configuration with layer
+                      aws lambda update-function-configuration \
+                        --function-name "$func_dir" \
+                        --layers "$LAYER_VERSION"
                       
                       # Deploy to AWS Lambda
                       aws lambda update-function-code \
