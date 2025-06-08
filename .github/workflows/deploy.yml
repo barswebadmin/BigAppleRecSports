@@ -11,6 +11,7 @@ on:
 jobs:
     deploy:
         runs-on: ubuntu-latest
+        environment: prod
         env:
             AWS_REGION: us-east-1 # Change this to your AWS region if different
         steps:
