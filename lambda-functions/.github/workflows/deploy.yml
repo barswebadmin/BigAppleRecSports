@@ -1,0 +1,77 @@
+name: Deploy Changed Lambda Functions
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - "lambda-functions/**/*.py"
+            - "lambda-functions/**/requirements.txt"
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        env:
+            AWS_REGION: us-east-1 # Change this to your AWS region if different
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+              with:
+                  fetch-depth: 2
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.9" # Match your Lambda runtime version
+
+            - name: Set up AWS CLI
+              uses: aws-actions/configure-aws-credentials@v2
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: Determine changed functions
+              id: changes
+              run: |
+                  cd lambda-functions
+                  CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- . | cut -d/ -f1 | sort -u)
+                  echo "Changed directories: $CHANGED"
+                  echo "CHANGED_FUNCTIONS<<EOF" >> $GITHUB_ENV
+                  echo "$CHANGED" >> $GITHUB_ENV
+                  echo "EOF" >> $GITHUB_ENV
+
+            - name: Deploy functions
+              run: |
+                  cd lambda-functions
+                  for func_dir in $CHANGED_FUNCTIONS; do
+                    if [ -d "$func_dir" ] && [ -f "$func_dir/lambda_function.py" ]; then
+                      echo "Deploying function: $func_dir"
+                      
+                      # Create temporary directory for packaging
+                      mkdir -p temp_$func_dir
+                      
+                      # Copy function code
+                      cp $func_dir/lambda_function.py temp_$func_dir/
+                      
+                      # Install dependencies if requirements.txt exists
+                      if [ -f "$func_dir/requirements.txt" ]; then
+                        pip install -r $func_dir/requirements.txt -t temp_$func_dir/
+                      fi
+                      
+                      # Create deployment package
+                      cd temp_$func_dir
+                      zip -r "../${func_dir}.zip" .
+                      cd ..
+                      
+                      # Deploy to AWS Lambda
+                      aws lambda update-function-code \
+                        --function-name "$func_dir" \
+                        --zip-file fileb://"${func_dir}.zip"
+                      
+                      # Clean up
+                      rm -rf temp_$func_dir "${func_dir}.zip"
+                      
+                      echo "Successfully deployed $func_dir"
+                    fi
+                  done
