@@ -35,8 +35,9 @@ jobs:
             - name: Determine changed functions
               id: changes
               run: |
-                  cd lambda-functions
-                  CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- . | cut -d/ -f1 | sort -u)
+                  CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- lambda-functions/ | grep -E '^lambda-functions/[^/]+/' | cut -d/ -f2 | sort -u)
+                  echo "All changed files:"
+                  git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- lambda-functions/
                   echo "Changed directories: $CHANGED"
                   echo "CHANGED_FUNCTIONS<<EOF" >> $GITHUB_ENV
                   echo "$CHANGED" >> $GITHUB_ENV
@@ -45,9 +46,11 @@ jobs:
             - name: Deploy functions
               run: |
                   cd lambda-functions
+                  echo "Functions to deploy: $CHANGED_FUNCTIONS"
                   for func_dir in $CHANGED_FUNCTIONS; do
+                    echo "Checking function directory: $func_dir"
                     if [ -d "$func_dir" ] && [ -f "$func_dir/lambda_function.py" ]; then
-                      echo "Deploying function: $func_dir"
+                      echo "✅ Deploying function: $func_dir"
                       
                       # Create temporary directory for packaging
                       mkdir -p temp_$func_dir
