@@ -5,33 +5,33 @@ from config import settings
 
 app = FastAPI(
     title="Big Apple Rec Sports API",
-    description="Backend API for Big Apple Rec Sports operations",
-    version="1.0.0"
+    description="API for processing leadership discounts and managing recreational sports data",
+    version="1.0.1"
 )
 
-# Add CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=["*"],  # In production, replace with specific domains
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include routers
-app.include_router(leadership.router)
+app.include_router(leadership.router, prefix="/leadership", tags=["leadership"])
 
 @app.get("/")
 async def root():
     """Root endpoint"""
     return {
         "message": "Big Apple Rec Sports API",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "environment": settings.environment
     }
 
 @app.get("/health")
-async def health():
+async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
 
