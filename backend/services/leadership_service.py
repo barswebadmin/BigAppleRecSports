@@ -1,7 +1,22 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from services.shopify_service import ShopifyService
-from services.csv_service import CSVService
+import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Handle imports for both direct execution and module import
+try:
+    from .shopify_service import ShopifyService
+    from .csv_service import CSVService
+except ImportError:
+    try:
+        from services.shopify_service import ShopifyService
+        from services.csv_service import CSVService
+    except ImportError:
+        from shopify_service import ShopifyService
+        from csv_service import CSVService
 
 class LeadershipService:
     def __init__(self):

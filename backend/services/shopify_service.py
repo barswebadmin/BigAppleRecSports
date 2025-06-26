@@ -1,7 +1,17 @@
 import requests
 import json
 from typing import Optional, Dict, Any
-from config import settings
+import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Handle imports for both direct execution and module import
+try:
+    from config import settings
+except ImportError:
+    from backend.config import settings
 
 class ShopifyService:
     def __init__(self):
@@ -176,7 +186,10 @@ class ShopifyService:
     def create_discount_code(self, code: str, usage_limit: int, season: str, 
                            year: int, segment_id: str, discount_amount: float) -> bool:
         """Create a discount code for a specific season and segment"""
-        from utils.date_utils import get_season_start_and_end
+        try:
+            from utils.date_utils import get_season_start_and_end
+        except ImportError:
+            from backend.utils.date_utils import get_season_start_and_end
         
         start_date, end_date = get_season_start_and_end(season, year)
         
