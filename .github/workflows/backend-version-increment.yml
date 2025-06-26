@@ -101,18 +101,8 @@ jobs:
       run: |
         echo "🔍 Validating backend version file..."
         if [ -f "backend/version.py" ]; then
-          python3 -c "
-          import sys
-          sys.path.append('backend')
-          from version import get_version_info
-          info = get_version_info()
-          print(f'✅ Version validation successful')
-          print(f'   Version: {info[\"version\"]}')
-          print(f'   Build: {info[\"build\"]}')
-          print(f'   Full: {info[\"full_version\"]}')
-          print(f'   Updated: {info[\"last_updated\"]}')
-          print(f'   Codename: {info[\"codename\"]}')
-          "
+          cd backend
+          python3 -c "import sys; from version import get_version_info; info = get_version_info(); print('✅ Version validation successful'); print(f'   Version: {info[\"version\"]}'); print(f'   Build: {info[\"build\"]}'); print(f'   Full: {info[\"full_version\"]}'); print(f'   Updated: {info[\"last_updated\"]}'); print(f'   Codename: {info[\"codename\"]}')"
         else
           echo "❌ Version file not found"
           exit 1
@@ -136,21 +126,7 @@ jobs:
       run: |
         echo "🧪 Testing version integration with FastAPI..."
         cd backend
-        python3 -c "
-        import sys
-        from version import get_version_info
-        from main import app
-        
-        # Test version endpoint
-        info = get_version_info()
-        assert 'version' in info
-        assert 'build' in info
-        assert 'full_version' in info
-        
-        print('✅ Version integration tests passed')
-        print(f'   FastAPI app version: {app.version}')
-        print(f'   Version module: {info[\"version\"]}')
-        "
+        python3 -c "import sys; from version import get_version_info; from main import app; info = get_version_info(); assert 'version' in info; assert 'build' in info; assert 'full_version' in info; print('✅ Version integration tests passed'); print(f'   FastAPI app version: {app.version}'); print(f'   Version module: {info[\"version\"]}')"
 
     - name: Preview version changes
       run: |
