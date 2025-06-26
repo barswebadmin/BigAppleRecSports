@@ -1,17 +1,13 @@
- services:
+services:
   - type: web
     name: bars-backend
     env: python
+    region: oregon
+    plan: free
     buildCommand: "cd backend && pip install -r requirements.txt"
     startCommand: "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: SHOPIFY_STORE
-        fromDatabase:
-          name: bars-secrets
-          property: SHOPIFY_STORE
-      - key: SHOPIFY_TOKEN
-        fromDatabase:
-          name: bars-secrets
-          property: SHOPIFY_TOKEN
+      # Note: SHOPIFY_STORE and SHOPIFY_TOKEN must be set manually in Render dashboard
+      # for security reasons - they cannot be in the yaml file
