@@ -1,0 +1,161 @@
+name: Backend Version Management
+
+on:
+  push:
+    branches: [ main ]  # Only trigger on main branch (merges/deploys)
+    paths: 
+      - 'backend/**'
+      - '!backend/version.py'
+      - '!backend/CHANGELOG.md'
+  pull_request:
+    branches: [ main ]
+    paths: 
+      - 'backend/**'
+      - '!backend/version.py'
+      - '!backend/CHANGELOG.md'
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Configure Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Check if this is a merge commit
+      id: check_merge
+      run: |
+        # Check if this is a merge commit (has 2+ parents)
+        PARENT_COUNT=$(git rev-list --count --parents -n 1 HEAD | awk '{print NF-1}')
+        if [ $PARENT_COUNT -gt 1 ]; then
+          echo "is_merge=true" >> $GITHUB_OUTPUT
+          echo "📝 This is a merge commit - will update version"
+        else
+          echo "is_merge=false" >> $GITHUB_OUTPUT  
+          echo "ℹ️  This is a regular commit - skipping version update"
+        fi
+
+    - name: Run Backend Version Manager
+      if: steps.check_merge.outputs.is_merge == 'true'
+      run: |
+        echo "🔍 Analyzing backend changes for version update..."
+        python3 scripts/backend_version_manager.py || true
+
+    - name: Check for version updates
+      if: steps.check_merge.outputs.is_merge == 'true'
+      id: check_changes
+      run: |
+        if [[ -n $(git status --porcelain backend/version.py backend/CHANGELOG.md) ]]; then
+          echo "changes=true" >> $GITHUB_OUTPUT
+          echo "📝 Version or changelog updated"
+        else
+          echo "changes=false" >> $GITHUB_OUTPUT
+          echo "ℹ️  No version changes needed"
+        fi
+
+    - name: Commit version updates
+      if: steps.check_merge.outputs.is_merge == 'true' && steps.check_changes.outputs.changes == 'true'
+      run: |
+        git add backend/version.py backend/CHANGELOG.md
+        git commit -m "chore: auto-update backend version and changelog [skip ci]"
+
+    - name: Push version updates
+      if: steps.check_merge.outputs.is_merge == 'true' && steps.check_changes.outputs.changes == 'true'
+      run: |
+        git push origin main
+
+    - name: Skip version update
+      if: steps.check_merge.outputs.is_merge == 'false'
+      run: |
+        echo "⏭️  Skipping version update - not a merge commit"
+        echo "   Version updates only happen on merges to main branch"
+
+  validate-version:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Validate version file
+      run: |
+        echo "🔍 Validating backend version file..."
+        if [ -f "backend/version.py" ]; then
+          python3 -c "
+          import sys
+          sys.path.append('backend')
+          from version import get_version_info
+          info = get_version_info()
+          print(f'✅ Version validation successful')
+          print(f'   Version: {info[\"version\"]}')
+          print(f'   Build: {info[\"build\"]}')
+          print(f'   Full: {info[\"full_version\"]}')
+          print(f'   Updated: {info[\"last_updated\"]}')
+          print(f'   Codename: {info[\"codename\"]}')
+          "
+        else
+          echo "❌ Version file not found"
+          exit 1
+        fi
+
+    - name: Validate changelog format
+      run: |
+        echo "📝 Validating changelog format..."
+        if [ -f "backend/CHANGELOG.md" ]; then
+          if grep -q "# Changelog" backend/CHANGELOG.md; then
+            echo "✅ Changelog format valid"
+          else
+            echo "❌ Changelog missing header"
+            exit 1
+          fi
+        else
+          echo "⚠️  Changelog file not found (will be created)"
+        fi
+
+    - name: Test version integration
+      run: |
+        echo "🧪 Testing version integration with FastAPI..."
+        cd backend
+        python3 -c "
+        import sys
+        from version import get_version_info
+        from main import app
+        
+        # Test version endpoint
+        info = get_version_info()
+        assert 'version' in info
+        assert 'build' in info
+        assert 'full_version' in info
+        
+        print('✅ Version integration tests passed')
+        print(f'   FastAPI app version: {app.version}')
+        print(f'   Version module: {info[\"version\"]}')
+        "
+
+    - name: Preview version changes
+      run: |
+        echo "🔍 Preview of version changes that would happen on merge:"
+        echo "========================================================"
+        # Create a temporary staged commit to analyze
+        git add backend/ || true
+        python3 scripts/backend_version_manager.py || echo "No changes to analyze" 
