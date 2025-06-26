@@ -28,6 +28,8 @@ def lambda_handler(event, context):
 
         source = event['sourceVariant']
         dest = event['destinationVariant']
+        source_name = source['name']
+        dest_name = dest['name']
         source_gid = source['gid']
         dest_gid = dest['gid']
         source_type = source.get('type', '').lower()
@@ -35,11 +37,6 @@ def lambda_handler(event, context):
 
         # 🧠 Case 1: Veteran ➡ Early logic
         if source_type == 'veteran' and dest_type == 'early':
-            validate_required_fields(event, ['totalInventory', 'numEligibleVeterans'])
-
-            total_inventory = event['totalInventory']
-            num_vets = event['numEligibleVeterans']
-
             source_data = get_inventory_item_and_quantity(source_gid)
             dest_data = get_inventory_item_and_quantity(dest_gid)
 
@@ -47,25 +44,21 @@ def lambda_handler(event, context):
             source_id = source_data['inventoryItemId']
             dest_id = dest_data['inventoryItemId']
 
-            num_orders = total_inventory - source_qty
-            remaining_non_vet_spots = source_qty - (num_vets - num_orders)
-            delta_to_move = min(remaining_non_vet_spots, source_qty)
-
-            print(f"📊 Calculated deltaToMove: {delta_to_move}")
-            if delta_to_move <= 0:
-                raise ValueError(f"Delta to move is not positive: {delta_to_move}")
+            print(f"📊 Moving ALL inventory from {source_name} → {dest_name}: {source_qty} units")
+            if source_qty <= 0:
+                raise ValueError(f"No inventory to move from {source_name}.")
 
             wait_until_next_minute()
-            adjust_inventory(source_id, -delta_to_move)
-            adjust_inventory(dest_id, delta_to_move)
+            adjust_inventory(source_id, -source_qty)
+            adjust_inventory(dest_id, source_qty)
 
             return format_response(200, {
                 "success": True,
-                "message": f"Moved {delta_to_move} units from veteran to early",
+                "message": f"Moved all {source_qty} units from {source_name} to {dest_name}",
                 "details": {
-                    "from": source_gid,
-                    "to": dest_gid,
-                    "amountMoved": delta_to_move
+                    "from": f"{source_name} ({source_gid})",
+                    "to": f"{dest_name} ({dest_gid})",
+                    "amountMoved": source_qty
                 }
             })
 
@@ -101,11 +94,38 @@ def lambda_handler(event, context):
 
             return format_response(200, {
                 "success": True,
-                "message": f"Moved {total_delta} units into open variant",
+                "message": f"Moved {total_delta} units into {dest_name}",
                 "details": {
                     "from": "early+vet",
-                    "to": dest_gid,
+                    "to": f"{dest_name} ({dest_gid})",
                     "amountMoved": total_delta
+                }
+            })
+        
+        # 🧠 Case 3: Manually move between specific variants:
+        if source_type == "custom" and dest_type == "custom":
+            source_data = get_inventory_item_and_quantity(source_gid)
+            dest_data = get_inventory_item_and_quantity(dest_gid)
+
+            source_qty = source_data['inventoryQuantity']
+            source_id = source_data['inventoryItemId']
+            dest_id = dest_data['inventoryItemId']
+
+            print(f"📊 Moving ALL {source_qty} inventory units from {source_name} → {dest_name}")
+            if source_qty <= 0:
+                raise ValueError(f"No inventory to move from {source_name} variant.")
+
+            wait_until_next_minute()
+            adjust_inventory(source_id, -source_qty)
+            adjust_inventory(dest_id, source_qty)
+
+            return format_response(200, {
+                "success": True,
+                "message": f"Moved all {source_qty} units from {source_name} to {dest_name}",
+                "details": {
+                    "from": f"{source_name} ({source_gid})",
+                    "to": f"{dest_name} ({dest_gid})",
+                    "amountMoved": source_qty
                 }
             })
 
