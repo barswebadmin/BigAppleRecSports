@@ -49,8 +49,8 @@ jobs:
     - name: Run service tests
       run: |
         cd services
-        python test_csv_service.py
-        python test_leadership_service.py
+        PYTHONPATH=.. python test_csv_service.py
+        PYTHONPATH=.. python test_leadership_service.py
     
     - name: Start server for integration tests
       run: |
@@ -66,7 +66,7 @@ jobs:
     - name: Run API integration tests
       run: |
         cd routers
-        python test_leadership_router.py
+        PYTHONPATH=.. python test_leadership_router.py
       env:
         SHOPIFY_STORE: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
