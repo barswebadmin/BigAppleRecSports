@@ -1,0 +1,73 @@
+name: Backend Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Set up test environment variables
+      run: |
+        echo "SHOPIFY_STORE=test-store.myshopify.com" >> $GITHUB_ENV
+        echo "SHOPIFY_TOKEN=test_token" >> $GITHUB_ENV
+        echo "ENVIRONMENT=test" >> $GITHUB_ENV
+    
+    - name: Run service tests
+      run: |
+        cd services
+        python test_csv_service.py
+        python test_leadership_service.py
+    
+    - name: Start server for integration tests
+      run: |
+        python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
+        sleep 5
+        # Check if server is running
+        curl -f http://127.0.0.1:8000/health || exit 1
+      env:
+        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_TOKEN: test_token
+        ENVIRONMENT: test
+    
+    - name: Run API integration tests
+      run: |
+        cd routers
+        python test_leadership_router.py
+      env:
+        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_TOKEN: test_token
+        ENVIRONMENT: test 
