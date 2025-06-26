@@ -2,11 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import leadership
 from config import settings
+from version import get_version_info
 
 app = FastAPI(
     title="Big Apple Rec Sports API",
     description="Backend API for Big Apple Rec Sports operations",
-    version="1.0.2",
+    version=get_version_info()["version"],
     docs_url="/docs" if settings.environment != "production" else None,  # Disable docs in production
     redoc_url="/redoc" if settings.environment != "production" else None,  # Disable redoc in production
 )
@@ -36,9 +37,14 @@ app.include_router(leadership.router)
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
+    version_info = get_version_info()
     return {
         "message": "Big Apple Rec Sports API",
-        "version": "1.0.2",
+        "version": version_info["version"],
+        "build": version_info["build"], 
+        "full_version": version_info["full_version"],
+        "codename": version_info["codename"],
+        "last_updated": version_info["last_updated"],
         "environment": settings.environment,
         "docs_url": "/docs" if settings.environment != "production" else "Contact admin for documentation",
         "health_check": "/health"
@@ -47,11 +53,20 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring"""
+    version_info = get_version_info()
     return {
         "status": "healthy",
-        "version": "1.0.2",
-        "environment": settings.environment
+        "version": version_info["version"],
+        "build": version_info["build"],
+        "full_version": version_info["full_version"],
+        "environment": settings.environment,
+        "last_updated": version_info["last_updated"]
     }
+
+@app.get("/version")
+async def get_version():
+    """Get detailed version information"""
+    return get_version_info()
 
 if __name__ == "__main__":
     import uvicorn
@@ -60,4 +75,5 @@ if __name__ == "__main__":
         host="0.0.0.0", 
         port=8000,
         reload=settings.environment == "development"
-    ) 
+    )
+# Test change

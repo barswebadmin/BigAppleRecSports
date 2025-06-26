@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Pre-commit hook for automatic version management
+# Handles lambda function versioning only (backend versioning happens on merge/deploy)
+#
+
+set -e
+
+echo "🔍 Checking for lambda function changes..."
+
+# Check if we have python3 available
+if ! command -v python3 &> /dev/null; then
+    echo "⚠️  Warning: python3 not found. Skipping version management."
+    exit 0
+fi
+
+# Get the directory where this script is located (should be .githooks)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Check for lambda function changes only
+LAMBDA_VERSION_MANAGER="$REPO_ROOT/scripts/version_manager.py"
+if [ -f "$LAMBDA_VERSION_MANAGER" ]; then
+    echo "📝 Checking lambda function changes..."
+    if python3 "$LAMBDA_VERSION_MANAGER"; then
+        echo "✅ Lambda version management complete"
+    else
+        echo "⚠️  Lambda version management failed"
+    fi
+else
+    echo "⚠️  Lambda version manager not found"
+fi
+
+echo "ℹ️  Backend versioning will happen on merge/deploy via GitHub Actions"
+echo "🎉 Pre-commit version management complete!"
+exit 0 
