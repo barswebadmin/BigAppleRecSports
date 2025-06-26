@@ -18,8 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(leadership.router, prefix="/leadership", tags=["leadership"])
+# Include routers (prefix is already defined in the router)
+app.include_router(leadership.router)
 
 @app.get("/")
 async def root():
