@@ -1,5 +1,9 @@
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, Optional
+import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_season_start_and_end(season: str, year: int) -> Tuple[str, str]:
     """
@@ -47,3 +51,146 @@ def get_season_start_and_end(season: str, year: int) -> Tuple[str, str]:
     ).strftime("%Y-%m-%dT00:00:00Z")
     
     return start_date, end_date 
+
+def extract_season_dates(description_html: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extract season start date and off dates from product description HTML
+    Based on extractSeasonDates from Utils.gs
+    """
+    try:
+        # Strip HTML tags and decode entities
+        text = re.sub(r'<[^>]+>', '', description_html)
+        text = text.replace('&nbsp;', ' ').replace('&amp;', '&')
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        logger.info(f"Stripped description HTML: {text}")
+        
+        # Pattern to match season dates
+        season_dates_pattern = r'Season Dates[^:\d]*[:\s]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s*[–—-]\s*(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s*\(\d+\s+weeks(?:,\s*off\s+([^)]+))?\))?'
+        
+        match = re.search(season_dates_pattern, text, re.IGNORECASE)
+        logger.info(f"Season dates match: {match}")
+        
+        if not match:
+            return None, None
+        
+        season_start_date = match.group(1)
+        off_dates_str = match.group(3) if match.group(3) else None
+        
+        # Validate date formats
+        if not season_start_date or '/' not in season_start_date:
+            return None, None
+        
+        if off_dates_str and '/' not in off_dates_str:
+            return season_start_date, None
+        
+        return season_start_date, off_dates_str
+        
+    except Exception as e:
+        logger.error(f"Error extracting season dates: {str(e)}")
+        return None, None
+
+def calculate_refund_amount(season_start_date_str: str, off_dates_str: Optional[str], 
+                          total_amount_paid: float, refund_or_credit: str, 
+                          request_submitted_at: Optional[datetime] = None) -> Tuple[float, str]:
+    """
+    Calculate refund amount based on timing and season dates
+    Based on getRefundDue from getRefundDue.gs
+    """
+    try:
+        if not season_start_date_str or not total_amount_paid or not refund_or_credit:
+            return 0, 'Error calculating refund due - please check order and product'
+        
+        if total_amount_paid == 0:
+            return 0, "Refund Due: $0 (No payment was made for this order)"
+        
+        if request_submitted_at is None:
+            request_submitted_at = datetime.utcnow()
+        
+        # Parse season start date
+        month, day, year = map(int, season_start_date_str.split("/"))
+        normalized_year = year if year >= 100 else 2000 + year
+        season_start_date = datetime(normalized_year, month, day, 7, 0, 0)
+        
+        # Create week dates (5 weeks starting from season start)
+        week_dates = [season_start_date]
+        for i in range(1, 5):
+            next_week = datetime.fromtimestamp(week_dates[i-1].timestamp() + (7 * 24 * 60 * 60))
+            week_dates.append(next_week)
+        
+        # Parse off dates and adjust week dates
+        if off_dates_str:
+            off_dates = []
+            for date_str in off_dates_str.split(','):
+                date_str = date_str.strip()
+                if date_str and '/' in date_str:
+                    try:
+                        m, d, y = map(int, date_str.split('/'))
+                        normalized_year = y if y >= 100 else 2000 + y
+                        off_date = datetime(normalized_year, m, d, 7, 0, 0)
+                        off_dates.append(off_date)
+                    except ValueError:
+                        continue
+            
+            # Adjust week dates by shifting subsequent weeks for each off date
+            for off_date in sorted(off_dates):
+                for i in range(len(week_dates)):
+                    if week_dates[i] == off_date:
+                        # Shift all subsequent weeks by 7 days
+                        for j in range(i, len(week_dates)):
+                            week_dates[j] = datetime.fromtimestamp(
+                                week_dates[j].timestamp() + (7 * 24 * 60 * 60)
+                            )
+                        break
+        
+        # Add early tier cutoff (2 weeks before season start)
+        early_tier_cutoff = datetime.fromtimestamp(
+            week_dates[0].timestamp() - (14 * 24 * 60 * 60)
+        )
+        week_dates.insert(0, early_tier_cutoff)
+        
+        # Define refund tiers
+        refund_tiers = [95, 90, 80, 70, 60, 50] if refund_or_credit == "refund" else [100, 95, 85, 75, 65, 55]
+        penalties = [0, 5, 15, 25, 35, 45]
+        add_processing = refund_or_credit == "refund"
+        
+        refund_percentage = 0
+        penalty = 0
+        
+        logger.info(f"Season Start Date (UTC @ 7am): {season_start_date.isoformat()}")
+        logger.info(f"Now (UTC): {request_submitted_at.isoformat()}")
+        
+        # Find appropriate refund tier
+        for i, week_date in enumerate(week_dates):
+            logger.info(f"Checking against week {i}: {week_date.isoformat()}. Request before this week? {request_submitted_at < week_date}")
+            if request_submitted_at < week_date:
+                refund_percentage = refund_tiers[i]
+                penalty = penalties[i]
+                break
+        
+        if refund_percentage == 0:
+            return 0, "Estimated Refund Due: $0 (No refund — the request came after week 5 had already started)"
+        
+        refund_amount = (refund_percentage / 100) * total_amount_paid
+        refund_week_index = refund_tiers.index(refund_percentage)
+        
+        # Generate timing description
+        if refund_week_index == 0:
+            timing_description = "more than 2 weeks before week 1 started"
+        elif refund_week_index == 1:
+            timing_description = "before week 1 started"
+        else:
+            timing_description = f"after the start of week {refund_week_index}"
+        
+        refund_text = (
+            f"Estimated Refund Due: ${refund_amount:.2f}\n"
+            f"(This request is calculated to have been submitted {timing_description}. "
+            f"{refund_percentage}% after {penalty}% penalty"
+            f"{' + 5% processing fee' if add_processing else ''})"
+        )
+        
+        return refund_amount, refund_text
+        
+    except Exception as e:
+        logger.error(f"Error calculating refund amount: {str(e)}")
+        return 0, f"Error calculating refund amount: {str(e)}" 
