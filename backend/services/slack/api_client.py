@@ -5,10 +5,95 @@ Handles the low-level Slack API communication.
 
 import requests
 import json
+import sys
+import os
 from typing import Dict, Any, Optional, List
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _is_test_mode() -> bool:
+    """
+    Detect if we're running in test mode.
+    Returns True if pytest is running or if TESTING environment variable is set.
+    """
+    # Check if pytest is running
+    if 'pytest' in sys.modules:
+        return True
+    
+    # Check if we're running via pytest command
+    if any('pytest' in arg for arg in sys.argv):
+        return True
+    
+    # Check for explicit TESTING environment variable
+    if os.getenv('TESTING', '').lower() in ('true', '1', 'yes'):
+        return True
+    
+    # Check if we're running test files
+    if any('test_' in arg or arg.endswith('_test.py') for arg in sys.argv):
+        return True
+    
+    return False
+
+
+class MockSlackApiClient:
+    """Mock Slack API client for testing purposes."""
+    
+    def __init__(self, bearer_token: str, channel_id: str):
+        self.bearer_token = bearer_token
+        self.channel_id = channel_id
+        logger.info("🧪 Using MockSlackApiClient - no real Slack requests will be made")
+    
+    def send_message(self, message_text: str, action_buttons: Optional[List[Dict[str, Any]]] = None, 
+                    slack_text: Optional[str] = None) -> Dict[str, Any]:
+        """Mock send_message that logs but doesn't make real requests"""
+        logger.info(f"🧪 MOCK: Would send Slack message to {self.channel_id}")
+        logger.debug(f"🧪 MOCK: Message content: {message_text[:100]}...")
+        
+        return {
+            "success": True,
+            "message": "Mock message sent successfully",
+            "ts": "1234567890.123456",
+            "channel": self.channel_id,
+            "slack_response": {"ok": True, "ts": "1234567890.123456"}
+        }
+    
+    def update_message(self, message_ts: str, message_text: str, 
+                      action_buttons: Optional[List[Dict[str, Any]]] = None,
+                      slack_text: Optional[str] = None) -> Dict[str, Any]:
+        """Mock update_message that logs but doesn't make real requests"""
+        logger.info(f"🧪 MOCK: Would update Slack message {message_ts} in {self.channel_id}")
+        
+        return {
+            "success": True,
+            "message": "Mock message updated successfully",
+            "ts": message_ts,
+            "channel": self.channel_id
+        }
+    
+    def _create_standard_blocks(self, text: str, action_buttons: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+        """Create standard Slack message blocks (mock version)"""
+        blocks = [
+            {"type": "divider"},
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": text}
+            }
+        ]
+        
+        # Add action buttons if provided
+        if action_buttons:
+            # Remove any None buttons and ensure we have a valid list
+            filtered_buttons = [btn for btn in action_buttons if btn is not None]
+            if filtered_buttons:  # Only add actions if we have valid buttons
+                blocks.append({
+                    "type": "actions",
+                    "elements": filtered_buttons
+                })
+        
+        blocks.append({"type": "divider"})
+        return blocks
 
 
 class SlackApiClient:

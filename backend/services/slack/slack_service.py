@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 import logging
 from config import settings
 from .message_builder import SlackMessageBuilder
-from .api_client import SlackApiClient
+from .api_client import SlackApiClient, MockSlackApiClient, _is_test_mode
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +40,20 @@ class SlackService:
         
         # Initialize helper components
         self.message_builder = SlackMessageBuilder(self.sport_groups)
-        self.api_client = SlackApiClient(
-            self.refunds_channel["bearer_token"],
-            self.refunds_channel["channel_id"]
-        )
+        
+        # Use mock API client during tests to prevent real Slack requests
+        if _is_test_mode():
+            logger.info("🧪 Test mode detected - using MockSlackApiClient")
+            self.api_client = MockSlackApiClient(
+                self.refunds_channel["bearer_token"],
+                self.refunds_channel["channel_id"]
+            )
+        else:
+            logger.info("🚀 Production mode - using real SlackApiClient")
+            self.api_client = SlackApiClient(
+                self.refunds_channel["bearer_token"],
+                self.refunds_channel["channel_id"]
+            )
     
     def send_refund_request_notification(
         self,

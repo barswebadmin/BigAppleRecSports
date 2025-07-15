@@ -3,7 +3,7 @@ Unit tests for SlackMessageBuilder.
 """
 
 import pytest
-from ..message_builder import SlackMessageBuilder
+from services.slack.message_builder import SlackMessageBuilder
 
 
 class TestSlackMessageBuilder:
@@ -49,43 +49,49 @@ class TestSlackMessageBuilder:
         expected = "<https://admin.shopify.com/store/09fe59-3/orders/12345|#12345>"
         assert result == expected
     
-    def test_format_sheet_link(self, message_builder):
-        """Test sheet link formatting."""
-        link = "https://docs.google.com/spreadsheets/d/test/edit"
-        result = message_builder.format_sheet_link(link)
-        expected = "<https://docs.google.com/spreadsheets/d/test/edit|📊 View Request in Sheets>"
+    def test_get_product_url(self, message_builder):
+        """Test product URL formatting."""
+        result = message_builder.get_product_url("gid://shopify/Product/12345")
+        expected = "https://admin.shopify.com/store/09fe59-3/products/12345"
         assert result == expected
     
-    def test_format_sheet_link_empty(self, message_builder):
-        """Test sheet link formatting with empty link."""
-        result = message_builder.format_sheet_link("")
-        assert result == "No sheet link provided"
+    def test_get_sheet_link_line_with_link(self, message_builder):
+        """Test sheet link formatting with valid link."""
+        link = "https://docs.google.com/spreadsheets/d/test/edit"
+        result = message_builder._get_sheet_link_line(link)
+        expected = "\n \n 🔗 *<https://docs.google.com/spreadsheets/d/test/edit|View Request in Google Sheets>*\n\n"
+        assert result == expected
     
-    def test_format_requestor_line_full_name(self, message_builder):
+    def test_get_sheet_link_line_empty(self, message_builder):
+        """Test sheet link formatting with empty link."""
+        result = message_builder._get_sheet_link_line("")
+        assert result == ""
+    
+    def test_get_requestor_line_full_name(self, message_builder):
         """Test requestor line with full name."""
         requestor_name = {"first": "John", "last": "Doe"}
-        result = message_builder.format_requestor_line(requestor_name, "john@example.com")
-        expected = "*Requestor:* John Doe (john@example.com)"
+        result = message_builder._get_requestor_line(requestor_name, "john@example.com")
+        expected = "📧 *Requested by:* John Doe (john@example.com)\n\n"
         assert result == expected
     
-    def test_format_requestor_line_email_only(self, message_builder):
+    def test_get_requestor_line_email_only(self, message_builder):
         """Test requestor line with email only."""
         requestor_name = {"first": "", "last": ""}
-        result = message_builder.format_requestor_line(requestor_name, "john@example.com")
-        expected = "*Requestor:* john@example.com"
+        result = message_builder._get_requestor_line(requestor_name, "john@example.com")
+        expected = "📧 *Requested by:* john@example.com\n\n"
         assert result == expected
     
-    def test_format_request_type_refund(self, message_builder):
+    def test_get_request_type_text_refund(self, message_builder):
         """Test request type formatting for refund."""
-        result = message_builder.format_request_type("refund")
+        result = message_builder._get_request_type_text("refund")
         assert result == "💵 Refund back to original form of payment"
     
-    def test_format_request_type_credit(self, message_builder):
+    def test_get_request_type_text_credit(self, message_builder):
         """Test request type formatting for credit."""
-        result = message_builder.format_request_type("credit")
+        result = message_builder._get_request_type_text("credit")
         assert result == "🎟️ Store Credit to use toward a future order"
     
-    def test_format_request_type_unknown(self, message_builder):
+    def test_get_request_type_text_unknown(self, message_builder):
         """Test request type formatting for unknown type."""
-        result = message_builder.format_request_type("unknown")
+        result = message_builder._get_request_type_text("unknown")
         assert result == "❓ Unknown" 
