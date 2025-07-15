@@ -4,6 +4,7 @@ import logging
 import json
 import hmac
 import hashlib
+
 from services.orders import OrdersService
 from services.slack import SlackService
 from config import settings
@@ -45,6 +46,8 @@ def parse_button_value(value: str) -> Dict[str, str]:
             request_data[key] = val
     
     return request_data
+
+# Note: parse_original_message_data function removed - data now preserved in button values
 
 @router.post("/interactions")
 async def handle_slack_interactions(request: Request):
@@ -121,35 +124,48 @@ async def handle_slack_interactions(request: Request):
         
         print("=== END DEBUG ===\n")
         
+        # Process button actions
+        if payload.get("type") == "block_actions":
+            actions = payload.get("actions", [])
+            if actions:
+                action = actions[0]
+                action_id = action.get("action_id")
+                action_value = action.get("value", "")
+                slack_user_id = payload.get("user", {}).get("id", "Unknown")
+                slack_user_name = payload.get("user", {}).get("name", "Unknown")
+                
+                # Parse button data
+                request_data = parse_button_value(action_value)
+                
+                # Get message info for updating
+                thread_ts = payload.get("message", {}).get("ts")
+                channel_id = payload.get("channel", {}).get("id")
+                
+                # Note: Button values now contain all necessary preserved data
+                
+                logger.info(f"Button clicked: {action_id} with data: {request_data}")
+                
+                # Route to appropriate handler - NEW DECOUPLED FLOW
+                if action_id == "cancel_order":
+                    return await handle_cancel_order(request_data, channel_id, thread_ts, slack_user_id, slack_user_name, {})
+                elif action_id == "proceed_without_cancel":
+                    return await handle_proceed_without_cancel(request_data, channel_id, thread_ts, slack_user_id, slack_user_name, {})
+                # elif action_id == "cancel_and_close_request":
+                #     return await handle_cancel_and_close_request(request_data, channel_id, thread_ts, slack_user_name)
+                # elif action_id == "process_refund":
+                #     return await handle_process_refund(request_data, channel_id, thread_ts, slack_user_name)
+                # elif action_id == "custom_refund_amount":
+                #     return await handle_custom_refund_amount(request_data, channel_id, thread_ts, slack_user_name)
+                # elif action_id == "no_refund":
+                #     return await handle_no_refund(request_data, channel_id, thread_ts, slack_user_name)
+                # elif action_id.startswith("restock"):
+                #     return await handle_restock_inventory(request_data, action_id, channel_id, thread_ts, slack_user_name)
+                else:
+                    logger.warning(f"Unknown action_id: {action_id}")
+                    return {"response_type": "ephemeral", "text": f"Unknown action: {action_id}"}
+        
         # Return success response to Slack
         return {"text": "✅ Webhook received and logged successfully!"}
-        
-        # TODO: Uncomment and update the below when ready to process actions
-        #
-        # action_id = action.get("action_id")
-        # action_value = action.get("value", "")
-        # 
-        # # Parse button data
-        # request_data = parse_button_value(action_value)
-        # 
-        # # Get message info for updating
-        # thread_ts = payload.get("message", {}).get("ts")
-        # channel_id = payload.get("channel", {}).get("id")
-        # 
-        # logger.info(f"Button clicked: {action_id} with data: {request_data}")
-        # 
-        # # Route to appropriate handler
-        # if action_id == "approve_refund":
-        #     return await handle_approve_refund(request_data, channel_id, thread_ts, slack_user_name)
-        # elif action_id == "refund_different_amount":
-        #     return await handle_custom_amount_request(request_data, channel_id, thread_ts, slack_user_name)
-        # elif action_id == "cancel_refund_request":
-        #     return await handle_cancel_request(request_data, channel_id, thread_ts, slack_user_name)
-        # elif action_id.startswith("restock"):
-        #     return await handle_restock_inventory(request_data, action_id, channel_id, thread_ts, slack_user_name)
-        # else:
-        #     logger.warning(f"Unknown action_id: {action_id}")
-        #     return {"response_type": "ephemeral", "text": f"Unknown action: {action_id}"}
     
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON payload: {e}")
@@ -163,114 +179,350 @@ async def handle_slack_interactions(request: Request):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal server error")
 
-async def handle_approve_refund(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
+# === STEP 1 HANDLERS: INITIAL DECISION (Cancel Order / Proceed / Cancel & Close) ===
+
+async def handle_cancel_order(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_id: str, slack_user_name: str, original_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Handle the approve refund button click - equivalent to approveRefundRequest() in Google Apps Script
+    Handle cancel order button click (Step 1)
+    Cancels the order in Shopify, then shows refund options
     """
+    print(f"\n✅ === CANCEL ORDER ACTION ===")
+    print(f"👤 User: {slack_user_name}")
+    print(f"📋 Request Data: {request_data}")
+    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+    print("=== END CANCEL ORDER ===\n")
+    
     try:
+        # Extract data from button value
         raw_order_number = request_data.get("rawOrderNumber", "")
-        order_id = request_data.get("orderId", "")
-        refund_amount = float(request_data.get("refundAmount", "0"))
+        refund_type = request_data.get("refundType", "refund")
+        requestor_email = request_data.get("requestorEmail", "unknown@example.com")
+        requestor_first_name = request_data.get("requestorFirstName", "")
+        requestor_last_name = request_data.get("requestorLastName", "")
+        request_submitted_at = request_data.get("requestSubmittedAt", "")
         
-        logger.info(f"Processing refund approval for order {raw_order_number}, amount ${refund_amount}")
+        logger.info(f"Canceling order: {raw_order_number}")
         
-        # 1. Fetch order details from Shopify
+        # 1. Fetch fresh order details from Shopify to get complete data
         order_result = orders_service.fetch_order_details(order_name=raw_order_number)
         if not order_result["success"]:
-            raise Exception(f"Failed to fetch order: {order_result['message']}")
+            logger.error(f"Failed to fetch order details for {raw_order_number}: {order_result['message']}")
+            error_message = f"❌ Failed to fetch order details: {order_result['message']}"
+            slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
+            return {}
         
-        order_data = order_result["data"]
+        shopify_order_data = order_result["data"]
+        order_id = shopify_order_data.get("orderId", "")
         
-        # 2. Determine refund type from original calculation (would need to be stored or re-calculated)
-        # For now, default to "refund" - you might want to store this in the button value
-        refund_type = "refund"  # Could be extracted from button data or re-calculated
+        # 2. Calculate fresh refund amount
+        refund_calculation = orders_service.calculate_refund_due(shopify_order_data, refund_type)
         
-        # 3. Cancel the order and create refund/credit
-        cancel_result = orders_service.cancel_order_with_refund(
-            order_id=order_id,
-            refund_amount=refund_amount,
-            should_restock=False,  # We'll handle restocking separately with buttons
-            send_slack_notification=False  # We're updating the message manually
-        )
+        # 3. Cancel order in Shopify
+        cancel_result = orders_service.cancel_order(order_id)
         
-        if not cancel_result["success"]:
-            raise Exception(f"Failed to process refund: {cancel_result['message']}")
+        if cancel_result["success"]:
+            # 4. Create requestor name display
+            requestor_name_display = f"{requestor_first_name} {requestor_last_name}".strip()
+            if not requestor_name_display:
+                requestor_name_display = "Unknown User"
+            
+            # Create order data with fresh Shopify data and preserved requestor info
+            order_data = {
+                "order": shopify_order_data,  # Use fresh Shopify order data
+                "refund_calculation": refund_calculation,  # Use fresh refund calculation
+                "requestor_name": {"display": requestor_name_display},
+                "requestor_email": requestor_email,
+                "original_data": {
+                    "original_timestamp": request_submitted_at,  # Preserve original timestamp
+                    "requestor_name_display": requestor_name_display,
+                    "requestor_email": requestor_email
+                }
+            }
+            
+            # 5. Create refund decision message
+            from services.slack.message_builder import SlackMessageBuilder
+            message_builder = SlackMessageBuilder({})
+            refund_message = message_builder.create_refund_decision_message(
+                order_data, refund_type, "@channel", 
+                order_cancelled=True, 
+                slack_user=f"<@{slack_user_id}>",
+                original_timestamp=request_submitted_at
+            )
+            
+            # 4. Update Slack message
+            slack_service.api_client.update_message(
+                message_ts=thread_ts,
+                message_text=refund_message["text"],
+                action_buttons=refund_message["action_buttons"]
+            )
+            
+            logger.info(f"Order {raw_order_number} cancelled successfully")
+        else:
+            error_message = f"❌ Failed to cancel order {raw_order_number}: {cancel_result.get('message', 'Unknown error')}"
+            slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
         
-        # 4. Build success message with restock buttons
-        success_message = build_refund_success_message(
-            order_data=order_data,
-            refund_amount=refund_amount,
-            refund_type=refund_type,
-            slack_user_name=slack_user_name,
-            raw_order_number=raw_order_number
-        )
-        
-        # 5. Update the Slack message
-        update_result = slack_service.api_client.update_message(
-            message_ts=thread_ts,
-            message_text=success_message["text"],
-            action_buttons=success_message.get("action_buttons", [])
-        )
-        
-        if not update_result["success"]:
-            logger.error(f"Failed to update Slack message: {update_result}")
-        
-        logger.info(f"Refund processed successfully for order {raw_order_number}")
+        return {}
+    except Exception as e:
+        logger.error(f"Error canceling order: {e}")
+        error_message = f"❌ Error canceling order: {str(e)}"
+        slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
         return {}
     
-    except Exception as e:
-        logger.error(f"Error processing refund approval: {str(e)}")
+
+async def handle_proceed_without_cancel(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_id: str, slack_user_name: str, original_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Handle proceed without cancel button click (Step 1)
+    Shows refund options without canceling the order
+    """
+    print(f"\n➡️ === PROCEED WITHOUT CANCEL ACTION ===")
+    print(f"👤 User: {slack_user_name}")
+    print(f"📋 Request Data: {request_data}")
+    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+    print("=== END PROCEED WITHOUT CANCEL ===\n")
+    
+    try:
+        # Extract data from button value
+        raw_order_number = request_data.get("rawOrderNumber", "")
+        refund_type = request_data.get("refundType", "refund")
+        requestor_email = request_data.get("requestorEmail", "unknown@example.com")
+        requestor_first_name = request_data.get("requestorFirstName", "")
+        requestor_last_name = request_data.get("requestorLastName", "")
+        request_submitted_at = request_data.get("requestSubmittedAt", "")
         
-        # Send error message to Slack
-        error_message = f"❌ Error processing refund: {str(e)}"
+        logger.info(f"Proceeding without canceling order: {raw_order_number}")
+        
+        # 1. Fetch fresh order details from Shopify to get complete data
+        order_result = orders_service.fetch_order_details(order_name=raw_order_number)
+        if not order_result["success"]:
+            logger.error(f"Failed to fetch order details for {raw_order_number}: {order_result['message']}")
+            error_message = f"❌ Failed to fetch order details: {order_result['message']}"
+            slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
+            return {}
+        
+        shopify_order_data = order_result["data"]
+        
+        # 2. Calculate fresh refund amount
+        refund_calculation = orders_service.calculate_refund_due(shopify_order_data, refund_type)
+        
+        # 3. Create requestor name display
+        requestor_name_display = f"{requestor_first_name} {requestor_last_name}".strip()
+        if not requestor_name_display:
+            requestor_name_display = "Unknown User"
+        
+        # Create order data with fresh Shopify data and preserved requestor info
+        order_data = {
+            "order": shopify_order_data,  # Use fresh Shopify order data
+            "refund_calculation": refund_calculation,  # Use fresh refund calculation
+            "requestor_name": {"display": requestor_name_display},
+            "requestor_email": requestor_email,
+            "original_data": {
+                "original_timestamp": request_submitted_at,  # Preserve original timestamp
+                "requestor_name_display": requestor_name_display,
+                "requestor_email": requestor_email
+            }
+        }
+        
+        # 4. Create refund decision message (order remains active)
+        from services.slack.message_builder import SlackMessageBuilder
+        message_builder = SlackMessageBuilder({})
+        refund_message = message_builder.create_refund_decision_message(
+            order_data, refund_type, "@channel", 
+            order_cancelled=False, 
+            slack_user=f"<@{slack_user_id}>",
+            original_timestamp=request_submitted_at
+        )
+        
+        # 4. Update Slack message
         slack_service.api_client.update_message(
             message_ts=thread_ts,
-            message_text=error_message
+            message_text=refund_message["text"],
+            action_buttons=refund_message["action_buttons"]
         )
         
+        logger.info(f"Proceeding to refund options for order {raw_order_number} (order not cancelled)")
+        return {}
+    except Exception as e:
+        logger.error(f"Error proceeding without cancel: {e}")
+        error_message = f"❌ Error proceeding: {str(e)}"
+        slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
         return {}
 
-async def handle_custom_amount_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
-    """Handle custom refund amount button click"""
-    # Update message to indicate custom amount processing
-    message = f"🔄 *Custom refund amount requested by {slack_user_name}*\n\nPlease process manually in Shopify admin."
+async def handle_cancel_and_close_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
+    """
+    Handle cancel and close request button click (Step 1)
+    Same as the old logic - cancel order and close request
+    """
+    print(f"\n❌ === CANCEL AND CLOSE REQUEST ACTION ===")
+    print(f"👤 User: {slack_user_name}")
+    print(f"📋 Request Data: {request_data}")
+    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+    print("=== END CANCEL AND CLOSE ===\n")
     
-    slack_service.api_client.update_message(
-        message_ts=thread_ts,
-        message_text=message
-    )
+    # TODO: Uncomment when ready to implement (this is the same as old cancel logic)
+    # try:
+    #     raw_order_number = request_data.get("rawOrderNumber", "")
+    #     
+    #     logger.info(f"Canceling and closing request for order: {raw_order_number}")
+    #     
+    #     # Cancel order and close request (same as old logic)
+    #     message = f"❌ *Request cancelled and closed by {slack_user_name}*\\n\\nOrder {raw_order_number} request has been cancelled."
+    #     
+    #     slack_service.api_client.update_message(
+    #         message_ts=thread_ts,
+    #         message_text=message,
+    #         action_buttons=[]
+    #     )
+    #     
+    #     logger.info(f"Request cancelled and closed for order {raw_order_number}")
+    #     return {}
+    # except Exception as e:
+    #     logger.error(f"Error canceling and closing request: {e}")
+    #     error_message = f"❌ Error: {str(e)}"
+    #     slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
+    #     return {}
     
-    return {}
+    return {"text": "✅ Cancel and close request action received and logged!"}
 
-async def handle_cancel_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
-    """Handle cancel request button click"""
-    raw_order_number = request_data.get("rawOrderNumber", "")
+# === STEP 2 HANDLERS: REFUND DECISION (Process / Custom / No Refund) ===
+
+async def handle_process_refund(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
+    """
+    Handle process calculated refund button click (Step 2)
+    """
+    print(f"\n✅ === PROCESS REFUND ACTION ===")
+    print(f"👤 User: {slack_user_name}")
+    print(f"📋 Request Data: {request_data}")
+    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+    print("=== END PROCESS REFUND ===\n")
     
-    # Update message to show cancellation
-    message = f"❌ *Refund request for Order {raw_order_number} cancelled by {slack_user_name}*"
+    # TODO: Uncomment when ready to implement
+    # try:
+    #     order_id = request_data.get("orderId", "")
+    #     raw_order_number = request_data.get("rawOrderNumber", "")
+    #     refund_amount = float(request_data.get("refundAmount", "0"))
+    #     refund_type = request_data.get("refundType", "refund")
+    #     order_cancelled = request_data.get("orderCancelled", "False").lower() == "true"
+    #     
+    #     logger.info(f"Processing refund: Order {raw_order_number}, Amount: ${refund_amount}")
+    #     
+    #     # Process refund (create refund/store credit)
+    #     refund_result = orders_service.process_refund(order_id, refund_amount, refund_type)
+    #     
+    #     if refund_result["success"]:
+    #         status = "cancelled" if order_cancelled else "active"
+    #         message = f"✅ *Refund processed by {slack_user_name}*\\n\\nOrder {raw_order_number} ({status}) - ${refund_amount:.2f} {refund_type} processed successfully."
+    #     else:
+    #         message = f"❌ *Refund failed*\\n\\nError: {refund_result.get('message', 'Unknown error')}"
+    #     
+    #     slack_service.api_client.update_message(
+    #         message_ts=thread_ts,
+    #         message_text=message,
+    #         action_buttons=[]
+    #     )
+    #     
+    #     return {}
+    # except Exception as e:
+    #     logger.error(f"Error processing refund: {e}")
+    #     error_message = f"❌ Error processing refund: {str(e)}"
+    #     slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
+    #     return {}
     
-    slack_service.api_client.update_message(
-        message_ts=thread_ts,
-        message_text=message,
-        action_buttons=[]  # Remove all buttons
-    )
+    return {"text": "✅ Process refund action received and logged!"}
+
+async def handle_custom_refund_amount(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
+    """
+    Handle custom refund amount button click (Step 2)
+    """
+    print(f"\n✏️ === CUSTOM REFUND AMOUNT ACTION ===")
+    print(f"👤 User: {slack_user_name}")
+    print(f"📋 Request Data: {request_data}")
+    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+    print("=== END CUSTOM REFUND AMOUNT ===\n")
     
-    return {}
+    # TODO: Uncomment when ready to implement
+    # try:
+    #     raw_order_number = request_data.get("rawOrderNumber", "")
+    #     
+    #     message = f"✏️ *Custom refund amount requested by {slack_user_name}*\\n\\nOrder {raw_order_number} - Please process manually in Shopify admin."
+    #     
+    #     slack_service.api_client.update_message(
+    #         message_ts=thread_ts,
+    #         message_text=message,
+    #         action_buttons=[]
+    #     )
+    #     
+    #     return {}
+    # except Exception as e:
+    #     logger.error(f"Error handling custom refund amount: {e}")
+    #     error_message = f"❌ Error: {str(e)}"
+    #     slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
+    #     return {}
+    
+    return {"text": "✅ Custom refund amount action received and logged!"}
+
+async def handle_no_refund(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
+    """
+    Handle no refund button click (Step 2)
+    """
+    print(f"\n🚫 === NO REFUND ACTION ===")
+    print(f"👤 User: {slack_user_name}")
+    print(f"📋 Request Data: {request_data}")
+    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+    print("=== END NO REFUND ===\n")
+    
+    # TODO: Uncomment when ready to implement
+    # try:
+    #     raw_order_number = request_data.get("rawOrderNumber", "")
+    #     order_cancelled = request_data.get("orderCancelled", "False").lower() == "true"
+    #     
+    #     status = "cancelled" if order_cancelled else "active"
+    #     message = f"🚫 *No refund by {slack_user_name}*\\n\\nOrder {raw_order_number} ({status}) - Request closed without refund."
+    #     
+    #     slack_service.api_client.update_message(
+    #         message_ts=thread_ts,
+    #         message_text=message,
+    #         action_buttons=[]
+    #     )
+    #     
+    #     return {}
+    # except Exception as e:
+    #     logger.error(f"Error handling no refund: {e}")
+    #     error_message = f"❌ Error: {str(e)}"
+    #     slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
+    #     return {}
+    
+    return {"text": "✅ No refund action received and logged!"}
+
+# === LEGACY/SUPPORT HANDLERS ===
 
 async def handle_restock_inventory(request_data: Dict[str, str], action_id: str, channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
     """Handle inventory restocking button clicks"""
-    order_id = request_data.get("orderId", "")
+    print(f"\n📦 === RESTOCK INVENTORY ACTION ===")
+    print(f"👤 User: {slack_user_name}")
+    print(f"🔧 Action ID: {action_id}")
+    print(f"📋 Request Data: {request_data}")
+    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+    print("=== END RESTOCK INVENTORY ===\n")
     
-    # Extract variant info from action_id (would need to be encoded in button)
-    # For now, just update message
-    message = f"📦 *Inventory restocking initiated by {slack_user_name}*\n\nProcessing..."
-    
-    slack_service.api_client.update_message(
-        message_ts=thread_ts,
-        message_text=message
-    )
-    
-    return {}
+    return {"text": "✅ Restock inventory action received and logged!"}
+
+# Legacy handler for backwards compatibility
+async def handle_approve_refund(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
+    """Legacy handler - now redirects to process_refund"""
+    print(f"\n⚠️ === LEGACY APPROVE REFUND (redirecting to process_refund) ===")
+    return await handle_process_refund(request_data, channel_id, thread_ts, slack_user_name)
+
+# Legacy handler for backwards compatibility  
+async def handle_custom_amount_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
+    """Legacy handler - now redirects to custom_refund_amount"""
+    print(f"\n⚠️ === LEGACY CUSTOM AMOUNT (redirecting to custom_refund_amount) ===")
+    return await handle_custom_refund_amount(request_data, channel_id, thread_ts, slack_user_name)
+
+# Legacy handler for backwards compatibility
+async def handle_cancel_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
+    """Legacy handler - now redirects to cancel_and_close_request"""
+    print(f"\n⚠️ === LEGACY CANCEL REQUEST (redirecting to cancel_and_close_request) ===")
+    return await handle_cancel_and_close_request(request_data, channel_id, thread_ts, slack_user_name)
 
 def build_refund_success_message(order_data: Dict[str, Any], refund_amount: float, refund_type: str, 
                                 slack_user_name: str, raw_order_number: str) -> Dict[str, Any]:
