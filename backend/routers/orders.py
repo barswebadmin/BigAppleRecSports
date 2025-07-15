@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Dict, Any
 import logging
-from services.orders_service import OrdersService
-from services.slack_service import SlackService
+from services.orders import OrdersService
+from services.slack import SlackService
 from pydantic import BaseModel
 import json
 
@@ -39,7 +39,7 @@ async def get_order(
             result = orders_service.fetch_order_details(email=email)
         
         if not result["success"]:
-            raise HTTPException(status_code=404, detail=result["message"])
+            raise HTTPException(status_code=406, detail=result["message"])
         
         order_data = result["data"]
         
