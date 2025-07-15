@@ -26,6 +26,7 @@ class RefundSlackNotificationRequest(BaseModel):
     requestor_email: str
     refund_type: str  # "refund" or "credit"
     notes: str
+    sheet_link: Optional[str] = None  # Google Sheets link to the specific row
     
     class Config:
         json_schema_extra = {
@@ -34,6 +35,7 @@ class RefundSlackNotificationRequest(BaseModel):
                 "requestor_name": {"first": "John", "last": "Doe"},
                 "requestor_email": "john.doe@example.com",
                 "refund_type": "refund",
-                "notes": "Customer requested refund due to schedule conflict"
+                "notes": "Customer requested refund due to schedule conflict",
+                "sheet_link": "https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1435845892&range=A5"
             }
         } 
