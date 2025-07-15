@@ -370,7 +370,7 @@ class SlackService:
         fallback_text += optional_request_notes
         
         if sheet_link:
-            fallback_text += f"\n \n \n 🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
+            fallback_text += f"\n \n 🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
         
         fallback_text += f"*Attn*: {sport_mention}"
         
@@ -445,23 +445,23 @@ class SlackService:
         """Send error message when email doesn't match order customer email"""
         
         request_type_text = "💵 Refund back to original form of payment" if refund_type == "refund" else "🎟️ Store Credit to use toward a future order"
-        optional_request_notes = f"*Notes provided by requestor*: {request_notes}\n" if request_notes else ""
+        optional_request_notes = f"*Notes provided by requestor*: {request_notes}\n\n" if request_notes else ""
         
         current_time = format_date_and_time(datetime.now())
         
         order_url = self.get_order_url(order["orderId"], order["orderName"])
         
         error_text = f"❌ *Error with Refund Request - Email provided did not match order*\n\n"
-        error_text += f"*Request Type*: {request_type_text}\n"
-        error_text += f"*Request Submitted At*: {current_time}\n"
-        error_text += f"📧 *Requested by:* {requestor_name['first']} {requestor_name['last']} ({requestor_email})\n"
-        error_text += f"*Email Associated with Order:* {order_customer_email}\n"
-        error_text += f"*Order Number:* {order_url}\n"
+        error_text += f"*Request Type*: {request_type_text}\n\n"
+        error_text += f"*Request Submitted At*: {current_time}\n\n"
+        error_text += f"📧 *Requested by:* {requestor_name['first']} {requestor_name['last']} ({requestor_email})\n\n"
+        error_text += f"*Email Associated with Order:* {order_customer_email}\n\n"
+        error_text += f"*Order Number:* {order_url}\n\n"
         error_text += optional_request_notes
         error_text += f"📩 *The requestor has been emailed to please provide correct order info. No action needed at this time.*\n"
         
         if sheet_link:
-            error_text += f"🔗 *<{sheet_link}|View Request in Google Sheets>*\n"
+            error_text += f"\n \n 🔗 *<{sheet_link}|View Request in Google Sheets>*\n"
         
         blocks = [
             {"type": "divider"},

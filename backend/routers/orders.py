@@ -18,6 +18,7 @@ class SlackNotificationRequest(BaseModel):
     refund_type: str  # "refund" or "credit"
     notes: str
     order_data: Optional[Dict[str, Any]] = None
+    sheet_link: Optional[str] = None  # Google Sheets link to the specific row
 
 @router.get("/{order_number}")
 async def get_order(
@@ -415,7 +416,8 @@ async def send_slack_notification(
         slack_result = slack_service.send_refund_request_notification(
             order_data={"order": order_data},
             refund_calculation=refund_calculation,
-            requestor_info=requestor_info
+            requestor_info=requestor_info,
+            sheet_link=request.sheet_link
         )
         
         if not slack_result["success"]:

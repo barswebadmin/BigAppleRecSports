@@ -33,11 +33,12 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
                 requestor_email=request.requestor_email,
                 refund_type=request.refund_type,
                 request_notes=request.notes,
-                raw_order_number=request.order_number
+                raw_order_number=request.order_number,
+                sheet_link=request.sheet_link
             )
             
             raise HTTPException(
-                status_code=404, 
+                status_code=406, 
                 detail={
                     "error": "order_not_found",
                     "message": f"Order {request.order_number} not found",
@@ -62,11 +63,12 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
                 refund_type=request.refund_type,
                 request_notes=request.notes,
                 order=order_data,
-                order_customer_email=order_customer_email
+                order_customer_email=order_customer_email,
+                sheet_link=request.sheet_link
             )
             
             raise HTTPException(
-                status_code=400,
+                status_code=409,
                 detail={
                     "error": "email_mismatch",
                     "message": f"Email {request.requestor_email} does not match order customer email",
@@ -91,7 +93,8 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
         slack_result = slack_service.send_refund_request_notification(
             order_data={"order": order_data},
             refund_calculation=refund_calculation,
-            requestor_info=requestor_info
+            requestor_info=requestor_info,
+            sheet_link=request.sheet_link
         )
         
         if not slack_result["success"]:
