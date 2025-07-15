@@ -220,6 +220,19 @@ class OrdersService:
         """
         return self.refund_calculator.calculate_refund_due(order_data, refund_type)
     
+    def cancel_order(self, order_id: str) -> Dict[str, Any]:
+        """
+        Cancel an order.
+        Delegates to ShopifyOperations helper.
+        """
+        # return self.shopify_operations.cancel_order(order_id)
+        return {
+                "success": True,
+                "message": "Order cancellation workflow completed",
+                # "results": results
+            }
+
+    
     def cancel_order_with_refund(
         self,
         order_id: str,

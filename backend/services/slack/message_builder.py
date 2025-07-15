@@ -156,14 +156,68 @@ class SlackMessageBuilder:
                 "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}"
             }
     
-    def _create_cancel_button(self, order_name: str) -> Dict[str, Any]:
-        """Create the cancel button matching Google Apps Script format"""
+    # === INITIAL DECISION BUTTONS (Step 1: Cancel Order or Proceed) ===
+    
+    def _create_cancel_order_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
+                                   requestor_email: str, refund_type: str, refund_amount: float, request_submitted_at: str = "") -> Dict[str, Any]:
+        """Create the cancel order button (Step 1)"""
+        try:
+            # Get first and last name safely
+            first_name = requestor_name.get("first", "") if isinstance(requestor_name, dict) else ""
+            last_name = requestor_name.get("last", "") if isinstance(requestor_name, dict) else ""
+            
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "✅ Cancel Order"},
+                "style": "primary",
+                "action_id": "cancel_order",
+                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|requestorFirstName={first_name}|requestorLastName={last_name}|requestSubmittedAt={request_submitted_at}",
+                "confirm": {
+                    "title": {"type": "plain_text", "text": "Cancel Order"},
+                    "text": {"type": "plain_text", "text": f"Cancel order {order_name} in Shopify? This will show refund options next."},
+                    "confirm": {"type": "plain_text", "text": "Yes, cancel order"},
+                    "deny": {"type": "plain_text", "text": "No, keep order"}
+                }
+            }
+        except Exception:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "✅ Cancel Order"},
+                "style": "primary",
+                "action_id": "cancel_order",
+                "value": f"rawOrderNumber={order_name}"
+            }
+    
+    def _create_proceed_without_cancel_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
+                                            requestor_email: str, refund_type: str, refund_amount: float, request_submitted_at: str = "") -> Dict[str, Any]:
+        """Create the proceed without canceling button (Step 1)"""
+        try:
+            # Get first and last name safely
+            first_name = requestor_name.get("first", "") if isinstance(requestor_name, dict) else ""
+            last_name = requestor_name.get("last", "") if isinstance(requestor_name, dict) else ""
+            
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "➡️ Do Not Cancel - Proceed"},
+                "action_id": "proceed_without_cancel",
+                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|requestorFirstName={first_name}|requestorLastName={last_name}|requestSubmittedAt={request_submitted_at}"
+            }
+        except Exception:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "➡️ Proceed"},
+                "action_id": "proceed_without_cancel",
+                "value": f"rawOrderNumber={order_name}"
+            }
+    
+    def _create_cancel_and_close_button(self, order_name: str) -> Dict[str, Any]:
+        """Create the cancel and close request button (Step 1) - same as old cancel button"""
         try:
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "❌ Cancel and Close Request"},
                 "style": "danger",
-                "action_id": "cancel_refund_request",
+                "action_id": "cancel_and_close_request",
                 "value": f"rawOrderNumber={order_name}",
                 "confirm": {
                     "title": {"type": "plain_text", "text": "Confirm Cancellation"},
@@ -173,13 +227,248 @@ class SlackMessageBuilder:
                 }
             }
         except Exception:
-            # Return a basic button if there's any error
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "❌ Cancel Request"},
                 "style": "danger",
-                "action_id": "cancel_refund_request",
+                "action_id": "cancel_and_close_request",
                 "value": f"rawOrderNumber={order_name or 'unknown'}"
+            }
+    
+    # === REFUND DECISION BUTTONS (Step 2: After Cancel/Proceed) ===
+    
+    def _create_process_refund_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
+                                    requestor_email: str, refund_type: str, refund_amount: float, order_cancelled: bool = False) -> Dict[str, Any]:
+        """Create the process calculated refund button (Step 2)"""
+        try:
+            formatted_amount = int(refund_amount) if refund_amount == int(refund_amount) else f"{refund_amount:.2f}"
+            
+            button_text = f"✅ Process ${formatted_amount} Refund" if refund_type == "refund" else f"✅ Issue ${formatted_amount} Store Credit"
+            
+            # Safely get names
+            first_name = requestor_name.get("first", "") if isinstance(requestor_name, dict) else ""
+            last_name = requestor_name.get("last", "") if isinstance(requestor_name, dict) else ""
+            
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": button_text},
+                "action_id": "process_refund",
+                "value": f"rawOrderNumber={order_name}|orderId={order_id}|refundAmount={refund_amount}|refundType={refund_type}|orderCancelled={order_cancelled}",
+                "style": "primary",
+                "confirm": {
+                    "title": {"type": "plain_text", "text": "Confirm Refund"},
+                    "text": {"type": "plain_text", "text": f"Issue {first_name} {last_name} a {refund_type} for ${formatted_amount}?"},
+                    "confirm": {"type": "plain_text", "text": "Yes, process refund"},
+                    "deny": {"type": "plain_text", "text": "Cancel"}
+                }
+            }
+        except Exception:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "✅ Process Refund"},
+                "action_id": "process_refund",
+                "value": f"rawOrderNumber={order_name}|orderId={order_id}|refundAmount={refund_amount}",
+                "style": "primary"
+            }
+    
+    def _create_custom_refund_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
+                                   requestor_email: str, refund_type: str, refund_amount: float, order_cancelled: bool = False) -> Dict[str, Any]:
+        """Create the custom refund amount button (Step 2)"""
+        try:
+            button_text = "✏️ Custom Refund Amount" if refund_type == "refund" else "✏️ Custom Store Credit Amount"
+            
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": button_text},
+                "action_id": "custom_refund_amount",
+                "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}|refundType={refund_type}|orderCancelled={order_cancelled}"
+            }
+        except Exception:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "✏️ Custom Amount"},
+                "action_id": "custom_refund_amount",
+                "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}"
+            }
+    
+    def _create_no_refund_button(self, order_id: str, order_name: str, order_cancelled: bool = False) -> Dict[str, Any]:
+        """Create the no refund button (Step 2)"""
+        try:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "🚫 Do Not Provide Refund"},
+                "style": "danger",
+                "action_id": "no_refund",
+                "value": f"rawOrderNumber={order_name}|orderId={order_id}|orderCancelled={order_cancelled}",
+                "confirm": {
+                    "title": {"type": "plain_text", "text": "No Refund"},
+                    "text": {"type": "plain_text", "text": "Close request without providing any refund?"},
+                    "confirm": {"type": "plain_text", "text": "Yes, no refund"},
+                    "deny": {"type": "plain_text", "text": "Cancel"}
+                }
+            }
+        except Exception:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "🚫 No Refund"},
+                "style": "danger",
+                "action_id": "no_refund",
+                "value": f"rawOrderNumber={order_name}|orderId={order_id}"
+            }
+    
+    # === MESSAGE CREATION FOR REFUND DECISION (Step 2) ===
+    
+    def create_refund_decision_message(self, order_data: Dict[str, Any], refund_type: str, 
+                                     sport_mention: str, sheet_link: str = "", order_cancelled: bool = False, 
+                                     slack_user: str = "Unknown User", original_timestamp: Optional[str] = None) -> Dict[str, Any]:
+        """Create message for refund decision step (after cancel order or proceed without cancel)"""
+        try:
+            # Extract order information
+            order = order_data.get("order", {})
+            order_id = order.get("orderId", order.get("id", "unknown"))
+            order_name = order.get("name", "unknown")
+            
+            # Extract refund calculation
+            refund_calc = order_data.get("refund_calculation", {})
+            refund_amount = refund_calc.get("refund_amount", 0)
+            
+            # Get original data if passed
+            original_data = order_data.get("original_data", {})
+            
+            # Use original requestor info if available, otherwise extract from order_data
+            if original_data.get("requestor_name_display"):
+                requestor_display = original_data["requestor_name_display"]
+            else:
+                requestor_name = order_data.get("requestor_name", {})
+                if requestor_name.get("display"):
+                    requestor_display = requestor_name["display"]
+                else:
+                    first = requestor_name.get("first", "Unknown")
+                    last = requestor_name.get("last", "User")
+                    requestor_display = f"{first} {last}".strip()
+            
+            requestor_email = order_data.get("requestor_email", "unknown@example.com")
+            
+            # Use preserved timing details
+            if original_timestamp:
+                current_time = original_timestamp
+            else:
+                current_time = format_date_and_time(datetime.now(timezone.utc))
+            
+            # Use preserved order created at
+            if original_data.get("order_created_at"):
+                order_created_time = original_data["order_created_at"]
+            else:
+                order_created_time = self._get_order_created_time(order)
+            
+            # Use preserved season start date
+            if original_data.get("season_start_date"):
+                season_start_date = original_data["season_start_date"]
+            else:
+                season_start_date = refund_calc.get("season_start_date", "Unknown")
+            
+            # Use preserved product/sport display
+            if original_data.get("product_display"):
+                product_display = original_data["product_display"]
+                product_field_name = original_data.get("product_field_name", "Sport/Season/Day")
+            else:
+                # Fallback to generating product info
+                product = order.get("product", {})
+                product_id = product.get("productId") or product.get("id") or ""
+                product_title = product.get("title", "Unknown Product")
+                product_url = self.get_product_url(product_id) if product_id else "#"
+                product_display = f"<{product_url}|{product_title}>"
+                product_field_name = "Sport/Season/Day"
+            
+            # Use preserved order number display (preserves links)
+            if original_data.get("order_number_display"):
+                order_number_display = original_data["order_number_display"]
+            else:
+                order_url = self.get_order_url(order_id, order_name)
+                order_number_display = order_url
+            
+            # Use preserved pricing details
+            if original_data.get("total_paid"):
+                total_paid = float(original_data["total_paid"].replace(",", ""))
+            else:
+                total_paid = order.get("totalAmountPaid", 0) or order.get("total_price", 0) or 0
+                if isinstance(total_paid, str):
+                    try:
+                        total_paid = float(total_paid)
+                    except (ValueError, TypeError):
+                        total_paid = 0
+            
+            # Use preserved original cost
+            original_cost = None
+            if original_data.get("original_price"):
+                try:
+                    original_cost = float(original_data["original_price"].replace(",", ""))
+                except (ValueError, TypeError):
+                    pass
+            elif refund_calc.get("original_cost"):
+                original_cost = refund_calc.get("original_cost")
+            
+            # Header - change based on cancellation status
+            if order_cancelled:
+                header_text = "🛑 *Order Canceled*\n\n"
+            else:
+                header_text = "ℹ️ *Order Not Canceled*\n\n"
+            
+            # Build message text - using original format with preserved data
+            message_text = f"{header_text}"
+            message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
+            message_text += f"📧 *Requested by:* {requestor_display} ({requestor_email})\n\n"
+            message_text += f"*Request Submitted At*: {current_time}\n\n"
+            message_text += f"*Order Number*: {order_number_display}\n\n"
+            message_text += f"*Order Created At:* {order_created_time}\n\n"
+            message_text += f"*{product_field_name}:* {product_display}\n\n"
+            message_text += f"*Season Start Date*: {season_start_date}\n\n"
+            message_text += f"*Total Paid:* ${total_paid:.2f}\n\n"
+            
+            # Add Original Price field if different from Total Paid
+            if original_cost is not None and abs(original_cost - total_paid) > 0.01:
+                message_text += f"*Original Price:* ${original_cost:.2f}\n\n"
+            
+            calc_message = refund_calc.get("message", "")
+            message_text += f"*Estimated Refund Due:* ${refund_amount:.2f}\n" if not calc_message else ""
+            
+            # Add refund calculation details if available
+            if calc_message:
+                message_text += f"{calc_message}\n\n"
+            else:
+                message_text += "\n"
+            
+            # Add inventory information if available
+            if order_data.get("inventory_summary"):
+                product_title = original_data.get("product_display", "Unknown Product")
+                # Remove link formatting for inventory display
+                if "|" in product_title:
+                    product_title = product_title.split("|")[1].replace(">", "")
+                inventory_text = self._build_inventory_text(order_data, product_title, season_start_date)
+                message_text += f"{inventory_text}\n\n"
+            
+            message_text += self._get_sheet_link_line(sheet_link)
+            message_text += f"*Order Cancellation Processed by* {slack_user}"
+            
+            # Create refund decision buttons (Step 2)
+            action_buttons = [
+                self._create_process_refund_button(order_id, order_name, {"display": requestor_display}, requestor_email, refund_type, refund_amount, order_cancelled),
+                self._create_custom_refund_button(order_id, order_name, {"display": requestor_display}, requestor_email, refund_type, refund_amount, order_cancelled),
+                self._create_no_refund_button(order_id, order_name, order_cancelled)
+            ]
+            
+            return {
+                "text": message_text,
+                "action_buttons": action_buttons,
+                "slack_text": header_text.strip()
+            }
+            
+        except Exception as e:
+            # Fallback message
+            return {
+                "text": f"⚠️ Error creating refund decision message: {str(e)}",
+                "action_buttons": [],
+                "slack_text": "Refund Decision Error"
             }
     
     def _build_inventory_text(self, order_data: Dict[str, Any], product_title: str, season_start_date: str) -> str:
@@ -296,11 +585,11 @@ class SlackMessageBuilder:
             message_text += self._get_sheet_link_line(sheet_link)
             message_text += f"*Attn*: {sport_mention}"
             
-            # Create action buttons - use safe values
+            # Create initial decision buttons (Step 1: Cancel Order or Proceed)
             action_buttons = [
-                self._create_confirm_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount),
-                self._create_refund_different_amount_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount),
-                self._create_cancel_button(order_name)
+                self._create_cancel_order_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, current_time),
+                self._create_proceed_without_cancel_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, current_time),
+                self._create_cancel_and_close_button(order_name)
             ]
             
             return {
@@ -391,7 +680,10 @@ class SlackMessageBuilder:
             message_text += f"*Request Submitted At*: {current_time}\n\n"
             message_text += f"*Order Number Provided*: {order_url}\n\n"
             message_text += f"*Order Created At:* {order_created_time}\n\n"
-            message_text += f"*Product Title*: {product_title}\n\n"
+            # Get product URL
+            product_id = product.get("productId") or product.get("id") or ""
+            product_url = self.get_product_url(product_id) if product_id else "#"
+            message_text += f"*Product Title*: <{product_url}|{product_title}>\n\n"
             # Add Original Price field if different from Total Paid
             if original_cost is not None and abs(original_cost - total_paid) > 0.01:
                 message_text += f"*Original Price:* ${original_cost:.2f}\n\n"
@@ -402,11 +694,11 @@ class SlackMessageBuilder:
             message_text += self._get_sheet_link_line(sheet_link)
             message_text += f"*Attn*: {sport_mention}"
             
-            # Create action buttons - use safe values
+            # Create initial decision buttons (Step 1: Cancel Order or Proceed)
             action_buttons = [
-                self._create_confirm_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount),
-                self._create_refund_different_amount_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount),
-                self._create_cancel_button(order_name)
+                self._create_cancel_order_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount, current_time),
+                self._create_proceed_without_cancel_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount, current_time),
+                self._create_cancel_and_close_button(order_name)
             ]
             
             return {
