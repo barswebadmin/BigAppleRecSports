@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
-from services.orders_service import OrdersService
-from services.slack_service import SlackService
+from services.orders import OrdersService
+from services.slack import SlackService
 from models.requests import RefundSlackNotificationRequest
 
 logger = logging.getLogger(__name__)
@@ -28,54 +28,52 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
             logger.error(f"Order {request.order_number} not found: {order_result['message']}")
             
             # Send order not found error to Slack
-            slack_result = slack_service.send_order_not_found_error(
-                requestor_name=request.requestor_name,
-                requestor_email=request.requestor_email,
-                refund_type=request.refund_type,
-                request_notes=request.notes,
-                raw_order_number=request.order_number,
-                sheet_link=request.sheet_link
+            requestor_info = {
+                "name": request.requestor_name,
+                "email": request.requestor_email,
+                "refund_type": request.refund_type,
+                "notes": request.notes
+            }
+            
+            slack_result = slack_service.send_refund_request_notification(
+                requestor_info=requestor_info,
+                sheet_link=request.sheet_link,
+                error_type="order_not_found",
+                raw_order_number=request.order_number
             )
             
             raise HTTPException(
-                status_code=406, 
-                detail={
-                    "error": "order_not_found",
-                    "message": f"Order {request.order_number} not found",
-                    "details": order_result["message"],
-                    "slack_notification_sent": slack_result.get("success", False)
-                }
+                status_code=406,
+                detail=f"Order {request.order_number} not found in Shopify"
             )
         
-        order_data = order_result["data"]
-        
-        # Step 2: Validate email matches order customer
-        order_customer_email = order_data.get("customer", {}).get("email", "").lower().strip()
-        provided_email = request.requestor_email.lower().strip()
+        # Step 2: Extract order data
+        order_data = order_result["data"]  # Changed from order_result["order"] to order_result["data"]
+        order_customer_email = order_data.get("customer", {}).get("email", "").lower()
+        provided_email = request.requestor_email.lower()
         
         if order_customer_email != provided_email:
             logger.error(f"Email mismatch for order {request.order_number}: {order_customer_email} != {provided_email}")
             
             # Send email mismatch error to Slack
-            slack_result = slack_service.send_email_mismatch_error(
-                requestor_name=request.requestor_name,
-                requestor_email=request.requestor_email,
-                refund_type=request.refund_type,
-                request_notes=request.notes,
-                order=order_data,
-                order_customer_email=order_customer_email,
-                sheet_link=request.sheet_link
+            requestor_info = {
+                "name": request.requestor_name,
+                "email": request.requestor_email,
+                "refund_type": request.refund_type,
+                "notes": request.notes
+            }
+            
+            slack_result = slack_service.send_refund_request_notification(
+                order_data={"order": order_data},
+                requestor_info=requestor_info,
+                sheet_link=request.sheet_link,
+                error_type="email_mismatch",
+                order_customer_email=order_customer_email
             )
             
             raise HTTPException(
                 status_code=409,
-                detail={
-                    "error": "email_mismatch",
-                    "message": f"Email {request.requestor_email} does not match order customer email",
-                    "order_customer_email": order_customer_email,
-                    "provided_email": request.requestor_email,
-                    "slack_notification_sent": slack_result.get("success", False)
-                }
+                detail=f"Email {request.requestor_email} does not match order customer email"
             )
         
         # Step 3: Calculate refund information (this caches the calculation)
@@ -132,13 +130,20 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error processing refund Slack notification: {str(e)}")
+        logger.error(f"Unexpected error processing refund Slack notification for order {request.order_number}: {str(e)}")
+        logger.error(f"Error details: {type(e).__name__}: {e}")
+        
+        # More descriptive error message
+        error_details = {
+            "error": "internal_server_error",
+            "message": f"Failed to process refund request for order {request.order_number}",
+            "details": str(e),
+            "error_type": type(e).__name__
+        }
+        
         raise HTTPException(
             status_code=500,
-            detail={
-                "error": "internal_server_error",
-                "message": f"Unexpected error: {str(e)}"
-            }
+            detail=error_details
         )
 
 @router.get("/health")
