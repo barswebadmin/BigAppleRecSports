@@ -2,12 +2,22 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Dict, Any
 import logging
 from services.orders_service import OrdersService
+from services.slack_service import SlackService
+from pydantic import BaseModel
 import json
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 orders_service = OrdersService()
+slack_service = SlackService()
+
+class SlackNotificationRequest(BaseModel):
+    requestor_name: Dict[str, str]  # {"first": "John", "last": "Doe"}
+    requestor_email: str
+    refund_type: str  # "refund" or "credit"
+    notes: str
+    order_data: Optional[Dict[str, Any]] = None
 
 @router.get("/{order_number}")
 async def get_order(
@@ -366,4 +376,65 @@ async def restock_order_inventory(
         raise
     except Exception as e:
         logger.error(f"Error restocking inventory for order {order_number}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error restocking inventory: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Error restocking inventory: {str(e)}")
+
+@router.post("/{order_number}/slack-notification")
+async def send_slack_notification(
+    order_number: str,
+    request: SlackNotificationRequest
+) -> Dict[str, Any]:
+    """
+    Send a refund request notification to Slack without processing the refund
+    This is used by the Google Apps Script form submission to send notifications only
+    """
+    try:
+        logger.info(f"Sending Slack notification for order {order_number}")
+        
+        # If order_data is provided, use it; otherwise fetch from Shopify
+        if request.order_data:
+            order_data = request.order_data
+        else:
+            # Fetch order details from Shopify
+            order_result = orders_service.fetch_order_details(order_name=order_number)
+            if not order_result["success"]:
+                raise HTTPException(status_code=404, detail=order_result["message"])
+            order_data = order_result["data"]
+        
+        # Send notification to Slack
+        # First calculate refund information
+        refund_calculation = orders_service.calculate_refund_due(order_data, request.refund_type)
+        
+        # Prepare requestor info
+        requestor_info = {
+            "name": request.requestor_name,
+            "email": request.requestor_email,
+            "refund_type": request.refund_type,
+            "notes": request.notes
+        }
+        
+        slack_result = slack_service.send_refund_request_notification(
+            order_data={"order": order_data},
+            refund_calculation=refund_calculation,
+            requestor_info=requestor_info
+        )
+        
+        if not slack_result["success"]:
+            error_message = slack_result.get('error', slack_result.get('message', 'Unknown error'))
+            raise HTTPException(status_code=500, detail=f"Failed to send Slack notification: {error_message}")
+        
+        return {
+            "success": True,
+            "message": "Slack notification sent successfully",
+            "data": {
+                "order_number": order_number,
+                "requestor_email": request.requestor_email,
+                "refund_type": request.refund_type,
+                "slack_result": slack_result
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending Slack notification for order {order_number}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending Slack notification: {str(e)}") 

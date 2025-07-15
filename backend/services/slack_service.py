@@ -13,7 +13,7 @@ class SlackService:
         self.refunds_channel = {
             "name": "#refunds",
             "channel_id": "C08J1EN7SFR",
-            "bearer_token": settings.slack_bot_token
+            "bearer_token": settings.slack_refunds_bot_token
         }
         
         # Sport-specific team mentions
@@ -111,7 +111,11 @@ class SlackService:
         This would be used when a new refund request comes in
         """
         try:
+            logger.info(f"🔍 Slack service received order_data: {json.dumps(order_data, indent=2)}")
+            
             order = order_data["order"]
+            logger.info(f"🔍 Extracted order: {json.dumps(order, indent=2)}")
+            
             product = order["product"]
             customer = order["customer"]
             

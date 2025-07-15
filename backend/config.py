@@ -9,7 +9,7 @@ class Settings:
     def __init__(self):
         self.shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
         self.shopify_token = os.getenv("SHOPIFY_TOKEN")
-        self.slack_bot_token = os.getenv("SLACK_BOT_TOKEN")
+        self.slack_refunds_bot_token = os.getenv("SLACK_REFUNDS_BOT_TOKEN")
         self.environment = os.getenv("ENVIRONMENT", "development")
         
         # CORS settings
