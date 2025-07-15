@@ -51,6 +51,17 @@ class MockSlackApiClient:
         logger.info(f"🧪 MOCK: Would send Slack message to {self.channel_id}")
         logger.debug(f"🧪 MOCK: Message content: {message_text[:100]}...")
         
+        # 🐛 DEBUG: Print blocks for testing even in mock mode
+        blocks = self._create_standard_blocks(message_text, action_buttons)
+        print(f"\n🔍 === MOCK SLACK BLOCKS DEBUG (SEND) ===")
+        print(f"📝 Message text length: {len(message_text)}")
+        print(f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}")
+        print(f"📦 Number of blocks: {len(blocks)}")
+        print(f"🧱 Raw blocks JSON for Block Kit Builder:")
+        import json
+        print(json.dumps(blocks, indent=2))
+        print(f"=== END MOCK SLACK BLOCKS DEBUG (SEND) ===\n")
+        
         return {
             "success": True,
             "message": "Mock message sent successfully",
@@ -65,11 +76,44 @@ class MockSlackApiClient:
         """Mock update_message that logs but doesn't make real requests"""
         logger.info(f"🧪 MOCK: Would update Slack message {message_ts} in {self.channel_id}")
         
+        # 🐛 DEBUG: Print blocks for testing even in mock mode
+        blocks = self._create_standard_blocks(message_text, action_buttons)
+        print(f"\n🔍 === MOCK SLACK BLOCKS DEBUG (UPDATE) ===")
+        print(f"📝 Message text length: {len(message_text)}")
+        print(f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}")
+        print(f"📦 Number of blocks: {len(blocks)}")
+        print(f"🧱 Raw blocks JSON for Block Kit Builder:")
+        import json
+        print(json.dumps(blocks, indent=2))
+        print(f"=== END MOCK SLACK BLOCKS DEBUG (UPDATE) ===\n")
+        
         return {
             "success": True,
             "message": "Mock message updated successfully",
             "ts": message_ts,
             "channel": self.channel_id
+        }
+    
+    def send_ephemeral_message(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Mock send_ephemeral_message that logs but doesn't make real requests"""
+        user_id = payload.get('user', 'unknown')
+        channel_id = payload.get('channel', 'unknown')
+        logger.info(f"🧪 MOCK: Would send ephemeral message to user {user_id} in channel {channel_id}")
+        
+        return {
+            "success": True,
+            "message": "Mock ephemeral message sent successfully",
+            "slack_response": {"ok": True}
+        }
+    
+    def send_modal(self, trigger_id: str, modal_view: Dict[str, Any]) -> Dict[str, Any]:
+        """Mock send_modal that logs but doesn't make real requests"""
+        logger.info(f"🧪 MockSlackApiClient - Would open modal with trigger_id {trigger_id}")
+        logger.debug(f"🧪 Modal content: {modal_view.get('title', {}).get('text', 'Unknown title')}")
+        return {
+            "success": True,
+            "message": "Mock modal opened",
+            "view_id": "mock.view.123"
         }
     
     def _create_standard_blocks(self, text: str, action_buttons: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
@@ -134,6 +178,16 @@ class SlackApiClient:
             
             # Create blocks structure for rich formatting
             blocks = self._create_standard_blocks(message_text, action_buttons)
+            
+            # 🐛 DEBUG: Print blocks for Slack Block Kit Builder testing
+            print(f"\n🔍 === SLACK BLOCKS DEBUG (SEND) ===")
+            print(f"📝 Message text length: {len(message_text)}")
+            print(f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}")
+            print(f"📦 Number of blocks: {len(blocks)}")
+            print(f"🧱 Raw blocks JSON for Block Kit Builder:")
+            import json
+            print(json.dumps(blocks, indent=2))
+            print(f"=== END SLACK BLOCKS DEBUG (SEND) ===\n")
             
             payload = {
                 "channel": self.channel_id,
@@ -213,6 +267,16 @@ class SlackApiClient:
             # Create blocks structure for rich formatting
             blocks = self._create_standard_blocks(message_text, action_buttons)
             
+            # 🐛 DEBUG: Print blocks for Slack Block Kit Builder testing
+            print(f"\n🔍 === SLACK BLOCKS DEBUG ===")
+            print(f"📝 Message text length: {len(message_text)}")
+            print(f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}")
+            print(f"📦 Number of blocks: {len(blocks)}")
+            print(f"🧱 Raw blocks JSON for Block Kit Builder:")
+            import json
+            print(json.dumps(blocks, indent=2))
+            print(f"=== END SLACK BLOCKS DEBUG ===\n")
+            
             payload = {
                 "channel": self.channel_id,
                 "ts": message_ts,
@@ -245,6 +309,137 @@ class SlackApiClient:
             return {
                 "success": False,
                 "error": f"Update error: {str(e)}"
+            }
+    
+    def send_ephemeral_message(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Send an ephemeral message to a specific user in a channel.
+        
+        Args:
+            payload: Dictionary containing 'user' and 'channel' keys.
+            
+        Returns:
+            Dict containing success status and details.
+        """
+        if not self.bearer_token:
+            logger.error("No Slack bearer token configured")
+            return {
+                "success": False,
+                "error": "No Slack bearer token configured"
+            }
+        
+        try:
+            url = f"{self.base_url}/chat.postEphemeral"
+            headers = {
+                "Authorization": f"Bearer {self.bearer_token}",
+                "Content-Type": "application/json"
+            }
+            
+            request_payload = {
+                "channel": payload.get('channel'),
+                "user": payload.get('user'),
+                "text": payload.get('text', ''),
+                "blocks": payload.get('blocks', [])
+            }
+            
+            logger.info(f"Sending ephemeral message to user {request_payload['user']} in channel {request_payload['channel']}")
+            logger.debug(f"Ephemeral message content: {request_payload['text'][:100]}...")
+            
+            response = requests.post(url, headers=headers, data=json.dumps(request_payload))
+            response_data = response.json()
+            
+            if response.status_code == 200 and response_data.get("ok"):
+                logger.info("Ephemeral message sent successfully")
+                return {
+                    "success": True,
+                    "message": "Ephemeral message sent successfully",
+                    "slack_response": response_data
+                }
+            else:
+                error_msg = response_data.get("error", "Unknown error")
+                logger.error(f"Slack ephemeral message error: {error_msg}")
+                return {
+                    "success": False,
+                    "error": f"Slack ephemeral message error: {error_msg}",
+                    "slack_response": response_data
+                }
+                
+        except requests.RequestException as e:
+            logger.error(f"Request error sending ephemeral message: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Request error: {str(e)}"
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error sending ephemeral message: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Unexpected error: {str(e)}"
+            }
+    
+    def send_modal(self, trigger_id: str, modal_view: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Send a modal dialog to a specific user.
+        
+        Args:
+            trigger_id: The ID of the interaction that triggered the modal.
+            modal_view: The modal view definition.
+            
+        Returns:
+            Dict containing success status and details.
+        """
+        if not self.bearer_token:
+            logger.error("No Slack bearer token configured")
+            return {
+                "success": False,
+                "error": "No Slack bearer token configured"
+            }
+        
+        try:
+            url = f"{self.base_url}/views.open"
+            headers = {
+                "Authorization": f"Bearer {self.bearer_token}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "trigger_id": trigger_id,
+                "view": modal_view
+            }
+            
+            logger.info(f"Sending modal dialog to user with trigger_id {trigger_id}")
+            logger.debug(f"Modal content: {modal_view.get('title', {}).get('text', 'Unknown title')}")
+            
+            response = requests.post(url, headers=headers, data=json.dumps(payload))
+            response_data = response.json()
+            
+            if response.status_code == 200 and response_data.get("ok"):
+                logger.info("Modal dialog sent successfully")
+                return {
+                    "success": True,
+                    "message": "Modal dialog sent successfully",
+                    "slack_response": response_data
+                }
+            else:
+                error_msg = response_data.get("error", "Unknown error")
+                logger.error(f"Slack modal dialog error: {error_msg}")
+                return {
+                    "success": False,
+                    "error": f"Slack modal dialog error: {error_msg}",
+                    "slack_response": response_data
+                }
+                
+        except requests.RequestException as e:
+            logger.error(f"Request error sending modal dialog: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Request error: {str(e)}"
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error sending modal dialog: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Unexpected error: {str(e)}"
             }
     
     def _create_standard_blocks(self, text: str, action_buttons: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:

@@ -302,6 +302,89 @@ class OrdersService:
         """
         return self.shopify_operations.create_refund(order_id, refund_amount)
     
+    def create_store_credit(self, order_id: str, credit_amount: float) -> Dict[str, Any]:
+        """
+        Create store credit for a Shopify order
+        Based on createShopifyStoreCredit from ShopifyUtils.gs
+        """
+        try:
+            store_credit_mutation = {
+                "query": """
+                    mutation CreateRefund($input: RefundInput!) {
+                        refundCreate(input: $input) {
+                            refund {
+                                id
+                                note
+                                totalRefundedSet {
+                                    presentmentMoney {
+                                        amount
+                                    }
+                                }
+                            }
+                            userErrors {
+                                field
+                                message
+                            }
+                        }
+                    }
+                """,
+                "variables": {
+                    "input": {
+                        "notify": True,
+                        "orderId": order_id,
+                        "note": f"Store Credit issued via Slack workflow for ${credit_amount:.2f}",
+                        "refundMethods": [{
+                            "storeCreditRefund": {
+                                "amount": {
+                                    "amount": str(credit_amount),
+                                    "currencyCode": "USD"
+                                }
+                            }
+                        }]
+                    }
+                }
+            }
+            
+            response_data = self.shopify_service._make_request(store_credit_mutation)
+            
+            if not response_data:
+                return {"success": False, "message": "Failed to create store credit - no response from Shopify"}
+            
+            if "errors" in response_data:
+                error_msg = f"GraphQL errors: {response_data['errors']}"
+                logger.error(f"Shopify GraphQL errors during store credit creation: {error_msg}")
+                return {"success": False, "message": error_msg}
+            
+            credit_data = response_data.get("data", {}).get("refundCreate", {})
+            
+            if credit_data.get("userErrors"):
+                error_msg = f"Store credit creation failed: {credit_data['userErrors']}"
+                logger.error(f"Store credit user errors: {error_msg}")
+                return {"success": False, "message": error_msg}
+            
+            # Success case
+            refund_info = credit_data.get("refund", {})
+            return {
+                "success": True, 
+                "data": {
+                    "creditId": refund_info.get("id"),
+                    "amount": refund_info.get("totalRefundedSet", {}).get("presentmentMoney", {}).get("amount", "0")
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error creating store credit: {str(e)}")
+            return {"success": False, "message": f"Error creating store credit: {str(e)}"}
+    
+    def create_refund_or_credit(self, order_id: str, amount: float, refund_type: str) -> Dict[str, Any]:
+        """
+        Create either a refund or store credit based on refund_type.
+        """
+        if refund_type.lower() == "credit":
+            return self.create_store_credit(order_id, amount)
+        else:
+            return self.create_refund_only(order_id, amount)
+
     def restock_order_inventory(self, order_id: str) -> Dict[str, Any]:
         """
         Restock inventory for an order.

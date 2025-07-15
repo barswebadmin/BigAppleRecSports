@@ -22,7 +22,7 @@ The tests specifically validate that debug mode produces messages matching this 
 
 ### Cancel Order Result Message
 ```
-✅ [DEBUG] Cancellation Request for Order <https://admin.shopify.com/store/09fe59-3/orders/5759498846302|#40192> for Jdazz87 has been processed by @joe randazzo (he/him)
+✅ [DEBUG] Cancellation Request for Order <https://admin.shopify.com/store/09fe59-3/orders/5759498846302|#40192> for jdazz87@gmail.com has been processed by @joe randazzo (he/him)
 ✅ [DEBUG] Request to provide a $1.80 refund for Order <https://admin.shopify.com/store/09fe59-3/orders/5759498846302|#40192> has been processed by @joe randazzo (he/him)
 
 🔗 <https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1435845892&range=A73|View Request in Google Sheets>

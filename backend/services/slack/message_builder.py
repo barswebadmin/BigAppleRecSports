@@ -302,7 +302,7 @@ class SlackMessageBuilder:
                 "value": f"rawOrderNumber={order_name}|orderId={order_id}|orderCancelled={order_cancelled}",
                 "confirm": {
                     "title": {"type": "plain_text", "text": "No Refund"},
-                    "text": {"type": "plain_text", "text": "Close request without providing any refund?"},
+                    "text": {"type": "plain_text", "text": "Proceed to next step without providing any refund?"},
                     "confirm": {"type": "plain_text", "text": "Yes, no refund"},
                     "deny": {"type": "plain_text", "text": "Cancel"}
                 }
@@ -429,10 +429,8 @@ class SlackMessageBuilder:
             if original_cost is not None and abs(original_cost - total_paid) > 0.01:
                 message_text += f"*Original Price:* ${original_cost:.2f}\n\n"
             
-            calc_message = refund_calc.get("message", "")
-            message_text += f"*Estimated Refund Due:* ${refund_amount:.2f}\n" if not calc_message else ""
-            
             # Add refund calculation details if available
+            calc_message = refund_calc.get("message", "")
             if calc_message:
                 message_text += f"{calc_message}\n\n"
             else:
@@ -529,7 +527,7 @@ class SlackMessageBuilder:
             
             # Safely get order ID and name with fallbacks
             order_id = order.get("orderId") or order.get("id") or "unknown"
-            order_name = order.get("orderName") or order.get("name") or "unknown"
+            order_name = order.get("orderNumber") or order.get("orderName") or order.get("name") or "unknown"
             
             order_url = self.get_order_url(order_id, order_name)
             
@@ -574,7 +572,11 @@ class SlackMessageBuilder:
             if original_cost is not None and abs(original_cost - total_paid) > 0.01:
                 message_text += f"*Original Price:* ${original_cost:.2f}\n\n"
             message_text += f"*Total Paid:* ${total_paid:.2f}\n\n"
-            message_text += f"{refund_text}\n\n"
+            # message_text += f"*Estimated Refund Due:* ${refund_amount:.2f}\n"
+            if refund_text:
+                message_text += f"{refund_text}\n\n"
+            else:
+                message_text += "\n"
             message_text += self._get_optional_request_notes(request_notes)
             
             # Add inventory information if available
@@ -698,7 +700,7 @@ class SlackMessageBuilder:
             
             # Show refund calculation or generic warning
             if calculation_message:
-                message_text += f"*Estimated Refund Due:* ${fallback_refund_amount:.2f}\n"
+                # message_text += f"*Estimated Refund Due:* ${fallback_refund_amount:.2f}\n"
                 message_text += f"{calculation_message}\n\n"
             else:
                 message_text += f"⚠️ *Could not parse 'Season Dates' from this order's description (in order to calculate a refund amount).*\n\n"

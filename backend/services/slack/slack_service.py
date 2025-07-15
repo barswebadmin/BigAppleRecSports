@@ -5,6 +5,8 @@ Refactored to use helper modules for better organization.
 
 from typing import Dict, Any, Optional, List
 import logging
+import hashlib
+import time
 from config import settings
 from .message_builder import SlackMessageBuilder
 from .api_client import SlackApiClient, MockSlackApiClient, _is_test_mode
@@ -31,11 +33,20 @@ class SlackService:
         }
         
         # Sport-specific team mentions
+        # Production team mentions (commented out for testing):
+        # self.sport_groups = {
+        #     "kickball": "<!subteam^S08L2521XAM>",
+        #     "bowling": "<!subteam^S08KJJ02738>", 
+        #     "pickleball": "<!subteam^S08KTJ33Z9R>",
+        #     "dodgeball": "<!subteam^S08KJJ5CL4W>"
+        # }
+        
+        # Testing configuration - all sports tag personal channel
         self.sport_groups = {
-            "kickball": "<!subteam^S08L2521XAM>",
-            "bowling": "<!subteam^S08KJJ02738>", 
-            "pickleball": "<!subteam^S08KTJ33Z9R>",
-            "dodgeball": "<!subteam^S08KJJ5CL4W>"
+            "kickball": "<#D026TPC6S3H>",
+            "bowling": "<#D026TPC6S3H>", 
+            "pickleball": "<#D026TPC6S3H>",
+            "dodgeball": "<#D026TPC6S3H>"
         }
         
         # Initialize helper components
@@ -54,6 +65,80 @@ class SlackService:
                 self.refunds_channel["bearer_token"],
                 self.refunds_channel["channel_id"]
             )
+        
+        # Deduplication cache - stores message hashes to prevent duplicates
+        # Format: {message_hash: timestamp}
+        self._message_cache = {}
+        self._cache_expiry_seconds = 300  # 5 minutes
+    
+    def _generate_message_hash(self, order_data: Dict[str, Any], requestor_info: Dict[str, Any]) -> str:
+        """
+        Generate a unique hash for deduplication based on order and requestor info.
+        This prevents the same refund request from being posted multiple times.
+        """
+        try:
+            order = order_data.get("order", {}) if order_data else {}
+            order_number = order.get("orderNumber") or order.get("orderName") or order.get("name") or "unknown"
+            requestor_email = requestor_info.get("email", "unknown")
+            refund_type = requestor_info.get("refund_type", "refund")
+            
+            # Create deduplication key from critical fields
+            dedup_string = f"{order_number}|{requestor_email}|{refund_type}"
+            
+            # Generate hash
+            return hashlib.md5(dedup_string.encode()).hexdigest()
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate message hash: {e}")
+            return str(time.time())  # Fallback to timestamp
+    
+    def _clean_expired_cache(self):
+        """Remove expired entries from the deduplication cache"""
+        try:
+            current_time = time.time()
+            expired_keys = [
+                key for key, timestamp in self._message_cache.items()
+                if current_time - timestamp > self._cache_expiry_seconds
+            ]
+            
+            for key in expired_keys:
+                del self._message_cache[key]
+                
+            if expired_keys:
+                logger.info(f"Cleaned {len(expired_keys)} expired cache entries")
+                
+        except Exception as e:
+            logger.warning(f"Failed to clean cache: {e}")
+    
+    def _is_duplicate_message(self, message_hash: str) -> bool:
+        """
+        Check if this message has already been sent recently.
+        Returns True if it's a duplicate, False if it's new.
+        """
+        try:
+            # Clean expired entries first
+            self._clean_expired_cache()
+            
+            current_time = time.time()
+            
+            # Check if hash exists and is still valid
+            if message_hash in self._message_cache:
+                timestamp = self._message_cache[message_hash]
+                if current_time - timestamp <= self._cache_expiry_seconds:
+                    logger.info(f"🔄 Duplicate message detected (hash: {message_hash[:8]}...)")
+                    return True
+                else:
+                    # Expired entry, remove it
+                    del self._message_cache[message_hash]
+            
+            # Not a duplicate, add to cache
+            self._message_cache[message_hash] = current_time
+            logger.info(f"🆕 New message cached (hash: {message_hash[:8]}...)")
+            return False
+            
+        except Exception as e:
+            logger.warning(f"Failed to check for duplicates: {e}")
+            return False  # Allow message through if checking fails
     
     def send_refund_request_notification(
         self,
@@ -86,11 +171,30 @@ class SlackService:
             Dict containing success status and message details
         """
         try:
-            logger.info("Building Slack refund notification message")
+            # Generate message hash for deduplication  
+            message_hash = self._generate_message_hash(order_data or {}, requestor_info)
             
-            # Determine message type and build appropriate message
-            if error_type:
-                # Error messages (order not found, email mismatch, etc.)
+            # Check for duplicates
+            if self._is_duplicate_message(message_hash):
+                logger.info("🔄 Skipping duplicate message")
+                return {
+                    "success": True,
+                    "message": "Duplicate message skipped",
+                    "duplicate": True
+                }
+            
+            # Build the appropriate message based on available data
+            if order_data and refund_calculation and refund_calculation.get("success"):
+                # Full success message with calculated refund
+                message_data = self.message_builder.build_success_message(
+                    order_data=order_data,
+                    refund_calculation=refund_calculation,
+                    requestor_info=requestor_info,
+                    sheet_link=sheet_link
+                )
+                
+            elif error_type:
+                # Error message for various failure scenarios
                 message_data = self.message_builder.build_error_message(
                     error_type=error_type,
                     requestor_info=requestor_info,
@@ -98,25 +202,6 @@ class SlackService:
                     raw_order_number=raw_order_number or "",
                     order_customer_email=order_customer_email or ""
                 )
-                
-            elif order_data and refund_calculation and refund_calculation.get("success"):
-                # Check if season info is missing - use fallback format if so
-                if refund_calculation.get("missing_season_info"):
-                    message_data = self.message_builder.build_fallback_message(
-                        order_data=order_data,
-                        requestor_info=requestor_info,
-                        sheet_link=sheet_link,
-                        error_message=refund_calculation.get("message", ""),
-                        refund_calculation=refund_calculation
-                    )
-                else:
-                    # Successful refund calculation with season info
-                    message_data = self.message_builder.build_success_message(
-                        order_data=order_data,
-                        refund_calculation=refund_calculation,
-                        requestor_info=requestor_info,
-                        sheet_link=sheet_link
-                    )
                 
             elif order_data:
                 # Fallback message when order is found but calculation failed
@@ -151,6 +236,9 @@ class SlackService:
                 logger.info("Refund notification sent successfully to Slack")
             else:
                 logger.error(f"Failed to send refund notification to Slack: {result.get('error')}")
+                # Remove from cache if sending failed, allow retry
+                if message_hash in self._message_cache:
+                    del self._message_cache[message_hash]
             
             return result
             
