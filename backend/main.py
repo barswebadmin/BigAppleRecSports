@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import leadership, orders, refunds
+from routers import leadership, orders, refunds, slack
 from config import settings
 from version import get_version_info
 
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(leadership.router)
 app.include_router(orders.router)
 app.include_router(refunds.router)
+app.include_router(slack.router)
 
 @app.get("/")
 async def root():
