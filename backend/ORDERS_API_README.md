@@ -46,7 +46,7 @@ Get detailed order information including refund calculations and inventory statu
         "email": "customer@example.com"
       },
       "product": {
-        "title": "Winter Basketball League",
+        "title": "Big Apple Dodgeball - Sunday Open - Big Ball Tournament - Summer 2025",
         "productId": "gid://shopify/Product/...",
         "variants": [...]
       }

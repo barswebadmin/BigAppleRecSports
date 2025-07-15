@@ -169,7 +169,7 @@ def calculate_refund_amount(season_start_date_str: str, off_dates_str: Optional[
                 break
         
         if refund_percentage == 0:
-            return 0, "Estimated Refund Due: $0 (No refund — the request came after week 5 had already started)"
+            return 0, "*Estimated Refund Due:* $0 (No refund — the request came after week 5 had already started)"
         
         refund_amount = (refund_percentage / 100) * total_amount_paid
         refund_week_index = refund_tiers.index(refund_percentage)
@@ -183,7 +183,7 @@ def calculate_refund_amount(season_start_date_str: str, off_dates_str: Optional[
             timing_description = f"after the start of week {refund_week_index}"
         
         refund_text = (
-            f"Estimated Refund Due: ${refund_amount:.2f}\n"
+            f"*Estimated Refund Due:* ${refund_amount:.2f}\n"
             f"(This request is calculated to have been submitted {timing_description}. "
             f"{refund_percentage}% after {penalty}% penalty"
             f"{' + 5% processing fee' if add_processing else ''})"
@@ -193,4 +193,33 @@ def calculate_refund_amount(season_start_date_str: str, off_dates_str: Optional[
         
     except Exception as e:
         logger.error(f"Error calculating refund amount: {str(e)}")
-        return 0, f"Error calculating refund amount: {str(e)}" 
+        return 0, f"Error calculating refund amount: {str(e)}"
+
+def format_date_only(date) -> str:
+    """
+    Format date to MM/DD/YY format
+    Based on formatDateOnly from Google Apps Script Utils.gs
+    """
+    if isinstance(date, str):
+        date = datetime.fromisoformat(date.replace('Z', '+00:00'))
+    elif not isinstance(date, datetime):
+        # Assume it's a timestamp or other convertible type
+        date = datetime.fromtimestamp(date) if isinstance(date, (int, float)) else datetime.now()
+    
+    return date.strftime("%m/%d/%y")
+
+def format_date_and_time(date) -> str:
+    """
+    Format date to MM/DD/YY at H:MM AM/PM format
+    Based on formatDateAndTime from Google Apps Script Utils.gs
+    """
+    if isinstance(date, str):
+        date = datetime.fromisoformat(date.replace('Z', '+00:00'))
+    elif not isinstance(date, datetime):
+        # Assume it's a timestamp or other convertible type
+        date = datetime.fromtimestamp(date) if isinstance(date, (int, float)) else datetime.now()
+    
+    date_part = date.strftime("%m/%d/%y")
+    time_part = date.strftime("%I:%M %p").lstrip('0')  # Remove leading zero from hour
+    
+    return f"{date_part} at {time_part}" 
