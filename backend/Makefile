@@ -109,6 +109,9 @@ test-unit:
 	@echo ""
 	@echo "🧪 Running router unit tests..."
 	@python3 -m pytest routers/tests/ -v
+	@echo ""
+	@echo "🧪 Running Slack webhook tests..."
+	@python3 -m pytest routers/tests/test_slack_router.py -v
 
 # Run integration tests (API tests that require server)
 test-integration:
@@ -152,6 +155,16 @@ test-api:
 test-slack:
 	@echo "🧪 Running Slack message formatting tests..."
 	@python3 run_slack_tests.py
+
+# Run Slack webhook router tests
+test-slack-webhook:
+	@echo "🧪 Running Slack webhook router tests..."
+	@python3 run_slack_webhook_tests.py
+
+# Run ALL Slack tests (webhook + message formatting)
+test-slack-all:
+	@echo "🧪 Running ALL Slack tests..."
+	@python3 run_slack_webhook_tests.py --all
 
 # Run specific test file or test case
 test-specific:

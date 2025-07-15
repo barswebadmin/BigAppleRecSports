@@ -378,7 +378,7 @@ class SlackMessageBuilder:
                 product_title = product.get("title", "Unknown Product")
                 product_url = self.get_product_url(product_id) if product_id else "#"
                 product_display = f"<{product_url}|{product_title}>"
-                product_field_name = "Sport/Season/Day"
+                product_field_name = "Product Title"
             
             # Use preserved order number display (preserves links)
             if original_data.get("order_number_display"):
@@ -618,7 +618,8 @@ class SlackMessageBuilder:
         order_data: Dict[str, Any],
         requestor_info: Dict[str, Any],
         sheet_link: str,
-        error_message: str = ""
+        error_message: str = "",
+        refund_calculation: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Build a fallback message when season info is missing"""
         try:
@@ -667,7 +668,13 @@ class SlackMessageBuilder:
             except (ValueError, TypeError):
                 pass
             
-            fallback_refund_amount = total_paid * 0.9 if refund_type == "refund" else total_paid * 0.95
+            # Use refund calculation if available, otherwise calculate fallback
+            if refund_calculation and refund_calculation.get("missing_season_info"):
+                fallback_refund_amount = refund_calculation.get("refund_amount", 0)
+                calculation_message = refund_calculation.get("message", "")
+            else:
+                fallback_refund_amount = total_paid * 0.9 if refund_type == "refund" else total_paid * 0.95
+                calculation_message = ""
             
             # Header
             header_text = "📌 *New Refund Request!*\n\n"
@@ -688,8 +695,14 @@ class SlackMessageBuilder:
             if original_cost is not None and abs(original_cost - total_paid) > 0.01:
                 message_text += f"*Original Price:* ${original_cost:.2f}\n\n"
             message_text += f"*Total Paid:* ${total_paid:.2f}\n\n"
-            message_text += f"⚠️ *Could not parse 'Season Dates' from this order's description (in order to calculate a refund amount).*\n\n"
-            message_text += f"Please verify the product and either contact the requestor or process anyway.\n\n"
+            
+            # Show refund calculation or generic warning
+            if calculation_message:
+                message_text += f"*Estimated Refund Due:* ${fallback_refund_amount:.2f}\n"
+                message_text += f"{calculation_message}\n\n"
+            else:
+                message_text += f"⚠️ *Could not parse 'Season Dates' from this order's description (in order to calculate a refund amount).*\n\n"
+                message_text += f"Please verify the product and either contact the requestor or process anyway.\n\n"
             message_text += self._get_optional_request_notes(request_notes)
             message_text += self._get_sheet_link_line(sheet_link)
             message_text += f"*Attn*: {sport_mention}"
