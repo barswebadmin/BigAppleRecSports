@@ -40,15 +40,17 @@ class TestRefundCalculator:
     
     @patch('services.orders.refund_calculator.extract_season_dates')
     def test_calculate_refund_no_season_dates(self, mock_extract, calculator, sample_order_data):
-        """Test refund calculation when season dates cannot be extracted."""
+        """Test refund calculation when season dates cannot be extracted (fallback calculation)."""
         mock_extract.return_value = (None, None)
         
         result = calculator.calculate_refund_due(sample_order_data, "refund")
         
-        assert result["success"] is False
-        assert "Could not extract season dates" in result["message"]
-        assert result["refund_amount"] == 0
+        # Changed behavior: now returns success=True with fallback calculation (90% of total)
+        assert result["success"] is True
+        assert "Could not parse season dates" in result["message"]
+        assert result["refund_amount"] == 22.50  # 90% of $25.00
         assert result["product_title"] == "Spring Kickball League"
+        assert result["missing_season_info"] is True
     
     @patch('services.orders.refund_calculator.calculate_refund_amount')
     @patch('services.orders.refund_calculator.extract_season_dates')

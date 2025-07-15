@@ -52,23 +52,42 @@ class ShopifyOperations:
                 }
             }
             
+            print(f"\n🔍 === SHOPIFY CANCEL ORDER DEBUG ===")
+            print(f"📤 Sending mutation to Shopify:")
+            print(f"   Order ID: {order_id}")
+            print(f"   Mutation variables: {mutation['variables']}")
+            print(f"   Mutation query (first 200 chars): {mutation['query'][:200]}...")
+            
             response_data = self.shopify_service._make_request(mutation)
-            response = {"success": response_data is not None, "data": response_data}
             
-            if not response["success"]:
-                return {"success": False, "message": "Failed to cancel order"}
+            print(f"📥 Raw Shopify response:")
+            print(f"   Type: {type(response_data)}")
+            print(f"   Response: {response_data}")
+            print("=== END SHOPIFY CANCEL ORDER DEBUG ===\n")
             
-            data = response["data"]["data"]["orderCancel"]
+            if response_data is None:
+                return {"success": False, "message": "Failed to cancel order - no response from Shopify API", "raw_response": None}
+            
+            if "data" not in response_data:
+                # Check for GraphQL errors in response
+                if "errors" in response_data:
+                    return {"success": False, "message": f"Failed to cancel order - GraphQL errors: {response_data['errors']}", "raw_response": response_data}
+                return {"success": False, "message": f"Failed to cancel order - invalid response format. Response: {response_data}", "raw_response": response_data}
+            
+            if "orderCancel" not in response_data["data"]:
+                return {"success": False, "message": f"Failed to cancel order - missing orderCancel in response. Data keys: {list(response_data['data'].keys())}", "raw_response": response_data}
+            
+            data = response_data["data"]["orderCancel"]
             
             if data.get("userErrors") or data.get("orderCancelUserErrors"):
                 errors = data.get("userErrors", []) + data.get("orderCancelUserErrors", [])
-                return {"success": False, "message": f"Order cancellation failed: {errors}"}
+                return {"success": False, "message": f"Order cancellation failed: {errors}", "raw_response": response_data, "shopify_errors": errors}
             
-            return {"success": True, "data": data}
+            return {"success": True, "data": data, "raw_response": response_data}
             
         except Exception as e:
             logger.error(f"Error canceling order: {str(e)}")
-            return {"success": False, "message": f"Error canceling order: {str(e)}"}
+            return {"success": False, "message": f"Error canceling order: {str(e)}", "raw_response": "Exception occurred before response"}
     
     def create_refund(self, order_id: str, refund_amount: float) -> Dict[str, Any]:
         """
@@ -111,17 +130,21 @@ class ShopifyOperations:
             if not capture_transaction:
                 return {"success": False, "message": "No capture transaction found for refund"}
             
-            # Step 2: Create the refund
+            # Get gateway and parent transaction ID
+            gateway = capture_transaction["gateway"]
+            parent_transaction_id = capture_transaction.get("parentTransaction", {}).get("id") or capture_transaction["id"]
+            
+            # Step 2: Create the refund mutation (matching Google Apps Script format)
             refund_mutation = {
                 "query": """
-                    mutation refundCreate($input: RefundInput!) {
+                    mutation CreateRefund($input: RefundInput!) {
                         refundCreate(input: $input) {
                             refund {
                                 id
+                                note
                                 totalRefundedSet {
                                     presentmentMoney {
                                         amount
-                                        currencyCode
                                     }
                                 }
                             }
@@ -134,14 +157,18 @@ class ShopifyOperations:
                 """,
                 "variables": {
                     "input": {
+                        "notify": True,
                         "orderId": order_id,
+                        "note": f"Refund issued via Slack workflow for ${refund_amount:.2f}",
                         "transactions": [
                             {
-                                "transactionId": capture_transaction["id"],
-                                "amount": str(refund_amount)
+                                "orderId": order_id,
+                                "gateway": gateway,
+                                "kind": "REFUND",
+                                "amount": str(refund_amount),
+                                "parentId": parent_transaction_id
                             }
-                        ],
-                        "notify": False
+                        ]
                     }
                 }
             }

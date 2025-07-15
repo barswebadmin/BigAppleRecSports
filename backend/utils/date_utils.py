@@ -235,12 +235,7 @@ def calculate_refund_amount(season_start_date_str: str, off_dates_str: Optional[
             # Fix off-by-one error: refund_week_index 2 = week 1, index 3 = week 2, etc.
             timing_description = f"after the start of week {refund_week_index - 1}"
         
-        refund_text = (
-            f"*Estimated Refund Due:* ${refund_amount:.2f}\n"
-            f"(This request is calculated to have been submitted {timing_description}. "
-            f"{refund_percentage}% after {penalty}% penalty"
-            f"{' + 5% processing fee' if add_processing else ''})"
-        )
+        refund_text = f"*Estimated Refund Due:* ${refund_amount:.2f}\n (This request is calculated to have been submitted {timing_description}. {refund_percentage}% after {penalty}% penalty{' + 5% processing fee' if add_processing else ''})"
         
         return refund_amount, refund_text
         
