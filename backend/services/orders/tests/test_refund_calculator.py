@@ -5,7 +5,7 @@ Unit tests for RefundCalculator.
 import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
-from ..refund_calculator import RefundCalculator
+from services.orders.refund_calculator import RefundCalculator
 
 
 class TestRefundCalculator:
@@ -89,5 +89,5 @@ class TestRefundCalculator:
         result = calculator.calculate_refund_due(order_data, "refund")
         
         assert result["success"] is False
-        assert "Error calculating refund" in result["message"]
+        assert "No line items found" in result["message"]
         assert result["refund_amount"] == 0 
