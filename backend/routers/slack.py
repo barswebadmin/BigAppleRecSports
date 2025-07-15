@@ -315,6 +315,7 @@ async def handle_slack_interactions(request: Request):
             print("⚠️  No signature headers provided")
         
         # Parse form data (Slack sends as application/x-www-form-urlencoded)
+        payload = None  # Initialize payload to avoid UnboundLocalError
         try:
             form_data = await request.form()
             payload_str = form_data.get("payload")
@@ -349,13 +350,15 @@ async def handle_slack_interactions(request: Request):
                 
         except json.JSONDecodeError as e:
             print(f"❌ JSON Parse Error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid JSON payload")
         except Exception as e:
             print(f"❌ Form Parse Error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid form data")
         
         print("=== END DEBUG ===\n")
         
         # Process button actions
-        if payload.get("type") == "block_actions":
+        if payload and payload.get("type") == "block_actions":
             actions = payload.get("actions", [])
             if actions:
                 action = actions[0]
@@ -413,9 +416,11 @@ async def handle_slack_interactions(request: Request):
                 #     return await handle_custom_refund_amount(request_data, channel_id, thread_ts, slack_user_name)
                 elif action_id == "no_refund":
                     return await handle_no_refund(request_data, channel_id, thread_ts, slack_user_name, current_message_full_text, trigger_id)
-                elif action_id.startswith("restock") or action_id == "do_not_restock":
+                elif action_id and (action_id.startswith("restock") or action_id == "do_not_restock"):
                     return await handle_restock_inventory(request_data, action_id, channel_id, thread_ts, slack_user_name, current_message_full_text, trigger_id)
                 else:
+                    if not action_id:
+                        raise HTTPException(status_code=400, detail="Missing action_id in request")
                     logger.warning(f"Unknown action_id: {action_id}")
                     return {"response_type": "ephemeral", "text": f"Unknown action: {action_id}"}
         
@@ -427,12 +432,45 @@ async def handle_slack_interactions(request: Request):
         print(f"❌ JSON Decode Error: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
     
+    except HTTPException:
+        # Re-raise HTTPExceptions as-is to preserve status codes
+        raise
     except Exception as e:
         logger.error(f"Error handling Slack interaction: {e}")
         print(f"❌ General Error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/webhook")
+async def handle_slack_webhook(request: Request):
+    """
+    Handle Slack webhook - supports both URL verification and button interactions
+    This is a compatibility endpoint that delegates to the main interactions handler
+    """
+    try:
+        # Check if this is a URL verification challenge (JSON body)
+        content_type = request.headers.get("Content-Type", "")
+        
+        if "application/json" in content_type:
+            # Handle URL verification challenge
+            body = await request.json()
+            if "challenge" in body:
+                # Slack URL verification - echo back the challenge
+                return {"challenge": body["challenge"]}
+        
+        # Otherwise, delegate to the main interactions handler
+        # Reset request body for the interactions handler to process
+        return await handle_slack_interactions(request)
+        
+    except HTTPException:
+        # Re-raise HTTPExceptions as-is to preserve status codes
+        raise
+    except Exception as e:
+        logger.error(f"Error handling Slack webhook: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 
 # === STEP 1 HANDLERS: INITIAL DECISION (Cancel Order / Proceed / Cancel & Close) ===
 
