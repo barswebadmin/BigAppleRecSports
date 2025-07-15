@@ -12,7 +12,7 @@ except ImportError:
 
 from unittest.mock import Mock, patch
 from datetime import datetime
-from services.slack_service import SlackService
+from services.slack import SlackService
 from utils.date_utils import format_date_and_time
 
 

@@ -100,13 +100,23 @@ class SlackService:
                 )
                 
             elif order_data and refund_calculation and refund_calculation.get("success"):
-                # Successful refund calculation
-                message_data = self.message_builder.build_success_message(
-                    order_data=order_data,
-                    refund_calculation=refund_calculation,
-                    requestor_info=requestor_info,
-                    sheet_link=sheet_link
-                )
+                # Check if season info is missing - use fallback format if so
+                if refund_calculation.get("missing_season_info"):
+                    message_data = self.message_builder.build_fallback_message(
+                        order_data=order_data,
+                        requestor_info=requestor_info,
+                        sheet_link=sheet_link,
+                        error_message=refund_calculation.get("message", ""),
+                        refund_calculation=refund_calculation
+                    )
+                else:
+                    # Successful refund calculation with season info
+                    message_data = self.message_builder.build_success_message(
+                        order_data=order_data,
+                        refund_calculation=refund_calculation,
+                        requestor_info=requestor_info,
+                        sheet_link=sheet_link
+                    )
                 
             elif order_data:
                 # Fallback message when order is found but calculation failed

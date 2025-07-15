@@ -11,7 +11,8 @@ class Settings:
         self.shopify_token = os.getenv("SHOPIFY_TOKEN")
         self.slack_refunds_bot_token = os.getenv("SLACK_REFUNDS_BOT_TOKEN")
         self.slack_signing_secret = os.getenv("SLACK_SIGNING_SECRET")
-        self.environment = os.getenv("ENVIRONMENT", "development")
+        self.environment = os.getenv("ENVIRONMENT", "production")
+        self.mode = os.getenv("MODE", "prod")  # debug or prod
         
         # CORS settings
         self.allowed_origins = [

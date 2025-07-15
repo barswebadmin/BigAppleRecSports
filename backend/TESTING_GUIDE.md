@@ -20,6 +20,12 @@
   - URL formatting
   - Error and success message formats
 
+- **`routers/tests/test_slack_router.py`**: Tests Slack webhook functionality for refund workflow
+  - Webhook signature validation
+  - Cancel order, process refund, and restock inventory actions
+  - Debug mode message format validation
+  - Button interaction workflows
+
 ### Integration Tests (Live Services) 🔗
 **Location**: `test_*.py` files (without `_unit` suffix)  
 **Purpose**: Test real API endpoints with actual services  
@@ -34,6 +40,12 @@
 **Command**: `make test-quick`
 - Runs most critical unit tests only
 - Fast feedback for development
+
+### Slack Webhook Tests 🤖
+**Commands**: 
+- `make test-slack-webhook` - Webhook functionality only
+- `make test-slack-all` - All Slack tests (webhook + message formatting)
+- Tests webhook interactions, debug message formats, signature validation
 
 ## Running Tests
 
