@@ -60,6 +60,10 @@ jobs:
       run: |
         echo "🔍 Analyzing backend changes for version update..."
         python3 scripts/backend_version_manager.py || true
+      env:
+        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_TOKEN: test_token
+        ENVIRONMENT: test
 
     - name: Check for version updates
       if: steps.check_merge.outputs.is_merge == 'true'
@@ -139,6 +143,10 @@ jobs:
         echo "🧪 Testing version integration with FastAPI..."
         cd backend
         python3 -c "import sys; from version import get_version_info; from main import app; info = get_version_info(); assert 'version' in info; assert 'build' in info; assert 'full_version' in info; print('✅ Version integration tests passed'); print(f'   FastAPI app version: {app.version}'); print(f'   Version module: {info[\"version\"]}')"
+      env:
+        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_TOKEN: test_token
+        ENVIRONMENT: test
 
     - name: Preview version changes
       run: |
@@ -146,4 +154,8 @@ jobs:
         echo "========================================================"
         # Create a temporary staged commit to analyze
         git add backend/ || true
-        python3 scripts/backend_version_manager.py || echo "No changes to analyze" 
+        python3 scripts/backend_version_manager.py || echo "No changes to analyze"
+      env:
+        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_TOKEN: test_token
+        ENVIRONMENT: test 
