@@ -199,7 +199,7 @@ class TestResponseUtils:
         data = {"message": "Success"}
         custom_headers = {"X-Custom": "value"}
 
-        result = format_response(201, data, custom_headers)
+        result = format_response(201, data, custom_headers) # type: ignore
 
         expected_headers = {
             'Content-Type': 'application/json',

@@ -24,7 +24,7 @@ except ImportError:
 # Import local modules
 from sport_detection import detect_sport, get_sold_out_image_url, is_all_closed, get_supported_sports
 from shopify_image_updater import ShopifyImageUpdater
-from version import get_version_info
+# from version import get_version_info
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
