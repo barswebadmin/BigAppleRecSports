@@ -28,16 +28,13 @@ def test_health_check():
     
     try:
         response = requests.get(endpoint, timeout=10)
-        if response.status_code == 200:
-            result = response.json()
-            print(f"✅ Health check passed: {result}")
-            return True
-        else:
-            print(f"❌ Health check failed: {response.status_code}")
-            return False
+        assert response.status_code == 200, f"Health check failed with status {response.status_code}"
+        result = response.json()
+        print(f"✅ Health check passed: {result}")
+        assert result is not None, "Health check response should not be None"
     except requests.exceptions.RequestException as e:
         print(f"❌ Health check request failed: {e}")
-        return False
+        assert False, f"Health check request failed: {e}"
 
 def test_add_tags_endpoint():
     """Test the addTags endpoint"""
@@ -67,18 +64,14 @@ def test_add_tags_endpoint():
         
         print(f"📊 Response Status: {response.status_code}")
         
-        if response.status_code == 200:
-            result = response.json()
-            print_api_results(result)
-            return True
-        else:
-            print(f"❌ Error: {response.status_code}")
-            print(f"Response: {response.text}")
-            return False
+        assert response.status_code == 200, f"AddTags endpoint failed with status {response.status_code}: {response.text}"
+        result = response.json()
+        print_api_results(result)
+        assert result is not None, "AddTags response should not be None"
             
     except requests.exceptions.RequestException as e:
         print(f"❌ Request failed: {e}")
-        return False
+        assert False, f"AddTags request failed: {e}"
 
 def print_api_results(result: Dict[str, Any]):
     """Pretty print the API results"""
