@@ -1,0 +1,30 @@
+[flake8]
+max-line-length = 88
+ignore = 
+    # Allow lines slightly longer than 79 characters (common for URLs, etc.)
+    E501,
+    # Allow trailing whitespace (auto-fixable by formatters)
+    W291,
+    # Allow no newline at end of file (auto-fixable)
+    W292,
+    # Allow continuation line over-indented for visual indent
+    E127,
+    # Allow module level import not at top of file (needed for sys.path modifications)
+    E402,
+    # Allow line break after binary operator (style preference)
+    W504,
+    # Allow imported but unused (for conditional imports like coverage)
+    F401
+
+exclude = 
+    .git,
+    __pycache__,
+    .pytest_cache,
+    coverage_html,
+    *.egg-info
+
+per-file-ignores =
+    # Test files can have longer lines for test data
+    test_*.py:E501,W291,W292
+    # Configuration files can have long lines
+    conftest.py:E501 

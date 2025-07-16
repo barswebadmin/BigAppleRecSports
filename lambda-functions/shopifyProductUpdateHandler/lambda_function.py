@@ -1,215 +1,140 @@
+"""
+Shopify Product Update Handler Lambda Function
+
+Automatically updates product images to "sold out" versions when all relevant variants
+are out of stock. Uses sport detection to apply appropriate sold-out images.
+
+Author: BARS
+Version: 1.0.0
+"""
+
+__version__ = "1.0.0"
+
 import json
-import os
-import urllib.request
-import urllib.error
-import time
+from typing import Dict, Any
 
-ACCESS_TOKEN = os.environ["SHOPIFY_ACCESS_TOKEN"]
-SHOP_DOMAIN = "09fe59-3.myshopify.com"
+# Import shared utilities (would use lambda layer in production)
+try:
+    from bars_common_utils.event_utils import parse_event_body, validate_required_fields
+    from bars_common_utils.response_utils import format_response, format_error
+except ImportError:
+    # Fallback for local development without layer
+    print("⚠️ Lambda layer not available, using local utilities")
 
-IMAGE_URLS = {
-    "bowling": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Bowling_ClosedWaitList.png?v=1750988743",
-    "dodgeball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Dodgeball_Closed.png?v=1750214647",
-    "kickball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Kickball_WaitlistOnly.png?v=1751381022",
-    "pickleball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Pickleball_WaitList.png?v=1750287195"
-}
+# Import local modules
+from sport_detection import detect_sport, get_sold_out_image_url, is_all_closed, get_supported_sports
+from shopify_image_updater import ShopifyImageUpdater
+from version import get_version_info
 
-def lambda_handler(event, context):
-    print("Received event:", json.dumps(event))
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """
+    Main Lambda handler for Shopify product image updates
+    
+    Args:
+        event: Lambda event containing Shopify webhook data
+        context: Lambda context object
+        
+    Returns:
+        HTTP response dictionary
+    """
+    print(f"📦 Shopify Product Update Handler v{__version__} invoked")
+    print("📥 Event received:", json.dumps(event, indent=2))
+    
     try:
-        body = json.loads(event.get("body", "{}"))
+        # Parse event body with standardized utility
+        body = parse_event_body(event)
+        
+        # Extract required fields from Shopify webhook
         product_id = body.get("id")
         product_gid = body.get("admin_graphql_api_id")
-        product_title = body.get("title", "").lower()
-        product_tags = body.get("tags", "").lower()
+        product_title = body.get("title", "")
+        product_tags = body.get("tags", "")
         product_image = body.get("image", {}).get("src")
         variants = body.get("variants", [])
 
+        # Validate required data
         if not product_id or not product_gid or not variants:
-            print("⚠️ Missing product ID, GID, or variants.")
-            return respond()
+            return format_error(
+                400, 
+                "Missing required product data",
+                {"missing": [f for f in ["id", "admin_graphql_api_id", "variants"] 
+                           if not body.get(f)]}
+            )
 
+        print(f"📦 Processing product: {product_title} (ID: {product_id})")
+        print(f"🔢 Found {len(variants)} variants")
+
+        # Check if all relevant variants are sold out
         if is_all_closed(variants):
+            print("🚫 All relevant variants are sold out")
+            
+            # Detect sport from title and tags
             sport = detect_sport(product_title, product_tags)
             print(f"🏷️ Detected sport: {sport}")
 
-            if sport in IMAGE_URLS:
-                sold_out_url = IMAGE_URLS[sport]
-                success = try_rest_image_update(product_id, sold_out_url)
-                success = False
-                if not success:
-                    print("⚠️ REST image update failed. Trying media delete-and-replace fallback.")
-                    fallback_success = replace_media(product_gid, sold_out_url, sport)
-                    if not fallback_success:
-                        print("⚠️ Fallback failed. Re-applying original image.")
-                        if product_image:
-                            try_rest_image_update(product_id, product_image)
-                        else:
-                            print("⚠️ No original image available.")
+            if sport:
+                # Get the appropriate sold-out image URL
+                sold_out_url = get_sold_out_image_url(sport)
+                if sold_out_url:
+                    # Update the product image
+                    image_updater = ShopifyImageUpdater()
+                    success = image_updater.update_product_image(
+                        product_id=str(product_id),
+                        product_gid=product_gid,
+                        image_url=sold_out_url,
+                        sport=sport,
+                        original_image=product_image
+                    )
+                    
+                    if success:
+                        return format_response(200, {
+                            "success": True,
+                            "message": f"✅ Updated {sport} product image to sold-out version",
+                            "product_id": product_id,
+                            "sport": sport,
+                            "image_url": sold_out_url
+                        })
+                    else:
+                        return format_error(500, "Failed to update product image")
+                else:
+                    return format_error(500, f"No sold-out image configured for sport: {sport}")
             else:
-                print("ℹ️ Unrecognized sport. No action taken.")
+                supported_sports = get_supported_sports()
+                return format_response(200, {
+                    "success": True,
+                    "message": "ℹ️ Unrecognized sport - no action taken",
+                    "product_title": product_title,
+                    "product_tags": product_tags,
+                    "supported_sports": supported_sports
+                })
         else:
-            print("ℹ️ Product still has inventory.")
+            return format_response(200, {
+                "success": True,
+                "message": "ℹ️ Product still has inventory - no action needed",
+                "product_id": product_id
+            })
 
     except Exception as e:
-        print(f"❌ Exception: {str(e)}")
-    return respond()
+        print(f"❌ Exception in lambda_handler: {str(e)}")
+        return format_error(500, "Internal server error", str(e))
 
-def is_all_closed(variants):
-    def is_relevant(title):
-        title = title.lower()
-        return (
-            "vet" in title or
-            "bipoc" in title or
-            "trans" in title or
-            "early" in title or
-            "open" in title
-        ) and "wait" not in title and "team" not in title
+# For backwards compatibility and fallback when layer is not available
+def parse_event_body(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Fallback event parsing if layer not available"""
+    if isinstance(event, dict) and "body" in event:
+        return json.loads(event["body"]) if isinstance(event["body"], str) else event["body"]
+    return event
 
-    relevant = [v for v in variants if is_relevant(v.get("title", ""))]
-    print(f"🔍 Relevant variants: {[v['title'] for v in relevant]}")
-    return all(v.get("inventory_quantity", 1) == 0 for v in relevant)
-
-def detect_sport(title, tags):
-    for sport in IMAGE_URLS:
-        if sport in title or sport in tags:
-            return sport
-    return None
-
-def try_rest_image_update(product_id, image_url):
-    url = f"https://{SHOP_DOMAIN}/admin/api/2025-10/products/{product_id}.json"
-    headers = {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": ACCESS_TOKEN
-    }
-    payload = {
-        "product": {
-            "id": product_id,
-            "image": {
-                "src": image_url
-            }
-        }
-    }
-
-    try:
-        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT")
-        with urllib.request.urlopen(req) as response:
-            result = json.loads(response.read().decode())
-            print("✅ REST image update succeeded.")
-            print(json.dumps(result, indent=2))
-            return True
-    except urllib.error.HTTPError as e:
-        print("❌ REST image update failed:", e.read().decode())
-        return False
-
-def replace_media(product_gid, image_url, sport):
-    try:
-        # Step 1: Get current media IDs
-        query = f"""
-        {{
-          product(id: "{product_gid}") {{
-            media(first: 100) {{
-              nodes {{
-                id
-              }}
-            }}
-          }}
-        }}
-        """
-        result = send_graphql(query)
-        media_nodes = result.get("data", {}).get("product", {}).get("media", {}).get("nodes", [])
-        media_ids = [node["id"] for node in media_nodes]
-        print(f"🧹 Found {len(media_ids)} media items to delete")
-
-        # Step 2: Delete all media using productDeleteMedia
-        if media_ids:
-            delete_query = """
-            mutation productDeleteMedia($mediaIds: [ID!]!, $productId: ID!) {
-              productDeleteMedia(mediaIds: $mediaIds, productId: $productId) {
-                deletedMediaIds
-                deletedProductImageIds
-                mediaUserErrors {
-                  field
-                  message
-                }
-                product {
-                  id
-                  title
-                  media(first: 5) {
-                    nodes {
-                      alt
-                      mediaContentType
-                      status
-                    }
-                  }
-                }
-              }
-            }
-            """
-            delete_vars = {
-                "mediaIds": media_ids,
-                "productId": product_gid
-            }
-
-            delete_result = send_graphql(delete_query, delete_vars)
-            print("🗑️ Deleted media:")
-            print(json.dumps(delete_result, indent=2))
-
-        # Step 3: Add new media image
-        mutation = """
-        mutation UpdateProductWithNewMedia($product: ProductUpdateInput!, $media: [CreateMediaInput!]) {
-          productUpdate(product: $product, media: $media) {
-            product {
-              id
-              media(first: 10) {
-                nodes {
-                  alt
-                  mediaContentType
-                  preview { status }
-                }
-              }
-            }
-            userErrors { field message }
-          }
-        }
-        """
-        variables = {
-            "product": {"id": product_gid},
-            "media": [{
-                "originalSource": image_url,
-                "alt": f"Sold out image for {sport}",
-                "mediaContentType": "IMAGE"
-            }]
-        }
-
-        media_result = send_graphql(mutation, variables)
-        print("✅ Media replaced via GraphQL.")
-        print(json.dumps(media_result, indent=2))
-        return True
-
-    except Exception as e:
-        print(f"❌ Media replace failed: {str(e)}")
-        return False
-
-def send_graphql(query, variables=None):
-    url = f"https://{SHOP_DOMAIN}/admin/api/2025-10/graphql.json"
-    headers = {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": ACCESS_TOKEN
-    }
-    payload = {"query": query}
-    if variables:
-        payload["variables"] = variables
-
-    req = urllib.request.Request(
-        url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST"
-    )
-
-    with urllib.request.urlopen(req) as response:
-        return json.loads(response.read().decode())
-
-def respond():
+def format_response(status_code: int, body: Any) -> Dict[str, Any]:
+    """Fallback response formatting if layer not available"""
     return {
-        'statusCode': 200,
-        'body': json.dumps('OK')
+        "statusCode": status_code,
+        "body": json.dumps(body, indent=2, default=str)
     }
+
+def format_error(status_code: int, error_message: str, details: Any = None) -> Dict[str, Any]:
+    """Fallback error formatting if layer not available"""
+    body = {"error": f"❌ {error_message}"}
+    if details:
+        body["details"] = details
+    return format_response(status_code, body)

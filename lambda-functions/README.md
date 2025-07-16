@@ -1,6 +1,17 @@
 # Lambda Functions Directory
 
-This directory contains 5 Python Lambda functions that are automatically deployed to AWS via GitHub Actions.
+This directory contains 6 Python Lambda functions that are automatically deployed to AWS via GitHub Actions.
+
+## 🛠️ Local Development Setup
+
+**IMPORTANT**: Before working with lambda functions locally, run the setup script to enable `bars_common_utils` imports:
+
+```bash
+# From project root
+python3 scripts/setup_local_development.py
+```
+
+This creates symbolic links so your IDE can resolve imports from the lambda layer. See [`LOCAL_DEVELOPMENT.md`](./LOCAL_DEVELOPMENT.md) for full details.
 
 ## Functions
 
@@ -9,6 +20,7 @@ This directory contains 5 Python Lambda functions that are automatically deploye
 3. **CreateScheduleLambda**
 4. **schedulePriceChanges**
 5. **MoveInventoryLambda**
+6. **shopifyProductUpdateHandler**
 
 ## Directory Structure
 

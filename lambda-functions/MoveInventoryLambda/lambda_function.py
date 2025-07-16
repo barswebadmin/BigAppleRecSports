@@ -3,6 +3,7 @@ __version__ = "1.1.0"
 import json
 import traceback
 from datetime import datetime
+from typing import Dict, Any
 
 from bars_common_utils.response_utils import format_response, format_error
 from bars_common_utils.event_utils import validate_required_fields
@@ -13,7 +14,7 @@ from bars_common_utils.shopify_utils import (
     get_product_variants
 )
 
-def lambda_handler(event, context):
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Move inventory between variants based on the type of transfer.
     Supports:
@@ -41,8 +42,8 @@ def lambda_handler(event, context):
             dest_data = get_inventory_item_and_quantity(dest_gid)
 
             source_qty = source_data['inventoryQuantity']
-            source_id = source_data['inventoryItemId']
-            dest_id = dest_data['inventoryItemId']
+            source_id = str(source_data['inventoryItemId'])
+            dest_id = str(dest_data['inventoryItemId'])
 
             print(f"📊 Moving ALL inventory from {source_name} → {dest_name}: {source_qty} units")
             if source_qty <= 0:
@@ -76,7 +77,7 @@ def lambda_handler(event, context):
                 if 'early' in title or 'veteran' in title:
                     qty = v['inventoryQuantity']
                     if qty != 0:
-                        item_id = v['inventoryItem']['id']
+                        item_id = str(v['inventoryItem']['id'])
                         print(f"🔁 Queuing {qty} from '{title}'")
                         move_variants.append((item_id, qty))
                         total_delta += qty
@@ -85,7 +86,7 @@ def lambda_handler(event, context):
                 raise ValueError("No inventory found to move from early/veteran variants.")
 
             dest_data = get_inventory_item_and_quantity(dest_gid)
-            dest_id = dest_data['inventoryItemId']
+            dest_id = str(dest_data['inventoryItemId'])
 
             wait_until_next_minute()
             for item_id, qty in move_variants:
@@ -108,8 +109,8 @@ def lambda_handler(event, context):
             dest_data = get_inventory_item_and_quantity(dest_gid)
 
             source_qty = source_data['inventoryQuantity']
-            source_id = source_data['inventoryItemId']
-            dest_id = dest_data['inventoryItemId']
+            source_id = str(source_data['inventoryItemId'])
+            dest_id = str(dest_data['inventoryItemId'])
 
             print(f"📊 Moving ALL {source_qty} inventory units from {source_name} → {dest_name}")
             if source_qty <= 0:

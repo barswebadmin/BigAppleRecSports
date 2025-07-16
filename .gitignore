@@ -28,6 +28,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# Lambda layer symlinks (for local development)
+lambda-functions/*/bars_common_utils
+
 # Virtual environments
 venv/
 ENV/

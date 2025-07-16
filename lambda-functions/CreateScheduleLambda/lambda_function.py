@@ -6,9 +6,11 @@ from datetime import datetime
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 import traceback
+import os
 
 # Initialize EventBridge Scheduler client
-scheduler_client = boto3.client("scheduler")
+# Use default region for local development
+scheduler_client = boto3.client("scheduler", region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 
 def lambda_handler(event, context):
     """
