@@ -200,3 +200,11 @@ class ShopifyOperations:
 2. **Add More Unit Tests:** Create comprehensive test coverage for new helper classes
 3. **Documentation:** Add inline documentation for all new helper classes
 4. **Performance Testing:** Validate that refactoring doesn't impact performance 
+
+## Related Documentation
+
+- **[📖 Documentation Index](../README.md)** - All documentation
+- **[👨‍💻 Versioning Guide](versioning.md)** - Version management
+- **[🧪 Testing Guide](../testing/README.md)** - Testing refactored code
+- **[🔌 Orders API](../api/orders.md)** - Refactored API endpoints
+- **[🏠 Main README](../../README.md)** - Project setup and overview
