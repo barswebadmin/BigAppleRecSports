@@ -7,7 +7,7 @@ from typing import List, Dict, Optional
 # Sport-specific sold-out image URLs
 SPORT_IMAGE_URLS = {
     "bowling": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Bowling_ClosedWaitList.png?v=1750988743",
-    "dodgeball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Dodgeball_Closed.png?v=1750214647",
+    "dodgeball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Dodgeball_ClosedWaitList.png?v=1752681049",
     "kickball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Kickball_WaitlistOnly.png?v=1751381022",
     "pickleball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Pickleball_WaitList.png?v=1750287195"
 }
