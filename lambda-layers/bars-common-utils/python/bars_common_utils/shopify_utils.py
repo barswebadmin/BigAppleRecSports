@@ -86,7 +86,7 @@ def fetch_shopify(query: str, variables: Optional[Dict] = None) -> Dict:
         print("❌ fetch_shopify failed:", str(e))
         raise
 
-def get_inventory_item_and_quantity(variant_gid: str) -> Dict[str, str]:
+def get_inventory_item_and_quantity(variant_gid: str) -> Dict[str, int]:
     """Return inventory item ID and available quantity for a given variant GID."""
     data = fetch_shopify(GET_INVENTORY_ITEM_AND_QUANTITY, {'variantId': variant_gid})
 

@@ -1,0 +1,2 @@
+# No external dependencies needed - using only built-in urllib and json
+# Lambda layer provides shared utilities 

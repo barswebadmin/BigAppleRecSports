@@ -1,4 +1,5 @@
-# Add your Python dependencies here
-# Example:
-# boto3==1.26.137
-# requests==2.31.0 
+# AWS SDK for Python
+boto3>=1.39.0
+
+# No other external dependencies required
+# Using standard library for datetime and json operations 

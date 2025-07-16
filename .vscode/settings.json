@@ -1,0 +1,16 @@
+{
+    "python.analysis.extraPaths": [
+        "./lambda-layers/bars-common-utils/python",
+        "./lambda-functions/MoveInventoryLambda",
+        "./lambda-functions/shopifyProductUpdateHandler",
+        "./lambda-functions/createScheduledPriceChanges", 
+        "./lambda-functions/schedulePriceChanges",
+        "./lambda-functions/CreateScheduleLambda",
+        "./lambda-functions/changePricesOfOpenAndWaitlistVariants"
+    ],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.defaultInterpreterPath": "python3",
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.stubPath": "./lambda-layers/bars-common-utils/python"
+} 
