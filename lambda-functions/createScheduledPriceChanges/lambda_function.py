@@ -3,6 +3,7 @@ __version__ = "1.0.0"
 import boto3
 import json
 import traceback
+import os
 
 from bars_common_utils.event_utils import parse_event_body, validate_required_fields, get_field_safe
 from bars_common_utils.response_utils import format_response, format_error
@@ -10,7 +11,7 @@ from bars_common_utils.scheduler_utils import create_schedule_target
 
 def lambda_handler(event, context):
     """Create a new scheduled price change"""
-    scheduler = boto3.client('scheduler')
+    scheduler = boto3.client('scheduler', region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
     print("🔵 Raw event received:", json.dumps(event, indent=2))
 
     try:
