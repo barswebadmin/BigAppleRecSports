@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Integration tests for Leadership Router API endpoints
+Unit tests for Leadership Router API endpoints
 """
 
-import requests
+import pytest
 import json
 from typing import Dict, Any
+from fastapi.testclient import TestClient
+from main import app
 
 # Test data mimicking what Google Sheets would send (with 'Personal Email' column)
 TEST_CSV_DATA = [
@@ -18,35 +20,24 @@ TEST_CSV_DATA = [
     ["sarah.wilson@gmail.com", "Sarah", "Wilson", "Soccer", "Team F"],
 ]
 
-def test_health_check():
+@pytest.fixture
+def client():
+    """FastAPI test client fixture"""
+    return TestClient(app)
+
+def test_health_check(client):
     """Test the health check endpoint"""
-    
-    base_url = "http://localhost:8000"
-    endpoint = f"{base_url}/leadership/health"
     
     print("🧪 Testing Health Check...")
     
-    try:
-        response = requests.get(endpoint, timeout=10)
-        if response.status_code == 200:
-            result = response.json()
-            print(f"✅ Health check passed: {result}")
-            return True
-        else:
-            print(f"❌ Health check failed: {response.status_code}")
-            return False
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Health check request failed: {e}")
-        return False
+    response = client.get("/leadership/health")
+    assert response.status_code == 200, f"Health check failed with status {response.status_code}"
+    result = response.json()
+    print(f"✅ Health check passed: {result}")
+    assert result is not None, "Health check response should not be None"
 
-def test_add_tags_endpoint():
+def test_add_tags_endpoint(client):
     """Test the addTags endpoint"""
-    
-    # Configuration
-    base_url = "http://localhost:8000"  # Local backend
-    # base_url = "https://barsbackend.onrender.com"  # Production backend
-    
-    endpoint = f"{base_url}/leadership/addTags"
     
     # Test payload
     payload = {
@@ -55,30 +46,17 @@ def test_add_tags_endpoint():
         "year": 2024
     }
     
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
     print("🧪 Testing addTags Endpoint...")
-    print(f"📤 Sending {len(TEST_CSV_DATA)} rows to {endpoint}")
+    print(f"📤 Sending {len(TEST_CSV_DATA)} rows to endpoint")
     
-    try:
-        response = requests.post(endpoint, json=payload, headers=headers, timeout=30)
-        
-        print(f"📊 Response Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            result = response.json()
-            print_api_results(result)
-            return True
-        else:
-            print(f"❌ Error: {response.status_code}")
-            print(f"Response: {response.text}")
-            return False
-            
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Request failed: {e}")
-        return False
+    response = client.post("/leadership/addTags", json=payload)
+    
+    print(f"📊 Response Status: {response.status_code}")
+    
+    assert response.status_code == 200, f"AddTags endpoint failed with status {response.status_code}: {response.text}"
+    result = response.json()
+    print_api_results(result)
+    assert result is not None, "AddTags response should not be None"
 
 def print_api_results(result: Dict[str, Any]):
     """Pretty print the API results"""
@@ -112,17 +90,4 @@ def print_api_results(result: Dict[str, Any]):
     
     print("="*50)
 
-if __name__ == "__main__":
-    print("🚀 Running Leadership Router Integration Tests...")
-    
-    # Test health check first
-    health_ok = test_health_check()
-    
-    if health_ok:
-        print("\n" + "-"*50)
-        # Test main endpoint
-        test_add_tags_endpoint()
-    else:
-        print("❌ Skipping API tests - health check failed")
-    
-    print("\n🏁 Integration tests completed!") 
+# Tests are now run via pytest, not directly as script 
