@@ -22,7 +22,7 @@ def validate_season_dates(product_gid, season_start_date, off_dates_comma_separa
     formatted_input_start = format_date_only(season_start_date)
 
     input_off_dates = [
-        format_date_only(d.strip()) for d in off_dates_comma_separated.split(",") if d.strip()
+        format_date_only(d.strip()) for d in off_dates_comma_separated.split(",") if d.strip() else []
     ]
     extracted_off_list = [
         d.strip() for d in extracted_off_dates.split(",")] if extracted_off_dates else []

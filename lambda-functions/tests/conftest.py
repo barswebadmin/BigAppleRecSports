@@ -68,27 +68,46 @@ def mock_boto3_client(aws_credentials):
 @pytest.fixture
 def mock_shopify_utils():
     """Mock bars_common_utils.shopify_utils functions"""
-    with patch('bars_common_utils.shopify_utils.get_inventory_item_and_quantity') as mock_get_inv, \
-         patch('bars_common_utils.shopify_utils.adjust_inventory') as mock_adjust, \
-         patch('bars_common_utils.shopify_utils.get_product_variants') as mock_get_variants:
+    # Mock both the layer version and any local lambda function copies
+    patches = [
+        patch('bars_common_utils.shopify_utils.get_inventory_item_and_quantity'),
+        patch('bars_common_utils.shopify_utils.adjust_inventory'),
+        patch('bars_common_utils.shopify_utils.get_product_variants'),
+        # Also patch the local lambda function imports
+        patch('MoveInventoryLambda.bars_common_utils.shopify_utils.get_inventory_item_and_quantity'),
+        patch('MoveInventoryLambda.bars_common_utils.shopify_utils.adjust_inventory'),
+        patch('MoveInventoryLambda.bars_common_utils.shopify_utils.get_product_variants'),
+    ]
+    
+    mocks = []
+    for p in patches:
+        try:
+            mocks.append(p.start())
+        except ImportError:
+            # Some imports might not exist, that's ok
+            pass
+    
+    # Set default return values on the first set of mocks
+    if len(mocks) >= 3:
+        mock_get_inv, mock_adjust, mock_get_variants = mocks[0], mocks[1], mocks[2]
         
         # Default return values
         mock_get_inv.return_value = {
             'inventoryItemId': 'gid://shopify/InventoryItem/12345',
             'inventoryQuantity': 10
         }
-        mock_adjust.return_value = {'success': True}
+        
         mock_get_variants.return_value = {
             'product': {
                 'variants': {
                     'nodes': [
                         {
-                            'title': 'Early Bird',
+                            'title': 'Early Bird Registration',
                             'inventoryQuantity': 5,
                             'inventoryItem': {'id': 'gid://shopify/InventoryItem/11111'}
                         },
                         {
-                            'title': 'Veteran',
+                            'title': 'Veteran (Season Pass Holders)',
                             'inventoryQuantity': 3,
                             'inventoryItem': {'id': 'gid://shopify/InventoryItem/22222'}
                         }
@@ -102,6 +121,13 @@ def mock_shopify_utils():
             'adjust_inventory': mock_adjust,
             'get_product_variants': mock_get_variants
         }
+    
+    # Cleanup
+    for mock in mocks:
+        try:
+            mock.stop()
+        except:
+            pass
 
 @pytest.fixture
 def sample_lambda_event():

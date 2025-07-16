@@ -84,7 +84,15 @@ def is_all_closed(variants: List[Dict]) -> bool:
         return False
     
     # Check if all relevant variants are sold out
-    return all(v.get("inventory_quantity", 1) == 0 for v in relevant_variants)
+    # A variant is considered sold out if:
+    # 1. inventory_quantity is 0 AND
+    # 2. inventory_policy is 'deny' (not 'continue')
+    def is_variant_closed(variant):
+        qty = variant.get("inventory_quantity", 1)
+        policy = variant.get("inventory_policy", "deny")
+        return qty == 0 and policy != "continue"
+    
+    return all(is_variant_closed(v) for v in relevant_variants)
 
 def get_supported_sports() -> List[str]:
     """
