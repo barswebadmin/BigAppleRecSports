@@ -1,125 +1,130 @@
 #!/usr/bin/env python3
 """
-Local Development Setup for Lambda Functions
+Setup script for local development of BARS Lambda Functions.
 
-This script creates symbolic links to the bars_common_utils lambda layer
-in each lambda function directory so that imports work locally.
+This script installs required dependencies for local development and testing.
 
-Usage:
-    python scripts/setup_local_development.py
+🎯 DRY Architecture:
+- Uses workspace-level VS Code configuration for IDE support
+- Single symlink in tests/ directory for test execution
+- No code duplication across lambda functions
+- Clean, maintainable project structure
 """
 
-import os
+import subprocess
 import sys
 from pathlib import Path
 
-def setup_lambda_layer_symlinks():
-    """Create symlinks to bars_common_utils in all lambda function directories"""
+
+def install_dependencies():
+    """Install required dependencies for local development."""
+    dependencies = [
+        'boto3>=1.39.0',
+        'pytest>=7.0.0',
+        'pytest-asyncio>=0.23.0',
+        'flake8>=7.0.0',
+        'coverage[toml]>=7.0.0'
+    ]
     
-    # Get the project root directory (where this script is run from)
-    project_root = Path.cwd()
-    
-    # Paths
-    layer_source = project_root / "lambda-layers" / "bars-common-utils" / "python" / "bars_common_utils"
-    lambda_functions_dir = project_root / "lambda-functions"
-    
-    # Verify the layer exists
-    if not layer_source.exists():
-        print(f"❌ Lambda layer not found at: {layer_source}")
-        return False
-    
-    # Verify lambda-functions directory exists
-    if not lambda_functions_dir.exists():
-        print(f"❌ Lambda functions directory not found at: {lambda_functions_dir}")
-        return False
-    
-    print(f"🔍 Looking for lambda functions in: {lambda_functions_dir}")
-    print(f"📦 Lambda layer source: {layer_source}")
-    print()
-    
-    success_count = 0
-    skip_count = 0
-    
-    # Find all lambda function directories
-    for function_dir in lambda_functions_dir.iterdir():
-        if not function_dir.is_dir():
-            continue
-            
-        # Skip if it doesn't contain a lambda_function.py (not a lambda function)
-        if not (function_dir / "lambda_function.py").exists():
-            print(f"⏭️  Skipping {function_dir.name} (no lambda_function.py)")
-            continue
-        
-        # Path where the symlink should be created
-        symlink_target = function_dir / "bars_common_utils"
-        
-        # Skip if symlink already exists and is correct
-        if symlink_target.exists():
-            if symlink_target.is_symlink() and symlink_target.resolve() == layer_source.resolve():
-                print(f"✅ {function_dir.name}/bars_common_utils (already linked)")
-                skip_count += 1
-                continue
-            else:
-                # Remove incorrect symlink or file
-                if symlink_target.is_symlink():
-                    symlink_target.unlink()
-                    print(f"🔄 Removed incorrect symlink in {function_dir.name}")
-                else:
-                    print(f"⚠️  Warning: {symlink_target} exists but is not a symlink")
-                    continue
-        
+    print("📦 Installing local development dependencies...")
+    for dep in dependencies:
         try:
-            # Create the symlink
-            symlink_target.symlink_to(layer_source, target_is_directory=True)
-            print(f"🔗 Created {function_dir.name}/bars_common_utils -> {layer_source.relative_to(project_root)}")
-            success_count += 1
-            
-        except OSError as e:
-            print(f"❌ Failed to create symlink in {function_dir.name}: {e}")
+            result = subprocess.run([
+                sys.executable, '-m', 'pip', 'install', dep
+            ], capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"  ✅ {dep}")
+            else:
+                print(f"  ⚠️  Failed to install {dep}")
+        except Exception:
+            print(f"  ⚠️  Failed to install {dep}")
     
-    print()
-    print(f"📊 Summary:")
-    print(f"   ✅ Created: {success_count} symlinks")
-    print(f"   ⏭️  Skipped: {skip_count} (already correct)")
+    print("\n✅ Dependencies installation complete!")
+
+
+def verify_setup():
+    """Verify that the setup is working correctly."""
+    print("\n🔍 Verifying setup...")
     
-    if success_count > 0:
-        print()
-        print("🎉 Local development setup complete!")
-        print("   Your lambda functions can now import bars_common_utils locally.")
-        print("   Example: from bars_common_utils.event_utils import parse_event_body")
+    # Test import resolution
+    project_root = Path(__file__).parent.parent
+    sys.path.insert(0, str(project_root / "lambda-layers" / "bars-common-utils" / "python"))
+    sys.path.insert(0, str(project_root / "lambda-functions" / "MoveInventoryLambda"))
+    
+    try:
+        from bars_common_utils.date_utils import parse_date  # type: ignore
+        print("  ✅ bars_common_utils imports working")
+    except ImportError as e:
+        print(f"  ❌ bars_common_utils import failed: {e}")
+        return False
+    
+    try:
+        from lambda_function import lambda_handler  # type: ignore
+        print("  ✅ lambda_function imports working")
+    except ImportError as e:
+        print(f"  ❌ lambda_function import failed: {e}")
+        return False
     
     return True
 
-def cleanup_lambda_layer_symlinks():
-    """Remove all bars_common_utils symlinks from lambda function directories"""
+
+def setup_test_symlink():
+    """Create symlink for test directory if needed."""
+    project_root = Path(__file__).parent.parent
+    tests_dir = project_root / "lambda-functions" / "tests"
+    symlink_path = tests_dir / "bars_common_utils"
+    target_path = project_root / "lambda-layers" / "bars-common-utils" / "python" / "bars_common_utils"
     
-    project_root = Path.cwd()
-    lambda_functions_dir = project_root / "lambda-functions"
+    if not tests_dir.exists():
+        print("  ⏭️  Tests directory not found, skipping symlink setup")
+        return True
     
-    if not lambda_functions_dir.exists():
-        print(f"❌ Lambda functions directory not found at: {lambda_functions_dir}")
+    if symlink_path.exists():
+        if symlink_path.is_symlink() and symlink_path.resolve() == target_path.resolve():
+            print("  ✅ Test symlink already correct")
+            return True
+        else:
+            print("  🔄 Removing incorrect symlink")
+            symlink_path.unlink()
+    
+    try:
+        symlink_path.symlink_to(target_path)
+        print("  🔗 Created test symlink for bars_common_utils")
+        return True
+    except OSError as e:
+        print(f"  ⚠️  Could not create test symlink: {e}")
         return False
+
+
+def main():
+    """Main setup function."""
+    print("🚀 BARS Lambda Functions - Local Development Setup")
+    print("=" * 60)
+    print("🎯 DRY Architecture: One source of truth, workspace configuration")
+    print()
     
-    print("🧹 Cleaning up lambda layer symlinks...")
+    install_dependencies()
+    setup_test_symlink()
     
-    removed_count = 0
+    if verify_setup():
+        print("\n🎉 Setup completed successfully!")
+        print("\n📋 Next steps:")
+        print("  1. Open the project in VS Code")
+        print("  2. Workspace-level configuration handles import resolution")
+        print("  3. Single symlink in tests/ enables test execution")
+        print("  4. Run tests: cd lambda-functions/tests && python3 run_tests.py")
+        print("  5. All lambda functions have full IDE support")
+        print("\n✨ Benefits:")
+        print("  • No code duplication (DRY)")
+        print("  • Clean project structure")
+        print("  • Full IDE IntelliSense")
+        print("  • Easy maintenance")
+    else:
+        print("\n⚠️  Setup completed with warnings. Check error messages above.")
     
-    for function_dir in lambda_functions_dir.iterdir():
-        if not function_dir.is_dir():
-            continue
-        
-        symlink_target = function_dir / "bars_common_utils"
-        
-        if symlink_target.exists() and symlink_target.is_symlink():
-            symlink_target.unlink()
-            print(f"🗑️  Removed {function_dir.name}/bars_common_utils")
-            removed_count += 1
-    
-    print(f"📊 Removed {removed_count} symlinks")
     return True
+
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "cleanup":
-        cleanup_lambda_layer_symlinks()
-    else:
-        setup_lambda_layer_symlinks() 
+    success = main()
+    sys.exit(0 if success else 1) 
