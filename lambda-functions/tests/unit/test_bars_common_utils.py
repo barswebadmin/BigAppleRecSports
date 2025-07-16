@@ -97,11 +97,11 @@ class TestDateUtils:
 
     def test_calculate_discounted_schedule(self):
         """Test discount schedule calculation"""
-        season_start = datetime(2025, 1, 15, 19, 0)  # Jan 15, 2025 at 7 PM
+        season_start_date = datetime(2025, 1, 15, 19, 0)  # Jan 15, 2025 at 7 PM
         off_dates = [datetime(2025, 1, 22, 19, 0)]  # One off date
         base_price = 100.0
 
-        result = calculate_discounted_schedule(season_start, off_dates,
+        result = calculate_discounted_schedule(season_start_date, off_dates,
                                                base_price)
 
         assert len(result) == 4  # Four weeks of discounts
@@ -237,30 +237,32 @@ class TestRequestUtils:
     @patch('bars_common_utils.request_utils.datetime')
     def test_wait_until_next_minute(self, mock_datetime, mock_sleep):
         """Test waiting until next minute"""
-        # Mock current time as 10:30:45 (45 seconds past the minute)
-        mock_now = MagicMock()
-        mock_now.second = 45
-        mock_datetime.now.return_value = mock_now
+        from datetime import datetime, timedelta
+        
+        # Create a real datetime object for 10:30:45 (45 seconds past the minute)
+        base_time = datetime(2023, 1, 1, 10, 30, 45)
+        mock_datetime.utcnow.return_value = base_time
 
         wait_until_next_minute()
 
         # Should sleep for 15 seconds to reach next minute
-        mock_sleep.assert_called_once_with(15)
+        mock_sleep.assert_called_once_with(15.0)
 
     @patch('time.sleep')
     @patch('bars_common_utils.request_utils.datetime')
     def test_wait_until_next_minute_already_at_start(self, mock_datetime,
                                                      mock_sleep):
         """Test when already at start of minute"""
-        # Mock current time as 10:30:00 (0 seconds)
-        mock_now = MagicMock()
-        mock_now.second = 0
-        mock_datetime.now.return_value = mock_now
+        from datetime import datetime, timedelta
+        
+        # Create a real datetime object for 10:30:00 (0 seconds)
+        base_time = datetime(2023, 1, 1, 10, 30, 0)
+        mock_datetime.utcnow.return_value = base_time
 
         wait_until_next_minute()
 
-        # Should not sleep if already at start of minute
-        mock_sleep.assert_called_once_with(60)  # Wait full minute
+        # Should wait full minute if already at start
+        mock_sleep.assert_called_once_with(60.0)
 
 
 class TestSchedulerUtils:

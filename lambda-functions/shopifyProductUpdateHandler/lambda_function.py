@@ -124,17 +124,3 @@ def parse_event_body(event: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(event, dict) and "body" in event:
         return json.loads(event["body"]) if isinstance(event["body"], str) else event["body"]
     return event
-
-def format_response(status_code: int, body: Any) -> Dict[str, Any]:
-    """Fallback response formatting if layer not available"""
-    return {
-        "statusCode": status_code,
-        "body": json.dumps(body, indent=2, default=str)
-    }
-
-def format_error(status_code: int, error_message: str, details: Any = None) -> Dict[str, Any]:
-    """Fallback error formatting if layer not available"""
-    body = {"error": f"❌ {error_message}"}
-    if details:
-        body["details"] = details
-    return format_response(status_code, body)

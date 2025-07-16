@@ -58,9 +58,13 @@ def get_field_safe(
     Args:
         event_body: Event body dictionary
         field_name: Name of the field to get
-        default: Default value if field is missing
+        default: Default value if field is missing, empty, or None
         
     Returns:
         Field value or default
     """
-    return event_body.get(field_name, default) 
+    value = event_body.get(field_name, default)
+    # Return default for empty strings and None values
+    if value == "" or value is None:
+        return default
+    return value 

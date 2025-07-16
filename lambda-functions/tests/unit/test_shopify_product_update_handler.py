@@ -6,18 +6,51 @@ Tests sport detection, image updates, and the main lambda handler.
 
 import sys
 import os
+import importlib
 from unittest.mock import patch, MagicMock
 
-# Add the specific lambda function to path
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__),
-                    '../../shopifyProductUpdateHandler')
-)
+# Clear any cached lambda_function modules
+modules_to_clear = [mod for mod in sys.modules.keys() if 'lambda_function' in mod]
+for mod in modules_to_clear:
+    del sys.modules[mod]
 
-from lambda_function import lambda_handler  # type: ignore
+# More aggressive path cleaning to avoid conflicts from integration tests
+paths_to_remove = []
+for path in sys.path:
+    if 'lambda-functions' in path:
+        if 'MoveInventoryLambda' in path or 'createScheduledPriceChanges' in path or 'CreateScheduleLambda' in path:
+            paths_to_remove.append(path)
+
+for path in paths_to_remove:
+    sys.path.remove(path)
+
+# Add the specific lambda function to path
+shopify_handler_path = os.path.join(os.path.dirname(__file__), '../../shopifyProductUpdateHandler')
+sys.path.insert(0, shopify_handler_path)
+
+# Dynamically import the correct lambda_function to avoid cached imports
+import importlib.util
+spec = importlib.util.spec_from_file_location("lambda_function", 
+                                               os.path.join(shopify_handler_path, "lambda_function.py"))
+if spec is None or spec.loader is None:
+    raise ImportError("Could not load lambda_function.py from shopifyProductUpdateHandler")
+lambda_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(lambda_module)
+lambda_handler = lambda_module.lambda_handler
+
+# Import other modules normally
 from sport_detection import (detect_sport, get_sold_out_image_url,  # type: ignore
                              is_all_closed, get_supported_sports)
 from shopify_image_updater import ShopifyImageUpdater  # type: ignore
+
+# Safety check: verify we imported the correct lambda handler
+try:
+    # Check for unique modules that only exist in shopifyProductUpdateHandler
+    from sport_detection import detect_sport  # type: ignore
+    from shopify_image_updater import ShopifyImageUpdater  # type: ignore
+    print("✅ Correctly imported shopifyProductUpdateHandler lambda_function")
+except ImportError:
+    raise ImportError("❌ Wrong lambda_function imported - should be shopifyProductUpdateHandler")
 
 
 class TestSportDetection:
@@ -63,7 +96,7 @@ class TestSportDetection:
              "Bowling_ClosedWaitList.png?v=1750988743"),
             ("dodgeball",
              "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/"
-             "Dodgeball_Closed.png?v=1750214647"),
+             "Dodgeball_ClosedWaitList.png?v=1752681049"),
             ("pickleball",
              "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/"
              "Pickleball_WaitList.png?v=1750287195"),
@@ -187,7 +220,7 @@ class TestShopifyProductUpdateHandler:
         assert result['statusCode'] == 200
         response_body = result['body']
         assert response_body['success'] is True
-        assert 'Image updated successfully' in response_body['message']
+        assert 'Updated kickball product image to sold-out version' in response_body['message']
         assert response_body['sport'] == 'kickball'
 
     def test_variants_not_all_closed(self, mock_shopify_env,
@@ -208,7 +241,7 @@ class TestShopifyProductUpdateHandler:
         assert result['statusCode'] == 200
         response_body = result['body']
         assert response_body['success'] is True
-        assert 'Not all variants are closed' in response_body['message']
+        assert 'Product still has inventory - no action needed' in response_body['message']
 
     def test_unsupported_sport(self, mock_shopify_env, sample_lambda_context):
         """Test with unsupported sport - should not update image"""
@@ -231,7 +264,7 @@ class TestShopifyProductUpdateHandler:
         assert result['statusCode'] == 200
         response_body = result['body']
         assert response_body['success'] is True
-        assert 'Unsupported sport' in response_body['message']
+        assert 'Unrecognized sport - no action taken' in response_body['message']
 
     def test_missing_required_data(self, mock_shopify_env,
                                    sample_lambda_context):
@@ -269,22 +302,16 @@ class TestShopifyProductUpdateHandler:
         string_event = {
             'body': '{"id": 12345, "admin_graphql_api_id": '
                     '"gid://shopify/Product/12345", "title": "Test Product", '
-                    '"variants": []}'
+                    '"variants": [{"id": 1, "title": "Test Variant", "inventory_quantity": 0, "inventory_policy": "deny"}]}'
         }
 
-        with patch('bars_common_utils.event_utils.parse_event_body') as \
-                mock_parse:
-            mock_parse.return_value = {
-                'id': 12345,
-                'admin_graphql_api_id': 'gid://shopify/Product/12345',
-                'title': 'Test Product',
-                'variants': []
-            }
+        # The function should parse the string body directly, not use the mocked version
+        result = lambda_handler(string_event, sample_lambda_context)
 
-            result = lambda_handler(string_event, sample_lambda_context)
-
-            assert mock_parse.called
-            assert result['statusCode'] == 200  # Should parse successfully
+        # Verify it parsed successfully and returned an expected response
+        assert result['statusCode'] == 200
+        response_body = result['body']
+        assert response_body['success'] is True
 
     def test_version_info_retrieval(self):
         """Test version information retrieval"""

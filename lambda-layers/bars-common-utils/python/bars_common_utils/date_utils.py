@@ -71,7 +71,7 @@ def parse_off_dates(dates_str: Optional[str], sport_time: dt_time) -> List[datet
     return off_dates
 
 def calculate_discounted_schedule(
-    season_start: datetime,
+    season_start_date: datetime,
     off_dates: List[datetime],
     base_price: float,
     discount_tiers: Optional[List[float]] = None
@@ -80,7 +80,7 @@ def calculate_discounted_schedule(
     Calculate a schedule of discounted prices with dates
     
     Args:
-        season_start: Starting datetime
+        season_start_date: Starting datetime
         off_dates: List of datetime objects to skip
         base_price: Base price to discount
         discount_tiers: List of discount multipliers (default: [0.85, 0.75, 0.65, 0.55])
@@ -92,7 +92,7 @@ def calculate_discounted_schedule(
         discount_tiers = [0.85, 0.75, 0.65, 0.55]
         
     # Generate initial week dates
-    week_dates = [season_start]
+    week_dates = [season_start_date]
     for i in range(1, len(discount_tiers)):
         week_date = week_dates[i - 1] + timedelta(days=7)
         week_dates.append(week_date)
