@@ -46,27 +46,9 @@ jobs:
         echo "SHOPIFY_TOKEN=test_token" >> $GITHUB_ENV
         echo "ENVIRONMENT=test" >> $GITHUB_ENV
     
-    - name: Run service tests
+    - name: Run all tests using pytest
       run: |
-        cd services
-        PYTHONPATH=.. python test_csv_service.py
-        PYTHONPATH=.. python test_leadership_service.py
-    
-    - name: Start server for integration tests
-      run: |
-        python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
-        sleep 5
-        # Check if server is running
-        curl -f http://127.0.0.1:8000/health || exit 1
-      env:
-        SHOPIFY_STORE: test-store.myshopify.com
-        SHOPIFY_TOKEN: test_token
-        ENVIRONMENT: test
-    
-    - name: Run API integration tests
-      run: |
-        cd routers
-        PYTHONPATH=.. python test_leadership_router.py
+        make test
       env:
         SHOPIFY_STORE: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token

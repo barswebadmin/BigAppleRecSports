@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 class ProcessLeadershipCSVRequest(BaseModel):
     csv_data: List[List[str]]  # Array of arrays representing CSV rows
@@ -17,5 +17,25 @@ class ProcessLeadershipCSVRequest(BaseModel):
                 ],
                 "spreadsheet_title": "2024 Leadership List",
                 "year": 2024
+            }
+        }
+
+class RefundSlackNotificationRequest(BaseModel):
+    order_number: str
+    requestor_name: Dict[str, str]  # {"first": "John", "last": "Doe"}
+    requestor_email: str
+    refund_type: str  # "refund" or "credit"
+    notes: str
+    sheet_link: Optional[str] = None  # Google Sheets link to the specific row
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "order_number": "#12345",
+                "requestor_name": {"first": "John", "last": "Doe"},
+                "requestor_email": "john.doe@example.com",
+                "refund_type": "refund",
+                "notes": "Customer requested refund due to schedule conflict",
+                "sheet_link": "https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1435845892&range=A5"
             }
         } 
