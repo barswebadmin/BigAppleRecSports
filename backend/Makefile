@@ -26,7 +26,7 @@ help:
 	@echo "Examples:"
 	@echo "make test-specific TEST=test_slack_message_formatting.py"
 	@echo "make test-specific TEST=test_orders_api.py::test_fetch_order"
-	@echo "make test-specific TEST=services/test_csv_service.py"
+	@echo "make test-specific TEST=services/tests/test_csv_service.py"
 	@echo ""
 	@echo "Version Management:"
 	@echo "make version      - Show current version information"
@@ -173,7 +173,7 @@ test-specific:
 		echo "Examples:"; \
 		echo "  make test-specific TEST=test_slack_message_formatting.py"; \
 		echo "  make test-specific TEST=test_orders_api.py::test_fetch_order"; \
-		echo "  make test-specific TEST=services/test_csv_service.py"; \
+		echo "  make test-specific TEST=services/tests/test_csv_service.py"; \
 		exit 1; \
 	fi
 	@echo "🧪 Running specific test: $(TEST)"
