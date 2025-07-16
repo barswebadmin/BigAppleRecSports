@@ -10,13 +10,12 @@ from typing import Dict, List, Optional
 
 # Configuration
 SHOP_DOMAIN = "09fe59-3.myshopify.com"
-ACCESS_TOKEN = os.environ.get("SHOPIFY_ACCESS_TOKEN", "dummy_token_for_local_development")
 
 class ShopifyImageUpdater:
     """Handles Shopify product image updates via REST and GraphQL APIs"""
     
     def __init__(self):
-        self.access_token = ACCESS_TOKEN
+        self.access_token = os.environ.get("SHOPIFY_ACCESS_TOKEN", "dummy_token_for_local_development")
         self.shop_domain = SHOP_DOMAIN
     
     def update_product_image(self, product_id: str, product_gid: str, image_url: str, sport: str, original_image: Optional[str] = None) -> bool:

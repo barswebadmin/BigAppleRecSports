@@ -54,9 +54,10 @@ def create_schedule_target(
     Returns:
         Target configuration dictionary
     """
+    import json
     return {
         "Arn": function_arn,
         "RoleArn": role_arn,
-        "Input": input_data,
+        "Input": json.dumps(input_data),
         "Description": description or "Created by BARS Lambda"
     } 

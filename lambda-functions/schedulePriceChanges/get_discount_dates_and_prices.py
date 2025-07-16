@@ -18,8 +18,8 @@ def get_discount_dates_and_prices(season_start_date, off_dates_comma_separated, 
         print(f"✅ Parsed sport start time: {sport_start_time_parsed}")
 
         # Combine date and time
-        season_start = datetime.combine(season_date, sport_start_time_parsed)
-        print(f"✅ Combined season start datetime: {season_start}")
+        season_start_date = datetime.combine(season_date, sport_start_time_parsed)
+        print(f"✅ Combined season start datetime: {season_start_date}")
 
         # Parse off dates
         off_dates = parse_off_dates(off_dates_comma_separated, sport_start_time_parsed)
@@ -30,7 +30,7 @@ def get_discount_dates_and_prices(season_start_date, off_dates_comma_separated, 
 
         # Calculate discount schedule
         discount_schedule = calculate_discounted_schedule(
-            season_start=season_start,
+            season_start_date=season_start_date,
             off_dates=off_dates,
             base_price=price
         )

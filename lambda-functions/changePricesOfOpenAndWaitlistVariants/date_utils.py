@@ -27,6 +27,6 @@ def extract_season_dates(description_html):
     if not match:
         return None, None
 
-    season_start = match.group(1)
+    season_start_date = match.group(1)
     off_dates_str = match.group(3)
-    return season_start, off_dates_str
+    return season_start_date, off_dates_str
