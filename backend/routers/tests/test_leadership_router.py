@@ -5,8 +5,16 @@ Unit tests for Leadership Router API endpoints
 
 import pytest
 import json
+import sys
+import os
 from typing import Dict, Any
 from fastapi.testclient import TestClient
+
+# Ensure backend directory is first in path for imports
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from main import app
 
 # Test data mimicking what Google Sheets would send (with 'Personal Email' column)

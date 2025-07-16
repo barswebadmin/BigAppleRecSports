@@ -173,10 +173,10 @@ class TestSlackMessageFormatting:
         """Test that sport group mentions are correctly applied"""
         # Test that sport group mentions work (current testing config uses personal channel)
         test_cases = [
-            ("Big Apple Kickball - Monday", "<#D026TPC6S3H>"),  # Testing format
-            ("Big Apple Bowling - Tuesday", "<#D026TPC6S3H>"),  # Testing format
-            ("Big Apple Pickleball - Wednesday", "<#D026TPC6S3H>"),  # Testing format
-            ("Big Apple Dodgeball - Thursday", "<#D026TPC6S3H>"),  # Testing format
+            ("Big Apple Kickball - Monday", "<!subteam^S08L2521XAM>"),  # Testing format
+            ("Big Apple Bowling - Tuesday", "<!subteam^S08KJJ02738>"),  # Testing format
+            ("Big Apple Pickleball - Wednesday", "<!subteam^S08KTJ33Z9R>"),  # Testing format
+            ("Big Apple Dodgeball - Thursday", "<!subteam^S08KJJ5CL4W>"),  # Testing format
             ("Some Other Sport", "@here")  # fallback
         ]
         

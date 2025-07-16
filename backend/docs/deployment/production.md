@@ -189,4 +189,20 @@ For production issues:
 3. **Test connectivity:** Verify Shopify API access
 4. **Slack status:** Confirm #refunds channel access
 
-The refunds workflow is now production-ready with full API integration! 🎉 
+The refunds workflow is now production-ready with full API integration! 🎉
+
+## Related Documentation
+
+- **[📖 Documentation Index](../README.md)** - All documentation
+- **[🔌 Orders API](../api/orders.md)** - API endpoints used in production
+- **[🧪 Testing Guide](../testing/README.md)** - Production testing procedures
+- **[👨‍💻 Versioning Guide](../development/versioning.md)** - Release management
+- **[🏠 Main README](../../README.md)** - Project setup and overview 
+
+## Related Documentation
+
+- **[📖 Documentation Index](../README.md)** - All documentation
+- **[🔌 Orders API](../api/orders.md)** - API endpoints used in production
+- **[🧪 Testing Guide](../testing/README.md)** - Production testing procedures
+- **[👨‍💻 Versioning Guide](../development/versioning.md)** - Release management
+- **[🏠 Main README](../../README.md)** - Project setup and overview

@@ -164,6 +164,51 @@ class OrdersService:
         result = self.fetch_order_details(order_name=order_name)
         return result.get("data") if result.get("success") else None
     
+    def get_enhanced_order_details(self, order_name: str, email: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get enhanced order details with refund calculations, inventory summary, and admin URLs.
+        Includes email fallback if order not found by name.
+        """
+        try:
+            # Try to fetch by order number first
+            result = self.fetch_order_details(order_name=order_name)
+            
+            # If order not found by number and email provided, try by email
+            if not result["success"] and email:
+                logger.info(f"Order {order_name} not found, trying by email: {email}")
+                result = self.fetch_order_details(email=email)
+            
+            if not result["success"]:
+                return result
+            
+            order_data = result["data"]
+            
+            # Add calculated refund information
+            refund_calculation = self.calculate_refund_due(order_data, "refund")
+            credit_calculation = self.calculate_refund_due(order_data, "credit")
+            inventory_summary = self.get_inventory_summary(order_data)
+            
+            # Enhance response with additional calculated data
+            enhanced_response = {
+                "order": order_data,
+                "refund_calculation": refund_calculation,
+                "credit_calculation": credit_calculation,
+                "inventory_summary": inventory_summary,
+                "product_urls": {
+                    "shopify_admin": f"https://admin.shopify.com/store/09fe59-3/products/{order_data['product']['productId'].split('/')[-1]}",
+                    "order_admin": f"https://admin.shopify.com/store/09fe59-3/orders/{order_data['orderId'].split('/')[-1]}"
+                }
+            }
+            
+            return {
+                "success": True,
+                "data": enhanced_response
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting enhanced order details for {order_name}: {str(e)}")
+            return {"success": False, "message": f"Error getting enhanced order details: {str(e)}"}
+    
     def fetch_product_variants(self, product_id: str) -> List[Dict[str, Any]]:
         """
         Fetch all variants for a specific product by product ID
@@ -222,79 +267,81 @@ class OrdersService:
     
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
         """
-        Cancel an order.
+        Cancel a Shopify order.
         Delegates to ShopifyOperations helper.
         """
         return self.shopify_operations.cancel_order(order_id)
-
     
-    def cancel_order_with_refund(
-        self,
-        order_id: str,
-        refund_amount: float,
-        should_restock: bool = True,
-        send_slack_notification: bool = True
-    ) -> Dict[str, Any]:
+    def cancel_order_with_logging(self, order_id: str, order_number: str, is_debug_mode: bool = False) -> Dict[str, Any]:
         """
-        Complete order cancellation workflow with refund and optional restocking.
-        
-        Args:
-            order_id: Shopify order ID
-            refund_amount: Amount to refund
-            should_restock: Whether to restock inventory
-            send_slack_notification: Whether to send Slack notification
-            
-        Returns:
-            Dict containing operation results
+        Cancel order with enhanced logging for debugging and monitoring.
+        Moved from slack router to maintain separation of concerns.
         """
         try:
-            results: Dict[str, Optional[Dict[str, Any]]] = {
-                "cancel_result": None,
-                "refund_result": None,
-                "restock_result": None,
-                "slack_result": None
-            }
-            
-            # Step 1: Cancel the order
-            logger.info(f"Canceling order {order_id}")
-            results["cancel_result"] = self.shopify_operations.cancel_order(order_id)
-            
-            if not results["cancel_result"]["success"]:
-                return {"success": False, "message": "Failed to cancel order", "results": results}
-            
-            # Step 2: Create refund if amount > 0
-            if refund_amount > 0:
-                logger.info(f"Creating refund of ${refund_amount:.2f} for order {order_id}")
-                results["refund_result"] = self.shopify_operations.create_refund(order_id, refund_amount)
+            if is_debug_mode:
+                logger.info(f"🧪 DEBUG MODE: Would cancel order {order_id} in Shopify")
+                logger.info(f"🛑 Mocking cancel for order ID: '{order_id}'")
+                cancel_result = {"success": True, "message": "Mock order cancellation in debug mode"}
+                logger.info(f"🛑 Mock cancel result: {cancel_result}")
+                return cancel_result
+            else:
+                logger.info(f"🚀 PRODUCTION MODE: Making real order cancellation API call")
+                logger.info(f"🛑 Attempting to cancel order ID: '{order_id}'")
+                cancel_result = self.shopify_operations.cancel_order(order_id)
+                logger.info(f"🛑 Cancel result: {cancel_result}")
+                return cancel_result
                 
-                if not results["refund_result"]["success"]:
-                    logger.warning(f"Refund creation failed, but order was canceled: {results['refund_result']['message']}")
+        except Exception as e:
+            logger.error(f"Error in cancel_order_with_logging for order {order_number}: {str(e)}")
+            return {"success": False, "message": f"Error canceling order: {str(e)}"}
+    
+    def fetch_order_details_with_logging(self, order_name: str, is_debug_mode: bool = False) -> Dict[str, Any]:
+        """
+        Fetch order details with enhanced logging for debugging and monitoring.
+        Moved from slack router to maintain separation of concerns.
+        """
+        try:
+            if is_debug_mode:
+                logger.info(f"🧪 DEBUG MODE: Fetching REAL order details for {order_name}")
+            else:
+                logger.info(f"🚀 PRODUCTION MODE: Making real API calls")
+                logger.info(f"📦 Fetching order details for: {order_name}")
             
-            # Step 3: Restock inventory if requested
-            if should_restock:
-                logger.info(f"Restocking inventory for order {order_id}")
-                results["restock_result"] = self.shopify_operations.restock_inventory(order_id)
-                
-                if not results["restock_result"]["success"]:
-                    logger.warning(f"Inventory restocking failed: {results['restock_result']['message']}")
+            order_result = self.fetch_order_details(order_name=order_name)
             
-            # Step 4: Send Slack notification if requested
-            if send_slack_notification:
-                # Note: This would need order details and requestor info
-                # For now, just log that notification would be sent
-                logger.info("Slack notification would be sent here")
-                results["slack_result"] = {"success": True, "message": "Notification sent"}
+            if is_debug_mode:
+                logger.info(f"📦 Order fetch result: success={order_result.get('success')}, keys={list(order_result.keys())}")
+            else:
+                logger.info(f"📦 Order fetch result: success={order_result.get('success')}, keys={list(order_result.keys())}")
             
-            return {
-                "success": True,
-                "message": "Order cancellation workflow completed",
-                "results": results
-            }
+            if not order_result["success"]:
+                logger.error(f"Failed to fetch order details for {order_name}: {order_result['message']}")
+                if not is_debug_mode:
+                    logger.info(f"❌ Order fetch failed: {order_result.get('message', 'Unknown error')}")
+                return order_result
+            
+            shopify_order_data = order_result["data"]
+            order_id = shopify_order_data.get("id", "")
+            
+            if not is_debug_mode:
+                logger.info(f"📦 Order data keys: {list(shopify_order_data.keys()) if shopify_order_data else 'None'}")
+                logger.info(f"📦 Extracted order ID: '{order_id}'")
+            
+            return order_result
             
         except Exception as e:
-            logger.error(f"Error in cancel_order_with_refund: {str(e)}")
-            return {"success": False, "message": f"Error in cancellation workflow: {str(e)}"}
+            logger.error(f"Error in fetch_order_details_with_logging for order {order_name}: {str(e)}")
+            return {"success": False, "message": f"Error fetching order details: {str(e)}"}
     
+    def create_refund_or_credit(self, order_id: str, amount: float, refund_type: str) -> Dict[str, Any]:
+        """
+        Create either a refund or store credit based on refund_type.
+        """
+        if refund_type.lower() == "credit":
+            return self.create_store_credit(order_id, amount)
+        else:
+            return self.create_refund_only(order_id, amount)
+
     def create_refund_only(self, order_id: str, refund_amount: float) -> Dict[str, Any]:
         """
         Create a refund without canceling the order.
@@ -375,19 +422,89 @@ class OrdersService:
         except Exception as e:
             logger.error(f"Error creating store credit: {str(e)}")
             return {"success": False, "message": f"Error creating store credit: {str(e)}"}
-    
-    def create_refund_or_credit(self, order_id: str, amount: float, refund_type: str) -> Dict[str, Any]:
+
+    def create_refund_or_credit_with_logging(self, order_id: str, refund_amount: float, refund_type: str, order_number: str, is_debug_mode: bool = False) -> Dict[str, Any]:
         """
-        Create either a refund or store credit based on refund_type.
+        Create refund or credit with enhanced logging for debugging and monitoring.
+        Moved from slack router to maintain separation of concerns.
         """
-        if refund_type.lower() == "credit":
-            return self.create_store_credit(order_id, amount)
-        else:
-            return self.create_refund_only(order_id, amount)
+        try:
+            if is_debug_mode:
+                logger.info(f"🧪 DEBUG MODE: Would process refund for order {order_number}")
+                logger.info(f"🧪 DEBUG MODE: Would create ${refund_amount:.2f} {refund_type}")
+                
+                # Mock successful refund result for debug mode
+                refund_result = {"success": True, "refund_id": f"mock-refund-{order_number.replace('#', '')}"}
+                return refund_result
+            else:
+                # Production mode - make actual Shopify API call
+                logger.info(f"🏭 PRODUCTION MODE: Making real {refund_type} API call")
+                refund_result = self.create_refund_or_credit(order_id, refund_amount, refund_type)
+                
+                # Add detailed logging for production debugging
+                if not refund_result["success"]:
+                    logger.error(f"🚨 PRODUCTION REFUND FAILED: Order {order_number}, Amount ${refund_amount}, Type: {refund_type}")
+                    logger.error(f"🚨 ERROR DETAILS: {refund_result.get('message', 'Unknown error')}")
+                else:
+                    logger.info(f"✅ PRODUCTION REFUND SUCCESS: Order {order_number}, Amount ${refund_amount}, Type: {refund_type}")
+                
+                return refund_result
+                
+        except Exception as e:
+            logger.error(f"Error in create_refund_or_credit_with_logging for order {order_number}: {str(e)}")
+            return {"success": False, "message": f"Error processing refund: {str(e)}"}
 
     def restock_order_inventory(self, order_id: str) -> Dict[str, Any]:
         """
         Restock inventory for an order.
         Delegates to ShopifyOperations helper.
         """
-        return self.shopify_operations.restock_inventory(order_id) 
+        return self.shopify_operations.restock_inventory(order_id)
+    
+    def get_inventory_summary(self, order_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get inventory summary for an order's product variants.
+        Returns current inventory levels and availability information.
+        """
+        try:
+            product = order_data.get("product", {})
+            variants = product.get("variants", [])
+            
+            if not variants:
+                return {
+                    "success": False,
+                    "message": "No variants found for inventory summary",
+                    "variants": []
+                }
+            
+            inventory_summary = {
+                "success": True,
+                "product_title": product.get("title", "Unknown Product"),
+                "total_variants": len(variants),
+                "variants": []
+            }
+            
+            total_available = 0
+            for variant in variants:
+                variant_info = {
+                    "variant_id": variant.get("variantId", ""),
+                    "variant_name": variant.get("variantName", "Unknown Variant"),
+                    "inventory_quantity": variant.get("inventory", 0),
+                    "price": variant.get("price", "0"),
+                    "inventory_item_id": variant.get("inventoryItemId", "")
+                }
+                
+                total_available += variant_info["inventory_quantity"]
+                inventory_summary["variants"].append(variant_info)
+            
+            inventory_summary["total_available"] = total_available
+            
+            return inventory_summary
+            
+        except Exception as e:
+            logger.error(f"Error getting inventory summary: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error getting inventory summary: {str(e)}",
+                "variants": []
+            } 

@@ -1,5 +1,6 @@
 import requests
 import json
+import logging
 from typing import Optional, Dict, Any
 import sys
 import os
@@ -12,6 +13,8 @@ try:
     from config import settings
 except ImportError:
     from backend.config import settings
+
+logger = logging.getLogger(__name__)
 
 class ShopifyService:
     def __init__(self):
@@ -238,3 +241,181 @@ class ShopifyService:
             else:
                 print(f"Error creating discount code {code}: {errors}")
         return False 
+
+    def test_connection(self) -> bool:
+        """Test the Shopify connection"""
+        try:
+            query = {
+                "query": "{ shop { name } }"
+            }
+            result = self._make_request(query)
+            return result is not None and "data" in result
+        except Exception:
+            return False
+
+    async def adjust_shopify_inventory(self, variant_id: str, delta: int = 1) -> Dict[str, Any]:
+        """Adjust Shopify inventory using the GraphQL API"""
+        try:
+            if settings.is_debug_mode:
+                # Debug mode - return mock success without API call
+                print(f"🧪 DEBUG MODE: Would adjust inventory for variant {variant_id} by {delta}")
+                
+                # Mock GraphQL mutation for debug purposes
+                mutation_body = {
+                    "query": """
+                        mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
+                            inventoryAdjustQuantities(input: $input) {
+                                userErrors { field message }
+                                inventoryAdjustmentGroup {
+                                    createdAt
+                                    reason
+                                    changes { name delta }
+                                }
+                            }
+                        }
+                    """,
+                    "variables": {
+                        "input": {
+                            "reason": "movement_created",
+                            "name": "available", 
+                            "changes": [
+                                {
+                                    "delta": delta,
+                                    "inventoryItemId": "mock_inventory_item_id",
+                                    "locationId": "gid://shopify/Location/61802217566"
+                                }
+                            ]
+                        }
+                    }
+                }
+                
+                print(f"🧪 DEBUG MODE: Would send GraphQL mutation:\n{json.dumps(mutation_body, indent=2)}")
+                return {"success": True, "message": "Mock inventory adjustment in debug mode"}
+                
+            else:
+                # Production mode - make actual Shopify GraphQL API call
+                print(f"🏭 PRODUCTION MODE: Making real inventory adjustment for variant {variant_id}")
+                
+                # Step 1: Fetch variant details to get inventory item ID (like Google Apps Script)
+                variant_query = {
+                    "query": """
+                        query getVariant($id: ID!) {
+                            productVariant(id: $id) {
+                                id
+                                title
+                                inventoryItem {
+                                    id
+                                }
+                            }
+                        }
+                    """,
+                    "variables": {
+                        "id": variant_id
+                    }
+                }
+                
+                print(f"🔍 Fetching variant details for {variant_id}")
+                
+                variant_response = requests.post(
+                    self.graphql_url,
+                    headers=self.headers,
+                    json=variant_query,
+                    timeout=30
+                )
+                
+                if variant_response.status_code != 200:
+                    error_msg = f"Failed to fetch variant details: HTTP {variant_response.status_code}"
+                    logger.error(error_msg)
+                    return {"success": False, "message": error_msg}
+                
+                variant_result = variant_response.json()
+                
+                if "errors" in variant_result:
+                    error_msg = f"GraphQL errors fetching variant: {variant_result['errors']}"
+                    logger.error(error_msg)
+                    return {"success": False, "message": error_msg}
+                
+                variant_data = variant_result.get("data", {}).get("productVariant")
+                if not variant_data or not variant_data.get("inventoryItem", {}).get("id"):
+                    error_msg = f"No inventory item found for variant {variant_id}"
+                    logger.error(error_msg)
+                    return {"success": False, "message": error_msg}
+                
+                inventory_item_id = variant_data["inventoryItem"]["id"]
+                variant_title = variant_data.get("title", "Unknown")
+                print(f"✅ Found inventory item ID: {inventory_item_id} for variant: {variant_title}")
+                
+                # Step 2: Adjust inventory using the correct inventory item ID
+                inventory_mutation = {
+                    "query": """
+                        mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
+                            inventoryAdjustQuantities(input: $input) {
+                                userErrors { field message }
+                                inventoryAdjustmentGroup {
+                                    createdAt
+                                    reason
+                                    changes { name delta }
+                                }
+                            }
+                        }
+                    """,
+                    "variables": {
+                        "input": {
+                            "reason": "movement_created",
+                            "name": "available", 
+                            "changes": [
+                                {
+                                    "delta": delta,
+                                    "inventoryItemId": inventory_item_id,
+                                    "locationId": "gid://shopify/Location/61802217566"
+                                }
+                            ]
+                        }
+                    }
+                }
+                
+                # Make the actual GraphQL API call to Shopify
+                print(f"🏭 PRODUCTION MODE: Sending inventory adjustment mutation to {self.graphql_url}")
+                response = requests.post(
+                    self.graphql_url,
+                    headers=self.headers,
+                    json=inventory_mutation,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    
+                    # Check for GraphQL errors
+                    if "errors" in result:
+                        error_msg = f"GraphQL errors: {result['errors']}"
+                        logger.error(f"Shopify GraphQL errors during inventory adjustment: {error_msg}")
+                        return {"success": False, "message": error_msg}
+                    
+                    # Check for user errors in the mutation response
+                    data = result.get("data", {})
+                    inventory_adjust = data.get("inventoryAdjustQuantities", {})
+                    user_errors = inventory_adjust.get("userErrors", [])
+                    
+                    if user_errors:
+                        error_msg = f"Inventory adjustment user errors: {user_errors}"
+                        logger.error(f"Shopify inventory adjustment user errors: {error_msg}")
+                        return {"success": False, "message": error_msg}
+                    
+                    # Success case
+                    adjustment_group = inventory_adjust.get("inventoryAdjustmentGroup", {})
+                    logger.info(f"✅ Successfully adjusted inventory for variant {variant_id} by {delta}")
+                    return {
+                        "success": True, 
+                        "message": "Inventory adjusted successfully",
+                        "adjustment_group": adjustment_group
+                    }
+                    
+                else:
+                    error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.error(f"Failed to adjust Shopify inventory: {error_msg}")
+                    return {"success": False, "message": error_msg}
+            
+        except Exception as e:
+            logger.error(f"Error adjusting Shopify inventory: {e}")
+            return {"success": False, "message": str(e)} 
