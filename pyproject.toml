@@ -1,0 +1,27 @@
+[tool.pyright]
+extraPaths = [
+    "./lambda-layers/bars-common-utils/python",
+    "./lambda-functions/MoveInventoryLambda",
+    "./lambda-functions/shopifyProductUpdateHandler", 
+    "./lambda-functions/createScheduledPriceChanges",
+    "./lambda-functions/schedulePriceChanges",
+    "./lambda-functions/CreateScheduleLambda",
+    "./lambda-functions/changePricesOfOpenAndWaitlistVariants"
+]
+
+pythonPath = "python3"
+typeCheckingMode = "basic"
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "./lambda-layers/bars-common-utils/python",
+    "./lambda-functions/MoveInventoryLambda",
+    "./lambda-functions/shopifyProductUpdateHandler",
+    "./lambda-functions/createScheduledPriceChanges", 
+    "./lambda-functions/schedulePriceChanges",
+    "./lambda-functions/CreateScheduleLambda",
+    "./lambda-functions/changePricesOfOpenAndWaitlistVariants"
+]
+
+testpaths = ["lambda-functions/tests"]
+addopts = "-v --tb=short" 

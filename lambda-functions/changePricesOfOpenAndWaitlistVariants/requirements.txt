@@ -1,4 +1,4 @@
-# Add your Python dependencies here
-# Example:
-# boto3==1.26.137
-# requests==2.31.0 
+# No external dependencies required
+# Using standard library urllib for HTTP requests
+# Using standard library json for JSON operations
+# Custom modules handle all other functionality 

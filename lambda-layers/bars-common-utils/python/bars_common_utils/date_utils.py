@@ -3,6 +3,7 @@ Date handling utilities for Lambda functions
 """
 
 from datetime import datetime, timedelta
+from datetime import time as dt_time
 from typing import List, Dict, Optional
 from zoneinfo import ZoneInfo
 
@@ -28,7 +29,7 @@ def parse_date(date_str: str, default_century: int = 2000) -> datetime:
     except Exception as e:
         raise ValueError(f"Invalid date format. Expected MM/DD/YY or MM/DD/YYYY, got: {date_str}")
 
-def parse_time(time_str: str) -> datetime.time:
+def parse_time(time_str: str) -> dt_time:
     """
     Parse a time string in HH:MM AM/PM format
     
@@ -46,7 +47,7 @@ def parse_time(time_str: str) -> datetime.time:
     except Exception as e:
         raise ValueError(f"Invalid time format. Expected HH:MM AM/PM, got: {time_str}")
 
-def parse_off_dates(dates_str: Optional[str], sport_time: datetime.time) -> List[datetime]:
+def parse_off_dates(dates_str: Optional[str], sport_time: dt_time) -> List[datetime]:
     """
     Parse a comma-separated list of dates and combine with sport time
     
