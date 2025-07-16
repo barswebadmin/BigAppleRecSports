@@ -2,6 +2,37 @@
 
 All notable changes to the BARS backend will be documented in this file.
 
+## [2.0.0] - 2025-07-15
+
+### 🔧 Other Changes
+- c426d9f Merge pull request #17 from barswebadmin/update-main-py-again
+- 7dd1a06 Fix Slack webhook invalid_blocks error and add comprehensive test suite
+- 0beb17c update Makefile for CI checks
+- 345b19b Merge pull request #11 from barswebadmin/backend-production-ready
+- c071343 Merge pull request #13 from barswebadmin/fix-render-yaml
+- 4555b86 Fix double parentheses in refund calculation messages
+- cf05b4f fix tests again to pass CI checks
+- 50de248 Merge pull request #10 from barswebadmin/update-lambda-logic
+- b04259f Merge pull request #12 from barswebadmin/backend-production-ready-2
+- 6c7cd90 Merge pull request #15 from barswebadmin/test-auto-deploy
+
+### 📁 Files Changed
+- `backend/.env.example`
+- `backend/Makefile`
+- `backend/ORDERS_API_README.md`
+- `backend/PRODUCTION_DEPLOYMENT.md`
+- `backend/REFACTORING_SUMMARY.md`
+- `backend/SLACK_TESTING_README.md`
+- `backend/SLACK_WEBHOOK_TESTING.md`
+- `backend/TESTING_GUIDE.md`
+- `backend/config.py`
+- `backend/env.example`
+- ... and 37 more files
+
+
+
+All notable changes to the BARS backend will be documented in this file.
+
 ## [1.0.3] - 2025-06-26
 
 ### 🐛 Bug Fixes
