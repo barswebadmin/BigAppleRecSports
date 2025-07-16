@@ -171,8 +171,12 @@ class TestSlackWebhook:
                                            mock_slack_signature, sample_slack_payload):
         """Test cancel order action in debug mode produces expected message format"""
         
-        # Mock the environment to enable debug mode
-        with patch.dict(os.environ, {'ENVIRONMENT': 'debug'}):
+        # Mock the settings object to enable debug mode (settings object is instantiated at import time)
+        with patch('routers.slack.settings') as mock_settings:
+            mock_settings.is_debug_mode = True
+            mock_settings.is_production_mode = False
+            mock_settings.environment = 'debug'
+            
             response = client.post("/slack/webhook", data=sample_slack_payload)
             
             # Verify successful response
@@ -181,8 +185,9 @@ class TestSlackWebhook:
             # Verify orders service was called for order details (note: order_name may be empty due to parsing)
             mock_orders_service.fetch_order_details.assert_called_once()
             
-            # Verify order cancellation was called in debug mode
-            mock_orders_service.cancel_order.assert_called_once()
+            # In debug mode, cancel_order is NOT called - it's mocked directly in the handler
+            # Verify that cancel_order was NOT called (debug mode behavior)
+            mock_orders_service.cancel_order.assert_not_called()
             
             # Verify comprehensive refund message was built with debug flag
             mock_slack_service.api_client.update_message.assert_called_once()
@@ -221,8 +226,12 @@ class TestSlackWebhook:
                                              mock_slack_signature, refund_payload):
         """Test process refund action in debug mode produces expected inventory message format"""
         
-        # Mock the environment to enable debug mode
-        with patch.dict(os.environ, {'ENVIRONMENT': 'debug'}):
+        # Mock the settings object to enable debug mode
+        with patch('routers.slack.settings') as mock_settings:
+            mock_settings.is_debug_mode = True
+            mock_settings.is_production_mode = False
+            mock_settings.environment = 'debug'
+            
             response = client.post("/slack/webhook", data=refund_payload)
             
             # Verify successful response
@@ -263,8 +272,12 @@ class TestSlackWebhook:
             }]
         }
         
-        # Mock the environment to enable debug mode
-        with patch.dict(os.environ, {'ENVIRONMENT': 'debug'}):
+        # Mock the settings object to enable debug mode
+        with patch('routers.slack.settings') as mock_settings:
+            mock_settings.is_debug_mode = True
+            mock_settings.is_production_mode = False
+            mock_settings.environment = 'debug'
+            
             response = client.post("/slack/webhook", data={"payload": json.dumps(payload)})
             assert response.status_code == 200
 
@@ -272,8 +285,12 @@ class TestSlackWebhook:
                                                 mock_slack_signature, restock_payload):
         """Test restock inventory action in debug mode"""
         
-        # Mock the environment to enable debug mode
-        with patch.dict(os.environ, {'ENVIRONMENT': 'debug'}):
+        # Mock the settings object to enable debug mode
+        with patch('routers.slack.settings') as mock_settings:
+            mock_settings.is_debug_mode = True
+            mock_settings.is_production_mode = False
+            mock_settings.environment = 'debug'
+            
             response = client.post("/slack/webhook", data=restock_payload)
             assert response.status_code == 200
             # Current behavior: restock action fails due to missing variant ID from parse_button_value
@@ -282,8 +299,12 @@ class TestSlackWebhook:
     def test_do_not_restock_webhook_debug_mode(self, client, mock_slack_service, mock_slack_signature, do_not_restock_payload):
         """Test 'Do Not Restock' action in debug mode"""
         
-        # Mock the environment to enable debug mode
-        with patch.dict(os.environ, {'ENVIRONMENT': 'debug'}):
+        # Mock the settings object to enable debug mode
+        with patch('routers.slack.settings') as mock_settings:
+            mock_settings.is_debug_mode = True
+            mock_settings.is_production_mode = False
+            mock_settings.environment = 'debug'
+            
             response = client.post("/slack/webhook", data=do_not_restock_payload)
             assert response.status_code == 200
             # Current behavior: do_not_restock_all_done is not recognized as a valid action_id
