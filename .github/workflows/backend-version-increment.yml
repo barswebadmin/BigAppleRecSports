@@ -46,7 +46,7 @@ jobs:
       id: check_merge
       run: |
         # Check if this is a merge commit (has 2+ parents)
-        PARENT_COUNT=$(git rev-list --count --parents -n 1 HEAD | awk '{print NF-1}')
+        PARENT_COUNT=$(git rev-list --parents -n 1 HEAD | awk '{print NF-1}')
         if [ $PARENT_COUNT -gt 1 ]; then
           echo "is_merge=true" >> $GITHUB_OUTPUT
           echo "📝 This is a merge commit - will update version"
