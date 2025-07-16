@@ -1,7 +1,7 @@
 # Backend Version Management
 # This file tracks the current version of the BARS backend API
 
-__version__ = "1.0.3"
+__version__ = "2.0.0"
 __build__ = 4
 __last_updated__ = "2025-06-26"
 __codename__ = "Render Ready"
