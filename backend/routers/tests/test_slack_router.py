@@ -358,52 +358,122 @@ class TestSlackMessageFormatting:
         slack_service = SlackService()
         build_comprehensive_success_message = slack_service.build_comprehensive_success_message
         
-        # Mock order data
+        # Mock order data with customer info
         order_data = {
             "orderId": "gid://shopify/Order/5759498846302", 
             "name": "#40192",
+            "customer": {
+                "firstName": "Alexia",
+                "lastName": "Salingaros"
+            },
             "variants": [
                 {
                     "variantId": "gid://shopify/ProductVariant/41474142871614",
                     "productTitle": "joe test product",
                     "variantTitle": "Veteran Registration",
                     "availableQuantity": 0
+                },
+                {
+                    "variantId": "gid://shopify/ProductVariant/41474142871615",
+                    "productTitle": "joe test product",
+                    "variantTitle": "Open Registration",
+                    "availableQuantity": 0
                 }
             ]
         }
         
-        # Test debug mode message building with correct signature
+        # Test debug mode message building with correct signature and sample message
+        sample_message = ":white_check_mark: Season Start Date for Big Apple Dodgeball - Wednesday - WTNB+ Division - Summer 2025 is 7/9/25. View Request in Google Sheets https://docs.google.com/spreadsheets/d/test"
+        
         result = build_comprehensive_success_message(
             order_data=order_data,
-            refund_amount=1.80,
-            refund_type="refund",
+            refund_amount=97.75,
+            refund_type="credit",
             raw_order_number="#40192",
             order_cancelled=True,
             processor_user="joe randazzo (he/him)",
             is_debug_mode=True,
-            current_message_text="original message",
+            current_message_text=sample_message,
             order_id="gid://shopify/Order/5759498846302"
         )
         
-        # Verify debug format elements are present
+        # Verify comprehensive format elements are present
         assert isinstance(result, dict)
         assert "text" in result
         assert "action_buttons" in result
-        assert result["text"].startswith("✅")
+        
+        # Check message contains customer name
+        assert "Alexia Salingaros" in result["text"]
+        
+        # Check message contains refund amount and type
+        assert "$97.75" in result["text"]
+        assert "credit" in result["text"]
+        
+        # Check message contains processor
+        assert "joe randazzo (he/him)" in result["text"]
+        
+        # Check message contains Google Sheets link
+        assert ":link:" in result["text"]
+        assert "View Request in Google Sheets" in result["text"]
+        
+        # Check message contains season start info
+        assert ":package:" in result["text"]
+        assert "Season Start Date" in result["text"]
+        
+        # Check message contains inventory info
+        assert "Current Inventory:" in result["text"]
+        assert "Veteran Registration: 0 spots available" in result["text"]
+        assert "Open Registration: 0 spots available" in result["text"]
+        assert "Restock Inventory?" in result["text"]
+        
+        # Check action buttons are present
+        assert len(result["action_buttons"]) == 3  # 2 restock buttons + 1 "Do Not Restock"
+        
+        # Verify restock button format with proper Slack button structure
+        button_texts = [btn["text"]["text"] for btn in result["action_buttons"]]
+        assert "Restock Veteran" in button_texts
+        assert "Restock Open" in button_texts
+        assert "Do Not Restock" in button_texts
+        
+        # Verify button structure includes required Slack fields
+        for btn in result["action_buttons"]:
+            assert "type" in btn
+            assert btn["type"] == "button"
+            assert "text" in btn
+            assert "type" in btn["text"]
+            assert btn["text"]["type"] == "plain_text"
+            assert "action_id" in btn
+            assert "value" in btn
+        
+        # Check debug prefix
+        assert "[DEBUG]" in result["text"]
 
     def test_production_vs_debug_message_differences(self, mock_message_builder):
         """Test that production and debug modes produce different message formats"""
         slack_service = SlackService()
         build_comprehensive_success_message = slack_service.build_comprehensive_success_message
         
+        sample_message = ":white_check_mark: Season Start Date for Big Apple Dodgeball - Wednesday - WTNB+ Division - Summer 2025 is 7/9/25. View Request in Google Sheets https://docs.google.com/spreadsheets/d/test"
+        
         base_params = {
-            "order_data": {"orderId": "123", "name": "#40192", "variants": []},
+            "order_data": {
+                "orderId": "123", 
+                "name": "#40192", 
+                "customer": {"firstName": "John", "lastName": "Doe"},
+                "variants": [
+                    {
+                        "variantId": "gid://shopify/ProductVariant/123",
+                        "variantTitle": "Veteran Registration",
+                        "availableQuantity": 5
+                    }
+                ]
+            },
             "refund_amount": 1.80,
             "refund_type": "refund",
             "raw_order_number": "#40192",
             "order_cancelled": True,
             "processor_user": "test user",
-            "current_message_text": "original"
+            "current_message_text": sample_message
         }
         
         # Debug mode
@@ -427,3 +497,17 @@ class TestSlackMessageFormatting:
         assert "text" in prod_result and isinstance(prod_result["text"], str)
         assert "action_buttons" in debug_result
         assert "action_buttons" in prod_result
+        
+        # Both should have comprehensive format
+        assert "John Doe" in debug_result["text"]
+        assert "John Doe" in prod_result["text"]
+        assert ":link:" in debug_result["text"]
+        assert ":link:" in prod_result["text"]
+        assert "Current Inventory:" in debug_result["text"]
+        assert "Current Inventory:" in prod_result["text"]
+        assert len(debug_result["action_buttons"]) > 0
+        assert len(prod_result["action_buttons"]) > 0
+        
+        # Debug should have [DEBUG] prefix, production should not
+        assert "[DEBUG]" in debug_result["text"]
+        assert "[DEBUG]" not in prod_result["text"]

@@ -308,7 +308,7 @@ async def handle_slack_webhook(request: Request):
                 print(f"⚠️ Could not fetch order data for completion message: {order_result.get('error', 'Unknown error')}")
         
         # Build the final completion message preserving who did what
-        completion_message = build_completion_message(
+        completion_message = build_completion_message_after_restocking(
             current_message_full_text=current_message_full_text,
             action_id=action_id,
             variant_name=variant_name,

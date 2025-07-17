@@ -37,20 +37,22 @@ class SlackService:
         
         # Sport-specific team mentions
         # Production team mentions (commented out for testing):
-        # self.sport_groups = {
-        #     "kickball": "<!subteam^S08L2521XAM>",
-        #     "bowling": "<!subteam^S08KJJ02738>", 
-        #     "pickleball": "<!subteam^S08KTJ33Z9R>",
-        #     "dodgeball": "<!subteam^S08KJJ5CL4W>"
-        # }
+        sport_groups_production = {
+            "kickball": "<!subteam^S08L2521XAM>",
+            "bowling": "<!subteam^S08KJJ02738>", 
+            "pickleball": "<!subteam^S08KTJ33Z9R>",
+            "dodgeball": "<!subteam^S08KJJ5CL4W>"
+        }
         
         # Testing configuration - all sports tag personal channel
-        self.sport_groups = {
-            "kickball": "<#D026TPC6S3H>",
-            "bowling": "<#D026TPC6S3H>", 
-            "pickleball": "<#D026TPC6S3H>",
-            "dodgeball": "<#D026TPC6S3H>"
+        sport_groups_joe_testing = {
+            "kickball": "<@U0278M72535>",
+            "bowling": "<@U0278M72535>",
+            "pickleball": "<@U0278M72535>",
+            "dodgeball": "<@U0278M72535>"
         }
+
+        self.sport_groups = sport_groups_production if is_production else sport_groups_joe_testing
 
         self.orders_service = OrdersService()
         self.settings = settings
@@ -607,10 +609,10 @@ class SlackService:
                                       current_message_text: str, order_id: str = "", is_debug_mode: bool = False) -> Dict[str, Any]:
         return self.refunds_utils.build_comprehensive_success_message(order_data, refund_amount, refund_type, raw_order_number, order_cancelled, processor_user, current_message_text, order_id, is_debug_mode)
     
-    def build_completion_message(self, current_message_full_text: str, action_id: str, variant_name: str, 
+    def build_completion_message_after_restocking(self, current_message_full_text: str, action_id: str, variant_name: str, 
                             restock_user: str, sheet_link: str, raw_order_number: str,
                             order_data: Optional[Dict[str, Any]] = None) -> str:
-        return self.refunds_utils.build_completion_message(current_message_full_text, action_id, variant_name, restock_user, sheet_link, raw_order_number, order_data)
+        return self.refunds_utils.build_completion_message_after_restocking(current_message_full_text, action_id, variant_name, restock_user, sheet_link, raw_order_number, order_data)
     
 
     async def handle_restock_inventory(self, request_data: Dict[str, str], action_id: str, channel_id: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:

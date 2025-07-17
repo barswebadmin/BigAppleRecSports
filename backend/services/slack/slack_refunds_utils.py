@@ -205,12 +205,26 @@ class SlackRefundsUtils:
             # Pattern 8: Product Title field (plain text)
             r"Product Title:\s*([^<\n]+)",
             # Pattern 9: Sport/Season/Day field (plain text)
-            r"Sport/Season/Day:\s*([^<\n]+)"
+            r"Sport/Season/Day:\s*([^<\n]+)",
+            # Pattern 10: Handle current format with Product Title link
+            r"\*Product Title\*:\s*<[^|]*\|([^>]+)>\s*\n\s*\*Season Start Date\*:\s*([^\n]+)",
+            # Pattern 11: Handle format without link in Product Title
+            r"\*Product Title\*:\s*([^\n]+)\s*\n\s*\*Season Start Date\*:\s*([^\n]+)"
         ]
         
         product_title = "Unknown Product"
         product_link = None
         season_start_date = "Unknown"
+        
+        # Try new combined patterns first (patterns 10-11)
+        for i, pattern in enumerate(patterns[9:], start=10):
+            season_match = re.search(pattern, message_text)
+            if season_match:
+                product_title = season_match.group(1).strip()
+                season_start_date = season_match.group(2).strip()
+                print(f"✅ Pattern {i} matched! Product: {product_title}, Season Start: {season_start_date}")
+                print("=== END EXTRACT SEASON START INFO DEBUG ===\n")
+                return {"product_title": product_title, "season_start_date": season_start_date, "product_link": None}
         
         # Try to find season start date with product (Pattern 1: with link)
         season_match = re.search(patterns[0], message_text)
@@ -542,13 +556,18 @@ class SlackRefundsUtils:
                 if order_result["success"]:
                     shopify_order_data = order_result["data"]
                     
-                    # Build simple success message
-                    status = "cancelled" if order_cancelled else "active"
-                    debug_prefix = "[DEBUG] " if is_debug_mode else ""
-                    success_message_data = {
-                        "text": f"✅ *{debug_prefix}{refund_type.title()} processed by @{slack_user_name}*\n\nOrder {raw_order_number} ({status}) - ${refund_amount:.2f} {refund_type} processed successfully.",
-                        "action_buttons": []
-                    }
+                    # Build comprehensive success message with inventory and restock buttons
+                    success_message_data = self.build_comprehensive_success_message(
+                        order_data=shopify_order_data,
+                        refund_amount=refund_amount,
+                        refund_type=refund_type,
+                        raw_order_number=raw_order_number,
+                        order_cancelled=order_cancelled,
+                        processor_user=slack_user_name,
+                        current_message_text=current_message_full_text,
+                        order_id=order_id,
+                        is_debug_mode=is_debug_mode
+                    )
                     
                     # ✅ Update Slack message ONLY on Shopify success
                     print(f"🔄 Attempting to update Slack message with {len(success_message_data['action_buttons'])} buttons")
@@ -558,7 +577,7 @@ class SlackRefundsUtils:
                         action_buttons=success_message_data["action_buttons"]
                     )
                 else:
-                    # Fallback if order fetch fails
+                    # Fallback if order fetch fails - use simple message
                     status = "cancelled" if order_cancelled else "active"
                     if is_debug_mode:
                         message = f"✅ *[DEBUG] Mock refund processed by {slack_user_name}*\n\nOrder {raw_order_number} ({status}) - ${refund_amount:.2f} {refund_type} processed successfully."
@@ -673,14 +692,16 @@ class SlackRefundsUtils:
             if order_result["success"]:
                 shopify_order_data = order_result["data"]
                 
-                # Build simple no refund message
+                # Build comprehensive no refund message with inventory and restock buttons
                 try:
-                    status = "cancelled" if order_cancelled else "active"
-                    debug_prefix = "[DEBUG] " if is_debug_mode else ""
-                    no_refund_message_data = {
-                        "text": f"🚫 *{debug_prefix}No refund by @{slack_user_name}*\n\nOrder {raw_order_number} ({status}) - Request closed without refund.",
-                        "action_buttons": []
-                    }
+                    no_refund_message_data = self.build_comprehensive_no_refund_message(
+                        order_data=shopify_order_data,
+                        raw_order_number=raw_order_number,
+                        order_cancelled=order_cancelled,
+                        processor_user=slack_user_name,
+                        thread_ts=thread_ts,
+                        current_message_full_text=current_message_full_text
+                    )
                     
                     print(f"📝 Built message text length: {len(no_refund_message_data['text'])}")
                     print(f"🔘 Built {len(no_refund_message_data['action_buttons'])} action buttons")
@@ -736,30 +757,309 @@ class SlackRefundsUtils:
     def build_comprehensive_success_message(self, order_data: Dict[str, Any], refund_amount: float, refund_type: str,
                                       raw_order_number: str, order_cancelled: bool, processor_user: str,
                                       current_message_text: str, order_id: str = "", is_debug_mode: bool = False) -> Dict[str, Any]:
-        """Build comprehensive success message"""
-        status = "cancelled" if order_cancelled else "active"
+        """Build comprehensive success message with customer info, inventory, and restock buttons"""
         debug_prefix = "[DEBUG] " if is_debug_mode else ""
+        
+        # Extract customer info from order data
+        customer_name = "Unknown Customer"
+        if order_data and "customer" in order_data:
+            customer = order_data["customer"]
+            if customer:
+                first_name = customer.get("firstName", "")
+                last_name = customer.get("lastName", "")
+                if first_name or last_name:
+                    customer_name = f"{first_name} {last_name}".strip()
+        
+        # Fallback: try to extract customer name from current message text
+        if customer_name == "Unknown Customer":
+            import re
+            # Try multiple patterns for extracting customer name
+            name_patterns = [
+                # Pattern 1: "*Requested by:* Name (email)" or "*Requested by:* Name (<email|email>)"
+                r"\*Requested by:\*\s*([^(<]+)(?:\s*\(|$)",
+                # Pattern 2: "Requested by:* Name (email)" without asterisks  
+                r"Requested by:\*?\s*([^(<]+)(?:\s*\(|$)",
+                # Pattern 3: Extract from email context ":e-mail: *Requested by:* Name"
+                r":e-mail:\s*\*Requested by:\*\s*([^(<]+)(?:\s*\(|$)"
+            ]
+            
+            for pattern in name_patterns:
+                customer_match = re.search(pattern, current_message_text)
+                if customer_match:
+                    extracted_name = customer_match.group(1).strip()
+                    if extracted_name and not extracted_name.startswith('<'):  # Avoid matching email links
+                        customer_name = extracted_name
+                        break
+        
+        # Extract season start info from current message
+        season_info = self.extract_season_start_info(current_message_text)
+        product_title = season_info.get("product_title", "Unknown Product")
+        season_start_date = season_info.get("season_start_date", "Unknown")
+        
+        # Extract Google Sheets link from current message
+        sheet_link = self.extract_sheet_link(current_message_text)
+        
+        # Build main message
+        message = f":white_check_mark: {debug_prefix}Request to provide a ${refund_amount:.2f} {refund_type} for Order {raw_order_number} for {customer_name} has been processed by @{processor_user}\n"
+        
+        # Add Google Sheets link
+        if sheet_link:
+            message += f":link: <{sheet_link}|View Request in Google Sheets>\n"
+        else:
+            message += ":link: View Request in Google Sheets\n"
+        
+        # Add season start info
+        message += f":package: Season Start Date for {product_title} is {season_start_date}.\n"
+        
+        # Add inventory information
+        message += " Current Inventory:\n"
+        
+        # Build inventory display and restock buttons from variants
+        action_buttons = []
+        variants_data = []
+        
+        # Check multiple possible locations for variants data
+        if order_data:
+            # Try order_data["variants"] first (from comprehensive data)
+            if "variants" in order_data:
+                variants_data = order_data["variants"]
+            # Try order_data["product"]["variants"] as fallback (from orders service)
+            elif "product" in order_data and "variants" in order_data["product"]:
+                variants_data = order_data["product"]["variants"]
+        
+        if variants_data:
+            for variant in variants_data:
+                # Handle different field name formats from different data sources
+                variant_title = (variant.get("variantTitle") or 
+                               variant.get("variantName") or 
+                               variant.get("title") or 
+                               "Unknown Variant")
+                available_quantity = (variant.get("availableQuantity") or 
+                                    variant.get("inventory") or 
+                                    variant.get("inventoryQuantity") or 
+                                    0)
+                
+                # Add inventory line
+                message += f"• {variant_title}: {available_quantity} spots available\n"
+                
+                # Create restock button (remove "Registration" from variant name if present)
+                button_text = variant_title.replace(" Registration", "").strip()
+                action_buttons.append({
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": f"Restock {button_text}"
+                    },
+                    "action_id": f"restock_{button_text.lower().replace(' ', '_')}",
+                    "value": json.dumps({
+                        "action": "restock_variant",
+                        "variantId": (variant.get("variantId") or variant.get("id") or ""),
+                        "variantTitle": variant_title,
+                        "orderId": order_id,
+                        "rawOrderNumber": raw_order_number
+                    })
+                })
+        else:
+            # Fallback if no variant data
+            message += "• No inventory information available\n"
+        
+        message += "Restock Inventory?"
+        
+        # Add "Do Not Restock" button
+        action_buttons.append({
+            "type": "button",
+            "text": {
+                "type": "plain_text",
+                "text": "Do Not Restock"
+            },
+            "action_id": "do_not_restock",
+            "value": json.dumps({
+                "action": "do_not_restock",
+                "orderId": order_id,
+                "rawOrderNumber": raw_order_number
+            })
+        })
+        
         return {
-            "text": f"✅ *{debug_prefix}{refund_type.title()} processed by @{processor_user}*\n\nOrder {raw_order_number} ({status}) - ${refund_amount:.2f} {refund_type} processed successfully.",
-            "action_buttons": []
+            "text": message,
+            "action_buttons": action_buttons
         }
     
-    def build_completion_message(self, current_message_full_text: str, action_id: str, variant_name: str, 
-                            restock_user: str, sheet_link: str, raw_order_number: str,
-                            order_data: Optional[Dict[str, Any]] = None) -> str:
-        """Build completion message"""
-        return f"✅ *Request completed by @{restock_user}*\n\nOrder {raw_order_number} - Process completed."
+    def build_completion_message_after_restocking(
+        self,
+        current_message_full_text: str,
+        action_id: str,
+        variant_name: str,
+        restock_user: str,
+        sheet_link: str,
+        raw_order_number: str,
+        order_data: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Build completion message after refund and inventory restock."""
+        # Extract order metadata
+        order_name = order_data.get("name", "#Unknown") if order_data else "#Unknown"
+        customer_info = order_data.get("customer", {}) if order_data else {}
+        requestor_name = f"{customer_info.get('firstName', '')} {customer_info.get('lastName', '')}".strip()
+        if not requestor_name:
+            requestor_name = "Unknown Customer"
+
+        # Try to extract order link if possible
+        if order_data:
+            shopify_order_id = order_data.get("id", "")
+            order_numeric_id = shopify_order_id.split("/")[-1] if shopify_order_id else ""
+            order_link = f"https://admin.shopify.com/store/09fe59-3/orders/{order_numeric_id}" if order_numeric_id else ""
+        else:
+            order_link = ""
+
+        # Hardcoded waitlist link (can be made dynamic later if needed)
+        waitlist_link = "https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1811075695"
+
+        # Build Slack message
+        season_info = self.extract_season_start_info(current_message_full_text)
+        product_title = season_info.get("product_title", "Unknown Product")
+        season_start_date = season_info.get("season_start_date", "Unknown")
+        
+        message = (
+            f":white_check_mark: Request to provide a ${variant_name} refund for "
+            f"<{order_link}|Order {order_name}> for {requestor_name} has been processed by <@{restock_user}>.\n\n"
+            f":white_check_mark: Inventory restocked to {variant_name} successfully by <@{restock_user}>\n\n" if action_id == "restock_variant" else f":white_check_mark: Inventory not restocked (processed by <@{restock_user}>)\n\n"
+            f":package: Season Start Date for {product_title} is {season_start_date}.\n\n"
+            f":link: <{waitlist_link}|Open Waitlist to let someone in>\n\n"
+            f":link: <{sheet_link}|View Request in Google Sheets>\n\n"
+            
+        )
+        return message
 
     def build_comprehensive_no_refund_message(self, order_data: Dict[str, Any], raw_order_number: str, 
                                             order_cancelled: bool, processor_user: str,
                                             thread_ts: str, 
                                             current_message_full_text: str) -> Dict[str, Any]:
-        """Build comprehensive no refund message"""
-        status = "cancelled" if order_cancelled else "active"
+        """Build comprehensive no refund message with customer info, inventory, and restock buttons"""
         debug_prefix = "[DEBUG] " if settings.is_debug_mode else ""
+        
+        # Extract customer info from order data
+        customer_name = "Unknown Customer"
+        if order_data and "customer" in order_data:
+            customer = order_data["customer"]
+            if customer:
+                first_name = customer.get("firstName", "")
+                last_name = customer.get("lastName", "")
+                if first_name or last_name:
+                    customer_name = f"{first_name} {last_name}".strip()
+        
+        # Fallback: try to extract customer name from current message text
+        if customer_name == "Unknown Customer":
+            import re
+            # Try multiple patterns for extracting customer name
+            name_patterns = [
+                # Pattern 1: "*Requested by:* Name (email)" or "*Requested by:* Name (<email|email>)"
+                r"\*Requested by:\*\s*([^(<]+)(?:\s*\(|$)",
+                # Pattern 2: "Requested by:* Name (email)" without asterisks  
+                r"Requested by:\*?\s*([^(<]+)(?:\s*\(|$)",
+                # Pattern 3: Extract from email context ":e-mail: *Requested by:* Name"
+                r":e-mail:\s*\*Requested by:\*\s*([^(<]+)(?:\s*\(|$)"
+            ]
+            
+            for pattern in name_patterns:
+                customer_match = re.search(pattern, current_message_full_text)
+                if customer_match:
+                    extracted_name = customer_match.group(1).strip()
+                    if extracted_name and not extracted_name.startswith('<'):  # Avoid matching email links
+                        customer_name = extracted_name
+                        break
+        
+        # Extract season start info from current message
+        season_info = self.extract_season_start_info(current_message_full_text)
+        product_title = season_info.get("product_title", "Unknown Product")
+        season_start_date = season_info.get("season_start_date", "Unknown")
+        
+        # Extract Google Sheets link from current message
+        sheet_link = self.extract_sheet_link(current_message_full_text)
+        
+        # Build main message
+        message = f":white_check_mark: {debug_prefix}Request for no refund for Order {raw_order_number} for {customer_name} has been processed by @{processor_user}\n"
+        
+        # Add Google Sheets link
+        if sheet_link:
+            message += f":link: <{sheet_link}|View Request in Google Sheets>\n"
+        else:
+            message += ":link: View Request in Google Sheets\n"
+        
+        # Add season start info
+        message += f":package: Season Start Date for {product_title} is {season_start_date}.\n"
+        
+        # Add inventory information
+        message += " Current Inventory:\n"
+        
+        # Build inventory display and restock buttons from variants
+        action_buttons = []
+        variants_data = []
+        
+        # Check multiple possible locations for variants data
+        if order_data:
+            # Try order_data["variants"] first (from comprehensive data)
+            if "variants" in order_data:
+                variants_data = order_data["variants"]
+            # Try order_data["product"]["variants"] as fallback (from orders service)
+            elif "product" in order_data and "variants" in order_data["product"]:
+                variants_data = order_data["product"]["variants"]
+        
+        if variants_data:
+            for variant in variants_data:
+                # Handle different field name formats from different data sources
+                variant_title = (variant.get("variantTitle") or 
+                               variant.get("variantName") or 
+                               variant.get("title") or 
+                               "Unknown Variant")
+                available_quantity = (variant.get("availableQuantity") or 
+                                    variant.get("inventory") or 
+                                    variant.get("inventoryQuantity") or 
+                                    0)
+                
+                # Add inventory line
+                message += f"• {variant_title}: {available_quantity} spots available\n"
+                
+                # Create restock button (remove "Registration" from variant name if present)
+                button_text = variant_title.replace(" Registration", "").strip()
+                action_buttons.append({
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": f"Restock {button_text}"
+                    },
+                    "action_id": f"restock_{button_text.lower().replace(' ', '_')}",
+                    "value": json.dumps({
+                        "action": "restock_variant",
+                        "variantId": (variant.get("variantId") or variant.get("id") or ""),
+                        "variantTitle": variant_title,
+                        "orderId": order_data.get("orderId", ""),
+                        "rawOrderNumber": raw_order_number
+                    })
+                })
+        else:
+            # Fallback if no variant data
+            message += "• No inventory information available\n"
+        
+        message += "Restock Inventory?"
+        
+        # Add "Do Not Restock" button
+        action_buttons.append({
+            "type": "button",
+            "text": {
+                "type": "plain_text",
+                "text": "Do Not Restock"
+            },
+            "action_id": "do_not_restock",
+            "value": json.dumps({
+                "action": "do_not_restock",
+                "orderId": order_data.get("orderId", ""),
+                "rawOrderNumber": raw_order_number
+            })
+        })
+        
         return {
-            "text": f"🚫 *{debug_prefix}No refund by @{processor_user}*\n\nOrder {raw_order_number} ({status}) - Request closed without refund.",
-            "action_buttons": []
+            "text": message,
+            "action_buttons": action_buttons
         }
 
     # === MESSAGE MANAGEMENT HELPERS ===
@@ -842,4 +1142,125 @@ class SlackRefundsUtils:
                 
         except Exception as e:
             logger.error(f"❌ Exception sending modal error dialog: {str(e)}")
-            return False 
+            return False
+    
+    async def handle_restock_inventory(
+    self,
+    request_data: Dict[str, str],
+    action_id: str,
+    channel_id: str,
+    thread_ts: str,
+    slack_user_name: str,
+    current_message_full_text: str,
+    trigger_id: Optional[str] = None
+) -> Dict[str, Any]:
+        """Handle inventory restocking button clicks"""
+        print(f"\n📦 === RESTOCK INVENTORY ACTION ===")
+        print(f"👤 User: {slack_user_name}")
+        print(f"🔧 Action ID: {action_id}")
+        print(f"📋 Request Data: {request_data}")
+        print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+        print("=== END RESTOCK INVENTORY ===\n")
+
+        try:
+            order_id = request_data.get("orderId", "")
+            raw_order_number = request_data.get("rawOrderNumber", "")
+            sheet_url = self.extract_sheet_link(current_message_full_text)
+
+            # Handle "Do Not Restock" action early (no variant needed)
+            if action_id == "do_not_restock":
+                print(f"🚫 User chose not to restock inventory")
+                completion_message = self.build_completion_message_after_restocking(
+                    current_message_full_text=current_message_full_text,
+                    action_id=action_id,
+                    variant_name="",
+                    restock_user=slack_user_name,
+                    sheet_link=sheet_url,
+                    raw_order_number=raw_order_number
+                )
+                self.update_slack_on_shopify_success(
+                    message_ts=thread_ts,
+                    success_message=completion_message,
+                    action_buttons=[]
+                )
+                return {"success": True, "message": "Inventory restock declined"}
+
+            # For all other action IDs, require a variant
+            variant_id = request_data.get("variantId", "")
+            variant_title = request_data.get("variantTitle", "Unknown Variant")
+
+            print(f"🔍 EXTRACTED VALUES:")
+            print(f"   order_id: '{order_id}'")
+            print(f"   raw_order_number: '{raw_order_number}'") 
+            print(f"   variant_id: '{variant_id}'")
+            print(f"   variant_title: '{variant_title}'")
+
+            if not variant_id:
+                error_message = "Missing variant ID for inventory restock"
+                logger.error(f"❌ {error_message}")
+                if trigger_id:
+                    self.send_modal_error_to_user(
+                        trigger_id=trigger_id,
+                        error_message=error_message,
+                        operation_name="Inventory Restock"
+                    )
+                return {"success": False, "message": error_message}
+
+            # Step 1: Lookup inventory item ID
+            inventory_info = self.orders_service.shopify_service.get_inventory_item_and_quantity(variant_id)
+            if not inventory_info.get("success"):
+                error_msg = inventory_info.get("message", "Unknown error")
+                modal_error_message = f"Failed to get inventory info for {variant_title}.\n\n**Shopify Error:**\n{error_msg}"
+                if trigger_id:
+                    self.send_modal_error_to_user(trigger_id, modal_error_message, "Inventory Restock")
+                logger.error(f"❌ Inventory info failed: {modal_error_message}")
+                return {"success": False, "message": error_msg}
+
+            inventory_item_id = inventory_info.get("inventoryItemId")
+            current_quantity = inventory_info.get("inventoryQuantity", 0)
+
+            print(f"📊 Current inventory for {variant_title}: {current_quantity}")
+            print(f"🔑 Inventory item ID: {inventory_item_id}")
+
+            # Step 2: Adjust inventory by +1
+            inventory_result = self.orders_service.shopify_service.adjust_inventory(inventory_item_id, delta=1)
+            if not inventory_result.get("success"):
+                error_msg = inventory_result.get("message", "Unknown error")
+                modal_error_message = f"Inventory restock failed for {variant_title}.\n\n**Shopify Error:**\n{error_msg}"
+                if trigger_id:
+                    self.send_modal_error_to_user(trigger_id, modal_error_message, "Inventory Restock")
+                logger.error(f"❌ Inventory restock failed: {modal_error_message}")
+                return {"success": False, "message": error_msg}
+
+            print(f"✅ Successfully restocked {variant_title} by +1")
+            completion_message = self.build_completion_message_after_restocking(
+                current_message_full_text=current_message_full_text,
+                action_id=action_id,
+                variant_name=variant_title,
+                restock_user=slack_user_name,
+                sheet_link=sheet_url,
+                raw_order_number=raw_order_number
+            )
+
+            self.update_slack_on_shopify_success(
+                message_ts=thread_ts,
+                success_message=completion_message,
+                action_buttons=[]
+            )
+
+            return {
+                "success": True,
+                "message": f"Successfully restocked {variant_title} by +1",
+                "new_quantity": current_quantity + 1
+            }
+
+        except Exception as e:
+            error_message = f"Exception in handle_restock_inventory: {str(e)}"
+            logger.error(f"❌ {error_message}")
+            if trigger_id:
+                self.send_modal_error_to_user(
+                    trigger_id=trigger_id,
+                    error_message=f"Unexpected error during inventory restock.\n\n**Error:**\n{str(e)}",
+                    operation_name="Inventory Restock"
+                )
+            return {"success": False, "message": error_message}
