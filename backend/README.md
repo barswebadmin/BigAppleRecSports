@@ -175,16 +175,6 @@ The modular structure makes it easy to test individual components:
 - **API Tests**: Integration tests in `routers/test_*.py`
 - **Mock-Free**: Tests work with real Shopify API (ensure valid token)
 
-## 📚 Documentation
-
-For detailed documentation on specific topics, see the organized documentation in the `docs/` directory:
-
-- **[📖 Documentation Index](docs/README.md)** - Central hub for all documentation
-- **[🔌 Orders API](docs/api/orders.md)** - REST endpoints and API usage
-- **[🧪 Testing Guide](docs/testing/README.md)** - Comprehensive testing documentation
-- **[🚀 Production Deployment](docs/deployment/production.md)** - Production setup and configuration
-- **[👨‍💻 Development Guides](docs/development/)** - Versioning, refactoring, and development workflows
-
 ## Security
 
 - Store sensitive data (Shopify tokens) in environment variables

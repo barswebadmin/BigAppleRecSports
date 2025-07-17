@@ -106,17 +106,6 @@ class MockSlackApiClient:
             "slack_response": {"ok": True}
         }
     
-    def send_ephemeral_error_to_user(self, channel_id: str, user_id: str, error_message: str, operation_name: str) -> Dict[str, Any]:
-        """Mock send_ephemeral_error_to_user that logs but doesn't make real requests"""
-        logger.info(f"🧪 MOCK: Would send ephemeral error to user {user_id} in channel {channel_id} for operation: {operation_name}")
-        logger.debug(f"🧪 MOCK: Error message: {error_message[:100]}...")
-        
-        return {
-            "success": True,
-            "message": "Mock ephemeral error sent successfully",
-            "slack_response": {"ok": True}
-        }
-    
     def send_modal(self, trigger_id: str, modal_view: Dict[str, Any]) -> Dict[str, Any]:
         """Mock send_modal that logs but doesn't make real requests"""
         logger.info(f"🧪 MockSlackApiClient - Would open modal with trigger_id {trigger_id}")
@@ -388,86 +377,6 @@ class SlackApiClient:
                 "error": f"Unexpected error: {str(e)}"
             }
     
-    def send_ephemeral_error_to_user(self, channel_id: str, user_id: str, error_message: str, operation_name: str) -> Dict[str, Any]:
-        """
-        Send an ephemeral error message to a specific user in a channel.
-        
-        Args:
-            channel_id: The channel ID where to send the message
-            user_id: The user ID to send the ephemeral message to
-            error_message: The error message content
-            operation_name: The name of the operation that failed
-            
-        Returns:
-            Dict containing success status and details
-        """
-        if not self.bearer_token:
-            logger.error("No Slack bearer token configured")
-            return {
-                "success": False,
-                "error": "No Slack bearer token configured"
-            }
-        
-        try:
-            url = f"{self.base_url}/chat.postEphemeral"
-            headers = {
-                "Authorization": f"Bearer {self.bearer_token}",
-                "Content-Type": "application/json"
-            }
-            
-            # Create formatted error message
-            formatted_message = f"❌ **{operation_name} Failed**\n\n{error_message}"
-            
-            payload = {
-                "channel": channel_id,
-                "user": user_id,
-                "text": formatted_message,
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": formatted_message
-                        }
-                    }
-                ]
-            }
-            
-            logger.info(f"Sending ephemeral error to user {user_id} in channel {channel_id} for operation: {operation_name}")
-            logger.debug(f"Error message: {error_message[:100]}...")
-            
-            response = requests.post(url, headers=headers, data=json.dumps(payload))
-            response_data = response.json()
-            
-            if response.status_code == 200 and response_data.get("ok"):
-                logger.info("Ephemeral error message sent successfully")
-                return {
-                    "success": True,
-                    "message": "Ephemeral error message sent successfully",
-                    "slack_response": response_data
-                }
-            else:
-                error_msg = response_data.get("error", "Unknown error")
-                logger.error(f"Slack ephemeral error message error: {error_msg}")
-                return {
-                    "success": False,
-                    "error": f"Slack ephemeral error message error: {error_msg}",
-                    "slack_response": response_data
-                }
-                
-        except requests.RequestException as e:
-            logger.error(f"Request error sending ephemeral error message: {str(e)}")
-            return {
-                "success": False,
-                "error": f"Request error: {str(e)}"
-            }
-        except Exception as e:
-            logger.error(f"Unexpected error sending ephemeral error message: {str(e)}")
-            return {
-                "success": False,
-                "error": f"Unexpected error: {str(e)}"
-            }
-
     def send_modal(self, trigger_id: str, modal_view: Dict[str, Any]) -> Dict[str, Any]:
         """
         Send a modal dialog to a specific user.
