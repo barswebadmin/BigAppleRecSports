@@ -171,12 +171,12 @@ class TestSlackMessageFormatting:
     
     def test_sport_group_mentions(self, slack_service):
         """Test that sport group mentions are correctly applied"""
-        # Test that sport group mentions work (current testing config uses personal channel)
+        # Test that sport group mentions work (current testing config uses personal user mentions)
         test_cases = [
-            ("Big Apple Kickball - Monday", "<#D026TPC6S3H>"),  # Testing format
-            ("Big Apple Bowling - Tuesday", "<#D026TPC6S3H>"),  # Testing format
-            ("Big Apple Pickleball - Wednesday", "<#D026TPC6S3H>"),  # Testing format
-            ("Big Apple Dodgeball - Thursday", "<#D026TPC6S3H>"),  # Testing format
+            ("Big Apple Kickball - Monday", "<@U0278M72535>"),  # Testing format (joe's user ID)
+            ("Big Apple Bowling - Tuesday", "<@U0278M72535>"),  # Testing format (joe's user ID)
+            ("Big Apple Pickleball - Wednesday", "<@U0278M72535>"),  # Testing format (joe's user ID)  
+            ("Big Apple Dodgeball - Thursday", "<@U0278M72535>"),  # Testing format (joe's user ID)
             ("Some Other Sport", "@here")  # fallback
         ]
         

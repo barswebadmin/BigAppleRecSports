@@ -29,7 +29,7 @@ class TestRefundRouterErrorCodes:
         from routers.refunds import send_refund_to_slack
         
         # Mock orders service to return failure (no order found)
-        mock_orders_service.fetch_order_details.return_value = {
+        mock_orders_service.fetch_order_details_by_email_or_order_name.return_value = {
             "success": False,
             "message": "Order not found"
         }

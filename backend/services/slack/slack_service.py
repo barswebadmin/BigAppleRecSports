@@ -26,8 +26,9 @@ class SlackService:
     """
     
     def __init__(self):
-        # Slack configuration - dynamic based on environment
-        is_production = settings.environment == "production"
+        # Consistent test mode detection for all configurations
+        is_test_mode = _is_test_mode()
+        is_production = settings.environment == "production" and not is_test_mode
         
         self.refunds_channel = {
             "name": "#refunds" if is_production else "#joe-test",
@@ -36,7 +37,7 @@ class SlackService:
         }
         
         # Sport-specific team mentions
-        # Production team mentions (commented out for testing):
+        # Production team mentions:
         sport_groups_production = {
             "kickball": "<!subteam^S08L2521XAM>",
             "bowling": "<!subteam^S08KJJ02738>", 
@@ -62,7 +63,7 @@ class SlackService:
         self.refunds_utils = SlackRefundsUtils(self.orders_service, self.settings,)
         
         # Use mock API client during tests to prevent real Slack requests
-        if _is_test_mode():
+        if is_test_mode:
             logger.info("🧪 Test mode detected - using MockSlackApiClient")
             self.api_client = MockSlackApiClient(
                 self.refunds_channel["bearer_token"],
