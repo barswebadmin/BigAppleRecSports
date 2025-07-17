@@ -7,12 +7,9 @@ from typing import Dict, Any, Optional, List
 import logging
 import hashlib
 import time
-import json
 from config import settings
 from .message_builder import SlackMessageBuilder
 from .api_client import SlackApiClient, MockSlackApiClient, _is_test_mode
-from .utilities import SlackUtilities
-from fastapi import HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
@@ -37,30 +34,20 @@ class SlackService:
         
         # Sport-specific team mentions
         # Production team mentions (commented out for testing):
-        prod_sport_groups = {
-            "kickball": "<!subteam^S08L2521XAM>",
-            "bowling": "<!subteam^S08KJJ02738>", 
-            "pickleball": "<!subteam^S08KTJ33Z9R>",
-            "dodgeball": "<!subteam^S08KJJ5CL4W>"
-        }
+        # self.sport_groups = {
+        #     "kickball": "<!subteam^S08L2521XAM>",
+        #     "bowling": "<!subteam^S08KJJ02738>", 
+        #     "pickleball": "<!subteam^S08KTJ33Z9R>",
+        #     "dodgeball": "<!subteam^S08KJJ5CL4W>"
+        # }
         
         # Testing configuration - all sports tag personal channel
-        debug_sport_groups = {
-            "kickball": "<@U0278M72535>",
-            "bowling": "<@U0278M72535>", 
-            "pickleball": "<@U0278M72535>",
-            "dodgeball": "<@U0278M72535>"
+        self.sport_groups = {
+            "kickball": "<#D026TPC6S3H>",
+            "bowling": "<#D026TPC6S3H>", 
+            "pickleball": "<#D026TPC6S3H>",
+            "dodgeball": "<#D026TPC6S3H>"
         }
-
-        # Initialize helper services (excluding message_management to avoid circular import)
-        self.utilities = SlackUtilities()
-        self._webhook_handlers = None  # Lazy initialization to avoid circular import
-
-        # Select sport groups based on environment and test mode
-        if _is_test_mode():
-            self.sport_groups = prod_sport_groups
-        else:
-            self.sport_groups = prod_sport_groups if is_production else debug_sport_groups
         
         # Initialize helper components
         self.message_builder = SlackMessageBuilder(self.sport_groups)
@@ -83,15 +70,7 @@ class SlackService:
         # Format: {message_hash: timestamp}
         self._message_cache = {}
         self._cache_expiry_seconds = 300  # 5 minutes
-
-    @property
-    def webhook_handlers(self):
-        """Lazy initialization of webhook handlers to avoid circular imports"""
-        if self._webhook_handlers is None:
-            from .webhook_handlers import SlackWebhookHandlers
-            self._webhook_handlers = SlackWebhookHandlers()
-        return self._webhook_handlers
-
+    
     def _generate_message_hash(self, order_data: Dict[str, Any], requestor_info: Dict[str, Any]) -> str:
         """
         Generate a unique hash for deduplication based on order and requestor info.
@@ -164,7 +143,7 @@ class SlackService:
     def send_refund_request_notification(
         self,
         requestor_info: Dict[str, Any],
-        sheet_link: Optional[str] = None,
+        sheet_link: str,
         order_data: Optional[Dict[str, Any]] = None,
         refund_calculation: Optional[Dict[str, Any]] = None,
         error_type: Optional[str] = None,
@@ -333,146 +312,4 @@ class SlackService:
     def _create_standard_blocks(self, text: str, include_actions: bool = False, 
                                action_buttons: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
         """Create standard Slack message blocks (wrapper for compatibility)"""
-        return self.api_client._create_standard_blocks(text, action_buttons if include_actions else None)
-        
-    def send_ephemeral_error_to_user(
-        self,
-        channel_id: str,
-        user_id: str, 
-        error_message: str,
-        operation_name: str = "operation"
-    ) -> bool:
-        """
-        Send an ephemeral (private) error message to the user who clicked the button.
-        This shows up as a temporary pop-up that only the user can see.
-        """
-        try:
-            # Create ephemeral message payload
-            ephemeral_payload = {
-                "channel": channel_id,
-                "user": user_id,
-                "text": f"❌ **{operation_name.title()} Failed**",
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": f"❌ **{operation_name.title()} Failed**\n\n{error_message}"
-                        }
-                    }
-                ]
-            }
-            
-            # Send ephemeral message via Slack API
-            result = self.api_client.send_ephemeral_message(ephemeral_payload)
-            
-            if result.get('success', False):
-                logger.info(f"✅ Sent ephemeral error message to user {user_id}")
-                return True
-            else:
-                logger.error(f"❌ Failed to send ephemeral message: {result.get('error', 'Unknown error')}")
-                return False
-                
-        except Exception as e:
-            logger.error(f"❌ Exception sending ephemeral error message: {str(e)}")
-            return False 
-
-    async def handle_slack_interactions(self, request: Request):
-        """Handle Slack interactive webhook"""
-        try:
-            # Get raw body and headers for signature verification
-            body = await request.body()
-            timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
-            signature = request.headers.get("X-Slack-Signature", "")
-            
-            # Verify Slack signature for security
-            if not self.utilities.verify_slack_signature(body, timestamp, signature):
-                logger.warning("Invalid Slack signature")
-                raise HTTPException(status_code=401, detail="Invalid signature")
-            
-            # Parse form data
-            form_data = await request.form()
-            payload_data = form_data.get("payload")
-            if isinstance(payload_data, str):
-                payload = json.loads(payload_data)
-            else:
-                raise HTTPException(status_code=400, detail="Invalid payload format")
-            
-            # Extract information from the payload
-            trigger_id = payload.get("trigger_id", "")
-            user = payload.get("user", {})
-            slack_user_id = user.get("id", "")
-            slack_user_name = user.get("username", "")
-            channel_id = payload.get("channel", {}).get("id", "")
-            
-            # Get message info
-            message = payload.get("message", {})
-            message_ts = message.get("ts", "")
-            
-            # Extract the full message text from blocks for context
-            blocks = message.get("blocks", [])
-            current_message_full_text = self.utilities.extract_text_from_blocks(blocks)
-            
-            # Handle button click actions
-            actions = payload.get("actions", [])
-            for action in actions:
-                action_id = action.get("action_id", "")
-                button_value = action.get("value", "")
-                
-                # Parse button data
-                request_data = self.utilities.parse_button_value(button_value)
-                
-                print(f"\n🔧 === SLACK BUTTON INTERACTION ===")
-                print(f"🎯 Action ID: {action_id}")
-                print(f"📋 Request Data: {request_data}")
-                print(f"👤 User: {slack_user_name} ({slack_user_id})")
-                print(f"📍 Channel: {channel_id}, Message: {message_ts}")
-                print(f"🔑 Trigger ID: {trigger_id}")
-                print("=== END SLACK INTERACTION ===\n")
-                
-                # Route to appropriate handlers based on action_id
-                if action_id == "cancel_order":
-                    return await self.webhook_handlers.handle_cancel_order(
-                        request_data, channel_id, message_ts, slack_user_id, slack_user_name, 
-                        current_message_full_text, trigger_id
-                    )
-                elif action_id == "proceed_without_cancel":
-                    return await self.webhook_handlers.handle_proceed_without_cancel(
-                        request_data, channel_id, message_ts, slack_user_id, slack_user_name, 
-                        current_message_full_text, trigger_id
-                    )
-                elif action_id == "cancel_and_close_request":
-                    return await self.webhook_handlers.handle_cancel_and_close_request(
-                        request_data, channel_id, message_ts, slack_user_name, trigger_id
-                    )
-                elif action_id == "process_refund":
-                    return await self.webhook_handlers.handle_process_refund(
-                        request_data, channel_id, message_ts, slack_user_name, 
-                        current_message_full_text, slack_user_id, trigger_id
-                    )
-                elif action_id == "custom_refund_amount":
-                    return await self.webhook_handlers.handle_custom_refund_amount(
-                        request_data, channel_id, message_ts, slack_user_name
-                    )
-                elif action_id == "no_refund":
-                    return await self.webhook_handlers.handle_no_refund(
-                        request_data, channel_id, message_ts, slack_user_name, 
-                        current_message_full_text, trigger_id
-                    )
-                elif action_id.startswith("restock_") or action_id == "do_not_restock":
-                    return await self.webhook_handlers.handle_restock_inventory(
-                        request_data, action_id, channel_id, message_ts, slack_user_name, 
-                        current_message_full_text, trigger_id
-                    )
-                else:
-                    logger.warning(f"Unknown action_id: {action_id}")
-                    return {"text": f"Unknown action: {action_id}"}
-            
-            return {"text": "Action processed successfully"}
-        
-        except HTTPException:
-            # Re-raise HTTP exceptions (like 401 from signature validation) as-is
-            raise
-        except Exception as e:
-            logger.error(f"Error handling Slack interaction: {e}")
-            raise HTTPException(status_code=500, detail=str(e)) 
+        return self.api_client._create_standard_blocks(text, action_buttons if include_actions else None) 

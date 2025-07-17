@@ -1,3 +1,4 @@
+export PYTHONPATH := ../
 .PHONY: start tunnel dev stop install clean help version changelog version-bump test test-all test-unit test-integration test-services test-api test-slack test-specific
 
 # Default target

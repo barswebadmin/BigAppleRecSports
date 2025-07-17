@@ -30,15 +30,41 @@ async def get_order(
     Based on fetchShopifyOrderDetails from the Google Apps Script
     """
     try:
-        result = orders_service.get_enhanced_order_details(order_name=order_number, email=email)
+        # Try to fetch by order number first
+        result = orders_service.fetch_order_details(order_name=order_number)
+        
+        # If order not found by number and email provided, try by email
+        if not result["success"] and email:
+            logger.info(f"Order {order_number} not found, trying by email: {email}")
+            result = orders_service.fetch_order_details(email=email)
         
         if not result["success"]:
             raise HTTPException(status_code=406, detail=result["message"])
         
-        return result
+        order_data = result["data"]
         
-    except HTTPException:
-        raise
+        # Add calculated refund information
+        refund_calculation = orders_service.calculate_refund_due(order_data, "refund")
+        credit_calculation = orders_service.calculate_refund_due(order_data, "credit")
+        inventory_summary = orders_service.get_inventory_summary(order_data)
+        
+        # Enhance response with additional calculated data
+        enhanced_response = {
+            "order": order_data,
+            "refund_calculation": refund_calculation,
+            "credit_calculation": credit_calculation,
+            "inventory_summary": inventory_summary,
+            "product_urls": {
+                "shopify_admin": f"https://admin.shopify.com/store/09fe59-3/products/{order_data['product']['productId'].split('/')[-1]}",
+                "order_admin": f"https://admin.shopify.com/store/09fe59-3/orders/{order_data['orderId'].split('/')[-1]}"
+            }
+        }
+        
+        return {
+            "success": True,
+            "data": enhanced_response
+        }
+        
     except Exception as e:
         logger.error(f"Error fetching order {order_number}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching order: {str(e)}")
@@ -317,30 +343,23 @@ async def restock_order_inventory(
             if not target_variant:
                 raise HTTPException(status_code=404, detail=f"Variant '{variant_name}' not found")
             
-            # Note: restock_inventory expects order_id, not inventory_item_id
-            # For now, we'll use the order_id from the order_data
-            order_id = order_data.get("id", "")
-            if order_id:
-                restock_result = orders_service.restock_order_inventory(order_id)
+            if target_variant.get("inventoryItemId"):
+                restock_result = orders_service.restock_inventory(target_variant["inventoryItemId"])
                 restock_results.append({
                     "variant": target_variant["variantName"],
-                    "inventory_item_id": target_variant.get("inventoryItemId", ""),
+                    "inventory_item_id": target_variant["inventoryItemId"],
                     "result": restock_result
                 })
-            else:
-                raise HTTPException(status_code=400, detail="Order ID not found for restocking")
         else:
-            # Restock all variants - use the order_id to restock all line items
-            order_id = order_data.get("id", "")
-            if order_id:
-                restock_result = orders_service.restock_order_inventory(order_id)
-                restock_results.append({
-                    "variant": "All variants",
-                    "order_id": order_id,
-                    "result": restock_result
-                })
-            else:
-                raise HTTPException(status_code=400, detail="Order ID not found for restocking")
+            # Restock all variants with inventory item IDs
+            for variant in variants:
+                if variant.get("inventoryItemId"):
+                    restock_result = orders_service.restock_inventory(variant["inventoryItemId"])
+                    restock_results.append({
+                        "variant": variant["variantName"],
+                        "inventory_item_id": variant["inventoryItemId"],
+                        "result": restock_result
+                    })
         
         if not restock_results:
             raise HTTPException(status_code=400, detail="No variants with inventory items found to restock")

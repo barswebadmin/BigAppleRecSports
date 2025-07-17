@@ -3,15 +3,11 @@
 Simple test script for the orders API
 """
 
-import pytest
-import requests
-import json
-from unittest.mock import patch, MagicMock
-from fastapi.testclient import TestClient
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from main import app
-from config import settings
-from services.orders import OrdersService
+from services.orders_service import OrdersService
 
 def test_orders_service():
     """Test the OrdersService functionality"""
