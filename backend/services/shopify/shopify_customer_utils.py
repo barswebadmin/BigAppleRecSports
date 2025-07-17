@@ -1,40 +1,12 @@
-import requests
-import json
-from typing import Optional, Dict, Any
-import sys
-import os
+from typing import Dict, Any, Optional, Tuple
+import logging
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+logger = logging.getLogger(__name__)
 
-# Handle imports for both direct execution and module import
-try:
-    from config import settings
-except ImportError:
-    from backend.config import settings
 
-class ShopifyService:
-    def __init__(self):
-        self.graphql_url = settings.graphql_url
-        self.headers = {
-            "Content-Type": "application/json",
-            "X-Shopify-Access-Token": settings.shopify_token
-        }
-    
-    def _make_request(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Make a GraphQL request to Shopify"""
-        try:
-            response = requests.post(
-                self.graphql_url,
-                headers=self.headers,
-                json=query,
-                timeout=30
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            print(f"Request failed: {e}")
-            return None
+class ShopifyCustomerUtils:
+    def __init__(self, request_func):
+        self._make_shopify_request = request_func
     
     def get_customer_id(self, email: str) -> Optional[str]:
         """Get customer ID by email address (deprecated - use get_customer_with_tags)"""
@@ -59,7 +31,7 @@ class ShopifyService:
             }
         }
         
-        result = self._make_request(query)
+        result = self._make_shopify_request(query)
         if result and result.get("data", {}).get("customerByIdentifier"):
             customer_data = result["data"]["customerByIdentifier"]
             return {
@@ -100,7 +72,7 @@ class ShopifyService:
             }
         }
         
-        result = self._make_request(mutation)
+        result = self._make_shopify_request(mutation)
         if result and result.get("data", {}).get("customerUpdate"):
             errors = result["data"]["customerUpdate"].get("userErrors", [])
             if not errors:
@@ -140,7 +112,7 @@ class ShopifyService:
                 """
             }
             
-            result = self._make_request(query)
+            result = self._make_shopify_request(query)
             if result and result.get("data"):
                 for j, email in enumerate(batch_emails):
                     alias = f"customer_{j}"
@@ -178,7 +150,7 @@ class ShopifyService:
             }
         }
         
-        result = self._make_request(mutation)
+        result = self._make_shopify_request(mutation)
         if result and result.get("data", {}).get("segmentCreate", {}).get("segment"):
             return result["data"]["segmentCreate"]["segment"]["id"]
         return None
@@ -230,7 +202,7 @@ class ShopifyService:
             }
         }
         
-        result = self._make_request(mutation)
+        result = self._make_shopify_request(mutation)
         if result and result.get("data", {}).get("discountCodeBasicCreate"):
             errors = result["data"]["discountCodeBasicCreate"].get("userErrors", [])
             if not errors:
@@ -238,3 +210,4 @@ class ShopifyService:
             else:
                 print(f"Error creating discount code {code}: {errors}")
         return False 
+

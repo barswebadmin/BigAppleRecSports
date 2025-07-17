@@ -31,7 +31,7 @@ class TestSlackWebhook:
         """Mock the orders service to return predictable test data"""
         with patch('routers.slack.orders_service') as mock_service:
             # Mock order details response
-            mock_service.fetch_order_details.return_value = {
+            mock_service.fetch_order_details_by_email_or_order_name.return_value = {
                 "success": True,
                 "data": {
                     "orderId": "gid://shopify/Order/5759498846302",
@@ -183,7 +183,7 @@ class TestSlackWebhook:
             assert response.status_code == 200
             
             # Verify orders service was called for order details (note: order_name may be empty due to parsing)
-            mock_orders_service.fetch_order_details.assert_called_once()
+            mock_orders_service.fetch_order_details_by_email_or_order_name.assert_called_once()
             
             # In debug mode, cancel_order is NOT called - it's mocked directly in the handler
             # Verify that cancel_order was NOT called (debug mode behavior)

@@ -8,10 +8,9 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 import json
 import re
-from ..shopify_service import ShopifyService
+from ..shopify import ShopifyService
 from ..slack import SlackService
 from .refund_calculator import RefundCalculator
-from .shopify_operations import ShopifyOperations
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +26,11 @@ class OrdersService:
     def __init__(self):
         self.shopify_service = ShopifyService()
         self.slack_service = SlackService()
-        self.location_id = "61802217566"  # Default location ID from the GS code
         
         # Initialize helper components
         self.refund_calculator = RefundCalculator()
-        self.shopify_operations = ShopifyOperations(self.location_id)
     
-    def fetch_order_details(self, order_name: Optional[str] = None, email: Optional[str] = None) -> Dict[str, Any]:
+    def fetch_order_details_by_email_or_order_name(self, order_name: Optional[str] = None, email: Optional[str] = None) -> Dict[str, Any]:
         """
         Fetch order details from Shopify by order name or email
         Based on fetchShopifyOrderDetails from ShopifyUtils.gs
@@ -86,7 +83,7 @@ class OrdersService:
                 }}"""
             }
             
-            result = self.shopify_service._make_request(query)
+            result = self.shopify_service._make_shopify_request(query)
             
             if not result or not result.get("data"):
                 return {"success": False, "message": "No orders found."}
@@ -161,7 +158,7 @@ class OrdersService:
         Convenience method to get a single order by name.
         Returns the order data or None if not found.
         """
-        result = self.fetch_order_details(order_name=order_name)
+        result = self.fetch_order_details_by_email_or_order_name(order_name=order_name)
         return result.get("data") if result.get("success") else None
     
     def fetch_product_variants(self, product_id: str) -> List[Dict[str, Any]]:
@@ -189,7 +186,7 @@ class OrdersService:
                 }}"""
             }
             
-            result = self.shopify_service._make_request(query)
+            result = self.shopify_service._make_shopify_request(query)
             
             if not result or not result.get("data") or not result["data"].get("product"):
                 return []
@@ -225,169 +222,11 @@ class OrdersService:
         Cancel an order.
         Delegates to ShopifyOperations helper.
         """
-        return self.shopify_operations.cancel_order(order_id)
+        return self.shopify_service.cancel_order(order_id)
 
-    
-    def cancel_order_with_refund(
-        self,
-        order_id: str,
-        refund_amount: float,
-        should_restock: bool = True,
-        send_slack_notification: bool = True
-    ) -> Dict[str, Any]:
-        """
-        Complete order cancellation workflow with refund and optional restocking.
-        
-        Args:
-            order_id: Shopify order ID
-            refund_amount: Amount to refund
-            should_restock: Whether to restock inventory
-            send_slack_notification: Whether to send Slack notification
-            
-        Returns:
-            Dict containing operation results
-        """
-        try:
-            results: Dict[str, Optional[Dict[str, Any]]] = {
-                "cancel_result": None,
-                "refund_result": None,
-                "restock_result": None,
-                "slack_result": None
-            }
-            
-            # Step 1: Cancel the order
-            logger.info(f"Canceling order {order_id}")
-            results["cancel_result"] = self.shopify_operations.cancel_order(order_id)
-            
-            if not results["cancel_result"]["success"]:
-                return {"success": False, "message": "Failed to cancel order", "results": results}
-            
-            # Step 2: Create refund if amount > 0
-            if refund_amount > 0:
-                logger.info(f"Creating refund of ${refund_amount:.2f} for order {order_id}")
-                results["refund_result"] = self.shopify_operations.create_refund(order_id, refund_amount)
-                
-                if not results["refund_result"]["success"]:
-                    logger.warning(f"Refund creation failed, but order was canceled: {results['refund_result']['message']}")
-            
-            # Step 3: Restock inventory if requested
-            if should_restock:
-                logger.info(f"Restocking inventory for order {order_id}")
-                results["restock_result"] = self.shopify_operations.restock_inventory(order_id)
-                
-                if not results["restock_result"]["success"]:
-                    logger.warning(f"Inventory restocking failed: {results['restock_result']['message']}")
-            
-            # Step 4: Send Slack notification if requested
-            if send_slack_notification:
-                # Note: This would need order details and requestor info
-                # For now, just log that notification would be sent
-                logger.info("Slack notification would be sent here")
-                results["slack_result"] = {"success": True, "message": "Notification sent"}
-            
-            return {
-                "success": True,
-                "message": "Order cancellation workflow completed",
-                "results": results
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in cancel_order_with_refund: {str(e)}")
-            return {"success": False, "message": f"Error in cancellation workflow: {str(e)}"}
-    
-    def create_refund_only(self, order_id: str, refund_amount: float) -> Dict[str, Any]:
-        """
-        Create a refund without canceling the order.
-        Delegates to ShopifyOperations helper.
-        """
-        return self.shopify_operations.create_refund(order_id, refund_amount)
-    
-    def create_store_credit(self, order_id: str, credit_amount: float) -> Dict[str, Any]:
-        """
-        Create store credit for a Shopify order
-        Based on createShopifyStoreCredit from ShopifyUtils.gs
-        """
-        try:
-            store_credit_mutation = {
-                "query": """
-                    mutation CreateRefund($input: RefundInput!) {
-                        refundCreate(input: $input) {
-                            refund {
-                                id
-                                note
-                                totalRefundedSet {
-                                    presentmentMoney {
-                                        amount
-                                    }
-                                }
-                            }
-                            userErrors {
-                                field
-                                message
-                            }
-                        }
-                    }
-                """,
-                "variables": {
-                    "input": {
-                        "notify": True,
-                        "orderId": order_id,
-                        "note": f"Store Credit issued via Slack workflow for ${credit_amount:.2f}",
-                        "refundMethods": [{
-                            "storeCreditRefund": {
-                                "amount": {
-                                    "amount": str(credit_amount),
-                                    "currencyCode": "USD"
-                                }
-                            }
-                        }]
-                    }
-                }
-            }
-            
-            response_data = self.shopify_service._make_request(store_credit_mutation)
-            
-            if not response_data:
-                return {"success": False, "message": "Failed to create store credit - no response from Shopify"}
-            
-            if "errors" in response_data:
-                error_msg = f"GraphQL errors: {response_data['errors']}"
-                logger.error(f"Shopify GraphQL errors during store credit creation: {error_msg}")
-                return {"success": False, "message": error_msg}
-            
-            credit_data = response_data.get("data", {}).get("refundCreate", {})
-            
-            if credit_data.get("userErrors"):
-                error_msg = f"Store credit creation failed: {credit_data['userErrors']}"
-                logger.error(f"Store credit user errors: {error_msg}")
-                return {"success": False, "message": error_msg}
-            
-            # Success case
-            refund_info = credit_data.get("refund", {})
-            return {
-                "success": True, 
-                "data": {
-                    "creditId": refund_info.get("id"),
-                    "amount": refund_info.get("totalRefundedSet", {}).get("presentmentMoney", {}).get("amount", "0")
-                }
-            }
-            
-        except Exception as e:
-            logger.error(f"Error creating store credit: {str(e)}")
-            return {"success": False, "message": f"Error creating store credit: {str(e)}"}
-    
     def create_refund_or_credit(self, order_id: str, amount: float, refund_type: str) -> Dict[str, Any]:
         """
         Create either a refund or store credit based on refund_type.
-        """
-        if refund_type.lower() == "credit":
-            return self.create_store_credit(order_id, amount)
-        else:
-            return self.create_refund_only(order_id, amount)
-
-    def restock_order_inventory(self, order_id: str) -> Dict[str, Any]:
-        """
-        Restock inventory for an order.
         Delegates to ShopifyOperations helper.
         """
-        return self.shopify_operations.restock_inventory(order_id) 
+        return self.shopify_service.create_refund(order_id, amount, refund_type)

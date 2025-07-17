@@ -498,7 +498,7 @@ async def handle_cancel_order(request_data: Dict[str, str], channel_id: str, thr
         
         # Fetch fresh order details from Shopify to get complete data
         print(f"📦 Fetching order details for: {raw_order_number}")
-        order_result = orders_service.fetch_order_details(order_name=raw_order_number)
+        order_result = orders_service.fetch_order_details_by_email_or_order_name(order_name=raw_order_number)
         print(f"📦 Order fetch result: success={order_result.get('success')}, keys={list(order_result.keys())}")
         
         if not order_result["success"]:
@@ -659,7 +659,7 @@ async def handle_proceed_without_cancel(request_data: Dict[str, str], channel_id
         logger.info(f"Proceeding without canceling order: {raw_order_number}")
         
         # Fetch fresh order details from Shopify to get complete data
-        order_result = orders_service.fetch_order_details(order_name=raw_order_number)
+        order_result = orders_service.fetch_order_details_by_email_or_order_name(order_name=raw_order_number)
         if not order_result["success"]:
             logger.error(f"Failed to fetch order details for {raw_order_number}: {order_result['message']}")
             error_message = f"❌ Failed to fetch order details: {order_result['message']}"
@@ -797,7 +797,7 @@ async def handle_process_refund(request_data: Dict[str, str], channel_id: str, t
         
         if refund_result["success"]:
             # Fetch fresh order details for comprehensive message
-            order_result = orders_service.fetch_order_details(order_name=raw_order_number)
+            order_result = orders_service.fetch_order_details_by_email_or_order_name(order_name=raw_order_number)
             if order_result["success"]:
                 shopify_order_data = order_result["data"]
                 
@@ -945,7 +945,7 @@ async def handle_no_refund(request_data: Dict[str, str], channel_id: str, thread
         print(f"🏭 Closing refund request (no API calls needed)")
         
         # Fetch fresh order details for comprehensive message
-        order_result = orders_service.fetch_order_details(order_name=raw_order_number)
+        order_result = orders_service.fetch_order_details_by_email_or_order_name(order_name=raw_order_number)
         if order_result["success"]:
             shopify_order_data = order_result["data"]
             
@@ -1050,7 +1050,7 @@ async def handle_restock_inventory(request_data: Dict[str, str], action_id: str,
         # Fetch fresh order details for comprehensive message (like no-refund handler)
         order_data = None
         if raw_order_number:
-            order_result = orders_service.fetch_order_details(order_name=raw_order_number)
+            order_result = orders_service.fetch_order_details_by_email_or_order_name(order_name=raw_order_number)
             if order_result["success"]:
                 order_data = order_result["data"]
                 print(f"✅ Fetched order data for completion message")

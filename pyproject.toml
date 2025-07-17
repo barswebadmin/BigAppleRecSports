@@ -23,5 +23,5 @@ pythonpath = [
     "./lambda-functions/changePricesOfOpenAndWaitlistVariants"
 ]
 
-testpaths = ["lambda-functions/tests"]
+testpaths = ["lambda-functions/tests", "backend/routers/tests"]
 addopts = "-v --tb=short" 
