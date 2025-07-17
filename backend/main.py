@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import leadership, orders, refunds, slack
 from config import settings
-from backend.version import get_version_info
+from version import get_version_info
 
 app = FastAPI(
     title="Big Apple Rec Sports API",

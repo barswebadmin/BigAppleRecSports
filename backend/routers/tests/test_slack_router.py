@@ -11,6 +11,7 @@ from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from main import app
 from config import settings
+from services.slack import SlackService
 
 class TestSlackWebhook:
     """Test Slack webhook functionality including signature validation and button interactions"""
@@ -23,7 +24,8 @@ class TestSlackWebhook:
     @pytest.fixture
     def mock_slack_signature(self):
         """Mock Slack signature validation to always pass"""
-        with patch('routers.slack.verify_slack_signature', return_value=True):
+        # Update to use the SlackService instead of router function
+        with patch.object(SlackService, 'verify_slack_signature', return_value=True):
             yield
     
     @pytest.fixture
@@ -312,17 +314,19 @@ class TestSlackWebhook:
 
     def test_extract_season_start_info(self):
         """Test utility function for extracting season start information"""
-        from routers.slack import extract_season_start_info
+        slack_service = SlackService()
+        extract_season_start_info = slack_service.extract_season_start_info
         
         message = "Season Start Date for Big Apple Product is 7/9/25"
         result = extract_season_start_info(message)
         # Current implementation doesn't find season start info in this format, uses fallback
-        assert result["season_start"] == "Unknown"
+        assert result["season_start_date"] == "Unknown"
         assert result["product_title"] == "Unknown Product"  # Fallback value when parsing fails
 
     def test_extract_sheet_link(self):
         """Test utility function for extracting Google Sheets link"""
-        from routers.slack import extract_sheet_link
+        slack_service = SlackService()
+        extract_sheet_link = slack_service.extract_sheet_link
         
         message = "🔗 <https://docs.google.com/spreadsheets/d/ABCD123/edit|View Request in Google Sheets>"
         result = extract_sheet_link(message)
@@ -351,7 +355,8 @@ class TestSlackMessageFormatting:
 
     def test_debug_message_format_expectations(self, mock_message_builder):
         """Test specific message format expectations for debug mode"""
-        from routers.slack import build_comprehensive_success_message
+        slack_service = SlackService()
+        build_comprehensive_success_message = slack_service.build_comprehensive_success_message
         
         # Mock order data
         order_data = {
@@ -388,7 +393,8 @@ class TestSlackMessageFormatting:
 
     def test_production_vs_debug_message_differences(self, mock_message_builder):
         """Test that production and debug modes produce different message formats"""
-        from routers.slack import build_comprehensive_success_message
+        slack_service = SlackService()
+        build_comprehensive_success_message = slack_service.build_comprehensive_success_message
         
         base_params = {
             "order_data": {"orderId": "123", "name": "#40192", "variants": []},

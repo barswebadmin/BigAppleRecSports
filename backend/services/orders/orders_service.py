@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 import json
 import re
 from ..shopify import ShopifyService
-from ..slack import SlackService
 from .refund_calculator import RefundCalculator
 
 logger = logging.getLogger(__name__)
@@ -25,7 +24,6 @@ class OrdersService:
     
     def __init__(self):
         self.shopify_service = ShopifyService()
-        self.slack_service = SlackService()
         
         # Initialize helper components
         self.refund_calculator = RefundCalculator()

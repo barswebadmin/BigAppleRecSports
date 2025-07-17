@@ -92,7 +92,7 @@ make test-all
 ## Mocking Strategy
 
 ### Unit Tests Use Mocks For:
-- `OrdersService.fetch_order_details()` - Returns test order data
+- `OrdersService.fetch_order_details_by_email_or_order_name()` - Returns test order data
 - `OrdersService.calculate_refund_due()` - Returns mock refund calculations  
 - `SlackService.send_refund_request_notification()` - Returns success/failure without API calls
 

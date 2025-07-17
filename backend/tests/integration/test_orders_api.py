@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from services.orders_service import OrdersService
+from services.orders import OrdersService
 
 def test_orders_service():
     """Test the OrdersService functionality"""
@@ -21,7 +21,7 @@ def test_orders_service():
         test_order = "#1001"  # Replace with a real order number
         print(f"Testing order lookup for: {test_order}")
         
-        result = orders_service.fetch_order_details(order_name=test_order)
+        result = orders_service.fetch_order_details_by_email_or_order_name(order_name=test_order)
         print(f"Order lookup result: {result}")
         
         if result["success"]:

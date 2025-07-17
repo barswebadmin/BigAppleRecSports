@@ -22,7 +22,7 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
         logger.info(f"Processing refund Slack notification for order {request.order_number}")
         
         # Step 1: Fetch order details and validate email
-        order_result = orders_service.fetch_order_details(order_name=request.order_number)
+        order_result = orders_service.fetch_order_details_by_email_or_order_name(order_name=request.order_number)
         
         if not order_result["success"]:
             logger.error(f"Order {request.order_number} not found: {order_result['message']}")

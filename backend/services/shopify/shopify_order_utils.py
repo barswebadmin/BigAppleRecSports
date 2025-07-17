@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional, Tuple
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +89,18 @@ class ShopifyOrderUtils:
                     transactions {
                         id
                         kind
-            """
+                        gateway
+                        parentTransaction {
+                            id
+                        }
+                    }
+                }
+            }
+        """
         variables = {"id": order_id}
         response = self._make_shopify_request({"query": query, "variables": variables})
+        print(f"🔍 === SHOPIFY GET ORDER DETAILS DEBUG ===")
+        print(json.dumps(response, indent=2))
         if not response or "data" not in response:
             return {"success": False, "message": "Failed to fetch order details for refund"}
         return response["data"]["order"]
@@ -131,9 +141,15 @@ class ShopifyOrderUtils:
                     }]
                 }
             }
+
+            refund_input = {
+                "notify": True,
+                "orderId": order_id,
+            }
+
             if refund_type.lower() == "credit":
-                variables["input"]["note"] = f"Store Credit issued via Slack workflow for ${refund_amount:.2f}"
-                variables["input"]["refundMethods"] = [{
+                refund_input["note"] = f"Store Credit issued via Slack workflow for ${refund_amount:.2f}"
+                refund_input["refundMethods"] = [{
                     "storeCreditRefund": {
                         "amount": {
                             "amount": str(refund_amount),
@@ -143,13 +159,12 @@ class ShopifyOrderUtils:
                 }]
             else:
                 # Lookup transactions for cash/card refund
-                order_details = self.get_order_details(order_id)
+                order = self.get_order_details(order_id)
 
-                if not order_details or "data" not in order_details:
-                    return {"success": False, "message": "Failed to fetch order details for refund"}
+                if not order or "transactions" not in order:
+                    return {"success": False, "message": "Failed to fetch transactions from order details"}
 
-                order = order_details["data"]["order"]
-                transactions = order.get("transactions", [])
+                transactions = order["transactions"]
                 capture_transaction = next((t for t in transactions if t["kind"] == "CAPTURE"), None)
 
                 if not capture_transaction:
@@ -158,8 +173,8 @@ class ShopifyOrderUtils:
                 gateway = capture_transaction["gateway"]
                 parent_transaction_id = capture_transaction.get("parentTransaction", {}).get("id") or capture_transaction["id"]
 
-                variables["input"]["note"] = f"Refund issued via Slack workflow for ${refund_amount:.2f}"
-                variables["input"]["transactions"] = [{
+                refund_input["note"] = f"Refund issued via Slack workflow for ${refund_amount:.2f}"
+                refund_input["transactions"] = [{
                     "orderId": order_id,
                     "gateway": gateway,
                     "kind": "REFUND",
@@ -169,7 +184,9 @@ class ShopifyOrderUtils:
 
             mutation = {
                 "query": query,
-                "variables": variables
+                "variables": {
+                    "input": refund_input
+                }
             }
 
             response_data = self._make_shopify_request(mutation)
