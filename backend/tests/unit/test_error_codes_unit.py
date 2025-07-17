@@ -29,7 +29,7 @@ class TestRefundRouterErrorCodes:
         from routers.refunds import send_refund_to_slack
         
         # Mock orders service to return failure (no order found)
-        mock_orders_service.fetch_order_details.return_value = {
+        mock_orders_service.fetch_order_details_by_email_or_order_name.return_value = {
             "success": False,
             "message": "Order not found"
         }
@@ -51,7 +51,7 @@ class TestRefundRouterErrorCodes:
         assert "not found" in str(exc_info.value.detail).lower()
         
         # Verify orders service was called but slack service was called for error notification
-        mock_orders_service.fetch_order_details.assert_called_once_with(order_name="#99999999")
+        mock_orders_service.fetch_order_details_by_email_or_order_name.assert_called_once_with(order_name="#99999999")
         mock_slack_service.send_refund_request_notification.assert_called_once()
         
         print("✅ Order not found unit test passed - raised 406!")
@@ -61,7 +61,7 @@ class TestRefundRouterErrorCodes:
         from routers.refunds import send_refund_to_slack
         
         # Mock orders service to return an order with different email
-        mock_orders_service.fetch_order_details.return_value = {
+        mock_orders_service.fetch_order_details_by_email_or_order_name.return_value = {
             "success": True,
             "data": {
                 "id": 12345,
@@ -90,7 +90,7 @@ class TestRefundRouterErrorCodes:
                 "does not match" in str(exc_info.value.detail).lower())
         
         # Verify services were called correctly
-        mock_orders_service.fetch_order_details.assert_called_once_with(order_name="#12345")
+        mock_orders_service.fetch_order_details_by_email_or_order_name.assert_called_once_with(order_name="#12345")
         mock_slack_service.send_refund_request_notification.assert_called_once()
         
         print("✅ Email mismatch unit test passed - raised 409!")
@@ -100,7 +100,7 @@ class TestRefundRouterErrorCodes:
         from routers.refunds import send_refund_to_slack
         
         # Mock orders service to return a matching order
-        mock_orders_service.fetch_order_details.return_value = {
+        mock_orders_service.fetch_order_details_by_email_or_order_name.return_value = {
             "success": True,
             "data": {
                 "id": 12345,
@@ -142,7 +142,7 @@ class TestRefundRouterErrorCodes:
         assert result["data"]["refund_amount"] == 25.00
         
         # Verify both services were called
-        mock_orders_service.fetch_order_details.assert_called_once_with(order_name="#12345")
+        mock_orders_service.fetch_order_details_by_email_or_order_name.assert_called_once_with(order_name="#12345")
         mock_orders_service.calculate_refund_due.assert_called_once()
         mock_slack_service.send_refund_request_notification.assert_called_once()
         
@@ -153,7 +153,7 @@ class TestRefundRouterErrorCodes:
         from routers.refunds import send_refund_to_slack
         
         # Mock orders service to return a valid order
-        mock_orders_service.fetch_order_details.return_value = {
+        mock_orders_service.fetch_order_details_by_email_or_order_name.return_value = {
             "success": True,
             "data": {
                 "id": 12345,
