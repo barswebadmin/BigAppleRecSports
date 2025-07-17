@@ -32,8 +32,8 @@ def test_orders_service():
             print(f"Refund calculation: {refund_calc}")
             
             # Test inventory summary
-            inventory = orders_service.get_inventory_summary(result["data"])
-            print(f"Inventory summary: {inventory}")
+            # inventory = orders_service.get_inventory_summary(result["data"])
+            # print(f"Inventory summary: {inventory}")
             
         else:
             print(f"⚠️ Order not found (expected for test): {result['message']}")

@@ -37,7 +37,7 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
             
             slack_result = slack_service.send_refund_request_notification(
                 requestor_info=requestor_info,
-                sheet_link=request.sheet_link,
+                sheet_link=request.sheet_link or "",
                 error_type="order_not_found",
                 raw_order_number=request.order_number
             )
@@ -66,7 +66,7 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
             slack_result = slack_service.send_refund_request_notification(
                 order_data={"order": order_data},
                 requestor_info=requestor_info,
-                sheet_link=request.sheet_link,
+                sheet_link=request.sheet_link or "",
                 error_type="email_mismatch",
                 order_customer_email=order_customer_email
             )
@@ -92,7 +92,7 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
             order_data={"order": order_data},
             refund_calculation=refund_calculation,
             requestor_info=requestor_info,
-            sheet_link=request.sheet_link
+            sheet_link=request.sheet_link or ""
         )
         
         if not slack_result["success"]:

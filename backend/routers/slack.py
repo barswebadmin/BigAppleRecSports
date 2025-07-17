@@ -100,18 +100,35 @@ async def handle_slack_interactions(request: Request):
         # Process button actions
         if payload and payload.get("type") == "block_actions":
             actions = payload.get("actions", [])
+            
             if actions:
                 action = actions[0]
                 action_id = action.get("action_id")
                 action_value = action.get("value", "")
                 slack_user_id = payload.get("user", {}).get("id", "Unknown")
                 slack_user_name = payload.get("user", {}).get("name", "Unknown")
-                
+
                 # Extract trigger_id for modal dialogs
                 trigger_id = payload.get("trigger_id")
                 
-                # Parse button data
-                request_data = slack_service.parse_button_value(action_value)
+                # Parse button data to get request data
+                if action_value.startswith("{") and action_value.endswith("}"):
+                    # JSON format (newer restock buttons)
+                    try:
+                        request_data = json.loads(action_value)
+                    except json.JSONDecodeError:
+                        logger.error(f"Failed to parse JSON action value: {action_value}")
+                        request_data = {}
+                else:
+                    # Pipe-separated format (older buttons)
+                    request_data = slack_service.parse_button_value(action_value)
+                
+                # Extract requestor info from parsed data
+                requestor_name = {
+                    "first": request_data.get("first", "Unknown"),
+                    "last": request_data.get("last", "Unknown")
+                }
+                requestor_email = request_data.get("email", "Unknown")
                 
                 # Get message info for updating
                 thread_ts = payload.get("message", {}).get("ts")
@@ -145,17 +162,70 @@ async def handle_slack_interactions(request: Request):
                 
                 # === STEP 1 HANDLERS: INITIAL DECISION (Cancel Order / Proceed Without Canceling) ===
                 if action_id == "cancel_order":
-                    return await slack_service.handle_cancel_order(request_data, channel_id, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+                    return await slack_service.handle_cancel_order(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+                
                 elif action_id == "proceed_without_cancel":
-                    return await slack_service.handle_proceed_without_cancel(request_data, channel_id, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+                    return await slack_service.handle_proceed_without_cancel(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+                
                 
                 # === STEP 2 HANDLERS: REFUND DECISION (Process / Custom / No Refund) ===   
                 elif action_id == "process_refund":
                     return await slack_service.handle_process_refund(request_data, channel_id, thread_ts, slack_user_name, current_message_full_text, slack_user_id, trigger_id)
-                # elif action_id == "custom_refund_amount":
-                #     return await handle_custom_refund_amount(request_data, channel_id, thread_ts, slack_user_name)
+                
+                elif action_id == "custom_refund_amount":
+                    return await slack_service.handle_custom_refund_amount(
+                        request_data=request_data,
+                        channel_id=channel_id,
+                        requestor_name=requestor_name,
+                        requestor_email=requestor_email,
+                        thread_ts=thread_ts,
+                        slack_user_name=slack_user_name,
+                        current_message_full_text=current_message_full_text,
+                        slack_user_id=slack_user_id,
+                        trigger_id=trigger_id
+                    )
+                
                 elif action_id == "no_refund":
-                    return await slack_service.handle_no_refund(request_data, channel_id, thread_ts, slack_user_name, current_message_full_text, trigger_id)
+                    return await slack_service.handle_no_refund(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_name, slack_user_id, current_message_full_text, trigger_id)
+                
+                
+                # === STEP 2b: HANDLE CUSTOM REFUND MODAL SUBMISSION ===
+                if payload and payload.get("type") == "view_submission" and payload.get("view", {}).get("callback_id") == "custom_refund_submit":
+                    print("🧾 Received custom refund modal submission")
+
+                    # Extract values from the modal input
+                    values = payload["view"]["state"]["values"]
+                    refund_amount = values["refund_input_block"]["custom_refund_amount"]["value"]
+
+                    # Extract metadata
+                    private_metadata = payload["view"].get("private_metadata")
+                    if not private_metadata:
+                        raise HTTPException(status_code=400, detail="Missing private_metadata in view submission")
+                    
+                    metadata = json.loads(private_metadata)
+
+                    # Build the request_data to match what process_refund expects
+                    request_data = {
+                        "orderId": metadata["orderId"],
+                        "rawOrderNumber": metadata["rawOrderNumber"],
+                        "refundAmount": refund_amount,
+                        "refundType": metadata["refundType"],
+                        "orderCancelled": "false"
+                    }
+
+                    # Call process_refund with the updated amount
+                    return await slack_service.handle_process_refund(
+                        request_data=request_data,
+                        channel_id=metadata["channel_id"],
+                        requestor_name=requestor_name,
+                        requestor_email=requestor_email,
+                        thread_ts=metadata["thread_ts"],
+                        slack_user_name=metadata["slack_user_name"],
+                        current_message_full_text=metadata["current_message_full_text"],
+                        slack_user_id=payload["user"]["id"],
+                        trigger_id=payload.get("trigger_id")
+                    )
+
                 
                 # === STEP 3 HANDLERS: RESTOCK INVENTORY (Restock / Do Not Restock) ===
                 elif action_id and (action_id.startswith("restock") or action_id == "do_not_restock"):
@@ -395,7 +465,7 @@ async def handle_slack_webhook(request: Request):
 # async def handle_custom_amount_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
 #     """Legacy handler - now redirects to custom_refund_amount"""
 #     print(f"\n⚠️ === LEGACY CUSTOM AMOUNT (redirecting to custom_refund_amount) ===")
-#     return await handle_custom_refund_amount(request_data, channel_id, thread_ts, slack_user_name)
+#     return await handle_custom_refund_amount(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, slack_user_id: str = "", trigger_id: Optional[str] = None)
 
 # Legacy handler for backwards compatibility
 # async def handle_cancel_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:

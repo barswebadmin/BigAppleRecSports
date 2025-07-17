@@ -75,7 +75,7 @@ class TestSlackWebhook:
             from unittest.mock import AsyncMock
             
             # Create async mocks that actually interact with the orders service
-            async def mock_handle_cancel_order(request_data, channel_id, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id=None):
+            async def mock_handle_cancel_order(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id=None):
                 # Call the mock orders service as the real implementation would
                 from routers.slack import orders_service, settings
                 raw_order_number = request_data.get("rawOrderNumber", "")
@@ -93,7 +93,7 @@ class TestSlackWebhook:
                 )
                 return {"success": True}
             
-            async def mock_handle_process_refund(request_data, channel_id, thread_ts, slack_user_name, current_message_full_text, slack_user_id="", trigger_id=None):
+            async def mock_handle_process_refund(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_name, current_message_full_text, slack_user_id="", trigger_id=None):
                 # Call the mock orders service as the real implementation would
                 from routers.slack import orders_service
                 raw_order_number = request_data.get("rawOrderNumber", "")
@@ -115,9 +115,23 @@ class TestSlackWebhook:
             async def mock_handle_restock_inventory(request_data, action_id, channel_id, thread_ts, slack_user_name, current_message_full_text, trigger_id=None):
                 return {"success": True}
             
+            async def mock_handle_proceed_without_cancel(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id=None):
+                # Simulate calling the orders service
+                from routers.slack import orders_service
+                raw_order_number = request_data.get("rawOrderNumber", "")
+                orders_service.fetch_order_details_by_email_or_order_name(order_name=raw_order_number)
+                
+                # Simulate updating the Slack message as the real implementation would
+                mock_service.api_client.update_message(
+                    message_ts=thread_ts,
+                    message_text="Mock proceed without cancel response",
+                    action_buttons=[]
+                )
+                return {"success": True}
+            
             # Set up async method mocks
             mock_service.handle_cancel_order = mock_handle_cancel_order
-            mock_service.handle_proceed_without_cancel = AsyncMock(return_value={"success": True})
+            mock_service.handle_proceed_without_cancel = mock_handle_proceed_without_cancel
             mock_service.handle_process_refund = mock_handle_process_refund
             mock_service.handle_custom_refund_amount = AsyncMock(return_value={"success": True})
             mock_service.handle_no_refund = AsyncMock(return_value={"success": True})
@@ -417,7 +431,7 @@ class TestSlackMessageFormatting:
     def test_debug_message_format_expectations(self, mock_message_builder):
         """Test specific message format expectations for debug mode"""
         slack_service = SlackService()
-        build_comprehensive_success_message = slack_service.build_comprehensive_success_message
+        build_comprehensive_success_message = slack_service.refunds_utils.build_comprehensive_success_message
         
         # Mock order data with customer info
         order_data = {
@@ -452,6 +466,8 @@ class TestSlackMessageFormatting:
             refund_type="credit",
             raw_order_number="#40192",
             order_cancelled=True,
+            requestor_name={"first": "Joe", "last": "Randazzo"},
+            requestor_email="joe@bigapplerecsports.com",
             processor_user="joe randazzo (he/him)",
             is_debug_mode=True,
             current_message_text=sample_message,
@@ -464,7 +480,7 @@ class TestSlackMessageFormatting:
         assert "action_buttons" in result
         
         # Check message contains customer name
-        assert "Alexia Salingaros" in result["text"]
+        assert "Joe Randazzo" in result["text"]
         
         # Check message contains refund amount and type
         assert "$97.75" in result["text"]
@@ -512,7 +528,7 @@ class TestSlackMessageFormatting:
     def test_production_vs_debug_message_differences(self, mock_message_builder):
         """Test that production and debug modes produce different message formats"""
         slack_service = SlackService()
-        build_comprehensive_success_message = slack_service.build_comprehensive_success_message
+        build_comprehensive_success_message = slack_service.refunds_utils.build_comprehensive_success_message
         
         sample_message = ":white_check_mark: Season Start Date for Big Apple Dodgeball - Wednesday - WTNB+ Division - Summer 2025 is 7/9/25. View Request in Google Sheets https://docs.google.com/spreadsheets/d/test"
         
@@ -541,6 +557,8 @@ class TestSlackMessageFormatting:
         debug_result = build_comprehensive_success_message(
             **base_params,
             is_debug_mode=True,
+            requestor_name={"first": "Joe", "last": "Randazzo"},
+            requestor_email="joe@bigapplerecsports.com",
             order_id="123"
         )
         
@@ -548,6 +566,8 @@ class TestSlackMessageFormatting:
         prod_result = build_comprehensive_success_message(
             **base_params,
             is_debug_mode=False,
+            requestor_name={"first": "Joe", "last": "Randazzo"},
+            requestor_email="joe@bigapplerecsports.com",
             order_id="123"
         )
         
@@ -560,8 +580,8 @@ class TestSlackMessageFormatting:
         assert "action_buttons" in prod_result
         
         # Both should have comprehensive format
-        assert "John Doe" in debug_result["text"]
-        assert "John Doe" in prod_result["text"]
+        assert "Joe Randazzo" in debug_result["text"]
+        assert "Joe Randazzo" in prod_result["text"]
         assert ":link:" in debug_result["text"]
         assert ":link:" in prod_result["text"]
         assert "Current Inventory:" in debug_result["text"]

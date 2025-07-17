@@ -100,61 +100,7 @@ class SlackMessageBuilder:
         except Exception:
             return "Unknown"
     
-    def _create_confirm_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
-                             requestor_email: str, refund_type: str, refund_amount: float) -> Dict[str, Any]:
-        """Create the confirm/approve button matching Google Apps Script format"""
-        try:
-            formatted_amount = int(refund_amount) if refund_amount == int(refund_amount) else f"{refund_amount:.2f}"
-            
-            button_text = f"✅ Process ${formatted_amount} Refund" if refund_type == "refund" else f"✅ Issue ${formatted_amount} Store Credit"
-            
-            # Safely get names
-            first_name = requestor_name.get("first", "") if isinstance(requestor_name, dict) else ""
-            last_name = requestor_name.get("last", "") if isinstance(requestor_name, dict) else ""
-            
-            return {
-                "type": "button",
-                "text": {"type": "plain_text", "text": button_text},
-                "action_id": "approve_refund",
-                "value": f"rawOrderNumber={order_name}|orderId={order_id}|refundAmount={refund_amount}",
-                "style": "primary",
-                "confirm": {
-                    "title": {"type": "plain_text", "text": "Confirm Approval"},
-                    "text": {"type": "plain_text", "text": f"You are about to issue {first_name} {last_name} a {refund_type} for ${formatted_amount}. Proceed?"},
-                    "confirm": {"type": "plain_text", "text": "Yes, confirm"},
-                    "deny": {"type": "plain_text", "text": "Cancel"}
-                }
-            }
-        except Exception:
-            # Return a basic button if there's any error
-            return {
-                "type": "button",
-                "text": {"type": "plain_text", "text": "✅ Process Refund"},
-                "action_id": "approve_refund",
-                "value": f"rawOrderNumber={order_name}|orderId={order_id}|refundAmount={refund_amount}",
-                "style": "primary"
-            }
-    
-    def _create_refund_different_amount_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
-                                             requestor_email: str, refund_type: str, refund_amount: float) -> Dict[str, Any]:
-        """Create the custom amount button matching Google Apps Script format"""
-        try:
-            button_text = "✏️ Process custom Refund amt" if refund_type == "refund" else "✏️ Issue custom Store Credit amt"
-            
-            return {
-                "type": "button",
-                "text": {"type": "plain_text", "text": button_text},
-                "action_id": "refund_different_amount",
-                "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}"
-            }
-        except Exception:
-            # Return a basic button if there's any error
-            return {
-                "type": "button",
-                "text": {"type": "plain_text", "text": "✏️ Process custom amount"},
-                "action_id": "refund_different_amount",
-                "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}"
-            }
+
     
     # === INITIAL DECISION BUTTONS (Step 1: Cancel Order or Proceed) ===
     
@@ -162,16 +108,13 @@ class SlackMessageBuilder:
                                    requestor_email: str, refund_type: str, refund_amount: float, request_submitted_at: str = "") -> Dict[str, Any]:
         """Create the cancel order button (Step 1)"""
         try:
-            # Get first and last name safely
-            first_name = requestor_name.get("first", "") if isinstance(requestor_name, dict) else ""
-            last_name = requestor_name.get("last", "") if isinstance(requestor_name, dict) else ""
             
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "✅ Cancel Order"},
                 "style": "primary",
                 "action_id": "cancel_order",
-                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|requestorFirstName={first_name}|requestorLastName={last_name}|requestSubmittedAt={request_submitted_at}",
+                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={requestor_name['first']}|last={requestor_name['last']}|email={requestor_email}|requestSubmittedAt={request_submitted_at}",
                 "confirm": {
                     "title": {"type": "plain_text", "text": "Cancel Order"},
                     "text": {"type": "plain_text", "text": f"Cancel order {order_name} in Shopify? This will show refund options next."},
@@ -192,15 +135,14 @@ class SlackMessageBuilder:
                                             requestor_email: str, refund_type: str, refund_amount: float, request_submitted_at: str = "") -> Dict[str, Any]:
         """Create the proceed without canceling button (Step 1)"""
         try:
-            # Get first and last name safely
-            first_name = requestor_name.get("first", "") if isinstance(requestor_name, dict) else ""
-            last_name = requestor_name.get("last", "") if isinstance(requestor_name, dict) else ""
+            first_name = requestor_name.get("first", "")
+            last_name = requestor_name.get("last", "")
             
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "➡️ Do Not Cancel - Proceed"},
                 "action_id": "proceed_without_cancel",
-                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|requestorFirstName={first_name}|requestorLastName={last_name}|requestSubmittedAt={request_submitted_at}"
+                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|email={requestor_email}|requestSubmittedAt={request_submitted_at}"
             }
         except Exception:
             return {
@@ -210,50 +152,26 @@ class SlackMessageBuilder:
                 "value": f"rawOrderNumber={order_name}"
             }
     
-    def _create_cancel_and_close_button(self, order_name: str) -> Dict[str, Any]:
-        """Create the cancel and close request button (Step 1) - same as old cancel button"""
-        try:
-            return {
-                "type": "button",
-                "text": {"type": "plain_text", "text": "❌ Cancel and Close Request"},
-                "style": "danger",
-                "action_id": "cancel_and_close_request",
-                "value": f"rawOrderNumber={order_name}",
-                "confirm": {
-                    "title": {"type": "plain_text", "text": "Confirm Cancellation"},
-                    "text": {"type": "plain_text", "text": "Are you sure you want to cancel and close this request?"},
-                    "confirm": {"type": "plain_text", "text": "Yes, cancel and close it"},
-                    "deny": {"type": "plain_text", "text": "No, keep it"}
-                }
-            }
-        except Exception:
-            return {
-                "type": "button",
-                "text": {"type": "plain_text", "text": "❌ Cancel Request"},
-                "style": "danger",
-                "action_id": "cancel_and_close_request",
-                "value": f"rawOrderNumber={order_name or 'unknown'}"
-            }
     
     # === REFUND DECISION BUTTONS (Step 2: After Cancel/Proceed) ===
     
-    def _create_process_refund_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
-                                    requestor_email: str, refund_type: str, refund_amount: float, order_cancelled: bool = False) -> Dict[str, Any]:
+    def _create_process_refund_button(self, order_id: str, order_name: str,
+                                    requestor_name: Dict[str, str], requestor_email: str, refund_type: str, refund_amount: float, order_cancelled: bool = False) -> Dict[str, Any]:
         """Create the process calculated refund button (Step 2)"""
+        first_name = requestor_name.get("first", "")
+        last_name = requestor_name.get("last", "")
+        
         try:
             formatted_amount = int(refund_amount) if refund_amount == int(refund_amount) else f"{refund_amount:.2f}"
             
             button_text = f"✅ Process ${formatted_amount} Refund" if refund_type == "refund" else f"✅ Issue ${formatted_amount} Store Credit"
             
-            # Safely get names
-            first_name = requestor_name.get("first", "") if isinstance(requestor_name, dict) else ""
-            last_name = requestor_name.get("last", "") if isinstance(requestor_name, dict) else ""
             
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": button_text},
                 "action_id": "process_refund",
-                "value": f"rawOrderNumber={order_name}|orderId={order_id}|refundAmount={refund_amount}|refundType={refund_type}|orderCancelled={order_cancelled}",
+                "value": f"rawOrderNumber={order_name}|orderId={order_id}|refundAmount={refund_amount}|refundType={refund_type}|orderCancelled={order_cancelled}|first={first_name}|last={last_name}|email={requestor_email}",
                 "style": "primary",
                 "confirm": {
                     "title": {"type": "plain_text", "text": "Confirm Refund"},
@@ -267,13 +185,16 @@ class SlackMessageBuilder:
                 "type": "button",
                 "text": {"type": "plain_text", "text": "✅ Process Refund"},
                 "action_id": "process_refund",
-                "value": f"rawOrderNumber={order_name}|orderId={order_id}|refundAmount={refund_amount}",
+                "value": f"rawOrderNumber={order_name}|orderId={order_id}|refundAmount={refund_amount}|first={first_name}|last={last_name}|email={requestor_email}",
                 "style": "primary"
             }
     
-    def _create_custom_refund_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
-                                   requestor_email: str, refund_type: str, refund_amount: float, order_cancelled: bool = False) -> Dict[str, Any]:
+    def _create_custom_refund_button(self, order_id: str, order_name: str, 
+                                   requestor_name: Dict[str, str], requestor_email: str, refund_type: str, refund_amount: float, order_cancelled: bool = False) -> Dict[str, Any]:
         """Create the custom refund amount button (Step 2)"""
+        first_name = requestor_name.get("first", "")
+        last_name = requestor_name.get("last", "")
+        
         try:
             button_text = "✏️ Custom Refund Amount" if refund_type == "refund" else "✏️ Custom Store Credit Amount"
             
@@ -281,25 +202,28 @@ class SlackMessageBuilder:
                 "type": "button",
                 "text": {"type": "plain_text", "text": button_text},
                 "action_id": "custom_refund_amount",
-                "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}|refundType={refund_type}|orderCancelled={order_cancelled}"
+                "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}|refundType={refund_type}|orderCancelled={order_cancelled}|first={first_name}|last={last_name}|email={requestor_email}"
             }
         except Exception:
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "✏️ Custom Amount"},
                 "action_id": "custom_refund_amount",
-                "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}"
+                "value": f"orderId={order_id}|refundAmount={refund_amount}|rawOrderNumber={order_name}|first={first_name}|last={last_name}|email={requestor_email}"
             }
     
-    def _create_no_refund_button(self, order_id: str, order_name: str, order_cancelled: bool = False) -> Dict[str, Any]:
+    def _create_no_refund_button(self, order_id: str, order_name: str, order_cancelled: bool = False, requestor_name: Dict[str, str] = {}, requestor_email: str = "") -> Dict[str, Any]:
         """Create the no refund button (Step 2)"""
+        first_name = requestor_name.get("first", "")
+        last_name = requestor_name.get("last", "")
+        
         try:
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "🚫 Do Not Provide Refund"},
                 "style": "danger",
                 "action_id": "no_refund",
-                "value": f"rawOrderNumber={order_name}|orderId={order_id}|orderCancelled={order_cancelled}",
+                "value": f"rawOrderNumber={order_name}|orderId={order_id}|orderCancelled={order_cancelled}|first={first_name}|last={last_name}|email={requestor_email}",
                 "confirm": {
                     "title": {"type": "plain_text", "text": "No Refund"},
                     "text": {"type": "plain_text", "text": "Proceed to next step without providing any refund?"},
@@ -313,15 +237,18 @@ class SlackMessageBuilder:
                 "text": {"type": "plain_text", "text": "🚫 No Refund"},
                 "style": "danger",
                 "action_id": "no_refund",
-                "value": f"rawOrderNumber={order_name}|orderId={order_id}"
+                "value": f"rawOrderNumber={order_name}|orderId={order_id}|first={first_name}|last={last_name}|email={requestor_email}"
             }
     
     # === MESSAGE CREATION FOR REFUND DECISION (Step 2) ===
     
-    def create_refund_decision_message(self, order_data: Dict[str, Any], refund_type: str, 
+    def create_refund_decision_message(self, order_data: Dict[str, Any], requestor_name: Dict[str, str], requestor_email: str, refund_type: str, 
                                      sport_mention: str, sheet_link: str = "", order_cancelled: bool = False, 
-                                     slack_user: str = "Unknown User", original_timestamp: Optional[str] = None) -> Dict[str, Any]:
+                                     slack_user_id: str = "Unknown User", original_timestamp: Optional[str] = None) -> Dict[str, Any]:
         """Create message for refund decision step (after cancel order or proceed without cancel)"""
+        first_name = requestor_name.get("first", "")
+        last_name = requestor_name.get("last", "")
+        
         try:
             # Extract order information
             order = order_data.get("order", {})
@@ -334,20 +261,6 @@ class SlackMessageBuilder:
             
             # Get original data if passed
             original_data = order_data.get("original_data", {})
-            
-            # Use original requestor info if available, otherwise extract from order_data
-            if original_data.get("requestor_name_display"):
-                requestor_display = original_data["requestor_name_display"]
-            else:
-                requestor_name = order_data.get("requestor_name", {})
-                if requestor_name.get("display"):
-                    requestor_display = requestor_name["display"]
-                else:
-                    first = requestor_name.get("first", "Unknown")
-                    last = requestor_name.get("last", "User")
-                    requestor_display = f"{first} {last}".strip()
-            
-            requestor_email = order_data.get("requestor_email", "unknown@example.com")
             
             # Use preserved timing details
             if original_timestamp:
@@ -410,25 +323,27 @@ class SlackMessageBuilder:
             
             # Header - change based on cancellation status
             if order_cancelled:
-                header_text = "🛑 *Order Canceled*\n\n"
+                header_text = f"🚀 *Order Canceled*, processed by {slack_user_id}\n\n"
             else:
-                header_text = "ℹ️ *Order Not Canceled*\n\n"
+                header_text = f"ℹ️ *Order Not Canceled*, processed by {slack_user_id}\n\n"
             
             # Build message text - using original format with preserved data
             message_text = f"{header_text}"
             message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
-            message_text += f"📧 *Requested by:* {requestor_display} ({requestor_email})\n\n"
-            message_text += f"*Request Submitted At*: {current_time}\n\n"
+            message_text += self._get_requestor_line(requestor_name, requestor_email)
             message_text += f"*Order Number*: {order_number_display}\n\n"
-            message_text += f"*Order Created At:* {order_created_time}\n\n"
             message_text += f"*{product_field_name}:* {product_display}\n\n"
+            message_text += f"*Request Submitted At*: {current_time}\n\n"
+            message_text += f"*Order Created At:* {order_created_time}\n\n"
             message_text += f"*Season Start Date*: {season_start_date}\n\n"
-            message_text += f"*Total Paid:* ${total_paid:.2f}\n\n"
+            
             
             # Add Original Price field if different from Total Paid
             if original_cost is not None and abs(original_cost - total_paid) > 0.01:
                 message_text += f"*Original Price:* ${original_cost:.2f}\n\n"
             
+            message_text += f"*Total Paid:* ${total_paid:.2f}\n\n"
+
             # Add refund calculation details if available
             calc_message = refund_calc.get("message", "")
             if calc_message:
@@ -446,12 +361,11 @@ class SlackMessageBuilder:
                 message_text += f"{inventory_text}\n\n"
             
             message_text += self._get_sheet_link_line(sheet_link)
-            message_text += f"*Order Cancellation Processed by* {slack_user}"
             
             # Create refund decision buttons (Step 2)
             action_buttons = [
-                self._create_process_refund_button(order_id, order_name, {"display": requestor_display}, requestor_email, refund_type, refund_amount, order_cancelled),
-                self._create_custom_refund_button(order_id, order_name, {"display": requestor_display}, requestor_email, refund_type, refund_amount, order_cancelled),
+                self._create_process_refund_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, order_cancelled),
+                self._create_custom_refund_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, order_cancelled),
                 self._create_no_refund_button(order_id, order_name, order_cancelled)
             ]
             
@@ -591,7 +505,6 @@ class SlackMessageBuilder:
             action_buttons = [
                 self._create_cancel_order_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, current_time),
                 self._create_proceed_without_cancel_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, current_time),
-                self._create_cancel_and_close_button(order_name)
             ]
             
             return {
@@ -713,7 +626,6 @@ class SlackMessageBuilder:
             action_buttons = [
                 self._create_cancel_order_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount, current_time),
                 self._create_proceed_without_cancel_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount, current_time),
-                self._create_cancel_and_close_button(order_name)
             ]
             
             return {
