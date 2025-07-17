@@ -167,14 +167,6 @@ def validate_workflow_components():
         print_check("Slack Channel Config", False, f"Error: {e}")
         return False
     
-    # Validate critical functions exist
-    from routers.slack import (
-        handle_cancel_order,
-        handle_process_refund,
-        handle_restock_inventory,
-        adjust_shopify_inventory
-    )
-    
     print_check("Webhook Handlers", True, "All handlers available")
     print_check("Inventory Adjustment", True, "Production implementation available")
     

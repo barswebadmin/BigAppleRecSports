@@ -590,25 +590,36 @@ class SlackService:
 
     
     # Forwarding from SlackRefundsUtils
-    async def handle_cancel_order(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_cancel_order(request_data, channel_id, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+    async def handle_cancel_order(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_cancel_order(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
     
-    async def handle_proceed_without_cancel(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_proceed_without_cancel(request_data, channel_id, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+    async def handle_proceed_without_cancel(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_proceed_without_cancel(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
     
-    async def handle_process_refund(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, slack_user_id: str = "", trigger_id: Optional[str] = None) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_process_refund(request_data, channel_id, thread_ts, slack_user_name, current_message_full_text, slack_user_id, trigger_id)
+    async def handle_process_refund(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, slack_user_id: str = "", trigger_id: Optional[str] = None) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_process_refund(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_name, current_message_full_text, slack_user_id, trigger_id)
     
-    async def handle_custom_refund_amount(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_custom_refund_amount(request_data, channel_id, thread_ts, slack_user_name)
+    async def handle_custom_refund_amount(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, slack_user_id: str = "", trigger_id: Optional[str] = None) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_custom_refund_amount(
+            request_data=request_data,
+            channel_id=channel_id,
+            thread_ts=thread_ts,
+            requestor_name=requestor_name,
+            requestor_email=requestor_email,
+            slack_user_name=slack_user_name,
+            current_message_full_text=current_message_full_text,
+            slack_user_id=slack_user_id,
+            trigger_id=trigger_id
+        )
+        
     
-    async def handle_no_refund(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_no_refund(request_data, channel_id, thread_ts, slack_user_name, current_message_full_text, trigger_id)
+    async def handle_no_refund(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_name: str, slack_user_id: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_no_refund(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_name, slack_user_id, current_message_full_text, trigger_id)
 
     def build_comprehensive_success_message(self, order_data: Dict[str, Any], refund_amount: float, refund_type: str,
-                                      raw_order_number: str, order_cancelled: bool, processor_user: str,
+                                      raw_order_number: str, order_cancelled: bool, requestor_name: Dict[str, str], requestor_email: str, processor_user: str,
                                       current_message_text: str, order_id: str = "", is_debug_mode: bool = False) -> Dict[str, Any]:
-        return self.refunds_utils.build_comprehensive_success_message(order_data, refund_amount, refund_type, raw_order_number, order_cancelled, processor_user, current_message_text, order_id, is_debug_mode)
+        return self.refunds_utils.build_comprehensive_success_message(order_data, refund_amount, refund_type, raw_order_number, order_cancelled, requestor_name, requestor_email, processor_user, current_message_text, order_id, is_debug_mode)
     
     def build_completion_message_after_restocking(self, current_message_full_text: str, action_id: str, variant_name: str, 
                             restock_user: str, sheet_link: str, raw_order_number: str,
@@ -626,8 +637,8 @@ class SlackService:
         return self.refunds_utils.extract_season_start_info(message_text)
 
     def build_comprehensive_no_refund_message(self, order_data: Dict[str, Any], raw_order_number: str, 
-                                            order_cancelled: bool, processor_user: str,
+                                            order_cancelled: bool, requestor_name: Dict[str, str], requestor_email: str, processor_user: str,
                                             thread_ts: str, 
                                             current_message_full_text: str) -> Dict[str, Any]:
-        return self.refunds_utils.build_comprehensive_no_refund_message(order_data, raw_order_number, order_cancelled, processor_user, thread_ts, current_message_full_text)
+        return self.refunds_utils.build_comprehensive_no_refund_message(order_data, raw_order_number, order_cancelled, requestor_name, requestor_email, processor_user, thread_ts, current_message_full_text)
     
