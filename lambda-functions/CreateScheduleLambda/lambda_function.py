@@ -20,7 +20,7 @@ def lambda_handler(event, context):
     try:
         event_body = json.loads(event["body"]) if "body" in event else event
 
-        action = event_body.get("action")
+        actionType = event_body.get("action")
         schedule_name = event_body.get("scheduleName")
         group_name = event_body.get("groupName")
 
@@ -33,61 +33,8 @@ def lambda_handler(event, context):
                 }, indent=2)
             }
         
-        # ✅ Branch: Special PATCH for veteran count only
-        if action == "update-scheduled-inventory-move-with-num-eligible-veterans":
-            num_vets = event_body.get("numEligibleVeterans")
-            if num_vets is None:
-                return {
-                    "statusCode": 400,
-                    "body": json.dumps({
-                        "error": "❌ Missing numEligibleVeterans for action update-inventory-move-with-num-eligible-veterans."
-                    }, indent=2)
-                }
-
-            try:
-                existing_schedule = scheduler_client.get_schedule(Name=schedule_name, GroupName=group_name)
-                current_target = existing_schedule.get("Target", {})
-                current_input_str = current_target.get("Input", "{}")
-                try:
-                    current_input_json = json.loads(current_input_str)
-                except json.JSONDecodeError:
-                    current_input_json = {}
-
-                current_input_json["numEligibleVeterans"] = num_vets
-                updated_input_str = json.dumps(current_input_json)
-
-                response = scheduler_client.update_schedule(
-                    Name=schedule_name,
-                    GroupName=group_name,
-                    ScheduleExpression=existing_schedule["ScheduleExpression"],
-                    ScheduleExpressionTimezone=existing_schedule.get("ScheduleExpressionTimezone", "America/New_York"),
-                    FlexibleTimeWindow={"Mode": "OFF"},
-                    Target={**current_target, "Input": updated_input_str},
-                    State="ENABLED"
-                )
-
-                print("✅ Patched schedule Input:")
-                print(json.dumps(response, indent=2, default=str))
-
-                return {
-                    "statusCode": 200,
-                    "body": json.dumps({
-                        "message": f"✅ Updated numEligibleVeterans to {num_vets} in schedule '{schedule_name}'",
-                        "aws_response": response
-                    }, indent=2)
-                }
-
-            except scheduler_client.exceptions.ResourceNotFoundException:
-                return {
-                    "statusCode": 404,
-                    "body": json.dumps({
-                        "error": f"❌ Schedule '{schedule_name}' not found in group '{group_name}'"
-                    }, indent=2)
-                }
-
         # ✅ Default flow: create/update based on datetime
         new_datetime = event_body.get("newDatetime")
-
         if not new_datetime:
             return {
                 "statusCode": 400,
@@ -116,76 +63,105 @@ def lambda_handler(event, context):
         print("🧪 Attempting to update EventBridge Scheduler:")
         print(json.dumps(event_body, indent=2))
 
-        try:
-            existing_schedule = scheduler_client.get_schedule(Name=schedule_name, GroupName=group_name)
-            current_target = existing_schedule.get("Target", {})
-            timezone = existing_schedule.get("ScheduleExpressionTimezone", "America/New_York")
+        # try:
+        #     existing_schedule = scheduler_client.get_schedule(Name=schedule_name, GroupName=group_name)
+        #     current_target = existing_schedule.get("Target", {})
+        #     timezone = existing_schedule.get("ScheduleExpressionTimezone", "America/New_York")
 
-            response = scheduler_client.update_schedule(
-                Name=schedule_name,
-                GroupName=group_name,
-                ScheduleExpression=f"at({formatted_datetime})",
-                ScheduleExpressionTimezone=timezone,
-                FlexibleTimeWindow={"Mode": "OFF"},
-                Target={**current_target, "Input": updated_input},
-                State="ENABLED"
-            )
+        #     response = scheduler_client.update_schedule(
+        #         Name=schedule_name,
+        #         GroupName=group_name,
+        #         ScheduleExpression=f"at({formatted_datetime})",
+        #         ScheduleExpressionTimezone=timezone,
+        #         FlexibleTimeWindow={"Mode": "OFF"},
+        #         Target={**current_target, "Input": updated_input},
+        #         State="ENABLED",
+        #         ActionAfterCompletion="DELETE",
+        #         Description=""
+        #     )
 
-            print("✅ Updated schedule:")
-            print(json.dumps(response, indent=2, default=str))
+        #     print("✅ Updated schedule:")
+        #     print(json.dumps(response, indent=2, default=str))
 
-            return {
-                "statusCode": 200,
-                "body": json.dumps({
-                    "message": f"✅ Schedule '{schedule_name}' updated successfully!",
-                    "new_expression": f"at({formatted_datetime})",
-                    "aws_response": response
-                }, indent=2)
-            }
+        #     return {
+        #         "statusCode": 204,
+        #         "body": json.dumps({
+        #             "message": f"✅ Schedule '{schedule_name}' updated successfully!",
+        #             "new_expression": f"at({formatted_datetime})",
+        #             "aws_response": response
+        #         }, indent=2)
+        #     }
 
-        except scheduler_client.exceptions.ResourceNotFoundException:
-            print("⚠️ Schedule not found. Creating new one...")
+        # except scheduler_client.exceptions.ResourceNotFoundException:
+        #     print("⚠️ Schedule not found. Creating new one...")
 
-            # Provide the required `Arn` and `RoleArn`
-            # lambda_arn = event_body.get("targetArn")
-            # role_arn = event_body.get("roleArn")
+        #     # Provide the required `Arn` and `RoleArn`
+        #     # lambda_arn = event_body.get("targetArn")
+        #     # role_arn = event_body.get("roleArn")
 
-            # if not lambda_arn or not role_arn:
-            #     return {
-            #         "statusCode": 400,
-            #         "body": json.dumps({
-            #             "error": "❌ Missing targetArn or roleArn for new schedule creation.",
-            #             "required_keys": ["targetArn", "roleArn"]
-            #         }, indent=2)
-            #     }
+        #     # if not lambda_arn or not role_arn:
+        #     #     return {
+        #     #         "statusCode": 400,
+        #     #         "body": json.dumps({
+        #     #             "error": "❌ Missing targetArn or roleArn for new schedule creation.",
+        #     #             "required_keys": ["targetArn", "roleArn"]
+        #     #         }, indent=2)
+        #     #     }
 
-            response = scheduler_client.create_schedule(
-                Name=schedule_name,
-                GroupName=group_name,
-                ScheduleExpression=f"at({formatted_datetime})",
-                ScheduleExpressionTimezone="America/New_York",
-                FlexibleTimeWindow={"Mode": "OFF"},
-                Target={
-                    "Arn": "arn:aws:lambda:us-east-1:084375563770:function:MoveInventoryLambda",
-                    "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
-                    "Input": updated_input
-                },
-                ActionAfterCompletion="NONE",
-                State="ENABLED",
-                Description=""
-            )
+        #     response = scheduler_client.create_schedule(
+        #         Name=schedule_name,
+        #         GroupName=group_name,
+        #         ScheduleExpression=f"at({formatted_datetime})",
+        #         ScheduleExpressionTimezone="America/New_York",
+        #         FlexibleTimeWindow={"Mode": "OFF"},
+        #         Target={
+        #             "Arn": "arn:aws:lambda:us-east-1:084375563770:function:MoveInventoryLambda",
+        #             "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
+        #             "Input": updated_input
+        #         },
+        #         ActionAfterCompletion="DELETE",
+        #         State="ENABLED",
+        #         Description=""
+        #     )
 
-            print("✅ Created new schedule:")
-            print(json.dumps(response, indent=2, default=str))
+        #     print("✅ Created new schedule:")
+        #     print(json.dumps(response, indent=2, default=str))
 
-            return {
-                "statusCode": 201,
-                "body": json.dumps({
-                    "message": f"✅ Schedule '{schedule_name}' created successfully!",
-                    "new_expression": f"at({formatted_datetime})",
-                    "aws_response": response
-                }, indent=2)
-            }
+        #     return {
+        #         "statusCode": 201,
+        #         "body": json.dumps({
+        #             "message": f"✅ Schedule '{schedule_name}' created successfully!",
+        #             "new_expression": f"at({formatted_datetime})",
+        #             "aws_response": response
+        #         }, indent=2)
+        #     }
+        response = scheduler_client.create_schedule(
+            Name=schedule_name,
+            GroupName=group_name,
+            ScheduleExpression=f"at({formatted_datetime})",
+            ScheduleExpressionTimezone="America/New_York",
+            FlexibleTimeWindow={"Mode": "OFF"},
+            Target={
+                "Arn": "arn:aws:lambda:us-east-1:084375563770:function:MoveInventoryLambda",
+                "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
+                "Input": updated_input
+            },
+            ActionAfterCompletion="DELETE",
+            State="ENABLED",
+            Description=""
+        )
+
+        print("✅ Created new schedule:")
+        print(json.dumps(response, indent=2, default=str))
+
+        return {
+            "statusCode": 201,
+            "body": json.dumps({
+                "message": f"✅ Schedule '{schedule_name}' created successfully!",
+                "new_expression": f"at({formatted_datetime})",
+                "aws_response": response
+            }, indent=2)
+        }
 
     except Exception as e:
         print("❌ Error:", traceback.format_exc())
@@ -195,4 +171,4 @@ def lambda_handler(event, context):
                 "error": "❌ Failed to update or create schedule",
                 "message": str(e)
             }, indent=2)
-        }# Test comment for version increment demo
+        }
