@@ -36,8 +36,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         source_type = source.get('type', '').lower()
         dest_type = dest.get('type', '').lower()
 
-        # 🧠 Case 1: Veteran ➡ Early logic
-        if source_type == 'veteran' and dest_type == 'early':
+        
+        if dest_type in ['vet', 'early']:
+            # 🧠 Case 1: reg1 ➡ reg2 logic
             source_data = get_inventory_item_and_quantity(source_gid)
             dest_data = get_inventory_item_and_quantity(dest_gid)
 
@@ -62,9 +63,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     "amountMoved": source_qty
                 }
             })
-
-        # 🧠 Case 2: Consolidate from veteran+early ➡ open
-        if dest_type == 'open':
+            
+        elif dest_type == 'open':
+            # 🧠 Case 2: Consolidate from veteran+early ➡ open            
             product_id = event['productUrl'].split('/')[-1]
             result = get_product_variants(product_id)
             variants = result['product']['variants']['nodes']
@@ -103,8 +104,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 }
             })
         
-        # 🧠 Case 3: Manually move between specific variants:
-        if source_type == "custom" and dest_type == "custom":
+        elif source_type == "custom" and dest_type == "custom":
+            # 🧠 Case 3: Manually move between specific variants
             source_data = get_inventory_item_and_quantity(source_gid)
             dest_data = get_inventory_item_and_quantity(dest_gid)
 
@@ -131,7 +132,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             })
 
         # ❌ Catch-all for unhandled types
-        raise ValueError(f"Unsupported source→destination move: {source_type} → {dest_type}")
+        else:raise ValueError(f"Unsupported source→destination move: {source_type} → {dest_type}")
 
     except Exception as e:
         print("❌ Exception occurred:", traceback.format_exc())
