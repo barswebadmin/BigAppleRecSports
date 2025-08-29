@@ -2,8 +2,8 @@
 # This file is automatically updated when changes are detected in this lambda function
 
 __version__ = "1.0.0"
-__build__ = 4
-__last_updated__ = "2025-07-16"
+__build__ = 5
+__last_updated__ = "2025-08-29"
 
 def get_version():
     """Return the current version string"""
