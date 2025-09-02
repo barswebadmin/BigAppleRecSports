@@ -56,6 +56,21 @@ mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
 }
 """
 
+UPDATE_PRODUCT_TITLE = """
+mutation productUpdate($input: ProductInput!) {
+  productUpdate(input: $input) {
+    product {
+      id
+      title
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+"""
+
 def fetch_shopify(query: str, variables: Optional[Dict] = None) -> Dict:
     """Make a request to Shopify's GraphQL API."""
     payload = json.dumps({
@@ -136,4 +151,25 @@ def adjust_inventory(inventory_item_id: str, delta: int) -> Dict:
 def get_product_variants(product_id: str) -> Dict:
     """Get all variants for a product."""
     product_gid = f"gid://shopify/Product/{product_id}"
-    return fetch_shopify(GET_PRODUCT_VARIANTS, {"id": product_gid}) 
+    return fetch_shopify(GET_PRODUCT_VARIANTS, {"id": product_gid})
+
+def update_product_title(product_id: str, new_title: str) -> Dict:
+    """Update a product's title."""
+    product_gid = f"gid://shopify/Product/{product_id}"
+    
+    variables = {
+        "input": {
+            "id": product_gid,
+            "title": new_title
+        }
+    }
+    
+    data = fetch_shopify(UPDATE_PRODUCT_TITLE, variables)
+    
+    user_errors = data.get("productUpdate", {}).get("userErrors", [])
+    if user_errors:
+        raise ValueError("Product update failed: " + '; '.join(
+            f"{e['field']}: {e['message']}" for e in user_errors
+        ))
+    
+    return data 
