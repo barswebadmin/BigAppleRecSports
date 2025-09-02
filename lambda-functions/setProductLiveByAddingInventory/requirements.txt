@@ -1,0 +1,2 @@
+# No external dependencies required - using standard library
+# The bars-common-utils layer provides all needed utilities
