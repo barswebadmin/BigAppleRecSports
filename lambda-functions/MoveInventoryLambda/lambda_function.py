@@ -35,6 +35,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         dest_gid = dest['gid']
         source_type = source.get('type', '').lower()
         dest_type = dest.get('type', '').lower()
+        num_eligible_veterans = event.get('numEligibleVeterans', 0)
 
         
         if dest_type in ['vet', 'early']:
