@@ -1,5 +1,0 @@
-# AWS SDK for Python
-boto3>=1.39.0
-
-# No other external dependencies required
-# The bars-common-utils layer provides shared utilities 
