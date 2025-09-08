@@ -1,0 +1,18 @@
+# Google Apps Script files that may contain secrets
+*.json.bak
+.clasprc.json
+
+# Temporary files
+*.tmp
+*.log
+
+# IDE files
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Don't commit the migrate-secrets.js after you've added real secrets
+# (Uncomment the line below after you update it with real values)
+# migrate-secrets.js

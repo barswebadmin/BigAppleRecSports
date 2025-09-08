@@ -1,0 +1,1 @@
+function mainProcessor() { return "main"; }
