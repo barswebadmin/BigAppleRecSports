@@ -54,18 +54,6 @@ function makeApiRequest(url, options = {}) {
   }
 }
 
-/**
- * Get a secret from PropertiesService with error handling
- * @param {string} key - The secret key
- * @returns {string} The secret value
- */
-function getSecret(key) {
-  const value = PropertiesService.getScriptProperties().getProperty(key);
-  if (!value) {
-    throw new Error(`Secret '${key}' not found. Make sure it's set up in PropertiesService.`);
-  }
-  return value;
-}
 
 /**
  * Build Shopify GraphQL request options
@@ -124,4 +112,34 @@ function retryApiRequest(requestFunction, maxRetries = 3, baseDelay = 1000) {
   
   console.error(`All ${maxRetries + 1} attempts failed`);
   return lastError;
+}
+
+// =============================================================================
+// STRING AND NUMBER FORMATTING UTILITIES (moved from project-specific Utils)
+// =============================================================================
+
+/**
+ * Capitalize the first letter of a string
+ * @param {string} str - String to capitalize
+ * @returns {string} Capitalized string
+ */
+const capitalize = str => str[0].toUpperCase() + str.slice(1);
+
+/**
+ * Format number to two decimal places
+ * @param {number|string} rawAmount - Number to format
+ * @returns {string} Formatted number string
+ */
+const formatTwoDecimalPoints = rawAmount => {
+  return Number.parseFloat(rawAmount).toFixed(2);
+};
+
+/**
+ * Normalize order number to include # prefix
+ * @param {string|number} orderNumber - Order number to normalize
+ * @returns {string} Normalized order number with # prefix
+ */
+function normalizeOrderNumber(orderNumber) {
+  const str = String(orderNumber || "").trim();
+  return str.startsWith("#") ? str : `#${str}`;
 }

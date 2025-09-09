@@ -1,4 +1,3 @@
-const SHOPIFY_ACCESS_TOKEN = "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";
 const GRAPHQL_URL = "https://09fe59-3.myshopify.com/admin/api/2025-01/graphql.json"
 const REST_URL = "https://09fe59-3.myshopify.com/admin/api/2024-04";
 

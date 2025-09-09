@@ -23,22 +23,10 @@ function onOpen() {
 // ✅ Parses a given row into a key-value object based on column headers
 let rowObject = {}
 
-const formatDateOnly = date => {
-  if (!date) return null
-  return new Date(date).toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" });
-};
 
 const formatTimeOnly = date => {
   if (!date) return null
   return new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-}
-
-const formatDateAndTime = date => {
-  if (!date) return null
-  const d = new Date(date);
-  const datePart = d.toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" });
-  const timePart = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-  return `${datePart} at ${timePart}`;
 };
 
 function parseRowData(row, rowIndex) {

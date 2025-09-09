@@ -19,15 +19,30 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
     fetches and caches the full order details, then sends to Slack
     """
     try:
-        logger.info(f"Processing refund Slack notification for order {request.order_number}")
+        logger.info(f"🚀 === REFUND REQUEST START ===")
+        logger.info(f"📦 Incoming request data:")
+        logger.info(f"   Order Number: {request.order_number}")
+        logger.info(f"   Requestor Email: {request.requestor_email}")
+        logger.info(f"   Requestor Name: {request.requestor_name}")
+        logger.info(f"   Refund Type: {request.refund_type}")
+        logger.info(f"   Notes: {request.notes}")
+        logger.info(f"   Sheet Link: {request.sheet_link}")
+        logger.info(f"🔍 Processing refund Slack notification for order {request.order_number}")
         
         # Step 1: Fetch order details and validate email
+        logger.info(f"🔎 Step 1: Fetching order details for order: {request.order_number}")
         order_result = orders_service.fetch_order_details_by_email_or_order_name(order_name=request.order_number)
+        logger.info(f"📊 Order fetch result success: {order_result.get('success', 'Unknown')}")
+        if not order_result.get("success"):
+            logger.info(f"📊 Order fetch result message: {order_result.get('message', 'No message')}")
+        else:
+            logger.info(f"📊 Order fetch successful - order data keys: {list(order_result.get('data', {}).keys())}")
         
         if not order_result["success"]:
-            logger.error(f"Order {request.order_number} not found: {order_result['message']}")
+            logger.error(f"❌ Order {request.order_number} not found: {order_result['message']}")
             
             # Send order not found error to Slack
+            logger.info(f"📤 Sending 'order not found' notification to Slack")
             requestor_info = {
                 "name": request.requestor_name,
                 "email": request.requestor_email,
@@ -35,13 +50,19 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
                 "notes": request.notes
             }
             
-            slack_result = slack_service.send_refund_request_notification(
-                requestor_info=requestor_info,
-                sheet_link=request.sheet_link or "",
-                error_type="order_not_found",
-                raw_order_number=request.order_number
-            )
+            try:
+                slack_result = slack_service.send_refund_request_notification(
+                    requestor_info=requestor_info,
+                    sheet_link=request.sheet_link or "",
+                    error_type="order_not_found",
+                    raw_order_number=request.order_number
+                )
+                logger.info(f"✅ Slack notification sent successfully: {slack_result.get('success', 'Unknown status')}")
+            except Exception as slack_error:
+                logger.error(f"❌ Failed to send Slack notification: {str(slack_error)}")
+                logger.error(f"❌ Slack error type: {type(slack_error).__name__}")
             
+            logger.info(f"🚫 Raising 406 HTTPException for order not found")
             raise HTTPException(
                 status_code=406,
                 detail=f"Order {request.order_number} not found in Shopify"
@@ -97,12 +118,29 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
         
         if not slack_result["success"]:
             error_message = slack_result.get('error', slack_result.get('message', 'Unknown error'))
-            logger.error(f"Failed to send Slack notification: {error_message}")
+            logger.error(f"❌ Failed to send Slack notification: {error_message}")
+            logger.error(f"📊 Full Slack result: {slack_result}")
+            
+            # Return 500 error with detailed Slack error information
+            # This properly indicates a server failure while providing debugging details
             raise HTTPException(
                 status_code=500,
                 detail={
                     "error": "slack_notification_failed",
-                    "message": f"Failed to send Slack notification: {error_message}"
+                    "message": f"Order found but Slack notification failed: {error_message}",
+                    "order_data": {
+                        "order_number": request.order_number,
+                        "requestor_email": request.requestor_email,
+                        "refund_type": request.refund_type,
+                        "refund_amount": refund_calculation.get("refund_amount", 0),
+                        "refund_calculation_success": refund_calculation.get("success", False),
+                        "refund_calculation_message": refund_calculation.get("message", ""),
+                        "order_customer_email": order_customer_email
+                    },
+                    "slack_error": {
+                        "error": error_message,
+                        "full_response": slack_result
+                    }
                 }
             )
         
@@ -127,11 +165,14 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
             }
         }
         
-    except HTTPException:
+    except HTTPException as http_exc:
+        logger.error(f"🚫 HTTPException raised - Status: {http_exc.status_code}, Detail: {http_exc.detail}")
         raise
     except Exception as e:
-        logger.error(f"Unexpected error processing refund Slack notification for order {request.order_number}: {str(e)}")
-        logger.error(f"Error details: {type(e).__name__}: {e}")
+        logger.error(f"💥 UNEXPECTED ERROR processing refund Slack notification for order {request.order_number}")
+        logger.error(f"💥 Error type: {type(e).__name__}")
+        logger.error(f"💥 Error message: {str(e)}")
+        logger.error(f"💥 Error details: {e}")
         
         # More descriptive error message
         error_details = {
@@ -141,6 +182,7 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
             "error_type": type(e).__name__
         }
         
+        logger.error(f"🚫 Raising 500 HTTPException for unexpected error")
         raise HTTPException(
             status_code=500,
             detail=error_details

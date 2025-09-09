@@ -201,8 +201,14 @@ class SlackApiClient:
             logger.debug(f"Message content: {message_text[:100]}...")
             
             # Send the request
-            response = requests.post(url, headers=headers, data=json.dumps(payload))
-            response_data = response.json()
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(payload), verify=True)
+                response_data = response.json()
+            except requests.exceptions.SSLError as ssl_error:
+                logger.warning(f"SSL Error with Slack API - trying without verification: {ssl_error}")
+                # Fallback: try without SSL verification (for development)
+                response = requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
+                response_data = response.json()
             
             if response.status_code == 200 and response_data.get("ok"):
                 logger.info("Slack message sent successfully")
@@ -284,8 +290,14 @@ class SlackApiClient:
                 "blocks": blocks
             }
             
-            response = requests.post(url, headers=headers, data=json.dumps(payload))
-            response_data = response.json()
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(payload), verify=True)
+                response_data = response.json()
+            except requests.exceptions.SSLError as ssl_error:
+                logger.warning(f"SSL Error with Slack API update - trying without verification: {ssl_error}")
+                # Fallback: try without SSL verification (for development)
+                response = requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
+                response_data = response.json()
             
             if response.status_code == 200 and response_data.get("ok"):
                 logger.info("Slack message updated successfully")

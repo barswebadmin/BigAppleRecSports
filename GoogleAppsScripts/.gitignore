@@ -12,7 +12,3 @@
 
 # macOS
 .DS_Store
-
-# Don't commit the migrate-secrets.js after you've added real secrets
-# (Uncomment the line below after you update it with real values)
-# migrate-secrets.js

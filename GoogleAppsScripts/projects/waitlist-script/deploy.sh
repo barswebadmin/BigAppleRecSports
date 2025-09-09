@@ -76,38 +76,16 @@ function prepare_for_gas() {
 function organize_from_gas() {
     log_info "Organizing files from Google Apps Script into directories..."
     
-    # Create directories if they don't exist
-    mkdir -p "$SCRIPT_DIR/core"
-    mkdir -p "$SCRIPT_DIR/helpers"
-    mkdir -p "$SCRIPT_DIR/validators"
-    mkdir -p "$SCRIPT_DIR/config"
-    mkdir -p "$SCRIPT_DIR/shared-utilities"
+    # Create directories if they don't exist - shared-utilities structure
+    mkdir -p "$SCRIPT_DIR"
     
     # Move files from temp directory back to organized structure
     for file in "$TEMP_DIR"/*.gs; do
         if [ -f "$file" ]; then
             filename=$(basename "$file")
             
-            # Determine target directory based on filename prefix
-            if [[ "$filename" == core_* ]]; then
-                target_name=$(echo "$filename" | sed 's/core_//')
-                target_path="$SCRIPT_DIR/core/$target_name"
-            elif [[ "$filename" == helpers_* ]]; then
-                target_name=$(echo "$filename" | sed 's/helpers_//')
-                target_path="$SCRIPT_DIR/helpers/$target_name"
-            elif [[ "$filename" == validators_* ]]; then
-                target_name=$(echo "$filename" | sed 's/validators_//')
-                target_path="$SCRIPT_DIR/validators/$target_name"
-            elif [[ "$filename" == config_* ]]; then
-                target_name=$(echo "$filename" | sed 's/config_//')
-                target_path="$SCRIPT_DIR/config/$target_name"
-            elif [[ "$filename" == shared-utilities_* ]]; then
-                target_name=$(echo "$filename" | sed 's/shared-utilities_//')
-                target_path="$SCRIPT_DIR/shared-utilities/$target_name"
-            else
-                # Files without directory prefix stay in root
-                target_path="$SCRIPT_DIR/$filename"
-            fi
+            # All files go directly in shared-utilities root
+            target_path="$SCRIPT_DIR/$filename"
             
             cp "$file" "$target_path"
             log_info "Organized: $filename → $target_path"

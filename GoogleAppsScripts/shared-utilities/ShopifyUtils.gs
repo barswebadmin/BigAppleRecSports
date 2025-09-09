@@ -3,7 +3,7 @@
 // =============================================================================
 
 // Constants - Replace with actual values in setupSecrets
-const SHOPIFY_ACCESS_TOKEN = "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";
+// Note: SHOPIFY_ACCESS_TOKEN is now retrieved via getSecret('SHOPIFY_TOKEN')
 const SHOPIFY_API_URL = 'https://09fe59-3.myshopify.com/admin/api/2023-10/graphql.json';
 const SHOPIFY_GRAPHQL_URL = "https://09fe59-3.myshopify.com/admin/api/2025-07/graphql.json";
 
@@ -21,7 +21,7 @@ function fetchShopify(payload) {
     method: 'POST',
     contentType: 'application/json',
     headers: {
-      'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+      'X-Shopify-Access-Token': getSecret('SHOPIFY_TOKEN')
     },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
@@ -46,7 +46,7 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
     const options = {
       method: "POST",
       contentType: "application/json",
-      headers: { "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN },
+      headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
       payload: JSON.stringify(query)
     };
     const response = UrlFetchApp.fetch(SHOPIFY_GRAPHQL_URL, options);
@@ -920,11 +920,4 @@ const createShopifyStoreCreditDebugVersion = ({ formattedOrderNumber, orderId, r
 // Utility Functions
 // =============================================================================
 
-/**
- * Format number to two decimal places
- * @param {number} amount - Amount to format
- * @returns {string} - Formatted amount
- */
-function formatTwoDecimalPoints(amount) {
-  return Number(amount).toFixed(2);
-}
+// Note: formatTwoDecimalPoints function is defined in apiUtils.gs

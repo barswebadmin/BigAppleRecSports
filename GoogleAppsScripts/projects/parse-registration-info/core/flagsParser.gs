@@ -117,7 +117,7 @@ function parseBFlags_(linesFromB, unresolved, notesText) {
  */
 function hasBuddySignup_(text) {
   const patterns = [
-    /\bbuddy\s*signup\b/i,
+    /buddy/i,                          // Matches "buddy" anywhere, even in bigger words
     /\bsign\s*up\s*with\s*friend/i,
     /\bfriend\s*signup/i,
     /\bpartner\s*signup/i

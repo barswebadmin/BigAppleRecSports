@@ -3,7 +3,7 @@
 // =============================================================================
 
 // Constants - Replace with actual values in setupSecrets
-const SHOPIFY_ACCESS_TOKEN = "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";
+// Note: SHOPIFY_ACCESS_TOKEN is now retrieved via getSecret('SHOPIFY_TOKEN')
 const SHOPIFY_API_URL = 'https://09fe59-3.myshopify.com/admin/api/2023-10/graphql.json';
 const SHOPIFY_GRAPHQL_URL = "https://09fe59-3.myshopify.com/admin/api/2025-07/graphql.json";
 
@@ -21,7 +21,7 @@ function fetchShopify(payload) {
     method: 'POST',
     contentType: 'application/json',
     headers: {
-      'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+      'X-Shopify-Access-Token': getSecret('SHOPIFY_TOKEN')
     },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
@@ -46,7 +46,7 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
     const options = {
       method: "POST",
       contentType: "application/json",
-      headers: { "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN },
+      headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
       payload: JSON.stringify(query)
     };
     const response = UrlFetchApp.fetch(SHOPIFY_GRAPHQL_URL, options);
@@ -103,9 +103,6 @@ function getDebugEmail() {
  * @returns {Object|null} - Product data or null if not found
  */
 function getProductByHandle(handle) {
-  Logger.log("🔍 === STARTING getProductByHandle ===");
-  Logger.log(`🎯 Searching for handle: "${handle}"`);
-  
   const query = `
     query {
       productByHandle(handle: "${handle}") {
@@ -116,38 +113,22 @@ function getProductByHandle(handle) {
     }
   `;
 
-  Logger.log(`📤 GraphQL Query: ${query.replace(/\s+/g, ' ').trim()}`);
-  
   const payload = { query };
-  Logger.log("📞 Calling fetchShopify...");
-  
   const result = fetchShopify(payload);
-  Logger.log(`📥 Raw Shopify response: ${JSON.stringify(result, null, 2)}`);
 
   if (result.errors) {
-    Logger.log(`❌ GraphQL Errors found: ${JSON.stringify(result.errors, null, 2)}`);
-    Logger.log(`❌ Error fetching product by handle "${handle}"`);
+    Logger.log(`❌ Error fetching product by handle "${handle}": ${JSON.stringify(result.errors, null, 2)}`);
     return null;
   }
 
   const product = result.data?.productByHandle;
-  Logger.log(`🔍 Extracted product from response: ${JSON.stringify(product, null, 2)}`);
 
   if (!product) {
     Logger.log(`⚠️ No product found with handle "${handle}"`);
-    Logger.log("📊 This means either:");
-    Logger.log("   1. The handle doesn't exist in Shopify");
-    Logger.log("   2. The product is not published/active");
-    Logger.log("   3. There's a permissions issue");
-    Logger.log("🔍 === getProductByHandle COMPLETE (NOT FOUND) ===");
     return null;
   }
 
-  Logger.log(`✅ Product found successfully!`);
-  Logger.log(`   - ID: ${product.id}`);
-  Logger.log(`   - Title: ${product.title}`);
-  Logger.log(`   - Handle: ${product.handle}`);
-  Logger.log("🔍 === getProductByHandle COMPLETE (SUCCESS) ===");
+  Logger.log(`✅ Product found: ${JSON.stringify(product, null, 2)}`);
   return product;
 }
 
@@ -939,11 +920,4 @@ const createShopifyStoreCreditDebugVersion = ({ formattedOrderNumber, orderId, r
 // Utility Functions
 // =============================================================================
 
-/**
- * Format number to two decimal places
- * @param {number} amount - Amount to format
- * @returns {string} - Formatted amount
- */
-function formatTwoDecimalPoints(amount) {
-  return Number(amount).toFixed(2);
-}
+// Note: formatTwoDecimalPoints function is defined in apiUtils.gs

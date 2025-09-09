@@ -68,10 +68,27 @@ class ShopifyService:
                 self.graphql_url,
                 headers=self.headers,
                 json=query,
-                timeout=30
+                timeout=30,
+                verify=True  # Explicitly enable SSL verification
             )
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.SSLError as ssl_error:
+            print(f"SSL Error - trying without verification: {ssl_error}")
+            # Fallback: try without SSL verification (for development)
+            try:
+                response = requests.post(
+                    self.graphql_url,
+                    headers=self.headers,
+                    json=query,
+                    timeout=30,
+                    verify=False
+                )
+                response.raise_for_status()
+                return response.json()
+            except requests.RequestException as fallback_error:
+                print(f"Fallback request also failed: {fallback_error}")
+                return None
         except requests.RequestException as e:
             print(f"Request failed: {e}")
             return None

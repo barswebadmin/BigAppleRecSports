@@ -77,6 +77,11 @@ function canonicalizeLocation_(s, unresolved) {
   // Try direct contains/shortcut rules
   let best = '';
   for (const cand of CANONICAL_LOCATIONS) {
+    // Check John Jay first (before general includes check to avoid similarity warning)
+    if (/john jay/i.test(lc) && cand.startsWith('John Jay College')) {
+      return cand; // Return immediately, no warning needed for this well-known abbreviation
+    }
+    
     if (lc.includes(cand.toLowerCase().split(' (')[0])) { best = cand; break; }
     if (/dewitt/i.test(lc) && cand.startsWith('Dewitt Clinton Park')) best = cand;
     if (/gansevoort/i.test(lc) && cand.startsWith('Gansevoort Peninsula')) best = cand;
@@ -89,13 +94,6 @@ function canonicalizeLocation_(s, unresolved) {
     if (/hartley/i.test(lc) && cand.startsWith('Hartley House')) best = cand;
     if (/chelsea park/i.test(lc) && cand.startsWith('Chelsea Park')) best = cand;
     if (/gotham pickle/i.test(lc) && cand.startsWith('Gotham Pickleball')) best = cand;
-    if (/john jay/i.test(lc) && cand.startsWith('John Jay College')) {
-      best = cand;
-      // For John Jay, we know this is a good match, so mark high confidence
-      if (lc.includes('john jay')) {
-        return cand; // Return immediately with high confidence, no warning needed
-      }
-    }
     if (/pickle1/i.test(lc) && cand.endsWith('1')) best = cand;
     if (/frames/i.test(lc) && cand.startsWith('Frames Bowling')) best = cand;
     if (/bowlero/i.test(lc) && cand.startsWith('Bowlero')) best = cand;

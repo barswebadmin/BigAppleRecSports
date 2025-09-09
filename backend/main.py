@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routers import leadership, orders, refunds, slack
 from config import settings
 from version import get_version_info
+import logging
+import json
 
 app = FastAPI(
     title="Big Apple Rec Sports API",
@@ -30,6 +32,38 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger = logging.getLogger(__name__)
+    
+    # Log incoming request details
+    if request.url.path.startswith("/refunds/"):
+        logger.info(f"🌐 === INCOMING REQUEST ===")
+        logger.info(f"🌐 Method: {request.method}")
+        logger.info(f"🌐 URL: {request.url}")
+        logger.info(f"🌐 Headers: {dict(request.headers)}")
+        
+        # Read and log the request body for POST requests
+        if request.method == "POST":
+            body = await request.body()
+            if body:
+                try:
+                    body_json = json.loads(body.decode())
+                    logger.info(f"🌐 Request Body (JSON): {json.dumps(body_json, indent=2)}")
+                except json.JSONDecodeError:
+                    logger.info(f"🌐 Request Body (Raw): {body.decode()}")
+            else:
+                logger.info(f"🌐 Request Body: (empty)")
+    
+    response = await call_next(request)
+    
+    if request.url.path.startswith("/refunds/"):
+        logger.info(f"🌐 Response Status: {response.status_code}")
+        logger.info(f"🌐 === END REQUEST ===")
+    
+    return response
 
 # Include routers (prefix is already defined in the router)
 app.include_router(leadership.router)

@@ -35,7 +35,7 @@ function createManualScheduledInventoryMoves() {
     contentType: 'application/json',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+      'X-Shopify-Access-Token': getSecret('SHOPIFY_TOKEN')
     },
     payload: JSON.stringify(payload)
   });

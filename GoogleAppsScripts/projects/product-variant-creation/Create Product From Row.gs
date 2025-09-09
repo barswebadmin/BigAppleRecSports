@@ -2,7 +2,7 @@ const fetchShopify = (query, variables = {}) => {
   const options = {
     method: "POST",
     contentType: "application/json",
-    headers: { "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN },
+    headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
     payload: JSON.stringify({ query, variables })
   };
   const response = UrlFetchApp.fetch(GRAPHQL_URL, options);
@@ -206,7 +206,7 @@ function createProductFromRow(rowObject) {
     const response = UrlFetchApp.fetch(GRAPHQL_URL, {
       method: "post",
       contentType: "application/json",
-      headers: { "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN },
+      headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
       payload: query
     });
 
@@ -251,7 +251,7 @@ function createProductFromRow(rowObject) {
       const response = UrlFetchApp.fetch(`${REST_URL}/graphql.json`, {
         method: "POST",
         contentType: "application/json",
-        headers: { "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN },
+        headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
         payload: JSON.stringify(mutation)
       });
 
@@ -272,7 +272,7 @@ function createProductFromRow(rowObject) {
         method: "PUT",
         contentType: "application/json",
         headers: {
-          "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
+          "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN')
         },
         payload: JSON.stringify(payload)
       });
@@ -318,7 +318,7 @@ function createProductFromRow(rowObject) {
         method: "POST",
         contentType: "application/json",
         headers: {
-          "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
+          "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN')
         },
         payload: query
       };

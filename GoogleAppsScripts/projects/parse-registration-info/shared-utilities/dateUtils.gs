@@ -150,3 +150,68 @@ function addBusinessDays(date, businessDays) {
   
   return result;
 }
+
+// =============================================================================
+// ADDITIONAL DATE FORMATTING FUNCTIONS (moved from project-specific Utils)
+// =============================================================================
+
+/**
+ * Format date only (US format, short year)
+ * @param {Date|string} date - Date to format
+ * @returns {string|null} Formatted date string or null if error
+ */
+const formatDateOnly = date => {
+  try {
+    return new Date(date).toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" });
+  } catch (e) {
+    Logger.log(`❌ Error formatting date: ${e}`);
+    return null;
+  }
+};
+
+/**
+ * Format date and time together
+ * @param {Date|string} date - Date to format
+ * @returns {string} Formatted date and time string
+ */
+const formatDateAndTime = date => {
+  const d = new Date(date);
+  const datePart = d.toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" });
+  const timePart = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${datePart} at ${timePart}`;
+};
+
+/**
+ * Extract season dates from product description HTML
+ * @param {string} descriptionHtml - HTML description text
+ * @returns {Array} Array of [startDate, offDates] or [null, null] if not found
+ */
+function extractSeasonDates(descriptionHtml) {
+  // Strip HTML tags and decode entities
+  const text = descriptionHtml.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+  Logger.log(`stripped descriptionHtml: ${text}`);
+
+  const seasonDatesRegex =
+    /Season Dates[^:\d]*[:\s]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s*[–—-]\s*(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s*\(\d+\s+weeks(?:,\s*off\s+([^)]+))?\))?/i;
+
+  const match = text.match(seasonDatesRegex);
+  Logger.log(`match: ${match}`);
+
+  if (!match) return [null, null];
+
+  const seasonStartDate = match[1];
+  const offDatesStr = match[3] || null;
+  if (!seasonStartDate?.includes('/') || (!!offDatesStr && !offDatesStr?.includes('/')) ) return [null, null];
+
+  return [seasonStartDate, offDatesStr];
+}
+
+/**
+ * Format time only (useful for events/schedules)
+ * @param {Date|string} date - Date to format
+ * @returns {string|null} Formatted time string or null if invalid
+ */
+const formatTimeOnly = date => {
+  if (!date) return null;
+  return new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+};

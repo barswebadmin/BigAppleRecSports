@@ -1,3 +1,74 @@
+/**
+ * Secret Migration Helper for Google Apps Scripts
+ * 
+ * This script helps identify hardcoded secrets and provides code to migrate them
+ * to Google Apps Script's PropertiesService.
+ * 
+ * INSTRUCTIONS:
+ * 1. Copy this code into the Apps Script editor
+ * 2. Run identifySecrets() to find potential hardcoded secrets
+ * 3. Run setupSecrets() to set up the secret properties
+ * 4. Update your code to use getSecret() instead of hardcoded values
+ */
+
+// Common secret patterns to look for
+const SECRET_PATTERNS = [
+  /token['"]\s*:\s*['"][^'"]+['"]/gi,
+  /api[_-]?key['"]\s*:\s*['"][^'"]+['"]/gi,
+  /secret['"]\s*:\s*['"][^'"]+['"]/gi,
+  /password['"]\s*:\s*['"][^'"]+['"]/gi,
+  /bearer['"]\s*:\s*['"][^'"]+['"]/gi,
+  /webhook['"]\s*:\s*['"]https?:\/\/[^'"]+['"]/gi,
+  /'[a-zA-Z0-9]{32,}'/g,  // Long strings that might be tokens
+  /"[a-zA-Z0-9]{32,}"/g   // Long strings that might be tokens
+];
+
+/**
+ * Scan your code for potential secrets
+ * Run this function to identify hardcoded secrets in your scripts
+ */
+function identifySecrets() {
+  console.log("🔍 Scanning for potential hardcoded secrets...");
+  
+  // You'll need to manually paste your code here or check each file
+  const codeSamples = [
+    // Add your code strings here to scan
+    // Example: 'const API_TOKEN = "abc123def456";'
+  ];
+  
+  const findings = [];
+  
+  codeSamples.forEach((code, index) => {
+    SECRET_PATTERNS.forEach(pattern => {
+      const matches = code.match(pattern);
+      if (matches) {
+        matches.forEach(match => {
+          findings.push({
+            file: `Code sample ${index + 1}`,
+            match: match,
+            line: 'Unknown'
+          });
+        });
+      }
+    });
+  });
+  
+  if (findings.length > 0) {
+    console.log("⚠️  Potential secrets found:");
+    findings.forEach(finding => {
+      console.log(`- File: ${finding.file}, Match: ${finding.match}`);
+    });
+  } else {
+    console.log("✅ No obvious secrets found in provided code samples");
+  }
+  
+  console.log("\n📋 Next steps:");
+  console.log("1. Review the findings above");
+  console.log("2. Update setupSecrets() with your actual secret values");
+  console.log("3. Run setupSecrets() to store them securely");
+  console.log("4. Update your code to use getSecret() function");
+}
+
 function setupSecrets() {
   console.log("🔐 Setting up secrets in PropertiesService...");
   
