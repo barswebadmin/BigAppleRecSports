@@ -10,8 +10,8 @@ ENV/
 .venv/
 
 # IDE
-.vscode/launch.json
-.vscode/tasks.json
+.vscode
+.vscode/*
 .idea/
 *.swp
 *.swo

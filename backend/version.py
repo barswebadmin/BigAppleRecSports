@@ -29,16 +29,12 @@ def get_version():
     """Return the current version string"""
     return __version__
 
-def get_full_version():
-    """Return version with build number"""
-    return f"{__version__}.{__build__}"
-
 def get_version_info():
     """Return complete version information"""
     return {
         "version": __version__,
         "build": __build__,
-        "full_version": get_full_version(),
+        "full_version": f"{__version__}.{__build__}",
         "last_updated": __last_updated__,
         "codename": __codename__
     }
