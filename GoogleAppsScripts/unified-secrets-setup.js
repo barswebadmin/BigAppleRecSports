@@ -33,10 +33,11 @@ function setupSecrets() {
     'SLACK_BOT_TOKEN_LEADERSHIP': 'xoxb-2602080084-8610961250834-FPVrAJgSXAImytWSf2GKL0Zq',        // For leadership/joe_test
     'SLACK_BOT_TOKEN_PAYMENT': 'xoxb-2602080084-8601708038470-Z0eD6HhHG68MitN5xsfGstu5',           // For payment/exec_leadership  
     'SLACK_BOT_TOKEN_GENERAL': 'xoxb-2602080084-8610974674770-K6rtRGsLT6obQfluL1fPpdEs',           // For general/web purposes
+    'SLACK_BOT_TOKEN_WAITLIST': 'xoxb-2602080084-8610974674770-K6rtRGsLT6obQfluL1fPpdEs',          // For waitlist validation alerts
     
     // Slack Channel IDs
     'SLACK_CHANNEL_REFUNDS_PROD': 'C08J1EN7SFR',      // #refunds (production)
-    'SLACK_CHANNEL_REFUNDS_TEST': 'C092RU7R6PL',      // #joe-test
+    'SLACK_CHANNEL_JOE_TEST': 'C092RU7R6PL',      // #joe-test
     'SLACK_CHANNEL_PAYMENT_LEADERSHIP': 'C08J219EXN0', // Payment/Leadership notifications  
     'SLACK_CHANNEL_PAYMENT_GENERAL': 'C086GG1H9BK',   // General payment notifications
     'SLACK_CHANNEL_LEADERSHIP': 'C02KAENF6',          // Leadership channel

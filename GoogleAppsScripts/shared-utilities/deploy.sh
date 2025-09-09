@@ -36,13 +36,11 @@ function show_help() {
     echo "  push     Flatten directory structure and push to Google Apps Script"
     echo "  pull     Pull from Google Apps Script and organize into directories"
     echo "  status   Show clasp status"
-    echo "  deploy   Deploy a new version (after push)"
     echo "  help     Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 push    # Push organized code to GAS"
     echo "  $0 pull    # Pull from GAS and organize locally"
-    echo "  $0 deploy  # Create new deployment version"
 }
 
 function prepare_for_gas() {
@@ -78,26 +76,16 @@ function prepare_for_gas() {
 function organize_from_gas() {
     log_info "Organizing files from Google Apps Script into directories..."
     
-    # Create directories if they don't exist
-    mkdir -p "$SCRIPT_DIR/shared-utilities"
-    mkdir -p "$SCRIPT_DIR/processors"
+    # Create directories if they don't exist - shared-utilities structure
+    mkdir -p "$SCRIPT_DIR"
     
     # Move files from temp directory back to organized structure
     for file in "$TEMP_DIR"/*.gs; do
         if [ -f "$file" ]; then
             filename=$(basename "$file")
             
-            # Determine target directory based on filename prefix
-            if [[ "$filename" == shared-utilities_* ]]; then
-                target_name=$(echo "$filename" | sed 's/shared-utilities_//')
-                target_path="$SCRIPT_DIR/shared-utilities/$target_name"
-            elif [[ "$filename" == processors_* ]]; then
-                target_name=$(echo "$filename" | sed 's/processors_//')
-                target_path="$SCRIPT_DIR/processors/$target_name"
-            else
-                # Files without directory prefix stay in root
-                target_path="$SCRIPT_DIR/$filename"
-            fi
+            # All files go directly in shared-utilities root
+            target_path="$SCRIPT_DIR/$filename"
             
             cp "$file" "$target_path"
             log_info "Organized: $filename → $target_path"
@@ -185,36 +173,6 @@ function show_status() {
     fi
 }
 
-function deploy_version() {
-    log_info "Creating new deployment..."
-    
-    # First push the latest changes
-    if push_to_gas; then
-        log_info "Now deploying new version..."
-        
-        # Create temp directory and copy .clasp.json for deployment
-        mkdir -p "$TEMP_DIR"
-        cd "$TEMP_DIR" || exit 1
-        
-        if [ -f "$SCRIPT_DIR/.clasp.json" ]; then
-            cp "$SCRIPT_DIR/.clasp.json" "$TEMP_DIR/"
-            
-            if clasp deploy; then
-                log_success "Successfully deployed new version!"
-            else
-                log_error "Failed to deploy new version"
-                return 1
-            fi
-        fi
-        
-        cd "$SCRIPT_DIR" || exit 1
-        rm -rf "$TEMP_DIR"
-    else
-        log_error "Push failed, skipping deployment"
-        return 1
-    fi
-}
-
 # Main command handling
 case "${1:-help}" in
     push)
@@ -225,9 +183,6 @@ case "${1:-help}" in
         ;;
     status)
         show_status
-        ;;
-    deploy)
-        deploy_version
         ;;
     help|--help|-h)
         show_help

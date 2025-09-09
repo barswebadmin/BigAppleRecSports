@@ -36,13 +36,11 @@ function show_help() {
     echo "  push     Flatten directory structure and push to Google Apps Script"
     echo "  pull     Pull from Google Apps Script and organize into directories"
     echo "  status   Show clasp status"
-    echo "  deploy   Deploy a new version (after push)"
     echo "  help     Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 push    # Push organized code to GAS"
     echo "  $0 pull    # Pull from GAS and organize locally"
-    echo "  $0 deploy  # Create new deployment version"
 }
 
 function prepare_for_gas() {
@@ -79,11 +77,11 @@ function organize_from_gas() {
     log_info "Organizing files from Google Apps Script into directories..."
     
     # Create directories if they don't exist
-    mkdir -p "$SCRIPT_DIR/shared-utilities"
     mkdir -p "$SCRIPT_DIR/core"
     mkdir -p "$SCRIPT_DIR/helpers"
     mkdir -p "$SCRIPT_DIR/validators"
     mkdir -p "$SCRIPT_DIR/config"
+    mkdir -p "$SCRIPT_DIR/shared-utilities"
     
     # Move files from temp directory back to organized structure
     for file in "$TEMP_DIR"/*.gs; do
@@ -91,21 +89,21 @@ function organize_from_gas() {
             filename=$(basename "$file")
             
             # Determine target directory based on filename prefix
-            if [[ "$filename" == shared-utilities/* ]]; then
-                target_name=$(echo "$filename" | sed 's|shared-utilities/||')
-                target_path="$SCRIPT_DIR/shared-utilities/$target_name"
-            elif [[ "$filename" == core/* ]]; then
-                target_name=$(echo "$filename" | sed 's|core/||')
+            if [[ "$filename" == core_* ]]; then
+                target_name=$(echo "$filename" | sed 's/core_//')
                 target_path="$SCRIPT_DIR/core/$target_name"
-            elif [[ "$filename" == helpers/* ]]; then
-                target_name=$(echo "$filename" | sed 's|helpers/||')
+            elif [[ "$filename" == helpers_* ]]; then
+                target_name=$(echo "$filename" | sed 's/helpers_//')
                 target_path="$SCRIPT_DIR/helpers/$target_name"
-            elif [[ "$filename" == validators/* ]]; then
-                target_name=$(echo "$filename" | sed 's|validators/||')
+            elif [[ "$filename" == validators_* ]]; then
+                target_name=$(echo "$filename" | sed 's/validators_//')
                 target_path="$SCRIPT_DIR/validators/$target_name"
-            elif [[ "$filename" == config/* ]]; then
-                target_name=$(echo "$filename" | sed 's|config/||')
+            elif [[ "$filename" == config_* ]]; then
+                target_name=$(echo "$filename" | sed 's/config_//')
                 target_path="$SCRIPT_DIR/config/$target_name"
+            elif [[ "$filename" == shared-utilities_* ]]; then
+                target_name=$(echo "$filename" | sed 's/shared-utilities_//')
+                target_path="$SCRIPT_DIR/shared-utilities/$target_name"
             else
                 # Files without directory prefix stay in root
                 target_path="$SCRIPT_DIR/$filename"
@@ -197,36 +195,6 @@ function show_status() {
     fi
 }
 
-function deploy_version() {
-    log_info "Creating new deployment..."
-    
-    # First push the latest changes
-    if push_to_gas; then
-        log_info "Now deploying new version..."
-        
-        # Create temp directory and copy .clasp.json for deployment
-        mkdir -p "$TEMP_DIR"
-        cd "$TEMP_DIR" || exit 1
-        
-        if [ -f "$SCRIPT_DIR/.clasp.json" ]; then
-            cp "$SCRIPT_DIR/.clasp.json" "$TEMP_DIR/"
-            
-            if clasp deploy; then
-                log_success "Successfully deployed new version!"
-            else
-                log_error "Failed to deploy new version"
-                return 1
-            fi
-        fi
-        
-        cd "$SCRIPT_DIR" || exit 1
-        rm -rf "$TEMP_DIR"
-    else
-        log_error "Push failed, skipping deployment"
-        return 1
-    fi
-}
-
 # Main command handling
 case "${1:-help}" in
     push)
@@ -237,9 +205,6 @@ case "${1:-help}" in
         ;;
     status)
         show_status
-        ;;
-    deploy)
-        deploy_version
         ;;
     help|--help|-h)
         show_help

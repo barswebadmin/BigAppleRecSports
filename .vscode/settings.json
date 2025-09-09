@@ -1,4 +1,11 @@
 {
+    "cursor.rules": [
+      "Use minimal comments - only add comments that explain WHY, not WHAT",
+      "Avoid commenting obvious variable assignments and method calls",
+      "Self-documenting code through clear naming is preferred over comments",
+      "Only comment complex business logic, workarounds, or non-obvious decisions",
+      "ALWAYS implement actual code changes when user asks - DO NOT just provide suggestions or code snippets"
+    ],
     "python.analysis.extraPaths": [
         "./lambda-layers/bars-common-utils/python",
         "./lambda-functions/MoveInventoryLambda",
@@ -12,5 +19,10 @@
     "python.analysis.diagnosticMode": "workspace",
     "python.defaultInterpreterPath": "python3",
     "python.analysis.autoSearchPaths": true,
-    "python.analysis.stubPath": "./lambda-layers/bars-common-utils/python"
-} 
+    "python.analysis.stubPath": "./lambda-layers/bars-common-utils/python",
+    "files.associations": {
+        "*.gs": "javascript"
+    },
+    "javascript.suggest.includeCompletions": true,
+    "javascript.suggest.autoImports": true
+  }

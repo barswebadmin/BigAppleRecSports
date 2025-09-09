@@ -37,7 +37,7 @@ const slackRefundsChannel = MODE.includes('prod') ?
   :
   { 
     name: '#joe-test',
-    channelId: getSecret('SLACK_CHANNEL_REFUNDS_TEST'),
+    channelId: getSecret('SLACK_CHANNEL_JOE_TEST'),
     bearerToken: getSlackBotToken('refunds')
   }
 

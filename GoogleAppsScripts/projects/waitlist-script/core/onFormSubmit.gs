@@ -229,7 +229,7 @@ function processFormSubmit(e) {
   // Web app URL format: https://script.google.com/macros/s/DEPLOYMENT_ID/exec
   // You need to create a Web App deployment in Google Apps Script to get the correct URL
   // Direct link to waitlist checker - Interactive version for all leagues
-  const baseUrl = 'https://script.google.com/macros/s/AKfycbzeKN4PtrdgN-c9SMw94bW-p4nmLAU_kT8Qf-KfrRYUjDuJVvaJHOiIb1YeVJoNFvuVng/exec';
+  const baseUrl = 'https://script.google.com/macros/s/AKfycbzWqY_AvxEb1Q4qjWVVBV3epjF8QGL4Rw7YzDcuPEM3DyJZrtOvACOKY5T0wbzGd3R0Yg/exec';
   const spotCheckUrl = `${baseUrl}?email=${encodedEmail}&league=${encodedLeague}`;
 
   const barsLogoUrl = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
