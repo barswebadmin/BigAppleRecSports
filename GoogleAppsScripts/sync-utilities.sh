@@ -75,28 +75,6 @@ for dir in "${GAS_DIRS[@]}"; do
         echo "    ❌ Failed to copy utilities to $dir/shared-utilities"
       fi
       
-      # Copy/update deploy.sh script from shared-utilities
-      DEPLOY_SUCCESS=true
-      if [ -f "shared-utilities/deploy.sh" ]; then
-        if [ ! -f "$dir/deploy.sh" ] || ! cmp -s "shared-utilities/deploy.sh" "$dir/deploy.sh"; then
-          if cp "shared-utilities/deploy.sh" "$dir/" 2>/dev/null; then
-            chmod +x "$dir/deploy.sh"
-            if [ -f "$dir/deploy.sh" ]; then
-              echo "    ✅ Deploy script updated and made executable"
-            else
-              echo "    ✅ Deploy script copied and made executable"
-            fi
-          else
-            echo "    ⚠️  Failed to copy deploy.sh (not critical)"
-            DEPLOY_SUCCESS=false
-          fi
-        else
-          echo "    ℹ️  Deploy script already up to date"
-        fi
-      else
-        echo "    ⚠️  No deploy.sh template found in shared-utilities/"
-        DEPLOY_SUCCESS=false
-      fi
       
       # Count success only if utilities copied successfully
       if [ "$UTILITIES_SUCCESS" = true ]; then
@@ -117,28 +95,6 @@ for dir in "${GAS_DIRS[@]}"; do
         echo "    ❌ Failed to copy utilities to $dir/shared-utilities"
       fi
       
-      # Copy/update deploy.sh script from shared-utilities (for all directories now)
-      DEPLOY_SUCCESS=true
-      if [ -f "shared-utilities/deploy.sh" ]; then
-        if [ ! -f "$dir/deploy.sh" ] || ! cmp -s "shared-utilities/deploy.sh" "$dir/deploy.sh"; then
-          if cp "shared-utilities/deploy.sh" "$dir/" 2>/dev/null; then
-            chmod +x "$dir/deploy.sh"
-            if [ -f "$dir/deploy.sh" ]; then
-              echo "    ✅ Deploy script updated and made executable"
-            else
-              echo "    ✅ Deploy script copied and made executable"
-            fi
-          else
-            echo "    ⚠️  Failed to copy deploy.sh (not critical)"
-            DEPLOY_SUCCESS=false
-          fi
-        else
-          echo "    ℹ️  Deploy script already up to date"
-        fi
-      else
-        echo "    ⚠️  No deploy.sh template found in shared-utilities/"
-        DEPLOY_SUCCESS=false
-      fi
       
       # Count success only if utilities copied successfully
       if [ "$UTILITIES_SUCCESS" = true ]; then
@@ -165,7 +121,7 @@ if [ $FAILED_COUNT -eq 0 ]; then
   echo "📝 Next steps:"
   echo "  1. Test your changes in individual scripts"
   echo "  2. All directories now use organized structure!"
-  echo "  3. Use './deploy.sh push' to deploy any project"
+  echo "  3. Use './clasp_helpers.sh push' to deploy any project"
   echo "  4. Utilities are in each project's shared-utilities/ directory"
   echo "  5. Update this script if you add new GAS directories"
 else
@@ -178,7 +134,7 @@ echo "🔧 Files synced:"
 echo "📁 Utility files (.gs):"
 ls shared-utilities/*.gs | xargs -n 1 basename | sed 's/^/  • /'
 echo ""
-echo "🚀 Deploy scripts:"
-echo "  • Copied/updated in ALL directories"
-echo "  • All projects now support './deploy.sh push'"
-echo "  • Automatically synced from shared-utilities/deploy.sh"
+echo "🚀 Clasp Helper Scripts:"
+echo "  • Each project has its own clasp_helpers.sh"
+echo "  • All projects support './clasp_helpers.sh push'"
+echo "  • Project-specific clasp management"

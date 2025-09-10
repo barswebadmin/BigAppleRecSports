@@ -47,9 +47,9 @@ function parseNotes_(cVal, sportStartTime, unresolved) {
   }
 
   // ---- Opening Party ----
-  const openingPartyMatch = text.match(/opening\s+party\s*:\s*(tbd|[a-z]{3,9}\.?[\s.,]*\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/i);
+  const openingPartyMatch = text.match(/opening\s+party\s*:\s*((?:date\s+)?tbd|[a-z]{3,9}\.?[\s.,]*\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/i);
   if (openingPartyMatch) {
-    if (/^tbd$/i.test(openingPartyMatch[1])) {
+    if (/(?:date\s+)?tbd/i.test(openingPartyMatch[1])) {
       res.openingPartyDate = 'TBD';
     } else {
       const d = parseDateFlexibleDateOnly_(openingPartyMatch[1], unresolved);
@@ -72,9 +72,9 @@ function parseNotes_(cVal, sportStartTime, unresolved) {
   }
 
   // ---- Closing Party ----
-  const closingMatch = text.match(/closing\s+party\s*:\s*(tbd|[a-z]{3,9}\.?[\s.,]*\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/i);
+  const closingMatch = text.match(/closing\s+party\s*:\s*((?:date\s+)?tbd|[a-z]{3,9}\.?[\s.,]*\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/i);
   if (closingMatch) {
-    if (/^tbd$/i.test(closingMatch[1])) {
+    if (/(?:date\s+)?tbd/i.test(closingMatch[1])) {
       res.closingPartyDate = 'TBD';
     } else {
       const d = parseDateFlexibleDateOnly_(closingMatch[1], unresolved);
@@ -83,15 +83,18 @@ function parseNotes_(cVal, sportStartTime, unresolved) {
   }
 
   // ---- Off Dates ----
-  const offDatesPattern = /(?:off|no\s+games?|cancelled?)\s*(?:dates?)?\s*:\s*([0-9\/,\s-]+)/gi;
+  // Handle various patterns: "off dates:", "no games:", "skipping", etc.
+  const offDatesPattern = /(?:off|no\s+games?|cancelled?|skipping)\s*(?:dates?)?\s*(?::|on)?\s*([0-9\/,\s\-and]+)/gi;
   let offMatch;
   while ((offMatch = offDatesPattern.exec(text)) !== null) {
     const dateStr = offMatch[1];
-    const dates = dateStr.split(/[,\s]+/).filter(Boolean);
+    // Split by common separators: comma, 'and', spaces, dashes
+    const dates = dateStr.split(/[,\s]+|and/).filter(Boolean);
     
     for (const date of dates) {
-      if (/^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/.test(date)) {
-        res.offDatesFromNotes.push(date);
+      // Match MM/DD or MM/DD/YY format
+      if (/^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/.test(date.trim())) {
+        res.offDatesFromNotes.push(date.trim());
       }
     }
   }

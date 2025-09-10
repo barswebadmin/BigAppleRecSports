@@ -63,9 +63,9 @@ run_test "Shared utilities has required .gs files" \
      [ -f 'shared-utilities/dateUtils.gs' ] && \
      [ -f 'shared-utilities/secretsUtils.gs' ]"
 
-# Test 3: Shared utilities has deploy script
-run_test "Shared utilities has deploy script" \
-    "[ -f 'shared-utilities/deploy.sh' ] && [ -x 'shared-utilities/deploy.sh' ]"
+# Test 3: Shared utilities directory is properly set up
+run_test "Shared utilities directory exists with gas files" \
+    "[ -d 'shared-utilities' ] && [ -n \"\$(ls shared-utilities/*.gs 2>/dev/null)\" ]"
 
 # Test 4: All target directories exist
 GAS_DIRS=("projects/waitlist-script" "projects/product-variant-creation" "projects/parse-registration-info" 
@@ -84,16 +84,10 @@ for dir in "${GAS_DIRS[@]}"; do
          [ -f '$dir/shared-utilities/secretsUtils.gs' ]"
 done
 
-# Test 6: All directories have deploy.sh script
+# Test 6: All directories have clasp_helpers.sh script
 for dir in "${GAS_DIRS[@]}"; do
-    run_test "$dir has executable deploy.sh script" \
-        "[ -f '$dir/deploy.sh' ] && [ -x '$dir/deploy.sh' ]"
-done
-
-# Test 7: All deploy.sh scripts match the master in shared-utilities
-for dir in "${GAS_DIRS[@]}"; do
-    run_test "$dir deploy.sh matches shared-utilities master" \
-        "cmp -s 'shared-utilities/deploy.sh' '$dir/deploy.sh'"
+    run_test "$dir has executable clasp_helpers.sh script" \
+        "[ -f '$dir/clasp_helpers.sh' ] && [ -x '$dir/clasp_helpers.sh' ]"
 done
 
 # Test 8: Create test directory and run sync script simulation

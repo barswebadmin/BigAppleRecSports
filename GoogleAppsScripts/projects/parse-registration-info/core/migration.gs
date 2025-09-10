@@ -59,8 +59,8 @@ function migrateRowToTarget_(sourceSheet, row) {
     F: (rowValues[5] || '').toString(), // price
     G: (rowValues[6] || '').toString(), // times
     H: (rowValues[7] || '').toString(), // location
-    M: (rowValues[12] || '').toString(), // vet reg
-    N: (rowValues[13] || '').toString(), // early reg
+    M: (rowValues[12] || '').toString(), // early reg (WTNB/BIPOC/TNB register)
+    N: (rowValues[13] || '').toString(), // vet reg
     O: (rowValues[14] || '').toString(), // open reg
   };
 

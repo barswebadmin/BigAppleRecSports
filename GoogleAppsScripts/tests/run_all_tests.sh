@@ -60,7 +60,6 @@ echo "Starting comprehensive test execution..."
 echo ""
 
 # Run all test suites
-run_test_suite "Deploy Script Tests" "./test_deploy.sh"
 run_test_suite "Sync Utilities Tests" "./test_sync_utilities.sh" 
 run_test_suite "Leadership Discount Codes Tests" "./test_leadership_discount_codes.sh"
 run_test_suite "Parse Registration Functions Tests" "./test_parse_registration_functions.sh"

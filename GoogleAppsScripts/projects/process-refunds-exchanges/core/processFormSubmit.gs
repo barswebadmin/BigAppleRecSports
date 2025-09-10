@@ -37,6 +37,22 @@ function processFormSubmit(e) {
     const refundOrCredit = refundAnswer.toLowerCase().includes("refund") ? "refund" : "credit";
     const requestNotes = getFieldValueByKeyword("note");
     
+    // Capture the timestamp when the form was submitted
+    const timestampValue = getFieldValueByKeyword("timestamp");
+    let requestSubmittedAt = null;
+    if (timestampValue) {
+      try {
+        // Convert to ISO 8601 format for the backend
+        const timestamp = new Date(timestampValue);
+        requestSubmittedAt = timestamp.toISOString();
+        Logger.log(`📅 Form submission timestamp: ${requestSubmittedAt}`);
+      } catch (error) {
+        Logger.log(`⚠️ Failed to parse timestamp '${timestampValue}': ${error.message}`);
+      }
+    } else {
+      Logger.log(`⚠️ No timestamp found in form submission`);
+    }
+    
     // Normalize order number (add # if missing) - using function from Utils.gs
     const formattedOrderNumber = normalizeOrderNumber(rawOrderNumber);
     
@@ -45,7 +61,8 @@ function processFormSubmit(e) {
       - Email: ${requestorEmail} \n
       - Order: ${rawOrderNumber} → ${formattedOrderNumber} \n
       - Type: ${refundOrCredit} \n
-      - Notes: ${requestNotes}
+      - Notes: ${requestNotes} \n
+      - Submitted At: ${requestSubmittedAt}
     `);
 
 
@@ -56,6 +73,7 @@ function processFormSubmit(e) {
         requestorEmail,
         refundOrCredit,
         requestNotes,
+        requestSubmittedAt,
         MODE === 'debugApi'
       );
 
@@ -85,7 +103,7 @@ function processFormSubmit(e) {
 // BACKEND API PROCESSING
 // ========================================================================
 
-function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundOrCredit, requestNotes, isDebug) {
+function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundOrCredit, requestNotes, requestSubmittedAt, isDebug) {
   try {
     
     const sheetLink = getRowLink(formattedOrderNumber, SHEET_ID, SHEET_GID);
@@ -99,7 +117,8 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
       requestor_email: requestorEmail,
       refund_type: refundOrCredit,
       notes: requestNotes,
-      sheet_link: sheetLink
+      sheet_link: sheetLink,
+      request_submitted_at: requestSubmittedAt
     };
     
     // Enhanced request logging

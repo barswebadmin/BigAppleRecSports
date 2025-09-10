@@ -170,9 +170,9 @@ fi
 if [ "$CLEANUP_ONLY" != true ]; then
     log_info "Pushing code to Google Apps Script..."
     
-    if [ -f deploy.sh ]; then
-        log_info "Using project-specific deploy script..."
-        ./deploy.sh push
+    if [ -f clasp_helpers.sh ]; then
+        log_info "Using project-specific clasp helper script..."
+        ./clasp_helpers.sh push
     else
         log_info "Using direct clasp push..."
         clasp push --force

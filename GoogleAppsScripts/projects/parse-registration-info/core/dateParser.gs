@@ -66,6 +66,9 @@ function parseFlexible_(raw, opts) {
     .trim();
   
   input = stripWeekdays_(input);
+  
+  // Remove periods after month abbreviations and extra commas
+  input = input.replace(/\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s*,?\s*/gi, '$1 ');
 
   // Try various date patterns
   

@@ -13,7 +13,7 @@ leadership-discount-codes/
 │   ├── dateUtils.gs                 # Date utility functions
 │   └── secretsUtils.gs              # Secret management
 ├── appsscript.json                  # GAS manifest
-├── deploy.sh                        # Custom deployment script
+├── clasp_helpers.sh                 # Clasp management helpers
 └── README.md                        # This file
 ```
 
@@ -32,19 +32,22 @@ leadership-discount-codes/
 
 ```bash
 # Push organized code to Google Apps Script
-./deploy.sh push
+./clasp_helpers.sh push
 
 # Pull from Google Apps Script and organize locally
-./deploy.sh pull
+./clasp_helpers.sh pull
 
 # Check clasp status
-./deploy.sh status
+./clasp_helpers.sh status
 
 # Deploy a new version
-./deploy.sh deploy
+./clasp_helpers.sh deploy
+
+# Clean up temporary files
+./clasp_helpers.sh cleanup
 
 # Show help
-./deploy.sh help
+./clasp_helpers.sh help
 ```
 
 ## 📝 File Mapping
@@ -68,14 +71,14 @@ leadership-discount-codes/
 ## 🔧 Setup
 
 1. Make sure you have `clasp` installed and authenticated
-2. Run `./deploy.sh push` to deploy organized code to Google Apps Script
+2. Run `./clasp_helpers.sh push` to deploy organized code to Google Apps Script
 3. Your local directory structure is preserved while GAS gets flattened files
 
 ## 🔄 Workflow
 
 1. **Edit** files in organized directories locally
-2. **Test** changes using `./deploy.sh push`
+2. **Test** changes using `./clasp_helpers.sh push`
 3. **Commit** organized structure to Git
-4. **Deploy** production versions using `./deploy.sh deploy`
+4. **Deploy** production versions using `./clasp_helpers.sh deploy`
 
 This setup gives you the best of both worlds: organized local development and Google Apps Script compatibility!

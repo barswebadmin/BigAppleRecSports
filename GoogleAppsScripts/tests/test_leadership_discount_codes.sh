@@ -53,7 +53,7 @@ function run_test() {
 run_test "Leadership directory has organized structure" \
     "[ -d 'projects/projects/leadership-discount-codes/processors' ] && \
      [ -d 'projects/projects/leadership-discount-codes/shared-utilities' ] && \
-     [ -f 'projects/projects/leadership-discount-codes/deploy.sh' ] && \
+     [ -f 'projects/projects/leadership-discount-codes/clasp_helpers.sh' ] && \
      [ -f 'projects/projects/leadership-discount-codes/appsscript.json' ]"
 
 # Test 2: Main processor file exists and has expected functions
@@ -94,11 +94,11 @@ run_test "Date utils has date helper functions" \
 run_test "Apps Script manifest is valid JSON" \
     "python3 -m json.tool projects/leadership-discount-codes/appsscript.json > /dev/null 2>&1"
 
-# Test 9: Deploy script is executable and has correct functions
-run_test "Deploy script is executable with required functions" \
-    "[ -x 'projects/leadership-discount-codes/deploy.sh' ] && \
-     grep -q 'function prepare_for_gas' projects/leadership-discount-codes/deploy.sh && \
-     grep -q 'function push_to_gas' projects/leadership-discount-codes/deploy.sh"
+# Test 9: Clasp helper script is executable and has correct functions
+run_test "Clasp helper script is executable with required functions" \
+    "[ -x 'projects/leadership-discount-codes/clasp_helpers.sh' ] && \
+     grep -q 'function prepare_for_gas' projects/leadership-discount-codes/clasp_helpers.sh && \
+     grep -q 'function push_to_gas' projects/leadership-discount-codes/clasp_helpers.sh"
 
 # Test 10: No hardcoded secrets in processor (should use getSecret)
 run_test "No hardcoded secrets in processor file" \
@@ -122,10 +122,10 @@ run_test "CSV processing functions have error handling" \
 run_test "Backend communication includes proper headers" \
     "grep -B 15 'UrlFetchApp.fetch' projects/leadership-discount-codes/processors/leadershipProcessor.gs | grep -q 'Content-Type.*application/json'"
 
-# Test 15: Test deploy script prepare function (without actually deploying)
-run_test "Deploy script prepare function works correctly" \
+# Test 15: Test clasp helper script prepare function (without actually deploying)
+run_test "Clasp helper script prepare function works correctly" \
     "cd projects/leadership-discount-codes && \
-     bash -c 'source ./deploy.sh && prepare_for_gas && \
+     bash -c 'source ./clasp_helpers.sh && prepare_for_gas && \
      [ -d .deploy_temp ] && \
      [ -f .deploy_temp/appsscript.json ] && \
      ls .deploy_temp/ | grep -q processors'"

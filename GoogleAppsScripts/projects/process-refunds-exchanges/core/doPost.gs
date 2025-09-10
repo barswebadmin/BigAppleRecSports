@@ -14,13 +14,34 @@
  * ========================================================================
  */
 
+/**
+ * Handle GET requests for debugging
+ */
+function doGet(e) {
+  Logger.log("⚠️ doGet called - this should be doPost for denial emails");
+  Logger.log("📨 GET Request object: " + JSON.stringify(e, null, 2));
+  
+  return MailApp.sendEmail({
+    to: DEBUG_EMAIL,
+    subject: "⚠️ Slack Webhook Received by GAS but was GET request",
+    htmlBody: `
+      ${JSON.stringify(e.postData, null, 2)}
+    `
+  });
+}
+
 function doPost(e) {
   try {
+    Logger.log("🚀 doPost called");
+    Logger.log("📨 Request object: " + JSON.stringify(e, null, 2));
+    
     if (!e.postData || !e.postData.contents) {
+      Logger.log("❌ Missing postData or contents");
       throw new Error("Missing postData or contents in request");
     }
 
     const raw = decodeURIComponent(e.postData.contents);
+    Logger.log("📝 Raw contents: " + raw);
     
     // Check if this is a Slack webhook (contains "payload=")
     if (raw.startsWith("payload=")) {
@@ -44,6 +65,28 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({
         "text": "⚠️ Please update Slack webhook URL to point to backend"
       })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Check if this is a backend request (JSON with action)
+    try {
+      const jsonData = JSON.parse(raw);
+      if (jsonData.action) {
+        Logger.log(`🔧 Backend action detected: ${jsonData.action}`);
+        
+        if (jsonData.action === "send_denial_email") {
+          const result = sendDenialEmail(jsonData);
+          return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+        } else {
+          Logger.log(`❌ Unknown action: ${jsonData.action}`);
+          return ContentService.createTextOutput(JSON.stringify({
+            success: false,
+            message: `Unknown action: ${jsonData.action}`
+          })).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    } catch (parseError) {
+      // Not JSON, continue to form submission processing
+      Logger.log("📝 Not JSON, assuming form submission");
     }
 
     // If we get here, this should be a Google Form submission
