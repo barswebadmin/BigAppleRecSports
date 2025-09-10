@@ -422,8 +422,20 @@ class SlackApiClient:
             logger.info(f"Sending modal dialog to user with trigger_id {trigger_id}")
             logger.debug(f"Modal content: {modal_view.get('title', {}).get('text', 'Unknown title')}")
             
-            response = requests.post(url, headers=headers, data=json.dumps(payload))
-            response_data = response.json()
+            # Send the request with SSL verification fallback
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(payload), verify=True)
+                response_data = response.json()
+            except requests.exceptions.SSLError as ssl_error:
+                logger.warning(f"SSL Error with Slack API - trying without verification: {ssl_error}")
+                # Fallback: try without SSL verification (for development)
+                response = requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
+                response_data = response.json()
+            
+            # Debug: Log full response details
+            logger.info(f"Slack API Response - Status: {response.status_code}")
+            logger.info(f"Slack API Response - Headers: {dict(response.headers)}")
+            logger.info(f"Slack API Response - Body: {response_data}")
             
             if response.status_code == 200 and response_data.get("ok"):
                 logger.info("Modal dialog sent successfully")
@@ -433,8 +445,10 @@ class SlackApiClient:
                     "slack_response": response_data
                 }
             else:
-                error_msg = response_data.get("error", "Unknown error")
+                error_msg = response_data.get("error", f"Unknown error - Status: {response.status_code}")
+                error_details = response_data.get("response_metadata", {})
                 logger.error(f"Slack modal dialog error: {error_msg}")
+                logger.error(f"Slack error details: {error_details}")
                 return {
                     "success": False,
                     "error": f"Slack modal dialog error: {error_msg}",

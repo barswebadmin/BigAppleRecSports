@@ -96,7 +96,7 @@ function parseBFlags_(linesFromB, unresolved, notesText) {
   if (/\brandomized\b/i.test(text)) typesSet.add('Randomized Teams');
 
   if (hasBuddySignup_(text)) {
-    typesSet.add('Buddy Signup');
+    typesSet.add('Buddy Sign-up');
   }
 
   // Captain signup

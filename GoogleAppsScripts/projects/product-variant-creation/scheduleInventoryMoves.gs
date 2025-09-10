@@ -1,4 +1,5 @@
 function scheduleInventoryMoves(selectedRow = null) {
+  const apiEndpoint = API_DESTINATION === 'AWS' ? getSecret('AWS_CREATE_PRODUCT_ENDPOINT') : 'https://chubby-grapes-trade.loca.lt/api/products';
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const data = sheet.getDataRange().getValues();
   const sheetHeaders = data[0];
@@ -159,12 +160,6 @@ function scheduleInventoryMoves(selectedRow = null) {
   })
 
   // END OF STARTING INVENTORY UPDATE
-
-  // Send the requests
-  const apiEndpoint = API_DESTINATION === 'AWS' ? 
-      'https://6ltvg34u77der4ywcfk3zwr4fq0tcvvj.lambda-url.us-east-1.on.aws/'
-      : 
-      'https://chubby-grapes-trade.loca.lt' + '/api/inventory-scheduler'
 
   let allSuccessful = true
 

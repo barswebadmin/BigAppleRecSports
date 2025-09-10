@@ -7,7 +7,7 @@ function createManualScheduledInventoryMoves() {
   const productIdDigitsOnly = productUrl.split("/").pop();
   const productGid = `gid://shopify/Product/${productIdDigitsOnly}`;
 
-  const graphqlEndpoint = GRAPHQL_URL;
+  const graphqlEndpoint = getSecret('SHOPIFY_GRAPHQL_URL');
 
   const graphqlQuery = `
     query GetProductVariants($productId: ID!) {
@@ -103,10 +103,6 @@ function createManualScheduledInventoryMoves() {
     newDatetime,
     actionAfterCompletion: "DELETE"
   };
-
-  const apiEndpoint = API_DESTINATION === 'AWS'
-    ? 'https://5klhixgo6d.execute-api.us-east-1.amazonaws.com/createSchedule'
-    : 'https://chubby-grapes-trade.loca.lt/api/inventory-scheduler';
 
   const options = {
     method: 'post',

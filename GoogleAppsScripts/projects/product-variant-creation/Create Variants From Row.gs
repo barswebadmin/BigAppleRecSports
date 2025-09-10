@@ -76,7 +76,7 @@ function createVariantsFromRow(rowObject) {
       }
     });
 
-    return UrlFetchApp.fetch(GRAPHQL_URL, {
+    return UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), {
       method: "post",
       contentType: "application/json",
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
@@ -98,7 +98,7 @@ function createVariantsFromRow(rowObject) {
       variables: { identifier: { id: productGid } }
     });
 
-    const response = UrlFetchApp.fetch(GRAPHQL_URL, {
+    const response = UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), {
       method: "post",
       contentType: "application/json",
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
@@ -122,7 +122,7 @@ function createVariantsFromRow(rowObject) {
       variables: { variantId: firstVariantGid }
     });
 
-    const inventoryResponse = UrlFetchApp.fetch(GRAPHQL_URL, {
+    const inventoryResponse = UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), {
       method: "post",
       contentType: "application/json",
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
@@ -150,7 +150,7 @@ function createVariantsFromRow(rowObject) {
       }
     });
 
-    UrlFetchApp.fetch(GRAPHQL_URL, {
+    UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), {
       method: "post",
       contentType: "application/json",
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
@@ -177,7 +177,7 @@ function createVariantsFromRow(rowObject) {
       }
     });
 
-    UrlFetchApp.fetch(GRAPHQL_URL, {
+    UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), {
       method: "post",
       contentType: "application/json",
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
@@ -226,7 +226,7 @@ function createVariantsFromRow(rowObject) {
       }
     });
 
-    const response = UrlFetchApp.fetch(GRAPHQL_URL, {
+    const response = UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), {
       method: "post",
       contentType: "application/json",
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },

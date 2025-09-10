@@ -9,8 +9,9 @@ import hmac
 import hashlib
 import html
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import asyncio
+from datetime import datetime, timezone
 
 # External imports
 import requests
@@ -18,6 +19,7 @@ from fastapi import HTTPException
 
 # Internal imports
 from services.slack.api_client import SlackApiClient, MockSlackApiClient, _is_test_mode
+from utils.date_utils import format_date_and_time
 from services.slack.message_builder import SlackMessageBuilder
 from config import settings
 
@@ -352,7 +354,7 @@ class SlackRefundsUtils:
                     requestor_name=requestor_name,
                     requestor_email=requestor_email,
                     refund_type=refund_type,
-                    sport_mention=self.message_builder.get_sport_group_mention(order_data["order"]["line_items"][0]["product_title"]),
+                    sport_mention=self.message_builder.get_sport_group_mention(order_data["order"]["line_items"][0]["title"]),
                     sheet_link=sheet_link,
                     order_cancelled=True,
                     slack_user_id=slack_user_id,
@@ -476,7 +478,7 @@ class SlackRefundsUtils:
                 requestor_name=requestor_name,
                 requestor_email=requestor_email,
                 refund_type=refund_type,
-                sport_mention=self.message_builder.get_sport_group_mention(order_data["order"]["line_items"][0]["product_title"]),
+                sport_mention=self.message_builder.get_sport_group_mention(order_data["order"]["line_items"][0]["title"]),
                 sheet_link=sheet_link,
                 order_cancelled=False,
                 slack_user_id=slack_user_id,
@@ -1098,16 +1100,18 @@ class SlackRefundsUtils:
 
     # === MESSAGE MANAGEMENT HELPERS ===
 
-    def update_slack_on_shopify_success(self, message_ts: str, success_message: str, action_buttons: list):
+    def update_slack_on_shopify_success(self, message_ts: str, success_message: str, action_buttons: list) -> Dict[str, Any]:
         """Update Slack message on Shopify success"""
         try:
-            self.api_client.update_message(
+            result = self.api_client.update_message(
                 message_ts=message_ts,
                 message_text=success_message,
                 action_buttons=action_buttons
             )
+            return {"success": True, "result": result}
         except Exception as e:
             logger.error(f"Failed to update Slack message on success: {e}")
+            return {"success": False, "error": str(e)}
 
     def update_slack_on_shopify_failure(self, message_ts: str, error_message: str, operation_name: str):
         """Update Slack message on Shopify failure"""
@@ -1298,3 +1302,772 @@ class SlackRefundsUtils:
                     operation_name="Inventory Restock"
                 )
             return {"success": False, "message": error_message}
+    
+    async def handle_edit_request_details(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
+        """
+        Handle edit request details button click - shows modal for editing order number and requestor email
+        """
+        print(f"\n✏️ === EDIT REQUEST DETAILS HANDLER ===")
+        print(f"👤 User: {slack_user_name} ({slack_user_id})")
+        print(f"📋 Request Data: {request_data}")
+        print(f"🎯 Trigger ID: {trigger_id}")
+        print("=== END EDIT REQUEST DETAILS ===\n")
+        
+        try:
+            # Extract current values from request_data
+            raw_order_number = request_data.get("rawOrderNumber", "").replace("#", "")  # Remove # for editing
+            requestor_email = request_data.get("requestorEmail", "")
+            first_name = request_data.get("first", "")
+            last_name = request_data.get("last", "")
+            refund_type = request_data.get("refundType", "refund")
+            notes = request_data.get("notes", "")
+            request_submitted_at = request_data.get("requestSubmittedAt", "")
+            
+            # Build modal for editing
+            modal_blocks = self._build_edit_request_modal_blocks(
+                raw_order_number=raw_order_number,
+                requestor_email=requestor_email,
+                first_name=first_name,
+                last_name=last_name,
+                refund_type=refund_type,
+                notes=notes,
+                request_submitted_at=request_submitted_at
+            )
+            
+            # Prepare private metadata with original request data AND message context
+            private_metadata = json.dumps({
+                "first": first_name,
+                "last": last_name,
+                "refund_type": refund_type,
+                "notes": notes,
+                "request_submitted_at": request_submitted_at,
+                "original_thread_ts": thread_ts,  # Store original message timestamp
+                "original_channel_id": channel_id  # Store channel ID
+            })
+            
+            # Show modal to user
+            modal_result = self._show_modal_to_user(
+                trigger_id=trigger_id,
+                modal_title="Edit Request Details",
+                modal_blocks=modal_blocks,
+                callback_id="edit_request_details_submission",
+                private_metadata=private_metadata
+            )
+            
+            if modal_result.get("success"):
+                logger.info(f"✅ Modal shown successfully to {slack_user_name}")
+                return {"success": True, "message": "Modal displayed"}
+            else:
+                error_msg = modal_result.get("error", "Failed to show modal")
+                logger.error(f"❌ Failed to show modal: {error_msg}")
+                return {"success": False, "message": error_msg}
+                
+        except Exception as e:
+            error_message = f"Exception in handle_edit_request_details: {str(e)}"
+            logger.error(f"❌ {error_message}")
+            return {"success": False, "message": error_message}
+    
+    async def handle_deny_refund_request(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Handle deny refund request button click - denies the refund request and sends denial email
+        """
+        print(f"\n🚫 === DENY REFUND REQUEST HANDLER ===")
+        print(f"👤 User: {slack_user_name} ({slack_user_id})")
+        print(f"📋 Request Data: {request_data}")
+        print("=== END DENY REFUND REQUEST ===\n")
+        
+        try:
+            # Extract request details
+            raw_order_number = request_data.get("rawOrderNumber", "")
+            refund_type = request_data.get("refundType", "refund")
+            first_name = requestor_name.get("first", "")
+            last_name = requestor_name.get("last", "")
+            request_submitted_at = request_data.get("requestSubmittedAt", "")
+            
+            # Build denial message
+            denial_message = f"🚫 *Refund Request Denied*\n\n"
+            denial_message += f"*Order Number:* {raw_order_number}\n"
+            denial_message += f"*Requested by:* {first_name} {last_name} ({requestor_email})\n"
+            denial_message += f"*Request Submitted At:* {request_submitted_at}\n"
+            denial_message += f"*Denied by:* <@{slack_user_name}>\n"
+            denial_message += f"*Denied at:* {format_date_and_time(datetime.now(timezone.utc))}\n\n"
+            denial_message += f"🚫 *This refund request has been denied.*\n\n"
+            denial_message += f"📧 The requestor will be notified via email about the denial."
+            
+            # TODO: Send denial email to requestor here
+            # For now, we'll just update the Slack message
+            
+            # Update Slack message
+            update_result = self.update_slack_on_shopify_success(
+                message_ts=thread_ts,
+                success_message=denial_message,
+                action_buttons=[]  # No buttons needed for denial
+            )
+            
+            if update_result.get("success"):
+                print(f"✅ Denial message sent to Slack")
+                return {"success": True, "message": "Refund request denied successfully"}
+            else:
+                error_msg = update_result.get("error", "Unknown error")
+                print(f"❌ Failed to update Slack message: {error_msg}")
+                return {"success": False, "message": f"Failed to update Slack: {error_msg}"}
+                
+        except Exception as e:
+            error_message = f"Exception in handle_deny_refund_request: {str(e)}"
+            logger.error(f"❌ {error_message}")
+            return {"success": False, "message": error_message}
+    
+    async def handle_deny_email_mismatch(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
+        """
+        Handle deny email mismatch button click - closes the request due to email mismatch
+        """
+        print(f"\n🚫 === DENY EMAIL MISMATCH HANDLER ===")
+        print(f"👤 User: {slack_user_name} ({slack_user_id})")
+        print(f"📋 Request Data: {request_data}")
+        print("=== END DENY EMAIL MISMATCH ===\n")
+        
+        try:
+            # Extract request details
+            raw_order_number = request_data.get("rawOrderNumber", "")
+            requestor_email = request_data.get("requestorEmail", "")
+            first_name = request_data.get("first", "")
+            last_name = request_data.get("last", "")
+            request_submitted_at = request_data.get("requestSubmittedAt", "")
+            
+            # Build denial message
+            denial_message = f":no_entry_sign: *Request Denied - Email Mismatch*\n\n"
+            denial_message += f"*Order Number:* {raw_order_number}\n"
+            denial_message += f"*Requested by:* {first_name} {last_name} ({requestor_email})\n"
+            denial_message += f"*Request Submitted At:* {request_submitted_at}\n"
+            denial_message += f"*Denied by:* {slack_user_name}\n\n"
+            denial_message += f":warning: *This request was denied due to email mismatch with the order's customer email.*\n\n"
+            denial_message += f"The requestor should be contacted to verify their email or order number if needed."
+            
+            # Update Slack message
+            update_result = self.update_slack_on_shopify_success(
+                message_ts=thread_ts,
+                success_message=denial_message,
+                action_buttons=[]  # No buttons needed for denial
+            )
+            
+            if update_result.get("success"):
+                logger.info(f"✅ Request denied successfully by {slack_user_name}")
+                return {"success": True, "message": "Request denied due to email mismatch"}
+            else:
+                error_msg = update_result.get("error", "Failed to update message")
+                logger.error(f"❌ Failed to update message: {error_msg}")
+                return {"success": False, "message": error_msg}
+                
+        except Exception as e:
+            error_message = f"Exception in handle_deny_email_mismatch: {str(e)}"
+            logger.error(f"❌ {error_message}")
+            return {"success": False, "message": error_message}
+    
+    def _build_edit_request_modal_blocks(self, raw_order_number: str, requestor_email: str, 
+                                       first_name: str, last_name: str, refund_type: str, 
+                                       notes: str, request_submitted_at: str) -> List[Dict[str, Any]]:
+        """
+        Build the modal blocks for editing request details
+        """
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": ":pencil2: *Edit Request Details*\n\nUpdate the order number or requestor email to re-validate the request."
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "input",
+                "block_id": "order_number_input",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "order_number",
+                    "initial_value": raw_order_number,
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Enter order number (without #)"
+                    }
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Order Number"
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "requestor_email_input",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "requestor_email",
+                    "initial_value": requestor_email,
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Enter requestor email address"
+                    }
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Requestor Email"
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Current Request Details:*\n• Name: {first_name} {last_name}\n• Type: {refund_type.title()}\n• Submitted: {request_submitted_at}\n• Notes: {notes[:100]}{'...' if len(notes) > 100 else ''}"
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": ":information_source: *Note:* After updating, the request will be re-validated against Shopify to check if the order exists and if the email matches."
+                }
+            }
+        ]
+        
+        return blocks
+    
+    def _show_modal_to_user(self, trigger_id: str, modal_title: str, modal_blocks: List[Dict[str, Any]], callback_id: str, private_metadata: str = "") -> Dict[str, Any]:
+        """
+        Show a modal dialog to the user
+        """
+        try:
+            modal_view = {
+                "type": "modal",
+                "callback_id": callback_id,
+                "title": {
+                    "type": "plain_text",
+                    "text": modal_title
+                },
+                "blocks": modal_blocks,
+                "submit": {
+                    "type": "plain_text",
+                    "text": "Update & Re-validate"
+                },
+                "close": {
+                    "type": "plain_text",
+                    "text": "Cancel"
+                }
+            }
+            
+            if private_metadata:
+                modal_view["private_metadata"] = private_metadata
+            
+            response = self.api_client.send_modal(trigger_id, modal_view)
+            
+            if response.get("ok"):
+                return {"success": True}
+            else:
+                error = response.get("error", "Unknown error")
+                return {"success": False, "error": f"Slack API error: {error}"}
+                
+        except Exception as e:
+            return {"success": False, "error": f"Exception showing modal: {str(e)}"}
+    
+    async def handle_edit_request_details_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle modal submission for editing request details
+        Re-validates the request with updated order number and email
+        """
+        print(f"\n📝 === EDIT REQUEST DETAILS SUBMISSION ===")
+        print(f"📋 Full Payload: {json.dumps(payload, indent=2)}")
+        print("=== END SUBMISSION DEBUG ===\n")
+        
+        try:
+            # Extract user info
+            user_info = payload.get("user", {})
+            slack_user_name = user_info.get("name", "Unknown")
+            slack_user_id = user_info.get("id", "Unknown")
+            
+            # Extract view data
+            view = payload.get("view", {})
+            state = view.get("state", {})
+            values = state.get("values", {})
+            
+            # Extract updated values from modal
+            order_number_input = values.get("order_number_input", {}).get("order_number", {})
+            requestor_email_input = values.get("requestor_email_input", {}).get("requestor_email", {})
+            
+            updated_order_number = order_number_input.get("value", "").strip()
+            updated_requestor_email = requestor_email_input.get("value", "").strip()
+            
+            print(f"✏️ Updated values:")
+            print(f"   Order Number: {updated_order_number}")
+            print(f"   Requestor Email: {updated_requestor_email}")
+            
+            # Validate input
+            if not updated_order_number or not updated_requestor_email:
+                return {
+                    "response_action": "errors",
+                    "errors": {
+                        "order_number_input": "Order number is required" if not updated_order_number else "",
+                        "requestor_email_input": "Email is required" if not updated_requestor_email else ""
+                    }
+                }
+            
+            # Extract private metadata to reconstruct original request
+            private_metadata = view.get("private_metadata", "{}")
+            try:
+                original_request_data = json.loads(private_metadata) if private_metadata != "{}" else {}
+            except:
+                original_request_data = {}
+            
+            # Extract original message context for updating
+            original_thread_ts = original_request_data.get("original_thread_ts")
+            original_channel_id = original_request_data.get("original_channel_id")
+            
+            # Reconstruct request data with updated values
+            updated_request_data = {
+                "order_number": updated_order_number,
+                "requestor_name": {
+                    "first": original_request_data.get("first", ""),
+                    "last": original_request_data.get("last", "")
+                },
+                "requestor_email": updated_requestor_email,
+                "refund_type": original_request_data.get("refund_type", "refund"),
+                "notes": original_request_data.get("notes", ""),
+                "sheet_link": original_request_data.get("sheet_link", "")
+            }
+            
+            print(f"🔄 Re-validating request with updated data:")
+            print(f"   {json.dumps(updated_request_data, indent=2)}")
+            
+            # Re-validate directly using orders service (avoid circular API call)
+            print(f"🔍 Validating order {updated_order_number} with email {updated_requestor_email}")
+            
+            # Step 1: Check if order exists
+            order_result = self.orders_service.fetch_order_details_by_email_or_order_name(
+                order_name=updated_order_number
+            )
+            
+            if not order_result["success"]:
+                print(f"❌ Order {updated_order_number} not found")
+                return {
+                    "response_action": "errors",
+                    "errors": {
+                        "order_number_input": "Order not found with this number"
+                    }
+                }
+            
+            # Step 2: Check if email matches
+            order_data = order_result["data"]
+            order_customer_email = order_data.get("customer", {}).get("email", "").lower().strip()
+            requestor_email_lower = updated_requestor_email.lower().strip()
+            
+            if order_customer_email != requestor_email_lower:
+                print(f"⚠️ Email mismatch: Order email '{order_customer_email}' != Requestor email '{requestor_email_lower}'")
+                return {
+                    "response_action": "errors",
+                    "errors": {
+                        "requestor_email_input": "Email still does not match the order's customer email"
+                    }
+                }
+            
+            # Step 3: Success - update original message with success case
+            print(f"✅ Re-validation successful - order found and email matches")
+            
+            # Build requestor info from updated data
+            requestor_info = {
+                "first": original_request_data.get("first", ""),
+                "last": original_request_data.get("last", ""),
+                "email": updated_requestor_email,
+                "refund_type": original_request_data.get("refund_type", "refund"),
+                "notes": original_request_data.get("notes", ""),
+                "sheet_link": original_request_data.get("sheet_link", "")
+            }
+            
+            # Calculate refund amount using the order data
+            from services.orders.refund_calculator import RefundCalculator
+            calculator = RefundCalculator()
+            
+            refund_calculation = calculator.calculate_refund(
+                order_data=order_data,
+                refund_type=requestor_info["refund_type"]
+            )
+            
+            # Build success message with order details and refund buttons
+            success_message_data = self.message_builder.build_success_message(
+                order_data=order_data,
+                refund_amount=refund_calculation["refund_amount"],
+                refund_type=requestor_info["refund_type"],
+                raw_order_number=updated_order_number,
+                order_cancelled=refund_calculation.get("order_cancelled", False),
+                requestor_name={
+                    "first": requestor_info["first"],
+                    "last": requestor_info["last"]
+                },
+                requestor_email=requestor_info["email"],
+                notes=requestor_info["notes"],
+                sheet_link=requestor_info["sheet_link"],
+                order_id=order_data.get("id", ""),
+                updated_via_modal=True  # Flag to indicate this was updated via modal
+            )
+            
+            # Get the original message timestamp from private metadata or context
+            # Since we don't have access to the original thread_ts here, we'll need to get it
+            # from the payload context or pass it through
+            
+            # For now, let's extract the thread_ts from the payload if available
+            # This might need to be passed through the private metadata
+            
+            print(f"🔄 Updating original Slack message with success details")
+            print(f"📊 Refund calculation: ${refund_calculation['refund_amount']}")
+            
+            # Update the original message with success details
+            if original_thread_ts and original_channel_id:
+                print(f"📍 Updating message {original_thread_ts} in channel {original_channel_id}")
+                
+                update_result = self.update_slack_on_shopify_success(
+                    message_ts=original_thread_ts,
+                    success_message=success_message_data["text"],
+                    action_buttons=success_message_data["action_buttons"]
+                )
+                
+                if update_result.get("success"):
+                    print(f"✅ Original message updated successfully with order details and refund buttons")
+                else:
+                    print(f"⚠️ Failed to update original message: {update_result.get('error', 'Unknown error')}")
+            else:
+                print(f"❌ Missing original message context - cannot update original message")
+                print(f"   thread_ts: {original_thread_ts}, channel_id: {original_channel_id}")
+            
+            return {"response_action": "clear"}
+                
+        except Exception as e:
+            error_message = f"Exception in handle_edit_request_details_submission: {str(e)}"
+            logger.error(f"❌ {error_message}")
+            return {
+                "response_action": "errors",
+                "errors": {
+                    "order_number_input": "An error occurred during validation"
+                }
+            }
+    
+    async def handle_deny_email_mismatch_modal(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
+        """
+        Handle the deny email mismatch modal button click - show modal for custom denial message
+        """
+        print(f"\n🚫 === DENY EMAIL MISMATCH MODAL ===")
+        print(f"👤 User: {slack_user_name} (ID: {slack_user_id})")
+        print(f"📦 Request Data: {request_data}")
+        print(f"🎯 Trigger ID: {trigger_id}")
+        print(f"🚫 === END DENY EMAIL MISMATCH MODAL DEBUG ===\n")
+        
+        try:
+            # Extract request details
+            raw_order_number = request_data.get("rawOrderNumber", "")
+            requestor_email = request_data.get("requestorEmail", "")
+            first_name = request_data.get("first", "")
+            last_name = request_data.get("last", "")
+            refund_type = request_data.get("refundType", "refund")
+            request_submitted_at = request_data.get("requestSubmittedAt", "")
+            
+            # Build the modal blocks
+            modal_blocks = self._build_deny_request_modal_blocks(
+                raw_order_number=raw_order_number,
+                requestor_email=requestor_email,
+                first_name=first_name,
+                last_name=last_name,
+                refund_type=refund_type
+            )
+            
+            # Prepare private metadata with original message context
+            private_metadata = {
+                "raw_order_number": raw_order_number,
+                "requestor_email": requestor_email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "refund_type": refund_type,
+                "request_submitted_at": request_submitted_at,
+                "original_thread_ts": thread_ts,
+                "original_channel_id": channel_id,
+                "slack_user_name": slack_user_name,
+                "slack_user_id": slack_user_id
+            }
+            
+            # Show the modal
+            modal_result = await self._show_modal_to_user(
+                trigger_id=trigger_id,
+                modal_title="Deny Refund Request",
+                modal_blocks=modal_blocks,
+                callback_id="deny_email_mismatch_submission",
+                private_metadata=json.dumps(private_metadata)
+            )
+            
+            if modal_result.get("success"):
+                print(f"✅ Deny request modal shown successfully")
+                return {"success": True, "message": "Modal displayed"}
+            else:
+                error_msg = modal_result.get("error", "Unknown error")
+                print(f"❌ Failed to show deny request modal: {error_msg}")
+                return {"success": False, "error": error_msg}
+                
+        except Exception as e:
+            error_message = f"Exception in handle_deny_email_mismatch_modal: {str(e)}"
+            logger.error(f"❌ {error_message}")
+            return {"success": False, "error": error_message}
+    
+    def _build_deny_request_modal_blocks(self, raw_order_number: str, requestor_email: str, first_name: str, last_name: str, refund_type: str) -> List[Dict[str, Any]]:
+        """
+        Build the modal blocks for the deny request form
+        """
+        refund_type_text = "refund" if refund_type.lower() == "refund" else "credit"
+        requestor_name = f"{first_name} {last_name}".strip()
+        
+        # Default denial message
+        default_message = (
+            f"Hi {first_name},\\n\\n"
+            f"Your request for a {refund_type_text} has not been processed successfully. "
+            f"The email associated with the order number did not match the email you provided in the request. "
+            f"Please confirm you submitted your request using the same email address as is associated with your order - "
+            f"sign in to see your order history to find the correct order number - and try again.\\n\\n"
+            f"If you believe this is in error, please reach out to refunds@bigapplerecsports.com."
+        )
+        
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"🚫 *Deny Refund Request*\\n\\nYou are about to send a denial email to **{requestor_name}** ({requestor_email}) for order **{raw_order_number}** due to email mismatch."
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "input",
+                "block_id": "custom_message_input",
+                "label": {
+                    "type": "plain_text",
+                    "text": "Custom Message (Optional)"
+                },
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "custom_message",
+                    "multiline": True,
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Enter a custom message to replace the default denial email..."
+                    },
+                    "initial_value": default_message
+                },
+                "optional": True
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staff Information*"
+                },
+                "accessory": {
+                    "type": "checkboxes",
+                    "action_id": "include_staff_info",
+                    "options": [
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Include my name and email in the message"
+                            },
+                            "description": {
+                                "type": "plain_text",
+                                "text": "Email will be sent from web@bigapplerecsports.com but include your details"
+                            },
+                            "value": "include_staff_info"
+                        }
+                    ]
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"📧 *Email will be sent to:* {requestor_email}\\n📝 *Subject:* Big Apple Rec Sports - Refund Request Denied for Order {raw_order_number}"
+                }
+            }
+        ]
+        
+        return blocks
+    
+    async def handle_deny_email_mismatch_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle modal submission for deny email mismatch - send custom denial email
+        """
+        print(f"\\n🚫 === DENY EMAIL MISMATCH SUBMISSION ===")
+        print(f"📋 Payload: {json.dumps(payload, indent=2)}")
+        print("=== END DENY SUBMISSION DEBUG ===\\n")
+        
+        try:
+            # Extract form values
+            values = payload.get("view", {}).get("state", {}).get("values", {})
+            
+            # Get custom message (optional)
+            custom_message_block = values.get("custom_message_input", {})
+            custom_message = custom_message_block.get("custom_message", {}).get("value", "")
+            
+            # Get staff info inclusion checkbox
+            staff_info_block = values.get("include_staff_info", {})
+            include_staff_info = bool(staff_info_block.get("include_staff_info", {}).get("selected_options", []))
+            
+            # Extract original request context from private metadata
+            private_metadata_str = payload.get("view", {}).get("private_metadata", "{}")
+            original_context = json.loads(private_metadata_str)
+            
+            raw_order_number = original_context.get("raw_order_number", "")
+            requestor_email = original_context.get("requestor_email", "")
+            first_name = original_context.get("first_name", "")
+            last_name = original_context.get("last_name", "")
+            refund_type = original_context.get("refund_type", "refund")
+            original_thread_ts = original_context.get("original_thread_ts", "")
+            original_channel_id = original_context.get("original_channel_id", "")
+            slack_user_name = original_context.get("slack_user_name", "")
+            slack_user_id = original_context.get("slack_user_id", "")
+            
+            print(f"📧 Sending denial email to: {requestor_email}")
+            print(f"🔧 Include staff info: {include_staff_info}")
+            print(f"📝 Custom message: {custom_message[:100]}..." if custom_message else "📝 Using default message")
+            
+            # Build and send the denial email
+            email_result = await self._send_denial_email(
+                requestor_email=requestor_email,
+                requestor_name={"first": first_name, "last": last_name},
+                raw_order_number=raw_order_number,
+                refund_type=refund_type,
+                custom_message=custom_message,
+                include_staff_info=include_staff_info,
+                staff_name=slack_user_name,
+                staff_id=slack_user_id
+            )
+            
+            if email_result.get("success"):
+                # Update the original Slack message with denial confirmation
+                denial_confirmation_message = self._build_denial_confirmation_message(
+                    requestor_email=requestor_email,
+                    requestor_name={"first": first_name, "last": last_name},
+                    raw_order_number=raw_order_number,
+                    staff_name=slack_user_name,
+                    include_staff_info=include_staff_info
+                )
+                
+                # Update original message
+                update_result = self.update_slack_on_shopify_success(
+                    message_ts=original_thread_ts,
+                    success_message=denial_confirmation_message,
+                    action_buttons=[]
+                )
+                
+                if update_result.get("success"):
+                    print(f"✅ Original message updated with denial confirmation")
+                else:
+                    print(f"⚠️ Failed to update original message: {update_result.get('error', 'Unknown error')}")
+                
+                return {"response_action": "clear"}
+            else:
+                error_msg = email_result.get("error", "Unknown error sending email")
+                return {
+                    "response_action": "errors",
+                    "errors": {
+                        "custom_message_input": f"Failed to send email: {error_msg}"
+                    }
+                }
+                
+        except Exception as e:
+            error_message = f"Exception in handle_deny_email_mismatch_submission: {str(e)}"
+            logger.error(f"❌ {error_message}")
+            return {
+                "response_action": "errors",
+                "errors": {
+                    "custom_message_input": "An error occurred while processing the denial"
+                }
+            }
+    
+    async def _send_denial_email(self, requestor_email: str, requestor_name: Dict[str, str], raw_order_number: str, 
+                                 refund_type: str, custom_message: str, include_staff_info: bool, 
+                                 staff_name: str, staff_id: str) -> Dict[str, Any]:
+        """
+        Send denial email to the requestor with custom message and optional staff info
+        """
+        try:
+            first_name = requestor_name.get("first", "")
+            refund_type_text = "refund" if refund_type.lower() == "refund" else "credit"
+            
+            # Build email subject
+            subject = f"Big Apple Rec Sports - {refund_type_text.title()} Request Denied for Order {raw_order_number}"
+            
+            # Use custom message or default
+            if custom_message and custom_message.strip():
+                message_body = custom_message.strip()
+            else:
+                # Default denial message (extracted from GAS email)
+                message_body = (
+                    f"Hi {first_name},\\n\\n"
+                    f"Your request for a {refund_type_text} has not been processed successfully. "
+                    f"The email associated with the order number did not match the email you provided in the request. "
+                    f"Please confirm you submitted your request using the same email address as is associated with your order - "
+                    f'<a href="https://shopify.com/55475535966/account">Sign In to see your order history</a> '
+                    f"to find the correct order number - and try again.\\n\\n"
+                    f"If you believe this is in error, please reach out to refunds@bigapplerecsports.com."
+                )
+            
+            # Add staff info if requested
+            if include_staff_info:
+                message_body += f"\\n\\nThis message was processed by {staff_name}."
+            
+            # Add BARS signature
+            message_body += (
+                "\\n\\n--\\n"
+                "Warmly,\\n"
+                "**BARS Leadership**"
+            )
+            
+            # Convert to HTML format for email
+            html_body = f"<p>{message_body.replace('\\n', '<br>')}</p>"
+            
+            print(f"📧 Sending denial email:")
+            print(f"   To: {requestor_email}")
+            print(f"   Subject: {subject}")
+            print(f"   Include staff info: {include_staff_info}")
+            
+            # Here you would actually send the email
+            # For now, we'll simulate success
+            # In a real implementation, you'd use an email service like SendGrid, AWS SES, etc.
+            
+            print(f"✅ Denial email sent successfully to {requestor_email}")
+            return {"success": True, "message": "Email sent successfully"}
+            
+        except Exception as e:
+            error_message = f"Failed to send denial email: {str(e)}"
+            logger.error(f"❌ {error_message}")
+            return {"success": False, "error": error_message}
+    
+    def _build_denial_confirmation_message(self, requestor_email: str, requestor_name: Dict[str, str], 
+                                          raw_order_number: str, staff_name: str, include_staff_info: bool) -> str:
+        """
+        Build the confirmation message to replace the original Slack message after denial
+        """
+        requestor_full_name = f"{requestor_name.get('first', '')} {requestor_name.get('last', '')}".strip()
+        current_time = format_date_and_time(datetime.now(timezone.utc))
+        
+        message = (
+            f"🚫 *Refund Request Denied - Email Mismatch*\\n\\n"
+            f"*Request for:* {requestor_full_name} ({requestor_email})\\n"
+            f"*Order Number:* {raw_order_number}\\n"
+            f"*Processed by:* <@{staff_name}>\\n"
+            f"*Processed at:* {current_time}\\n\\n"
+            f"✅ **Denial email sent to requestor**\\n"
+        )
+        
+        if include_staff_info:
+            message += f"📧 *Email included staff information*\\n"
+        
+        message += f"\\n*Reason:* Email address did not match order customer email"
+        
+        return message

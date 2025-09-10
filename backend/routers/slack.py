@@ -97,6 +97,23 @@ async def handle_slack_interactions(request: Request):
         
         # print("=== END DEBUG ===\n")
         
+        # Process modal submissions
+        if payload and payload.get("type") == "view_submission":
+            print(f"\n📝 === MODAL SUBMISSION RECEIVED ===")
+            print(f"📋 Payload: {json.dumps(payload, indent=2)}")
+            print("=== END MODAL SUBMISSION DEBUG ===\n")
+            
+            view = payload.get("view", {})
+            callback_id = view.get("callback_id")
+            
+            if callback_id == "edit_request_details_submission":
+                return await slack_service.handle_edit_request_details_submission(payload)
+            elif callback_id == "deny_email_mismatch_submission":
+                return await slack_service.handle_deny_email_mismatch_submission(payload)
+            else:
+                logger.warning(f"Unknown modal callback_id: {callback_id}")
+                return {"response_action": "clear"}
+        
         # Process button actions
         if payload and payload.get("type") == "block_actions":
             actions = payload.get("actions", [])
@@ -167,9 +184,28 @@ async def handle_slack_interactions(request: Request):
                 elif action_id == "proceed_without_cancel":
                     return await slack_service.handle_proceed_without_cancel(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
                 
+                elif action_id == "deny_refund_request":
+                    print(f"\n🚫 === DENY REFUND REQUEST BUTTON CLICKED ===")
+                    print(f"📦 Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"👤 User: {slack_user_name} (ID: {slack_user_id})")
+                    print(f"🚫 === END DENY REFUND REQUEST DEBUG ===\n")
+                    
+                    return await slack_service.handle_deny_refund_request(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+                
                 
                 # === STEP 2 HANDLERS: REFUND DECISION (Process / Custom / No Refund) ===   
                 elif action_id == "process_refund":
+                    print(f"\n🎯 === APPROVE REFUND BUTTON CLICKED (Step 5) ===")
+                    print(f"📦 Full JSON Request Data:")
+                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"   Channel ID: {channel_id}")
+                    print(f"   Thread TS: {thread_ts}")
+                    print(f"   Slack User: {slack_user_name}")
+                    print(f"   User ID: {slack_user_id}")
+                    print(f"   Trigger ID: {trigger_id}")
+                    print(f"   Current Message Text Preview: {current_message_full_text[:200]}...")
+                    print(f"🎯 === END APPROVE REFUND DEBUG ===\n")
+                    
                     return await slack_service.handle_process_refund(request_data, channel_id, thread_ts, slack_user_name, current_message_full_text, slack_user_id, trigger_id)
                 
                 elif action_id == "custom_refund_amount":
@@ -186,6 +222,18 @@ async def handle_slack_interactions(request: Request):
                     )
                 
                 elif action_id == "no_refund":
+                    print(f"\n🚫 === DENY REFUND BUTTON CLICKED (Step 5) ===")
+                    print(f"📦 Full JSON Request Data:")
+                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"   Channel ID: {channel_id}")
+                    print(f"   Thread TS: {thread_ts}")
+                    print(f"   Slack User: {slack_user_name}")
+                    print(f"   User ID: {slack_user_id}")
+                    print(f"   Trigger ID: {trigger_id}")
+                    print(f"   Requestor Name: {requestor_name}")
+                    print(f"   Requestor Email: {requestor_email}")
+                    print(f"🚫 === END DENY REFUND DEBUG ===\n")
+                    
                     return await slack_service.handle_no_refund(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_name, slack_user_id, current_message_full_text, trigger_id)
                 
                 
@@ -227,6 +275,66 @@ async def handle_slack_interactions(request: Request):
                     )
 
                 
+                # === EMAIL MISMATCH HANDLERS ===
+                elif action_id == "edit_request_details":
+                    print(f"\n✏️ === EDIT REQUEST DETAILS BUTTON CLICKED ===")
+                    print(f"📦 Full JSON Request Data:")
+                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"   Channel ID: {channel_id}")
+                    print(f"   Thread TS: {thread_ts}")
+                    print(f"   Slack User: {slack_user_name}")
+                    print(f"   User ID: {slack_user_id}")
+                    print(f"   Trigger ID: {trigger_id}")
+                    print(f"✏️ === END EDIT REQUEST DETAILS DEBUG ===\n")
+                    
+                    return await slack_service.handle_edit_request_details(
+                        request_data=request_data,
+                        channel_id=channel_id,
+                        thread_ts=thread_ts,
+                        slack_user_name=slack_user_name,
+                        slack_user_id=slack_user_id,
+                        trigger_id=trigger_id,
+                        current_message_full_text=current_message_full_text
+                    )
+                
+                elif action_id == "deny_email_mismatch":
+                    print(f"\n🚫 === DENY EMAIL MISMATCH BUTTON CLICKED ===")
+                    print(f"📦 Full JSON Request Data:")
+                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"   Channel ID: {channel_id}")
+                    print(f"   Thread TS: {thread_ts}")
+                    print(f"   Slack User: {slack_user_name}")
+                    print(f"   User ID: {slack_user_id}")
+                    print(f"   Trigger ID: {trigger_id}")
+                    print(f"🚫 === END DENY EMAIL MISMATCH DEBUG ===\n")
+                    
+                    return await slack_service.handle_deny_email_mismatch(
+                        request_data=request_data,
+                        channel_id=channel_id,
+                        thread_ts=thread_ts,
+                        slack_user_name=slack_user_name,
+                        slack_user_id=slack_user_id,
+                        trigger_id=trigger_id,
+                        current_message_full_text=current_message_full_text
+                    )
+                
+                elif action_id == "deny_email_mismatch_modal":
+                    print(f"\n🚫 === DENY EMAIL MISMATCH MODAL BUTTON CLICKED ===")
+                    print(f"📦 Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"👤 User: {slack_user_name} (ID: {slack_user_id})")
+                    print(f"🎯 Trigger ID: {trigger_id}")
+                    print(f"🚫 === END DENY EMAIL MISMATCH MODAL DEBUG ===\n")
+                    
+                    return await slack_service.handle_deny_email_mismatch_modal(
+                        request_data=request_data,
+                        channel_id=channel_id,
+                        thread_ts=thread_ts,
+                        slack_user_name=slack_user_name,
+                        slack_user_id=slack_user_id,
+                        trigger_id=trigger_id,
+                        current_message_full_text=current_message_full_text
+                    )
+
                 # === STEP 3 HANDLERS: RESTOCK INVENTORY (Restock / Do Not Restock) ===
                 elif action_id and (action_id.startswith("restock") or action_id == "do_not_restock"):
                     return await slack_service.handle_restock_inventory(request_data, action_id, channel_id, thread_ts, slack_user_name, current_message_full_text, trigger_id)

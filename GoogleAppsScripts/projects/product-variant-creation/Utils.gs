@@ -1,7 +1,4 @@
-const GRAPHQL_URL = "https://09fe59-3.myshopify.com/admin/api/2025-01/graphql.json"
-const REST_URL = "https://09fe59-3.myshopify.com/admin/api/2024-04";
 
-const capitalize = str => str[0].toUpperCase() + str.slice(1)
 
 function showLinkDialog(url) {
   const htmlOutput = HtmlService.createHtmlOutput(`

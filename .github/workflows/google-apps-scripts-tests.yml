@@ -23,6 +23,11 @@ jobs:
       with:
         python-version: '3.x'
         
+    - name: Set up Node.js (for GoogleAppsScript testing)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
     - name: Make test scripts executable
       run: |
         cd GoogleAppsScripts
@@ -51,6 +56,11 @@ jobs:
       run: |
         cd GoogleAppsScripts
         ./tests/test_parse_registration_functions.sh
+        
+    - name: Run Parse Registration Comprehensive Tests
+      run: |
+        cd GoogleAppsScripts
+        ./tests/test_parse_registration_comprehensive.sh
         
     - name: Run Instructions Tests
       continue-on-error: true

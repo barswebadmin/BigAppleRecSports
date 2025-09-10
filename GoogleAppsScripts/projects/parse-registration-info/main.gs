@@ -122,20 +122,51 @@ function showMigrationPrompt() {
   }
 
   try {
-    const { unresolved, requiredCheck, cancel } = migrateRowToTarget_(sourceSheet, selectedRow);
+    const { unresolved, requiredCheck, cancel, writeAttempts, writeFailures, targetRow } = migrateRowToTarget_(sourceSheet, selectedRow);
     if (cancel) return ui.alert('Canceled')
 
-    const parts = [`Migration of row ${selectedRow} completed successfully.`];
+    // Determine success status
+    const hasWriteFailures = writeFailures && writeFailures.length > 0;
+    const successfulWrites = writeAttempts ? writeAttempts.length - (writeFailures ? writeFailures.length : 0) : 0;
+    const totalAttempts = writeAttempts ? writeAttempts.length : 0;
+
+    const parts = [];
+    
+    if (hasWriteFailures) {
+      parts.push(`Migration of row ${selectedRow} completed with WARNINGS.`);
+      parts.push(`Successfully written: ${successfulWrites}/${totalAttempts} fields to target row ${targetRow}`);
+    } else {
+      parts.push(`Migration of row ${selectedRow} completed successfully.`);
+      if (totalAttempts > 0) {
+        parts.push(`All ${totalAttempts} fields written successfully to target row ${targetRow}`);
+      }
+    }
+
+    // Show write failures first (most important)
+    if (hasWriteFailures) {
+      parts.push(`\n❌ Write failures (${writeFailures.length}):`);
+      writeFailures.slice(0, 5).forEach(failure => {
+        if (failure.header === 'ALL_FIELDS') {
+          parts.push(`• Sheet write error: ${failure.reason}`);
+        } else {
+          parts.push(`• ${failure.header}: "${failure.expected}" → "${failure.actual}" (${failure.reason})`);
+        }
+      });
+      if (writeFailures.length > 5) parts.push(`• ... and ${writeFailures.length - 5} more write failures`);
+    }
+    
     if (unresolved.length) {
       parts.push(`\n⚠️ Unresolved items (${unresolved.length}):`);
-      unresolved.slice(0, 10).forEach(item => parts.push(`• ${item}`));
-      if (unresolved.length > 10) parts.push(`• ... and ${unresolved.length - 10} more`);
+      unresolved.slice(0, 5).forEach(item => parts.push(`• ${item}`));
+      if (unresolved.length > 5) parts.push(`• ... and ${unresolved.length - 5} more`);
     }
+    
     if (requiredCheck.missing.length) {
       parts.push(`\n⚠️ Missing required fields (${requiredCheck.missing.length}):`);
-      requiredCheck.missing.slice(0, 10).forEach(item => parts.push(`• ${item}`));
-      if (requiredCheck.missing.length > 10) parts.push(`• ... and ${requiredCheck.missing.length - 10} more`);
+      requiredCheck.missing.slice(0, 5).forEach(item => parts.push(`• ${item}`));
+      if (requiredCheck.missing.length > 5) parts.push(`• ... and ${requiredCheck.missing.length - 5} more`);
     }
+    
     ui.alert(parts.join('\n'));
   } catch (err) {
     ui.alert(`Migration failed: ${err.message}`);

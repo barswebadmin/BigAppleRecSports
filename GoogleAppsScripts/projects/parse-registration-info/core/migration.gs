@@ -145,9 +145,13 @@ function migrateRowToTarget_(sourceSheet, row) {
     Logger.log(`Creating new row ${targetRowIdx} for key "${key}"`);
   }
 
-  // Write data to target sheet
+  // Write data to target sheet with validation check
   const targetRange = targetSheet.getRange(targetRowIdx, 1, 1, targetSheet.getLastColumn());
   const currentValues = targetRange.getValues()[0];
+  const originalValues = [...currentValues]; // Keep copy for comparison
+  
+  const writeAttempts = [];
+  const writeFailures = [];
 
   for (const [targetHeader, objectKey] of Object.entries(headerMapping)) {
     const colIdx1Based = colForHeader[targetHeader];
@@ -155,13 +159,61 @@ function migrateRowToTarget_(sourceSheet, row) {
 
     const val = parsed[objectKey];
     if (val !== '' && val != null) {
+      writeAttempts.push({
+        header: targetHeader,
+        column: colIdx1Based,
+        oldValue: currentValues[colIdx1Based - 1],
+        newValue: val,
+        objectKey: objectKey
+      });
       currentValues[colIdx1Based - 1] = val;
     }
   }
 
-  targetRange.setValues([currentValues]);
-  
-  Logger.log(`Migration completed to row ${targetRowIdx}`);
+  // Attempt to write values
+  try {
+    targetRange.setValues([currentValues]);
+    
+    // Verify the write succeeded by reading back the values
+    const writtenValues = targetRange.getValues()[0];
+    
+    // Check each attempted write
+    for (const attempt of writeAttempts) {
+      const actualValue = writtenValues[attempt.column - 1];
+      const expectedValue = attempt.newValue;
+      
+      if (actualValue !== expectedValue) {
+        writeFailures.push({
+          header: attempt.header,
+          column: attempt.column,
+          expected: expectedValue,
+          actual: actualValue,
+          objectKey: attempt.objectKey,
+          reason: `Data validation or formatting rule rejected the value`
+        });
+      }
+    }
+    
+    Logger.log(`Migration attempted to row ${targetRowIdx}. Successful writes: ${writeAttempts.length - writeFailures.length}/${writeAttempts.length}`);
+    if (writeFailures.length > 0) {
+      Logger.log(`Write failures: ${JSON.stringify(writeFailures, null, 2)}`);
+    }
+    
+  } catch (writeError) {
+    Logger.log(`Error writing to target sheet: ${writeError.message}`);
+    writeFailures.push({
+      header: 'ALL_FIELDS',
+      reason: `Failed to write to sheet: ${writeError.message}`,
+      error: writeError.message
+    });
+  }
 
-  return { unresolved: [...unresolved, ...unresolvedLocal], requiredCheck, cancel: false };
+  return { 
+    unresolved: [...unresolved, ...unresolvedLocal], 
+    requiredCheck, 
+    cancel: false,
+    writeAttempts: writeAttempts,
+    writeFailures: writeFailures,
+    targetRow: targetRowIdx
+  };
 }

@@ -1,3 +1,6 @@
+// Global configuration constant for API destination
+const API_DESTINATION = 'local'; // Change to 'AWS' for production
+
 const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 const data = sheet.getDataRange().getValues();
 const sheetHeaders = data[0];
@@ -22,12 +25,6 @@ function onOpen() {
 
 // ✅ Parses a given row into a key-value object based on column headers
 let rowObject = {}
-
-
-const formatTimeOnly = date => {
-  if (!date) return null
-  return new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-};
 
 function parseRowData(row, rowIndex) {
   Logger.log(`row: ${JSON.stringify(row)}`)
@@ -75,8 +72,10 @@ function parseRowData(row, rowIndex) {
 }
 
 function createProduct() {
-  
-  const readyToCreateColIndex = sheetHeaders.findIndex(col => col.toLowerCase().includes("ready to create product"));
+  try {
+    Logger.log("🚀 Starting createProduct function");
+    
+    const readyToCreateColIndex = sheetHeaders.findIndex(col => col.toLowerCase().includes("ready to create product"));
   
   if (readyToCreateColIndex === -1) {
     SpreadsheetApp.getUi().alert("⚠️ 'Ready to Create?' column not found!");
@@ -158,7 +157,15 @@ function createProduct() {
   const numOfWeeksAdjusted = numOfWeeks - offDatesArray.length
   rowObject.numOfWeeks = numOfWeeksAdjusted
 
-  createProductFromRow(rowObject, sheetHeaders)
+  Logger.log("📞 Calling createProductFromRow with processed data");
+  createProductFromRow(rowObject);
+  Logger.log("✅ createProduct function completed successfully");
+  
+  } catch (error) {
+    Logger.log(`❌ Error in createProduct: ${error.toString()}`);
+    Logger.log(`❌ Stack trace: ${error.stack}`);
+    SpreadsheetApp.getUi().alert(`❌ Error creating product: ${error.message}\n\nCheck the logs for details.`);
+  }
 }
 
 function createVariants() {

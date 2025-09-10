@@ -189,6 +189,19 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         if (isDebug) {
           Logger.log(`❌ [debugApi] Order not found (406): ${errorMessage}`);
         }
+
+        // Update spreadsheet with cancellation note (step 3)
+        try {
+          updateOrderNotesColumn(rawOrderNumber, requestorEmail, "Canceled - Order Not Found. Requestor has been emailed.");
+          Logger.log(`✅ Updated Notes column for order ${rawOrderNumber}`);
+        } catch (updateError) {
+          Logger.log(`❌ Failed to update Notes column: ${updateError.message}`);
+          MailApp.sendEmail({
+            to: DEBUG_EMAIL,
+            subject: "❌ BARS Refunds - Failed to update Notes column",
+            htmlBody: `Failed to update Notes column for order ${rawOrderNumber}: ${updateError.message}`
+          });
+        }
         
       } else if (statusCode === 409 || errorType === 'email_mismatch') {
         // 409: Email Mismatch - Send email to requestor using template from getSlackMessageText

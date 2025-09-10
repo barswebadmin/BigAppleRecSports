@@ -172,13 +172,18 @@ const formatDateOnly = date => {
 /**
  * Format date and time together
  * @param {Date|string} date - Date to format
- * @returns {string} Formatted date and time string
+ * @returns {string} Formatted date and time string if Date is valid, otherwise null
  */
 const formatDateAndTime = date => {
-  const d = new Date(date);
-  const datePart = d.toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" });
-  const timePart = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-  return `${datePart} at ${timePart}`;
+  try {
+    const d = new Date(date);
+    const datePart = d.toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${datePart} at ${timePart}`;
+  } catch (e) {
+    Logger.log(`❌ Error formatting date and time: ${e}`);
+    return null;
+  }
 };
 
 /**

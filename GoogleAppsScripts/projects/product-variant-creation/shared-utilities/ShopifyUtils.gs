@@ -3,7 +3,6 @@
 // =============================================================================
 
 // Constants - Replace with actual values in setupSecrets
-// Note: SHOPIFY_ACCESS_TOKEN is now retrieved via getSecret('SHOPIFY_TOKEN')
 const SHOPIFY_API_URL = 'https://09fe59-3.myshopify.com/admin/api/2023-10/graphql.json';
 const SHOPIFY_GRAPHQL_URL = "https://09fe59-3.myshopify.com/admin/api/2025-07/graphql.json";
 
@@ -49,7 +48,7 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
       payload: JSON.stringify(query)
     };
-    const response = UrlFetchApp.fetch(SHOPIFY_GRAPHQL_URL, options);
+    const response = UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), options);
     const jsonResponse = JSON.parse(response.getContentText());
 
     if (jsonResponse.errors) {
@@ -835,7 +834,7 @@ const createShopifyRefundDebugVersion = (orderId, refundAmount) => {
   };
 
   const curlCommand = `
-  curl -X POST ${SHOPIFY_GRAPHQL_URL} \\
+  curl -X POST ${getSecret('SHOPIFY_GRAPHQL_URL')} \\
   -H "Content-Type: application/json" \\
   -H "X-Shopify-Access-Token: YOUR_ACCESS_TOKEN" \\
   -d '${JSON.stringify(refundMutation)}'
@@ -898,7 +897,7 @@ const createShopifyStoreCreditDebugVersion = ({ formattedOrderNumber, orderId, r
   };
 
   const curlCommand = `
-  curl -X POST ${SHOPIFY_GRAPHQL_URL} \\
+  curl -X POST ${getSecret('SHOPIFY_GRAPHQL_URL')} \\
   -H "Content-Type: application/json" \\
   -H "X-Shopify-Access-Token: YOUR_ACCESS_TOKEN" \\
   -d '${JSON.stringify(curlPayload)}'
@@ -920,3 +919,4 @@ const createShopifyStoreCreditDebugVersion = ({ formattedOrderNumber, orderId, r
 // Utility Functions
 // =============================================================================
 
+// Note: formatTwoDecimalPoints function is defined in apiUtils.gs

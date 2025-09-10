@@ -5,7 +5,10 @@ Extracted from the main SlackService to improve modularity.
 
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
+import logging
 from utils.date_utils import format_date_and_time, parse_shopify_datetime, convert_to_eastern_time, get_eastern_timezone
+
+logger = logging.getLogger(__name__)
 
 
 class SlackMessageBuilder:
@@ -111,7 +114,7 @@ class SlackMessageBuilder:
             
             return {
                 "type": "button",
-                "text": {"type": "plain_text", "text": "✅ Cancel Order"},
+                "text": {"type": "plain_text", "text": "✅ Cancel Order → Proceed"},
                 "style": "primary",
                 "action_id": "cancel_order",
                 "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={requestor_name['first']}|last={requestor_name['last']}|email={requestor_email}|requestSubmittedAt={request_submitted_at}",
@@ -125,7 +128,7 @@ class SlackMessageBuilder:
         except Exception:
             return {
                 "type": "button",
-                "text": {"type": "plain_text", "text": "✅ Cancel Order"},
+                "text": {"type": "plain_text", "text": "✅ Cancel Order → Proceed"},
                 "style": "primary",
                 "action_id": "cancel_order",
                 "value": f"rawOrderNumber={order_name}"
@@ -140,15 +143,44 @@ class SlackMessageBuilder:
             
             return {
                 "type": "button",
-                "text": {"type": "plain_text", "text": "➡️ Do Not Cancel - Proceed"},
+                "text": {"type": "plain_text", "text": "➡️ Do Not Cancel Order → Proceed"},
                 "action_id": "proceed_without_cancel",
                 "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|email={requestor_email}|requestSubmittedAt={request_submitted_at}"
             }
         except Exception:
             return {
                 "type": "button",
-                "text": {"type": "plain_text", "text": "➡️ Proceed"},
+                "text": {"type": "plain_text", "text": "➡️ Do Not Cancel Order → Proceed"},
                 "action_id": "proceed_without_cancel",
+                "value": f"rawOrderNumber={order_name}"
+            }
+    
+    def _create_deny_request_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
+                                   requestor_email: str, refund_type: str, refund_amount: float, request_submitted_at: str = "") -> Dict[str, Any]:
+        """Create the deny request button (Step 1)"""
+        try:
+            first_name = requestor_name.get("first", "")
+            last_name = requestor_name.get("last", "")
+            
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "🚫 Deny Request"},
+                "style": "danger",
+                "action_id": "deny_refund_request",
+                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|email={requestor_email}|requestSubmittedAt={request_submitted_at}",
+                "confirm": {
+                    "title": {"type": "plain_text", "text": "Deny Refund Request"},
+                    "text": {"type": "plain_text", "text": f"Deny the refund request for order {order_name}? This will send a denial email to the requestor."},
+                    "confirm": {"type": "plain_text", "text": "Yes, deny request"},
+                    "deny": {"type": "plain_text", "text": "Cancel"}
+                }
+            }
+        except Exception:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "🚫 Deny Request"},
+                "style": "danger",
+                "action_id": "deny_refund_request",
                 "value": f"rawOrderNumber={order_name}"
             }
     
@@ -238,6 +270,52 @@ class SlackMessageBuilder:
                 "style": "danger",
                 "action_id": "no_refund",
                 "value": f"rawOrderNumber={order_name}|orderId={order_id}|first={first_name}|last={last_name}|email={requestor_email}"
+            }
+
+    def _create_edit_request_details_button(self, raw_order_number: str, requestor_name: Dict[str, str], 
+                                           requestor_email: str, refund_type: str, request_notes: str, current_time: str) -> Dict[str, Any]:
+        """Create the edit request details button for email mismatch"""
+        try:
+            first_name = requestor_name.get("first", "")
+            last_name = requestor_name.get("last", "")
+            
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "✏️ Edit Request Details"},
+                "style": "primary",
+                "action_id": "edit_request_details",
+                "value": f"rawOrderNumber={raw_order_number}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|notes={request_notes}|requestSubmittedAt={current_time}"
+            }
+        except Exception:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "✏️ Edit Request Details"},
+                "style": "primary",
+                "action_id": "edit_request_details",
+                "value": f"rawOrderNumber={raw_order_number}|requestorEmail={requestor_email}"
+            }
+
+    def _create_deny_email_mismatch_button(self, raw_order_number: str, requestor_name: Dict[str, str], 
+                                         requestor_email: str, refund_type: str, current_time: str) -> Dict[str, Any]:
+        """Create the deny request button for email mismatch"""
+        try:
+            first_name = requestor_name.get("first", "")
+            last_name = requestor_name.get("last", "")
+            
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "🚫 Deny Request"},
+                "style": "danger",
+                "action_id": "deny_email_mismatch_modal",
+                "value": f"rawOrderNumber={raw_order_number}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|requestSubmittedAt={current_time}"
+            }
+        except Exception:
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "🚫 Deny Request"},
+                "style": "danger",
+                "action_id": "deny_email_mismatch",
+                "value": f"rawOrderNumber={raw_order_number}|requestorEmail={requestor_email}"
             }
     
     # === MESSAGE CREATION FOR REFUND DECISION (Step 2) ===
@@ -501,10 +579,11 @@ class SlackMessageBuilder:
             message_text += self._get_sheet_link_line(sheet_link)
             message_text += f"*Attn*: {sport_mention}"
             
-            # Create initial decision buttons (Step 1: Cancel Order or Proceed)
+            # Create initial decision buttons (Step 1: Cancel Order, Proceed, or Deny)
             action_buttons = [
                 self._create_cancel_order_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, current_time),
                 self._create_proceed_without_cancel_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, current_time),
+                self._create_deny_request_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, current_time),
             ]
             
             return {
@@ -622,10 +701,11 @@ class SlackMessageBuilder:
             message_text += self._get_sheet_link_line(sheet_link)
             message_text += f"*Attn*: {sport_mention}"
             
-            # Create initial decision buttons (Step 1: Cancel Order or Proceed)
+            # Create initial decision buttons (Step 1: Cancel Order, Proceed, or Deny)
             action_buttons = [
                 self._create_cancel_order_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount, current_time),
                 self._create_proceed_without_cancel_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount, current_time),
+                self._create_deny_request_button(order_id, order_name, requestor_name, requestor_email, refund_type, fallback_refund_amount, current_time),
             ]
             
             return {
@@ -655,7 +735,9 @@ class SlackMessageBuilder:
         requestor_info: Dict[str, Any],
         sheet_link: str,
         raw_order_number: str = "",
-        order_customer_email: str = ""
+        order_customer_email: str = "",
+        order_data: Optional[Dict[str, Any]] = None,
+        customer_orders_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """Build an error message for various error scenarios"""
         try:
@@ -683,16 +765,16 @@ class SlackMessageBuilder:
                 error_text += self._get_sheet_link_line(sheet_link)
                 
             elif error_type == "email_mismatch":
-                error_text = "❌ *Error with Refund Request - Email provided did not match order*\n\n"
-                error_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
-                error_text += f"*Request Submitted At*: {current_time}\n\n"
-                error_text += self._get_requestor_line(requestor_name, requestor_email)
-                error_text += f"*Email Associated with Order:* {order_customer_email or 'N/A'}\n\n"
-                error_text += f"*Order Number:* {raw_order_number or 'N/A'}\n\n"
-                error_text += self._get_optional_request_notes(request_notes)
-                error_text += f"📩 *The requestor has been emailed to please provide correct order info. No action needed at this time.*\n"
-                error_text += self._get_sheet_link_line(sheet_link)
-                # Note: sport mention would be added here if order_data was available
+                # This is now handled by build_email_mismatch_message instead
+                # Return early to use the new method with the provided order_data
+                return self.build_email_mismatch_message(
+                    requestor_info={"name": requestor_name, "email": requestor_email, "refund_type": refund_type, "notes": request_notes},
+                    raw_order_number=raw_order_number,
+                    order_customer_email=order_customer_email,
+                    sheet_link=sheet_link,
+                    order_data=order_data,
+                    customer_orders_url=customer_orders_url
+                )
                 
             else:
                 error_text = "❌ *Error with Refund Request*\n\n"
@@ -724,4 +806,125 @@ class SlackMessageBuilder:
                 "text": error_text,
                 "action_buttons": [],
                 "slack_text": "❌ Error building message"
+            }
+
+    def build_email_mismatch_message(
+        self,
+        requestor_info: Dict[str, Any],
+        raw_order_number: str,
+        order_customer_email: str,
+        sheet_link: str,
+        order_data: Optional[Dict[str, Any]] = None,
+        customer_orders_url: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Build Slack message for email mismatch scenario with action buttons
+        
+        Args:
+            requestor_info: Requestor details (name, email, refund_type, notes)
+            raw_order_number: Order number from the request
+            order_customer_email: Actual email associated with the order
+            sheet_link: Link to the Google Sheet
+            order_data: Optional order data for sport mention
+            
+        Returns:
+            Dict with message text, action buttons, and slack text
+        """
+        try:
+            requestor_name = requestor_info.get("name", {})
+            requestor_email = requestor_info.get("email", "")
+            refund_type = requestor_info.get("refund_type", "refund")
+            request_notes = requestor_info.get("notes", "")
+            
+            current_time = format_date_and_time(datetime.now(timezone.utc))
+            
+            # Get order URL for linking
+            order_url = self.get_order_url(
+                order_id=order_data.get("order", {}).get("id", "") if order_data else "",
+                order_name=raw_order_number
+            )
+            
+            # Build main message with enhanced content
+            message_text = "⚠️ *Email Mismatch - Action Required*\n\n"
+            message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
+            message_text += f"*Request Submitted At*: {current_time}\n\n"
+            
+            # Enhanced requestor line with link to view orders by email  
+            requestor_full_name = f"{requestor_name.get('first', '')} {requestor_name.get('last', '')}".strip()
+            
+            # Use provided customer orders URL or show no customer found message
+            if customer_orders_url:
+                orders_link_text = f"(<{customer_orders_url}|Click here to view orders associated with {requestor_email}>)"
+            else:
+                # No customer found with that email in Shopify
+                orders_link_text = f"(No Shopify customer found associated with the email {requestor_email})"
+            
+            message_text += f"📧 *Requested by:* {requestor_full_name} (<mailto:{requestor_email}|{requestor_email}>) \n{orders_link_text}\n\n"
+            
+            message_text += f"*Email Associated with Order:* <mailto:{order_customer_email}|{order_customer_email}>\n\n"
+            
+            # Enhanced order number with hyperlink
+            if order_data and "order" in order_data:
+                # Extract order ID and create proper Shopify URL
+                order = order_data["order"]
+                order_id = order.get("id", "")
+                if order_id:
+                    # Create the order URL using the helper method
+                    formatted_order_number = raw_order_number if raw_order_number.startswith('#') else f"#{raw_order_number}"
+                    order_url = self.get_order_url(order_id, formatted_order_number)
+                    message_text += f"*Order Number:* {order_url}\n\n"
+                else:
+                    message_text += f"*Order Number:* {raw_order_number}\n\n"
+            else:
+                message_text += f"*Order Number:* {raw_order_number}\n\n"
+            
+            message_text += self._get_optional_request_notes(request_notes)
+            message_text += "⚠️ *The email provided does not match the order's customer email.*\n"
+            message_text += "Please either view orders above to edit with the correct details, reach out to the requestor to confirm, or click Deny Request to notify the player their request has been denied due to mismatching details.\n\n"
+            message_text += "*Please choose an action:*\n"
+            message_text += "• *Edit Request Details*: Update the order number or email and re-validate\n"
+            message_text += "• *Deny Request*: Send custom denial email to requestor\n\n"
+            message_text += self._get_sheet_link_line(sheet_link)
+            
+            # Add sport mention if available
+            sport_mention = ""
+            if order_data and "order" in order_data:
+                order = order_data["order"]
+                if "line_items" in order and order["line_items"]:
+                    product_title = order["line_items"][0].get("title", "")
+                    sport_mention = self.get_sport_group_mention(product_title)
+                    if sport_mention:
+                        message_text += f"*Attn*: {sport_mention}"
+            
+            # Create action buttons
+            action_buttons = [
+                self._create_edit_request_details_button(
+                    raw_order_number=raw_order_number,
+                    requestor_name=requestor_name,
+                    requestor_email=requestor_email,
+                    refund_type=refund_type,
+                    request_notes=request_notes,
+                    current_time=current_time
+                ),
+                self._create_deny_email_mismatch_button(
+                    raw_order_number=raw_order_number,
+                    requestor_name=requestor_name,
+                    requestor_email=requestor_email,
+                    refund_type=refund_type,
+                    current_time=current_time
+                )
+            ]
+            
+            return {
+                "text": message_text,
+                "action_buttons": action_buttons,
+                "slack_text": "⚠️ Email Mismatch - Action Required"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error building email mismatch message: {str(e)}")
+            return {
+                "text": f"❌ *Error building email mismatch message*\n\nError: {str(e)}\n\nRequestor: {requestor_info.get('email', 'unknown')}",
+                "action_buttons": [],
+                "slack_text": "❌ Error building email mismatch message"
             } 

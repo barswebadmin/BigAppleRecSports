@@ -1,17 +1,6 @@
-const fetchShopify = (query, variables = {}) => {
-  const options = {
-    method: "POST",
-    contentType: "application/json",
-    headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
-    payload: JSON.stringify({ query, variables })
-  };
-  const response = UrlFetchApp.fetch(GRAPHQL_URL, options);
-  return JSON.parse(response.getContentText());
-};
-
 function createProductFromRow(rowObject) {
-
-  const apiEndpoint = 'https://chubby-grapes-trade.loca.lt/api/products';
+  
+  const apiEndpoint = API_DESTINATION === 'AWS' ? getSecret('AWS_CREATE_PRODUCT_ENDPOINT') : 'https://chubby-grapes-trade.loca.lt/api/products';
 
   const { rowNumber, sport, day, sportSubCategory, division, season, year, socialOrAdvanced, types, newPlayerOrientationDateTime, scoutNightDateTime, openingPartyDate, seasonStartDate, seasonEndDate, offDatesCommaSeparated, rainDate, closingPartyDate, sportStartTime, sportEndTime, alternativeStartTime, alternativeEndTime, location, price, vetRegistrationStartDateTime, earlyRegistrationStartDateTime, openRegistrationStartDateTime, numOfWeeks } = rowObject;
 
@@ -76,7 +65,7 @@ function createProductFromRow(rowObject) {
           ],
           product: {
             handle: "${year}-${season.toLowerCase()}-${sport.toLowerCase()}-${day.toLowerCase()}-${division.toLowerCase().split('+')[0]}div",
-            title: "Big Apple ${sport} - ${day} - ${division} Division - ${season} ${year} (*Registration Not Yet Live - Please scroll down to description for dates*)",
+            title: "Big Apple ${sport} - ${day} - ${division} Division - ${season} ${year} (*Registration Not Yet Open - Please scroll down to description for dates*)",
             status: ACTIVE,
             category: "gid://shopify/TaxonomyCategory/sg-4",
             tags: ["${sport}", "${division === 'WTNB+' ? 'WTNB' : division} Division"],
@@ -203,7 +192,7 @@ function createProductFromRow(rowObject) {
         }`
     });
 
-    const response = UrlFetchApp.fetch(GRAPHQL_URL, {
+    const response = UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), {
       method: "post",
       contentType: "application/json",
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
@@ -226,7 +215,7 @@ function createProductFromRow(rowObject) {
           }
         }`;
 
-      const response = fetchShopify(query);
+      const response = fetchShopify({ query });
 
       const variantId = response.data?.product?.variants?.nodes[0]?.id || null;
       if (!variantId) Logger.log("❌ No variant found in Shopify response:", response);
@@ -248,7 +237,7 @@ function createProductFromRow(rowObject) {
           }`
       };
 
-      const response = UrlFetchApp.fetch(`${REST_URL}/graphql.json`, {
+      const response = UrlFetchApp.fetch(`${getSecret('SHOPIFY_REST_URL')}/graphql.json`, {
         method: "POST",
         contentType: "application/json",
         headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
@@ -260,7 +249,7 @@ function createProductFromRow(rowObject) {
     }
 
     function enableInventoryTracking(variantIdDigitsOnly) {
-      const url = `${REST_URL}/variants/${variantIdDigitsOnly}.json`;
+      const url = `${getSecret('SHOPIFY_REST_URL')}/variants/${variantIdDigitsOnly}.json`;
       const payload = {
         variant: {
           id: parseInt(variantIdDigitsOnly, 10),

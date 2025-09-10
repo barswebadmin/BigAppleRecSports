@@ -205,12 +205,22 @@ class SlackService:
                 
             elif error_type:
                 # Error message for various failure scenarios
+                customer_orders_url = None
+                
+                # For email mismatch, try to get customer-specific orders URL
+                if error_type == "email_mismatch" and requestor_info:
+                    requestor_email = requestor_info.get("email", "")
+                    if requestor_email:
+                        customer_orders_url = self._get_customer_orders_url(requestor_email)
+                
                 message_data = self.message_builder.build_error_message(
                     error_type=error_type,
                     requestor_info=requestor_info,
                     sheet_link=sheet_link,
                     raw_order_number=raw_order_number or "",
-                    order_customer_email=order_customer_email or ""
+                    order_customer_email=order_customer_email or "",
+                    order_data=order_data,
+                    customer_orders_url=customer_orders_url
                 )
                 
             elif order_data:
@@ -596,6 +606,9 @@ class SlackService:
     async def handle_proceed_without_cancel(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
         return await self.refunds_utils.handle_proceed_without_cancel(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
     
+    async def handle_deny_refund_request(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_deny_refund_request(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+    
     async def handle_process_refund(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, slack_user_id: str = "", trigger_id: Optional[str] = None) -> Dict[str, Any]:
         return await self.refunds_utils.handle_process_refund(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_name, current_message_full_text, slack_user_id, trigger_id)
     
@@ -616,6 +629,21 @@ class SlackService:
     async def handle_no_refund(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_name: str, slack_user_id: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
         return await self.refunds_utils.handle_no_refund(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_name, slack_user_id, current_message_full_text, trigger_id)
 
+    async def handle_edit_request_details(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_edit_request_details(request_data, channel_id, thread_ts, slack_user_name, slack_user_id, trigger_id, current_message_full_text)
+
+    async def handle_deny_email_mismatch(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_deny_email_mismatch(request_data, channel_id, thread_ts, slack_user_name, slack_user_id, trigger_id, current_message_full_text)
+
+    async def handle_edit_request_details_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_edit_request_details_submission(payload)
+    
+    async def handle_deny_email_mismatch_modal(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_deny_email_mismatch_modal(request_data, channel_id, thread_ts, slack_user_name, slack_user_id, trigger_id, current_message_full_text)
+    
+    async def handle_deny_email_mismatch_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_deny_email_mismatch_submission(payload)
+
     def build_comprehensive_success_message(self, order_data: Dict[str, Any], refund_amount: float, refund_type: str,
                                       raw_order_number: str, order_cancelled: bool, requestor_name: Dict[str, str], requestor_email: str, processor_user: str,
                                       current_message_text: str, order_id: str = "", is_debug_mode: bool = False) -> Dict[str, Any]:
@@ -632,6 +660,61 @@ class SlackService:
     
     def extract_sheet_link(self, message_text: str) -> str:
         return self.refunds_utils.extract_sheet_link(message_text)
+    
+    def _get_customer_orders_url(self, requestor_email: str) -> Optional[str]:
+        """
+        Get Shopify admin URL for viewing orders by customer ID for a given email.
+        Returns None if no customer found with that email.
+        """
+        try:
+            logger.info(f"🔍 Looking up customer by email: {requestor_email}")
+            
+            # Use the OrdersService to access Shopify API
+            from services.orders import OrdersService
+            orders_service = OrdersService()
+            
+            # Query to find customer by email
+            customer_query = """
+            query findCustomerByEmail($email: String!) {
+                customers(first: 1, query: $email) {
+                    edges {
+                        node {
+                            id
+                            email
+                        }
+                    }
+                }
+            }
+            """
+            
+            query_payload = {
+                "query": customer_query,
+                "variables": {"email": requestor_email}
+            }
+            customer_result = orders_service.shopify_service._make_shopify_request(query_payload)
+            
+            if customer_result and customer_result.get("data"):
+                customers = customer_result["data"].get("customers", {}).get("edges", [])
+                if customers:
+                    customer_id = customers[0]["node"]["id"]
+                    # Extract numeric ID from GID format (gid://shopify/Customer/123456)
+                    numeric_id = customer_id.split('/')[-1] if '/' in customer_id else customer_id
+                    
+                    # Build the customer-specific orders URL
+                    customer_orders_url = f"https://admin.shopify.com/store/09fe59-3/orders?customer_id={numeric_id}&customers_redirect=true"
+                    logger.info(f"✅ Found customer {numeric_id} for email {requestor_email}")
+                    return customer_orders_url
+                else:
+                    logger.info(f"❌ No customer found for email: {requestor_email}")
+                    return None
+            else:
+                error_msg = "No customer data returned" if customer_result else "Failed to query customers"
+                logger.warning(f"⚠️ {error_msg}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Error looking up customer by email {requestor_email}: {str(e)}")
+            return None
     
     def extract_season_start_info(self, message_text: str) -> Dict[str, Optional[str]]:
         return self.refunds_utils.extract_season_start_info(message_text)

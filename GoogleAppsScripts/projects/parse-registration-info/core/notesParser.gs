@@ -112,7 +112,7 @@ function parseNotes_(cVal, sportStartTime, unresolved) {
   // ---- Types from Notes ----
   if (/\bdraft\b/i.test(text)) res.typesFromNotes.push('Draft');
   if (/\brandomized\b/i.test(text)) res.typesFromNotes.push('Randomized Teams');
-  if (/\bbuddy\s*signup\b/i.test(text)) res.typesFromNotes.push('Buddy Signup');
+  if (/\bbuddy\s*signup\b/i.test(text)) res.typesFromNotes.push('Buddy Sign-up');
   if (/\bcaptain\s*signup\b/i.test(text)) res.typesFromNotes.push('Captain Signup');
 
   return res;

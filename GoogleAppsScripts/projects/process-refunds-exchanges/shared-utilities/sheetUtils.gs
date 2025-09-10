@@ -267,6 +267,70 @@ function markOrderAsProcessed(rawOrderNumber) {
 }
 
 /**
+ * Update the Notes column (column K) for a specific order
+ * @param {string} rawOrderNumber - Order number to find
+ * @param {string} requestorEmail - Email to help identify the correct row
+ * @param {string} note - Note to add to column K
+ * @returns {boolean} Success status
+ */
+function updateOrderNotesColumn(rawOrderNumber, requestorEmail, note) {
+  try {
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses 1') || SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+
+    // Find column indices
+    const orderColIndex = headers.findIndex(h => h.toLowerCase().includes("order number"));
+    const emailColIndex = headers.findIndex(h => h.toLowerCase().includes("email"));
+    const notesColIndex = headers.findIndex(h => h.toLowerCase().includes("notes") || h.toLowerCase().includes("note"));
+
+    if (orderColIndex === -1) {
+      throw new Error(`Order number column not found. Headers: ${JSON.stringify(headers)}`);
+    }
+    if (emailColIndex === -1) {
+      throw new Error(`Email column not found. Headers: ${JSON.stringify(headers)}`);
+    }
+    if (notesColIndex === -1) {
+      throw new Error(`Notes column not found. Headers: ${JSON.stringify(headers)}`);
+    }
+
+    // Find the matching row by order number AND email
+    const normalizedTarget = normalizeOrderNumber(rawOrderNumber);
+    const targetEmail = requestorEmail.toLowerCase().trim();
+    
+    const rowIndex = data.findIndex((row, i) => {
+      if (i === 0) return false; // Skip header row
+      
+      const cellOrderValue = row[orderColIndex];
+      const normalizedCell = normalizeOrderNumber(cellOrderValue?.toString().trim() || "");
+      const rowEmail = (row[emailColIndex]?.toString().trim() || "").toLowerCase();
+      
+      return normalizedCell === normalizedTarget && rowEmail === targetEmail;
+    });
+
+    if (rowIndex === -1) {
+      throw new Error(
+        `Row not found for order: ${rawOrderNumber} with email: ${requestorEmail}\n` +
+        `Normalized order: ${normalizedTarget}\n` +
+        `Target email: ${targetEmail}\n` +
+        `Order column index: ${orderColIndex}\n` +
+        `Email column index: ${emailColIndex}\n` +
+        `Notes column index: ${notesColIndex}`
+      );
+    }
+
+    // Update the Notes column (Column K is typically index 10, but we use the found index)
+    sheet.getRange(rowIndex + 1, notesColIndex + 1).setValue(note);
+    Logger.log(`✅ Updated Notes column for order ${rawOrderNumber} at row ${rowIndex + 1}, col ${notesColIndex + 1}: "${note}"`);
+    
+    return true;
+  } catch (error) {
+    Logger.log(`❌ Error updating Notes column: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Update a cell value in the active sheet
  * @param {number} row - Row number (1-based)
  * @param {number} col - Column number (1-based) 

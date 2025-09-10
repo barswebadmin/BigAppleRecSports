@@ -89,6 +89,7 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
                 requestor_info=requestor_info,
                 sheet_link=request.sheet_link or "",
                 error_type="email_mismatch",
+                raw_order_number=request.order_number,
                 order_customer_email=order_customer_email
             )
             

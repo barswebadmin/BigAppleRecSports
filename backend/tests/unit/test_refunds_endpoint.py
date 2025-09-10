@@ -57,20 +57,20 @@ class TestRefundsEndpointJSONValidation:
         request = RefundSlackNotificationRequest(**self.valid_refund_request)
         
         assert request.order_number == "42234"
-        assert request.requestor_name["first"] == "j"
-        assert request.requestor_name["last"] == "r"
+        assert request.requestor_name["first"] == "j"  # type: ignore
+        assert request.requestor_name["last"] == "r"  # type: ignore
         assert request.requestor_email == "jdazz87@gmail.com"
         assert request.refund_type == "refund"
         assert request.notes == ""
-        assert "11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw" in request.sheet_link
+        assert request.sheet_link and "11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw" in request.sheet_link
     
     def test_pydantic_model_validation_valid_credit(self):
         """Test that RefundSlackNotificationRequest accepts valid credit JSON"""
         request = RefundSlackNotificationRequest(**self.valid_credit_request)
         
         assert request.order_number == "42234"
-        assert request.requestor_name["first"] == "jane"
-        assert request.requestor_name["last"] == "doe"
+        assert request.requestor_name["first"] == "jane"  # type: ignore
+        assert request.requestor_name["last"] == "doe"  # type: ignore
         assert request.requestor_email == "jane.doe@example.com"
         assert request.refund_type == "credit"
         assert request.notes == "Requested store credit instead of refund"
@@ -134,16 +134,16 @@ class TestRefundsEndpointJSONValidation:
         request_missing_first["requestor_name"] = {"last": "r"}
         
         request = RefundSlackNotificationRequest(**request_missing_first)
-        assert request.requestor_name["first"] == ""
-        assert request.requestor_name["last"] == "r"
+        assert request.requestor_name["first"] == ""  # type: ignore
+        assert request.requestor_name["last"] == "r"  # type: ignore
         
         # Missing last name - should default to empty string
         request_missing_last = self.valid_refund_request.copy()
         request_missing_last["requestor_name"] = {"first": "j"}
         
         request = RefundSlackNotificationRequest(**request_missing_last)
-        assert request.requestor_name["first"] == "j"
-        assert request.requestor_name["last"] == ""
+        assert request.requestor_name["first"] == "j"  # type: ignore
+        assert request.requestor_name["last"] == ""  # type: ignore
     
     def test_pydantic_model_optional_fields(self):
         """Test that optional fields (notes, sheet_link) can be omitted"""
@@ -305,7 +305,7 @@ class TestRefundsEndpointIntegration:
         """Test endpoint rejects malformed JSON"""
         response = client.post(
             "/refunds/send-to-slack", 
-            data="not valid json",
+            content="not valid json",
             headers={"Content-Type": "application/json"}
         )
         
@@ -348,8 +348,8 @@ class TestRefundsEndpointRealWorldScenarios:
         }
         
         request = RefundSlackNotificationRequest(**frontend_json)
-        assert request.requestor_name.first == "Jonathan"
-        assert request.requestor_name.last == "Randazzo"
+        assert request.requestor_name["first"] == "Jonathan"  # type: ignore
+        assert request.requestor_name["last"] == "Randazzo"  # type: ignore
         assert request.refund_type == "credit"
     
     def test_edge_cases_empty_notes(self):

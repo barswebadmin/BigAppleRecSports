@@ -1,236 +1,135 @@
-function doPost(e) {
+/**
+ * ========================================================================
+ * SIMPLIFIED doPost HANDLER - BACKEND-DRIVEN WORKFLOW
+ * ========================================================================
+ * 
+ * 🔄 NEW WORKFLOW:
+ * 1. GAS handles ONLY form submissions → sends JSON to backend
+ * 2. Backend creates Slack messages with buttons
+ * 3. Slack webhooks go DIRECTLY to backend (not GAS)
+ * 4. Backend handles all button interactions and updates Slack
+ * 
+ * ⚠️ IMPORTANT: Slack app webhook URL should point to backend:
+ *    ${API_URL}/slack/interactions
+ * ========================================================================
+ */
 
+function doPost(e) {
   try {
     if (!e.postData || !e.postData.contents) {
       throw new Error("Missing postData or contents in request");
     }
 
-    // Slack sends payload as x-www-form-urlencoded
     const raw = decodeURIComponent(e.postData.contents);
     
-    const payloadStr = raw.startsWith("payload=") ? raw.slice("payload=".length) : raw;
-    const payload = JSON.parse(payloadStr);
-    const payloadType = payload.type;
-
-    const slackUserId = payload.user.id;
-    const slackUserName = `<@${slackUserId}>`;
-
-    const requestData = {}
-    let action
-    let actionId
-    let threadTs;
-    let channelId;
-
-    if (payloadType === "block_actions") {
-      action = payload.actions[0]
-      actionId = action.action_id;
-
-      const buttonValues = action.value.split('|');
-      for (const buttonValue of buttonValues) {
-        const [key, value] = buttonValue.split('=');
-        requestData[key] = value;
-      }
-
-      threadTs = payload.message?.ts;
-      channelId = payload.channel?.id || payload.container?.channel_id;
-    }
-
-    if (payloadType === "view_submission" && payload.view.callback_id === "update_refund_amount_modal") {
-      const values = payload.view.state.values;
-      const newRefundAmount = values.order_block.new_refund_amount.value.trim();
-      const metadata = JSON.parse(payload.view.private_metadata);
-      const threadTs = metadata.threadTs;
-      const channelId = metadata.channelId;
-
-      // MailApp.sendEmail({
-      //   to: DEBUG_EMAIL,
-      //   subject: "Debug doPost 3",
-      //   htmlBody: `updating refund amount from modal with: \n
-      //   values: ${JSON.stringify(values,null,2)} \n
-      //   newRefundAmount: ${JSON.stringify(newRefundAmount,null,2)} \n
-      //   metadata: ${JSON.stringify(metadata,null,2)} \n
-      //   threadTs: ${JSON.stringify(threadTs,null,2)} \n
-      //   channelId: ${JSON.stringify(channelId,null,2)} \n`
-      // });
-
-      const slackResponse = ContentService
-      .createTextOutput(JSON.stringify({ response_action: "clear" }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-      const oldRefundAmount = requestData.refundAmount
-
-      const updatedRequestData = {...metadata.originalRequestData, refundAmount: newRefundAmount, oldRefundAmount}
-
-      if (MODE.include('prod')) {
-        approveRefundRequest( updatedRequestData, channelId, threadTs, slackUserName )
-
-        // ✅ Defer background work to ensure modal closes first
-        Utilities.sleep(3); // Let Slack process the response
-
-        // ✅ Continue work in background
-        // updateRefundRequestAfterModalSubmit({
-        //   ...metadata,
-        //   newOrderNumber,
-        //   newEmail,
-        //   rawOrderNumber: metadata.originalRequestData.rawOrderNumber,
-        //   channelId: metadata.channelId,
-        //   threadTs: metadata.threadTs
-        // });
-
-        return slackResponse
-      }
-      else {
-        approveRefundRequestDebugVersion(requestData, channelId, threadTs, slackUserName);
-        Utilities.sleep(3); // Let Slack process the response
-      }
-    }
-
-    if (payloadType === "view_submission" && payload.view.callback_id === "update_order_details_modal") {
-      const values = payload.view.state.values;
-      const newOrderNumber = values.order_block.new_order_number.value.trim();
-      const newEmail = values.email_block.new_email.value.trim().toLowerCase();
-      const metadata = JSON.parse(payload.view.private_metadata);
-
-      const slackResponse = ContentService
-      .createTextOutput(JSON.stringify({ response_action: "clear" }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-      // ✅ Defer background work to ensure modal closes first
-      Utilities.sleep(5); // Let Slack process the response
-
-      // ✅ Continue work in background
-      updateRefundRequestDetailsAfterModalSubmit({
-        ...metadata,
-        newOrderNumber,
-        newEmail,
-        rawOrderNumber: metadata.originalRequestData.rawOrderNumber,
-        channelId: metadata.channelId,
-        threadTs: metadata.threadTs
-      });
-
-      return slackResponse
-    }
-
-    if (actionId === "approve_refund") {
-      try {
-        if (MODE.includes('prod')) {
-          approveRefundRequest(requestData, channelId, threadTs, slackUserName)
-        }
-        else {
-          approveRefundRequestDebugVersion(requestData, channelId, threadTs, slackUserName);
-        }
-      } catch (error) {
-        MailApp.sendEmail({
-          to: DEBUG_EMAIL,
-          subject: "❌ Error inside approveRefundRequest()",
-          htmlBody: `<pre>${error.stack}</pre>`
-        });
-        return ContentService.createTextOutput(""); // exit gracefully
-      }
-
-    } else if (actionId === "deny_refund") {
-      try {
-        denyRefundRequest(requestData, channelId, threadTs, slackUserName);
-      } catch (error) {
-        MailApp.sendEmail({
-          to: DEBUG_EMAIL,
-          subject: "❌ Error inside denyRefundRequest()",
-          htmlBody: `<pre>${error.stack}</pre>`
-        });
-        return ContentService.createTextOutput(""); // exit gracefully
-      }
-
-    } else if (actionId === 'update_order_details') {
-      const triggerId = payload.trigger_id;
+    // Check if this is a Slack webhook (contains "payload=")
+    if (raw.startsWith("payload=")) {
+      // This is a Slack webhook - should go to backend instead
+      Logger.log("🔄 Slack webhook detected - redirecting to backend");
       
-      updateSlackMessage(getSlackRefundsChannel(),{
-        channel: channelId,
-        ts: threadTs,
-        text: "Refund request is being updated",
-        blocks: [
-          {
-            type: "context",
-            elements: [
-              {
-                type: "mrkdwn",
-                text: `🔄 *Request is being updated with new order/email by ${slackUserName}*`
-              }
-            ]
-          }
-        ]
+      MailApp.sendEmail({
+        to: DEBUG_EMAIL,
+        subject: "⚠️ Slack Webhook Received by GAS",
+        htmlBody: `
+          <h3>⚠️ Slack webhook was sent to Google Apps Script</h3>
+          <p><strong>Expected:</strong> Slack should send directly to backend</p>
+          <p><strong>Current Slack URL:</strong> This Google Apps Script</p>
+          <p><strong>Correct Slack URL:</strong> ${API_URL}/slack/interactions</p>
+          <p><strong>Action Required:</strong> Update Slack app webhook URL to point to backend</p>
+          <p><strong>Payload Preview:</strong></p>
+          <pre>${raw.substring(0, 500)}...</pre>
+        `
       });
-
-      updateRefundRequestOrderDetails({ requestData, channelId, threadTs, slackUserName, triggerId })
-
-    } else if (actionId === 'refund_different_amount') {
-      const triggerId = payload.trigger_id;
-
-      const modalResponse = updateRefundRequestAmount({
-        requestData,
-        channelId,
-        threadTs,
-        slackUserName,
-        triggerId
-      });
-      if (modalResponse?.ok) {
-        Utilities.sleep(4); // Allow Slack time to process modal
-
-        // updateSlackMessage(getSlackRefundsChannel(), {
-        //   channel: channelId,
-        //   ts: threadTs,
-        //   text: "Refund request is being updated",
-        //   blocks: [
-        //     {
-        //       type: "context",
-        //       elements: [
-        //         {
-        //           type: "mrkdwn",
-        //           text: `🔄 *Request is being processed for a different amount by ${slackUserName}*`
-        //         }
-        //       ]
-        //     }
-        //   ]
-        // });
-      } else {
-        MailApp.sendEmail({
-          to: DEBUG_EMAIL,
-          subject: "❌ Slack Modal Failed to Open for Refund Adjustment",
-          htmlBody: `<pre>${JSON.stringify(modalResponse, null, 2)}</pre>`
-        });
-      }
-
-    } else if (actionId === 'cancel_refund_request') {
-      cancelRefundRequest(requestData, channelId, threadTs, slackUserName)
-
-    } else if (actionId.includes('restock')) {
-      try {
-        restockInventory({requestData, actionId, channelId, threadTs, slackUserName})
-      } catch (error) {
-        MailApp.sendEmail({
-          to: DEBUG_EMAIL,
-          subject: "❌ Error inside restockInventory()",
-          htmlBody: `<pre>${error.stack}</pre>`
-        });
-        return ContentService.createTextOutput(""); // exit gracefully
-      }
       
-    } else {
-      Logger.log(`⚠️ Unknown action_id: ${actionId}`);
+      return ContentService.createTextOutput(JSON.stringify({
+        "text": "⚠️ Please update Slack webhook URL to point to backend"
+      })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    return ContentService.createTextOutput(""); // just return empty
+    // If we get here, this should be a Google Form submission
+    Logger.log("📝 Form submission detected - processing with backend API");
+    
+    // Process form submission by calling the existing form handler
+    return processFormSubmitViaDoPost(e);
 
   } catch (error) {
-    const fallback = e?.postData?.contents || "[no postData]";
+    const errorMessage = `Error in doPost: ${error.toString()}`;
+    Logger.log(`❌ ${errorMessage}`);
+    
     MailApp.sendEmail({
       to: DEBUG_EMAIL,
-      subject: `❌ Error in doPost() - Slack Refund`,
+      subject: `❌ BARS doPost Error`,
       htmlBody: `
-        <p><strong>Error refunding order:</strong> ${error.message}</p>
-        <p>Request details: ${JSON.stringify(requestDetails,null,2)}</p>
-        <p><strong>Raw Payload:</strong></p>
-        <pre>${decodeURIComponent(fallback)}</pre>
+        <h3>❌ Error in doPost Function</h3>
+        <p><strong>Error:</strong> ${errorMessage}</p>
+        <p><strong>Stack:</strong> <pre>${error.stack || 'No stack trace available'}</pre></p>
+        <p><strong>Raw Request Data:</strong> <pre>${raw?.substring(0, 1000) || 'No data'}</pre></p>
       `
     });
+    
+    return ContentService.createTextOutput("Error processing request").setMimeType(ContentService.MimeType.TEXT);
   }
 }
+
+/**
+ * Process Google Form submission (called by doPost)
+ * Extracts form data and sends to backend API
+ */
+function processFormSubmitViaDoPost(e) {
+  try {
+    // Extract form fields from Google Form submission
+    const getFieldValueByKeyword = (keyword) => {
+      const entry = Object.entries(e.namedValues || {}).find(([key]) =>
+        key.toLowerCase().includes(keyword.toLowerCase())
+      );
+      return entry?.[1]?.[0]?.trim() || "";
+    };
+
+    const requestorName = {
+      first: getFieldValueByKeyword("first name"),
+      last: getFieldValueByKeyword("last name")
+    };
+
+    const requestorEmail = getFieldValueByKeyword("email");
+    const rawOrderNumber = getFieldValueByKeyword("order number");
+    const refundAnswer = getFieldValueByKeyword("do you want a refund");
+    const refundOrCredit = refundAnswer.toLowerCase().includes("refund") ? "refund" : "credit";
+    const requestNotes = getFieldValueByKeyword("note");
+    
+    Logger.log(`📋 Form submission data extracted for order: ${rawOrderNumber}`);
+    
+    // Call the existing backend processing function
+    processWithBackendAPI(
+      normalizeOrderNumber(rawOrderNumber),
+      rawOrderNumber,
+      requestorName,
+      requestorEmail,
+      refundOrCredit,
+      requestNotes,
+      MODE === 'debugApi'
+    );
+    
+    return ContentService.createTextOutput("Form submitted successfully").setMimeType(ContentService.MimeType.TEXT);
+    
+  } catch (error) {
+    Logger.log(`❌ Error processing form submission: ${error.toString()}`);
+    throw error; // Re-throw to be handled by main doPost
+  }
+}
+
+/**
+ * ========================================================================
+ * REMOVED: Legacy Slack button handling code
+ * ========================================================================
+ * 
+ * The following functions are no longer needed in doPost since all 
+ * Slack interactions now go directly to the backend:
+ * 
+ * - All actionId handlers (approve_refund, deny_refund, cancel_order, etc.)
+ * - View submission handlers (modals)
+ * - Button value parsing logic
+ * - Slack webhook processing
+ * 
+ * 🎯 New flow: Slack → Backend → Slack (GAS not involved in Slack interactions)
+ * ========================================================================
+ */

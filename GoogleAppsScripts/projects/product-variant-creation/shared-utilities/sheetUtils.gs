@@ -58,12 +58,12 @@ function getSheetDataById(sheetId, sheetName = null) {
 // =============================================================================
 
 /**
- * Parse row data based on headers (generic version)
+ * Parse row data based on headers (generic version for refunds/orders)
  * @param {Array} rowObject - Row data array
  * @param {Array} sheetHeaders - Headers array
  * @returns {Object} Parsed row data object
  */
-function parseRowData(rowObject, sheetHeaders) {
+function parseRefundRowData(rowObject, sheetHeaders) {
   const rowData = {};
 
   sheetHeaders.forEach((header, i) => {
@@ -155,7 +155,7 @@ function getRequestDetailsFromOrderNumber(rawOrderNumber) {
   // Return the row with the most recent timestamp
   const mostRecentRow = matchingRows.sort((a, b) => new Date(b[timestampColIndex]) - new Date(a[timestampColIndex]))[0];
 
-  return parseRowData(mostRecentRow, sheetHeaders);
+  return parseRefundRowData(mostRecentRow, sheetHeaders);
 }
 
 // =============================================================================
