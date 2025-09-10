@@ -108,8 +108,8 @@ async def handle_slack_interactions(request: Request):
             
             if callback_id == "edit_request_details_submission":
                 return await slack_service.handle_edit_request_details_submission(payload)
-            elif callback_id == "deny_email_mismatch_submission":
-                return await slack_service.handle_deny_email_mismatch_submission(payload)
+            elif callback_id == "deny_refund_request_modal_submission":
+                return await slack_service.handle_deny_refund_request_modal_submission(payload)
             else:
                 logger.warning(f"Unknown modal callback_id: {callback_id}")
                 return {"response_action": "clear"}
@@ -184,13 +184,23 @@ async def handle_slack_interactions(request: Request):
                 elif action_id == "proceed_without_cancel":
                     return await slack_service.handle_proceed_without_cancel(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
                 
-                elif action_id == "deny_refund_request":
-                    print(f"\n🚫 === DENY REFUND REQUEST BUTTON CLICKED ===")
+                elif action_id == "deny_refund_request_show_modal":
+                    print(f"\n🚫 === DENY REQUEST MODAL ===")
+                    print(f"🎯 Action ID: {action_id}")
                     print(f"📦 Request Data: {json.dumps(request_data, indent=2)}")
                     print(f"👤 User: {slack_user_name} (ID: {slack_user_id})")
-                    print(f"🚫 === END DENY REFUND REQUEST DEBUG ===\n")
+                    print(f"🎯 Trigger ID: {trigger_id}")
+                    print(f"🚫 === END DENY REQUEST MODAL DEBUG ===\n")
                     
-                    return await slack_service.handle_deny_refund_request(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+                    return await slack_service.handle_deny_refund_request_show_modal(
+                        request_data=request_data,
+                        channel_id=channel_id,
+                        thread_ts=thread_ts,
+                        slack_user_name=slack_user_name,
+                        slack_user_id=slack_user_id,
+                        trigger_id=trigger_id,
+                        current_message_full_text=current_message_full_text
+                    )
                 
                 
                 # === STEP 2 HANDLERS: REFUND DECISION (Process / Custom / No Refund) ===   
@@ -206,15 +216,25 @@ async def handle_slack_interactions(request: Request):
                     print(f"   Current Message Text Preview: {current_message_full_text[:200]}...")
                     print(f"🎯 === END APPROVE REFUND DEBUG ===\n")
                     
-                    return await slack_service.handle_process_refund(request_data, channel_id, thread_ts, slack_user_name, current_message_full_text, slack_user_id, trigger_id)
-                
-                elif action_id == "custom_refund_amount":
-                    return await slack_service.handle_custom_refund_amount(
+                    return await slack_service.handle_process_refund(
                         request_data=request_data,
                         channel_id=channel_id,
                         requestor_name=requestor_name,
                         requestor_email=requestor_email,
                         thread_ts=thread_ts,
+                        slack_user_name=slack_user_name,
+                        current_message_full_text=current_message_full_text,
+                        slack_user_id=slack_user_id,
+                        trigger_id=trigger_id
+                    )
+                
+                elif action_id == "custom_refund_amount":
+                    return await slack_service.handle_custom_refund_amount(
+                        request_data=request_data,
+                        channel_id=channel_id,
+                        thread_ts=thread_ts,
+                        requestor_name=requestor_name,
+                        requestor_email=requestor_email,
                         slack_user_name=slack_user_name,
                         current_message_full_text=current_message_full_text,
                         slack_user_id=slack_user_id,
@@ -297,43 +317,6 @@ async def handle_slack_interactions(request: Request):
                         current_message_full_text=current_message_full_text
                     )
                 
-                elif action_id == "deny_email_mismatch":
-                    print(f"\n🚫 === DENY EMAIL MISMATCH BUTTON CLICKED ===")
-                    print(f"📦 Full JSON Request Data:")
-                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
-                    print(f"   Channel ID: {channel_id}")
-                    print(f"   Thread TS: {thread_ts}")
-                    print(f"   Slack User: {slack_user_name}")
-                    print(f"   User ID: {slack_user_id}")
-                    print(f"   Trigger ID: {trigger_id}")
-                    print(f"🚫 === END DENY EMAIL MISMATCH DEBUG ===\n")
-                    
-                    return await slack_service.handle_deny_email_mismatch(
-                        request_data=request_data,
-                        channel_id=channel_id,
-                        thread_ts=thread_ts,
-                        slack_user_name=slack_user_name,
-                        slack_user_id=slack_user_id,
-                        trigger_id=trigger_id,
-                        current_message_full_text=current_message_full_text
-                    )
-                
-                elif action_id == "deny_email_mismatch_modal":
-                    print(f"\n🚫 === DENY EMAIL MISMATCH MODAL BUTTON CLICKED ===")
-                    print(f"📦 Request Data: {json.dumps(request_data, indent=2)}")
-                    print(f"👤 User: {slack_user_name} (ID: {slack_user_id})")
-                    print(f"🎯 Trigger ID: {trigger_id}")
-                    print(f"🚫 === END DENY EMAIL MISMATCH MODAL DEBUG ===\n")
-                    
-                    return await slack_service.handle_deny_email_mismatch_modal(
-                        request_data=request_data,
-                        channel_id=channel_id,
-                        thread_ts=thread_ts,
-                        slack_user_name=slack_user_name,
-                        slack_user_id=slack_user_id,
-                        trigger_id=trigger_id,
-                        current_message_full_text=current_message_full_text
-                    )
 
                 # === STEP 3 HANDLERS: RESTOCK INVENTORY (Restock / Do Not Restock) ===
                 elif action_id and (action_id.startswith("restock") or action_id == "do_not_restock"):
@@ -393,206 +376,7 @@ async def handle_slack_webhook(request: Request):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-
-
-
-# async def handle_cancel_and_close_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Handle cancel and close request button click (Step 1)
-    Same as the old logic - cancel order and close request
-    """
-    print(f"\n❌ === CANCEL AND CLOSE REQUEST ACTION ===")
-    print(f"👤 User: {slack_user_name}")
-    print(f"📋 Request Data: {request_data}")
-    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
-    print("=== END CANCEL AND CLOSE ===\n")
-    
-    # TODO: Uncomment when ready to implement (this is the same as old cancel logic)
-    # try:
-    #     raw_order_number = request_data.get("rawOrderNumber", "")
-    #     
-    #     logger.info(f"Canceling and closing request for order: {raw_order_number}")
-    #     
-    #     # Cancel order and close request (same as old logic)
-    #     message = f"❌ *Request cancelled and closed by {slack_user_name}*\\n\\nOrder {raw_order_number} request has been cancelled."
-    #     
-    #     slack_service.api_client.update_message(
-    #         message_ts=thread_ts,
-    #         message_text=message,
-    #         action_buttons=[]
-    #     )
-    #     
-    #     logger.info(f"Request cancelled and closed for order {raw_order_number}")
-    #     return {}
-    # except Exception as e:
-    #     logger.error(f"Error canceling and closing request: {e}")
-    #     error_message = f"❌ Error: {str(e)}"
-    #     slack_service.api_client.update_message(message_ts=thread_ts, message_text=error_message)
-    #     return {}
-    
-    return {"text": "✅ Cancel and close request action received and logged!"}
-
-
-
-# === LEGACY/SUPPORT HANDLERS ===
-
-# async def handle_restock_inventory(request_data: Dict[str, str], action_id: str, channel_id: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
-    """Handle inventory restocking button clicks"""
-    print(f"\n📦 === RESTOCK INVENTORY ACTION ===")
-    print(f"👤 User: {slack_user_name}")
-    print(f"🔧 Action ID: {action_id}")
-    print(f"📋 Request Data: {request_data}")
-    print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
-    print("=== END RESTOCK INVENTORY ===\n")
-    
-    try:
-        order_id = request_data.get("orderId", "")
-        raw_order_number = request_data.get("rawOrderNumber", "")
-        variant_id = request_data.get("variantId", "")
-        variant_name = request_data.get("variantName", "")
-        
-        # Debug: Print the extracted values
-        print(f"🔍 EXTRACTED VALUES:")
-        print(f"   order_id: '{order_id}'")
-        print(f"   raw_order_number: '{raw_order_number}'") 
-        print(f"   variant_id: '{variant_id}'")
-        print(f"   variant_name: '{variant_name}'")
-        
-        # If variant_id is empty, try to extract from action_id
-        if not variant_id and action_id.startswith("restock_"):
-            # Extract variant ID from action_id like: restock_gid___shopify_ProductVariant_41791409848414
-            action_variant_part = action_id.replace("restock_", "")
-            if action_variant_part.startswith("gid___shopify_ProductVariant_"):
-                # Convert back to proper GID format
-                variant_id = action_variant_part.replace("___", "://").replace("_", "/")
-                print(f"✅ Recovered variant_id from action_id: '{variant_id}'")
-        
-        # If variant_name is still empty, use a fallback
-        if not variant_name:
-            variant_name = "Unknown Variant"
-        
-        # Extract Google Sheets link and current message data
-        sheet_url = extract_sheet_link(current_message_full_text)
-        sheet_link = f"🔗 <{sheet_url}|View Request in Google Sheets>" if sheet_url else "🔗 View Request in Google Sheets"
-        
-        # Fetch fresh order details for comprehensive message (like no-refund handler)
-        order_data = None
-        if raw_order_number:
-            order_result = orders_service.fetch_order_details_by_email_or_order_name(order_name=raw_order_number)
-            if order_result["success"]:
-                order_data = order_result["data"]
-                print(f"✅ Fetched order data for completion message")
-            else:
-                print(f"⚠️ Could not fetch order data for completion message: {order_result.get('error', 'Unknown error')}")
-        
-        # Build the final completion message preserving who did what
-        completion_message = build_completion_message_after_restocking(
-            current_message_full_text=current_message_full_text,
-            action_id=action_id,
-            variant_name=variant_name,
-            restock_user=slack_user_name,
-            sheet_link=sheet_link,
-            raw_order_number=raw_order_number,
-            order_data=order_data
-        )
-        
-        # Validate that we have the required data
-        if action_id != "do_not_restock" and not variant_id:
-            error_message = f"Invalid restock request: missing variant ID.\n\nAction ID: {action_id}\nParsed data: {request_data}\n\nThis usually indicates a button formatting issue."
-            
-            if trigger_id:
-                send_modal_error_to_user(
-                    trigger_id=trigger_id,
-                    error_message=error_message,
-                    operation_name="Inventory Restock"
-                )
-            else:
-                logger.error(f"❌ {error_message}")
-            
-            return {}
-
-        if action_id != "do_not_restock":
-            # Handle actual inventory restocking
-            print(f"🏭 Making real inventory API call for variant: {variant_id}")
-            
-            # Make actual Shopify inventory adjustment API call
-            inventory_result = await adjust_shopify_inventory(variant_id, delta=1)
-            
-            if not inventory_result.get("success", False):
-                # If inventory restock fails, show modal instead of updating message
-                error_msg = inventory_result.get("message", "Unknown error")
-                modal_error_message = f"Inventory restock failed for {variant_name}.\n\n**Shopify Error:**\n{error_msg}\n\nCommon causes:\n- Invalid variant ID\n- Inventory item not found\n- Location restrictions\n- Insufficient permissions"
-                
-                if trigger_id:
-                    send_modal_error_to_user(
-                        trigger_id=trigger_id,
-                        error_message=modal_error_message,
-                        operation_name="Inventory Restock"
-                    )
-                else:
-                    # Fallback to console log if no trigger_id
-                    logger.error(f"❌ Inventory restock failed: {modal_error_message}")
-                
-                # Return early - don't update the message
-                return {}
-        
-        # ✅ Update Slack message ONLY on success
-        update_slack_on_shopify_success(
-            message_ts=thread_ts,
-            success_message=completion_message,
-            action_buttons=[]  # No more buttons - process is complete
-        )
-        
-        return {}
-        
-    except Exception as e:
-        logger.error(f"Error handling restock inventory: {e}")
-        error_message = f"❌ Error processing inventory restock: {str(e)}"
-        
-        # Show modal for exceptions too
-        if trigger_id:
-            send_modal_error_to_user(
-                trigger_id=trigger_id,
-                error_message=f"An unexpected error occurred during inventory restock.\n\n**Error:**\n{str(e)}\n\nPlease try again or contact support if the issue persists.",
-                operation_name="Inventory Restock"
-            )
-        else:
-            # Fallback to console log if no trigger_id
-            logger.error(f"❌ Inventory restock exception: {error_message}")
-        
-        # Don't update the message on exceptions - just show modal
-        return {}
-
-# Legacy handler for backwards compatibility
-# async def handle_approve_refund(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
-    """Legacy handler - now redirects to process_refund"""
-    print(f"\n⚠️ === LEGACY APPROVE REFUND (redirecting to process_refund) ===")
-    return await slack_service.handle_process_refund(request_data, channel_id, thread_ts, slack_user_name, "", "")
-
-# Legacy handler for backwards compatibility  
-# async def handle_custom_amount_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
-#     """Legacy handler - now redirects to custom_refund_amount"""
-#     print(f"\n⚠️ === LEGACY CUSTOM AMOUNT (redirecting to custom_refund_amount) ===")
-#     return await handle_custom_refund_amount(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, slack_user_id: str = "", trigger_id: Optional[str] = None)
-
-# Legacy handler for backwards compatibility
-# async def handle_cancel_request(request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str) -> Dict[str, Any]:
-#     """Legacy handler - now redirects to cancel_and_close_request"""
-#     print(f"\n⚠️ === LEGACY CANCEL REQUEST (redirecting to cancel_and_close_request) ===")
-#     return await handle_cancel_and_close_request(request_data, channel_id, thread_ts, slack_user_name)
-
-
-
-
-
-# def extract_data_from_slack_thread(thread_ts: str) -> str:
-    """Extract data from the Slack thread message (placeholder implementation)"""
-    # TODO: Implement actual Slack thread message retrieval
-    # For now, return empty string to use fallback values
-    return ""
-
-
 @router.get("/health")
 async def health_check():
     """Health check endpoint for the Slack service"""
-    return {"status": "healthy", "service": "slack"} 
+    return {"status": "healthy", "service": "slack"}

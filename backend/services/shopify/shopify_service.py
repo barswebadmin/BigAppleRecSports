@@ -98,8 +98,6 @@ class ShopifyService:
     def get_customer_with_tags(self, email: str) -> Optional[Dict[str, Any]]:
         return self.shopify_customer_utils.get_customer_with_tags(email)
 
-    def get_customer_id(self, email: str) -> Optional[str]:
-        return self.shopify_customer_utils.get_customer_id(email)
 
     def get_customers_batch(self, emails: list) -> Dict[str, Optional[Dict[str, Any]]]:
         return self.shopify_customer_utils.get_customers_batch(emails)
@@ -161,6 +159,10 @@ class ShopifyService:
                 location_id = getattr(settings, 'shopify_location_id', None)
                 if not location_id:
                     raise ValueError("SHOPIFY_LOCATION_ID is required for inventory adjustments")
+                
+                # Ensure location_id is in proper global ID format
+                if not location_id.startswith('gid://shopify/Location/'):
+                    location_id = f"gid://shopify/Location/{location_id}"
             
             from datetime import datetime
             reference_uri = f"logistics://slackrefundworkflow/{datetime.utcnow().isoformat()}"
@@ -187,8 +189,18 @@ class ShopifyService:
             
             data = self._make_shopify_request(query)
             
-            if not data or not data.get("data"):
-                raise ValueError("Invalid response from Shopify")
+            # Enhanced debugging for Shopify response
+            logger.info(f"🔍 Shopify inventory adjustment response: {json.dumps(data, indent=2) if data else 'None'}")
+            
+            if not data:
+                raise ValueError("No response received from Shopify")
+            
+            if "errors" in data:
+                error_msg = json.dumps(data["errors"], indent=2)
+                raise ValueError(f"Shopify GraphQL errors: {error_msg}")
+            
+            if not data.get("data"):
+                raise ValueError(f"Invalid response structure from Shopify: {json.dumps(data, indent=2)}")
             
             user_errors = data["data"].get("inventoryAdjustQuantities", {}).get("userErrors", [])
             if user_errors:
@@ -206,4 +218,79 @@ class ShopifyService:
             return {
                 "success": False,
                 "message": str(e)
+            }
+    
+    def get_customer_by_email(self, email: str) -> Dict[str, Any]:
+        """
+        Fetch customer data by email address
+        
+        Args:
+            email: Customer email address
+            
+        Returns:
+            Dict containing customer data or error information
+        """
+        try:
+            logger.info(f"🔍 Fetching customer data for email: {email}")
+            
+            query = f"""
+            query {{
+                customers(first: 1, query: "email:{email}") {{
+                    edges {{
+                        node {{
+                            id
+                            firstName
+                            lastName
+                            email
+                            displayName
+                        }}
+                    }}
+                }}
+            }}
+            """
+            
+            data = self._make_shopify_request({"query": query})
+            
+            if not data:
+                logger.error(f"❌ No response from Shopify API")
+                return {
+                    "success": False,
+                    "message": "No response from Shopify API",
+                    "customer": None
+                }
+            
+            if "errors" in data:
+                error_msg = json.dumps(data["errors"], indent=2)
+                logger.error(f"❌ Shopify GraphQL errors: {error_msg}")
+                return {
+                    "success": False,
+                    "message": f"GraphQL errors: {error_msg}",
+                    "customer": None
+                }
+            
+            customers = data.get("data", {}).get("customers", {}).get("edges", [])
+            
+            if not customers:
+                logger.info(f"📭 No customer found with email: {email}")
+                return {
+                    "success": True,
+                    "message": "No customer found",
+                    "customer": None
+                }
+            
+            customer = customers[0]["node"]
+            logger.info(f"✅ Found customer: {customer.get('firstName', '')} {customer.get('lastName', '')} ({customer.get('email', '')})")
+            
+            return {
+                "success": True,
+                "message": "Customer found",
+                "customer": customer
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error fetching customer by email {email}: {str(e)}")
+            return {
+                "success": False,
+                "message": str(e),
+                "customer": None
             }

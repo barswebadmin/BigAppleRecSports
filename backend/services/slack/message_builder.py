@@ -3,7 +3,7 @@ Slack message building utilities.
 Extracted from the main SlackService to improve modularity.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime, timezone
 import logging
 from utils.date_utils import format_date_and_time, parse_shopify_datetime, convert_to_eastern_time, get_eastern_timezone
@@ -38,6 +38,11 @@ class SlackMessageBuilder:
         product_id_digits = product_id.split('/')[-1] if '/' in product_id else product_id
         return f"https://admin.shopify.com/store/09fe59-3/products/{product_id_digits}"
     
+    def get_customer_url(self, customer_id: str) -> str:
+        """Create Shopify admin customer URL for Slack"""
+        customer_id_digits = customer_id.split('/')[-1] if '/' in customer_id else customer_id
+        return f"https://admin.shopify.com/store/09fe59-3/customers/{customer_id_digits}"
+    
     def _get_request_type_text(self, refund_type: str) -> str:
         """Get detailed request type text for messages"""
         if refund_type.lower() == "refund":
@@ -56,14 +61,20 @@ class SlackMessageBuilder:
         except Exception:
             return ""
     
-    def _get_requestor_line(self, requestor_name: Dict[str, str], requestor_email: str) -> str:
-        """Get formatted requestor line"""
+    def _get_requestor_line(self, requestor_name: Dict[str, str], requestor_email: str, customer_data: Optional[Dict[str, Any]] = None) -> str:
+        """Get formatted requestor line with optional customer profile hyperlink"""
         try:
             if isinstance(requestor_name, dict):
                 first_name = requestor_name.get("first", "")
                 last_name = requestor_name.get("last", "")
                 full_name = f"{first_name} {last_name}".strip()
-                if full_name:
+                
+                if full_name and customer_data and customer_data.get("id"):
+                    # Create hyperlinked name to customer profile
+                    customer_url = self.get_customer_url(customer_data["id"])
+                    return f"📧 *Requested by:* <{customer_url}|{full_name}> ({requestor_email})\n\n"
+                elif full_name:
+                    # Fallback to plain text name
                     return f"📧 *Requested by:* {full_name} ({requestor_email})\n\n"
             return f"📧 *Requested by:* {requestor_email}\n\n"
         except Exception:
@@ -111,13 +122,15 @@ class SlackMessageBuilder:
                                    requestor_email: str, refund_type: str, refund_amount: float, request_submitted_at: str = "") -> Dict[str, Any]:
         """Create the cancel order button (Step 1)"""
         try:
+            first_name = requestor_name.get("first", "")
+            last_name = requestor_name.get("last", "")
             
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "✅ Cancel Order → Proceed"},
                 "style": "primary",
                 "action_id": "cancel_order",
-                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={requestor_name['first']}|last={requestor_name['last']}|email={requestor_email}|requestSubmittedAt={request_submitted_at}",
+                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|email={requestor_email}|requestSubmittedAt={request_submitted_at}",
                 "confirm": {
                     "title": {"type": "plain_text", "text": "Cancel Order"},
                     "text": {"type": "plain_text", "text": f"Cancel order {order_name} in Shopify? This will show refund options next."},
@@ -143,16 +156,28 @@ class SlackMessageBuilder:
             
             return {
                 "type": "button",
-                "text": {"type": "plain_text", "text": "➡️ Do Not Cancel Order → Proceed"},
+                "text": {"type": "plain_text", "text": "➡️ Do Not Cancel → Proceed"},
                 "action_id": "proceed_without_cancel",
-                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|email={requestor_email}|requestSubmittedAt={request_submitted_at}"
+                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|email={requestor_email}|requestSubmittedAt={request_submitted_at}",
+                "confirm": {
+                    "title": {"type": "plain_text", "text": "Proceed Without Canceling"},
+                    "text": {"type": "plain_text", "text": f"Keep order {order_name} active and proceed to refund options?"},
+                    "confirm": {"type": "plain_text", "text": "Yes, proceed"},
+                    "deny": {"type": "plain_text", "text": "Cancel"}
+                }
             }
         except Exception:
             return {
                 "type": "button",
-                "text": {"type": "plain_text", "text": "➡️ Do Not Cancel Order → Proceed"},
+                "text": {"type": "plain_text", "text": "➡️ Do Not Cancel → Proceed"},
                 "action_id": "proceed_without_cancel",
-                "value": f"rawOrderNumber={order_name}"
+                "value": f"rawOrderNumber={order_name}",
+                "confirm": {
+                    "title": {"type": "plain_text", "text": "Proceed Without Canceling"},
+                    "text": {"type": "plain_text", "text": f"Keep order {order_name} active and proceed to refund options?"},
+                    "confirm": {"type": "plain_text", "text": "Yes, proceed"},
+                    "deny": {"type": "plain_text", "text": "Cancel"}
+                }
             }
     
     def _create_deny_request_button(self, order_id: str, order_name: str, requestor_name: Dict[str, str], 
@@ -166,21 +191,15 @@ class SlackMessageBuilder:
                 "type": "button",
                 "text": {"type": "plain_text", "text": "🚫 Deny Request"},
                 "style": "danger",
-                "action_id": "deny_refund_request",
-                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|email={requestor_email}|requestSubmittedAt={request_submitted_at}",
-                "confirm": {
-                    "title": {"type": "plain_text", "text": "Deny Refund Request"},
-                    "text": {"type": "plain_text", "text": f"Deny the refund request for order {order_name}? This will send a denial email to the requestor."},
-                    "confirm": {"type": "plain_text", "text": "Yes, deny request"},
-                    "deny": {"type": "plain_text", "text": "Cancel"}
-                }
+                "action_id": "deny_refund_request_show_modal",
+                "value": f"rawOrderNumber={order_name}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|email={requestor_email}|requestSubmittedAt={request_submitted_at}"
             }
         except Exception:
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "🚫 Deny Request"},
                 "style": "danger",
-                "action_id": "deny_refund_request",
+                "action_id": "deny_refund_request_show_modal",
                 "value": f"rawOrderNumber={order_name}"
             }
     
@@ -197,7 +216,6 @@ class SlackMessageBuilder:
             formatted_amount = int(refund_amount) if refund_amount == int(refund_amount) else f"{refund_amount:.2f}"
             
             button_text = f"✅ Process ${formatted_amount} Refund" if refund_type == "refund" else f"✅ Issue ${formatted_amount} Store Credit"
-            
             
             return {
                 "type": "button",
@@ -306,7 +324,7 @@ class SlackMessageBuilder:
                 "type": "button",
                 "text": {"type": "plain_text", "text": "🚫 Deny Request"},
                 "style": "danger",
-                "action_id": "deny_email_mismatch_modal",
+                "action_id": "deny_refund_request_show_modal",
                 "value": f"rawOrderNumber={raw_order_number}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|requestSubmittedAt={current_time}"
             }
         except Exception:
@@ -314,7 +332,7 @@ class SlackMessageBuilder:
                 "type": "button",
                 "text": {"type": "plain_text", "text": "🚫 Deny Request"},
                 "style": "danger",
-                "action_id": "deny_email_mismatch",
+                "action_id": "deny_refund_request_show_modal",
                 "value": f"rawOrderNumber={raw_order_number}|requestorEmail={requestor_email}"
             }
     
@@ -399,14 +417,8 @@ class SlackMessageBuilder:
             elif refund_calc.get("original_cost"):
                 original_cost = refund_calc.get("original_cost")
             
-            # Header - change based on cancellation status
-            if order_cancelled:
-                header_text = f"🚀 *Order Canceled*, processed by {slack_user_id}\n\n"
-            else:
-                header_text = f"ℹ️ *Order Not Canceled*, processed by {slack_user_id}\n\n"
-            
-            # Build message text - using original format with preserved data
-            message_text = f"{header_text}"
+            # Build message text - start without header (we'll add status at the bottom)
+            message_text = ""
             message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
             message_text += self._get_requestor_line(requestor_name, requestor_email)
             message_text += f"*Order Number*: {order_number_display}\n\n"
@@ -440,17 +452,25 @@ class SlackMessageBuilder:
             
             message_text += self._get_sheet_link_line(sheet_link)
             
+            # Add status footer - change based on cancellation status with proper user tagging
+            if order_cancelled:
+                status_footer = f"\n\n🚀 *Order Canceled*, processed by <@{slack_user_id}>"
+            else:
+                status_footer = f"\n\nℹ️ *Order Not Canceled*, processed by <@{slack_user_id}>"
+            
+            message_text += status_footer
+            
             # Create refund decision buttons (Step 2)
             action_buttons = [
                 self._create_process_refund_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, order_cancelled),
                 self._create_custom_refund_button(order_id, order_name, requestor_name, requestor_email, refund_type, refund_amount, order_cancelled),
-                self._create_no_refund_button(order_id, order_name, order_cancelled)
+                self._create_no_refund_button(order_id, order_name, order_cancelled, requestor_name, requestor_email)
             ]
             
             return {
                 "text": message_text,
                 "action_buttons": action_buttons,
-                "slack_text": header_text.strip()
+                "slack_text": f"Order {'Canceled' if order_cancelled else 'Not Canceled'}"
             }
             
         except Exception as e:
@@ -534,6 +554,7 @@ class SlackMessageBuilder:
             requestor_email = requestor_info.get("email", "unknown@example.com")
             refund_type = requestor_info.get("refund_type", "refund")
             request_notes = requestor_info.get("notes", "")
+            customer_data = requestor_info.get("customer_data")
             
             season_start_date = refund_calculation.get("season_start_date", "Unknown")
             refund_amount = refund_calculation.get("refund_amount", 0.0)
@@ -554,7 +575,7 @@ class SlackMessageBuilder:
             # Build message text
             message_text = f"{header_text}"
             message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
-            message_text += self._get_requestor_line(requestor_name, requestor_email)
+            message_text += self._get_requestor_line(requestor_name, requestor_email, customer_data)
             message_text += f"*Request Submitted At*: {current_time}\n\n"
             message_text += f"*Order Number*: {order_url}\n\n"
             message_text += f"*Order Created At:* {order_created_time}\n\n"
@@ -737,12 +758,13 @@ class SlackMessageBuilder:
         raw_order_number: str = "",
         order_customer_email: str = "",
         order_data: Optional[Dict[str, Any]] = None,
-        customer_orders_url: Optional[str] = None
+        customer_orders_url: Optional[str] = None,
+        existing_refunds_data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Build an error message for various error scenarios"""
         try:
             # Validate error type
-            if error_type not in ["order_not_found", "email_mismatch", "unknown"]:
+            if error_type not in ["order_not_found", "email_mismatch", "duplicate_refund", "unknown"]:
                 error_type = "unknown"
             
             current_time = format_date_and_time(datetime.now(timezone.utc))
@@ -774,6 +796,15 @@ class SlackMessageBuilder:
                     sheet_link=sheet_link,
                     order_data=order_data,
                     customer_orders_url=customer_orders_url
+                )
+                
+            elif error_type == "duplicate_refund":
+                return self.build_duplicate_refund_message(
+                    requestor_info=requestor_info,
+                    raw_order_number=raw_order_number,
+                    sheet_link=sheet_link,
+                    order_data=order_data,
+                    existing_refunds_data=existing_refunds_data
                 )
                 
             else:
@@ -927,4 +958,193 @@ class SlackMessageBuilder:
                 "text": f"❌ *Error building email mismatch message*\n\nError: {str(e)}\n\nRequestor: {requestor_info.get('email', 'unknown')}",
                 "action_buttons": [],
                 "slack_text": "❌ Error building email mismatch message"
+            }
+    
+    def build_duplicate_refund_message(
+        self,
+        requestor_info: Dict[str, Any],
+        raw_order_number: str,
+        sheet_link: str,
+        order_data: Optional[Dict[str, Any]] = None,
+        existing_refunds_data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Build a message for duplicate refund requests with options to update or deny"""
+        try:
+            current_time = format_date_and_time(datetime.now(timezone.utc))
+            
+            # Safely extract requestor info
+            requestor_name = requestor_info.get("name", {})
+            requestor_email = requestor_info.get("email", "unknown@example.com")
+            refund_type = requestor_info.get("refund_type", "refund")
+            request_notes = requestor_info.get("notes", "")
+            
+            # Extract order info
+            order_name = raw_order_number
+            order_admin_url = ""
+            
+            if order_data and order_data.get("order"):
+                order = order_data["order"]
+                order_id = order["id"]
+                order_name = order.get("name", raw_order_number)
+                # Create Shopify admin URL
+                order_admin_url = f"https://admin.shopify.com/store/09fe59-3/orders/{order_id.split('/')[-1]}"
+            
+            # Extract existing refunds info
+            total_refunds = 0
+            total_refunded_amount = 0.0
+            refunds_list = []
+            
+            if existing_refunds_data:
+                total_refunds = existing_refunds_data.get("total_refunds", 0)
+                refunds = existing_refunds_data.get("refunds", [])
+                
+                for refund in refunds:
+                    refund_amount = float(refund.get("total_refunded", 0))
+                    total_refunded_amount += refund_amount
+                    refund_date = refund.get("created_at", "Unknown")
+                    
+                    # Use status_display if available, otherwise format manually
+                    if refund.get("status_display"):
+                        amount_text = refund["status_display"]
+                    else:
+                        amount_text = f"${refund_amount:.2f}"
+                    
+                    refunds_list.append(f"• {amount_text} on {refund_date[:10]}")
+            
+            # Build message text
+            message_text = f"⚠️ *Duplicate Refund Request Detected*\n\n"
+            message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
+            message_text += f"*Request Submitted At*: {current_time}\n\n"
+            message_text += self._get_requestor_line(requestor_name, requestor_email)
+            
+            if order_admin_url:
+                message_text += f"*Order Number*: <{order_admin_url}|{order_name}>\n\n"
+            else:
+                message_text += f"*Order Number*: {order_name}\n\n"
+            
+            message_text += f"🚨 *This order already has {total_refunds} refund(s) processed:*\n"
+            if refunds_list:
+                message_text += "\n".join(refunds_list)
+                message_text += f"\n\n💰 *Total Already Refunded*: ${total_refunded_amount:.2f}\n\n"
+            else:
+                message_text += f"• {total_refunds} refund(s) found\n\n"
+            
+            message_text += self._get_optional_request_notes(request_notes)
+            message_text += self._get_sheet_link_line(sheet_link)
+            
+            # Create action buttons for update details or deny refund
+            action_buttons = [
+                self._create_update_refund_details_button(
+                    order_name=order_name,
+                    requestor_name=requestor_name,
+                    requestor_email=requestor_email,
+                    refund_type=refund_type,
+                    current_time=current_time
+                ),
+                self._create_deny_duplicate_refund_button(
+                    order_name=order_name,
+                    requestor_name=requestor_name,
+                    requestor_email=requestor_email,
+                    refund_type=refund_type,
+                    current_time=current_time
+                )
+            ]
+            
+            return {
+                "text": message_text,
+                "action_buttons": action_buttons,
+                "slack_text": "⚠️ Duplicate Refund Detected - Action Required"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error building duplicate refund message: {str(e)}")
+            return {
+                "text": f"❌ *Error building duplicate refund message*\n\nError: {str(e)}\n\nOrder: {raw_order_number}\nRequestor: {requestor_info.get('email', 'unknown')}",
+                "action_buttons": [],
+                "slack_text": "❌ Error building duplicate refund message"
+            }
+    
+    def _create_update_refund_details_button(
+        self,
+        order_name: str,
+        requestor_name: Union[str, Dict[str, str]],
+        requestor_email: str,
+        refund_type: str,
+        current_time: str
+    ) -> Dict[str, Any]:
+        """Create an 'Update Refund Details' button for duplicate refund scenarios"""
+        try:
+            # Ensure order_name has # prefix
+            if not order_name.startswith('#'):
+                order_name = f"#{order_name}"
+                
+            # Format requestor name
+            if isinstance(requestor_name, dict):
+                first_name = requestor_name.get("first", "")
+                last_name = requestor_name.get("last", "")
+                full_name = f"{first_name} {last_name}".strip()
+            else:
+                full_name = str(requestor_name)
+                
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "🔄 Update Request Details"},
+                "style": "primary",
+                "action_id": "edit_request_details",
+                "value": f"orderName={order_name}|requestorName={full_name}|requestorEmail={requestor_email}|refundType={refund_type}|submittedAt={current_time}"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error creating update refund details button: {str(e)}")
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "🔄 Update Details"},
+                "action_id": "update_duplicate_refund_details",
+                "value": f"error=button_creation_failed"
+            }
+    
+    def _create_deny_duplicate_refund_button(
+        self,
+        order_name: str,
+        requestor_name: Union[str, Dict[str, str]],
+        requestor_email: str,
+        refund_type: str,
+        current_time: str
+    ) -> Dict[str, Any]:
+        """Create a 'Deny Duplicate Refund' button for duplicate refund scenarios"""
+        try:
+            # Ensure order_name has # prefix
+            if not order_name.startswith('#'):
+                order_name = f"#{order_name}"
+                
+            # Format requestor name
+            if isinstance(requestor_name, dict):
+                first_name = requestor_name.get("first", "")
+                last_name = requestor_name.get("last", "")
+                full_name = f"{first_name} {last_name}".strip()
+            else:
+                full_name = str(requestor_name)
+                
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "❌ Deny Refund Request"},
+                "style": "danger",
+                "action_id": "deny_duplicate_refund_request",
+                "value": f"orderName={order_name}|requestorName={full_name}|requestorEmail={requestor_email}|refundType={refund_type}|submittedAt={current_time}",
+                "confirm": {
+                    "title": {"type": "plain_text", "text": "Deny Refund Request?"},
+                    "text": {"type": "plain_text", "text": f"This will deny the refund request for {order_name}. The requestor will be notified. Are you sure?"},
+                    "confirm": {"type": "plain_text", "text": "Yes, deny request"},
+                    "deny": {"type": "plain_text", "text": "Cancel"}
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error creating deny duplicate refund button: {str(e)}")
+            return {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "❌ Deny Request"},
+                "style": "danger",
+                "action_id": "deny_duplicate_refund_request",
+                "value": f"error=button_creation_failed"
             } 

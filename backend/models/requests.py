@@ -1,13 +1,9 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import List, Optional, Dict, Union
 
 class ProcessLeadershipCSVRequest(BaseModel):
-    csv_data: List[List[str]]  # Array of arrays representing CSV rows
-    spreadsheet_title: Optional[str] = None
-    year: Optional[int] = None
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "csv_data": [
                     ["Email", "First Name", "Last Name", "Other Data"],
@@ -19,14 +15,34 @@ class ProcessLeadershipCSVRequest(BaseModel):
                 "year": 2024
             }
         }
+    )
+    
+    csv_data: List[List[str]]  # Array of arrays representing CSV rows
+    spreadsheet_title: Optional[str] = None
+    year: Optional[int] = None
 
 class RefundSlackNotificationRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "order_number": "#12345",
+                "requestor_name": {"first": "John", "last": "Doe"},
+                "requestor_email": "john.doe@example.com",
+                "refund_type": "refund",
+                "notes": "Customer requested refund due to schedule conflict",
+                "sheet_link": "https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1435845892&range=A5",
+                "request_submitted_at": "2024-09-10T15:30:00Z"
+            }
+        }
+    )
+    
     order_number: str
     requestor_name: Union[str, Dict[str, str]]  # Can be string or {"first": "John", "last": "Doe"}
     requestor_email: str
     refund_type: str  # "refund" or "credit"
     notes: str
     sheet_link: Optional[str] = None  # Google Sheets link to the specific row
+    request_submitted_at: Optional[str] = None  # ISO 8601 timestamp when form was submitted
     
     @field_validator('requestor_name')
     @classmethod
@@ -47,16 +63,4 @@ class RefundSlackNotificationRequest(BaseModel):
                 "last": v.get("last", "")
             }
         else:
-            raise ValueError(f"requestor_name must be string or dict, got {type(v)}")
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "order_number": "#12345",
-                "requestor_name": {"first": "John", "last": "Doe"},
-                "requestor_email": "john.doe@example.com",
-                "refund_type": "refund",
-                "notes": "Customer requested refund due to schedule conflict",
-                "sheet_link": "https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1435845892&range=A5"
-            }
-        } 
+            raise ValueError(f"requestor_name must be string or dict, got {type(v)}") 

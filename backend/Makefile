@@ -51,17 +51,31 @@ tunnel:
 	@sleep 1
 	ngrok http 8000
 
-# Development mode - start both server and tunnel
+# Development mode - start server, then open new terminal for tunnel
 dev:
 	@echo "🔧 Starting development environment..."
 	@pkill -f ngrok || true
 	@pkill -f uvicorn || true
 	@sleep 1
-	@./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000 &
+	@echo "🚀 Starting backend server in current terminal..."
+	@echo "🌐 Opening new terminal for ngrok tunnel..."
+	@if command -v cursor >/dev/null 2>&1 && pgrep -f "Cursor.app" >/dev/null 2>&1; then \
+		echo "📱 Detected Cursor - opening new Cursor terminal..."; \
+		osascript -e 'tell application "Cursor" to activate' \
+			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
+			-e 'delay 1' \
+			-e 'tell application "System Events" to keystroke "cd backend && make tunnel"' \
+			-e 'tell application "System Events" to key code 36' & \
+	elif command -v code >/dev/null 2>&1 && pgrep -x "Code" >/dev/null 2>&1; then \
+		echo "📱 Detected VS Code - opening system terminal..."; \
+		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)\" && make tunnel"' & \
+	else \
+		echo "🖥️  Opening system terminal..."; \
+		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)\" && make tunnel"' & \
+	fi
 	@sleep 3
-	@ngrok http 8000 &
-	@echo "✅ Server and tunnel starting in background..."
-	@echo "📝 Check processes with: make status"
+	@echo "✅ Starting server now (tunnel will start in new terminal)..."
+	@./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
 # Stop all processes
 stop:

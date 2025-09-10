@@ -1,277 +1,172 @@
 """
-Test Slack message formatting to ensure behavior-driven development consistency
-Based on actual Slack messages sent by the system to validate formatting and content
+Test suite for Slack message formatting, including status positioning and user tagging.
 """
 
-try:
-    import pytest
-except ImportError:
-    print("❌ pytest not found. Please install it with: python3 -m pip install pytest")
-    print("   Or run: python3 run_slack_tests.py (which will auto-install pytest)")
-    exit(1)
-
+import pytest
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
-from datetime import datetime
-from services.slack import SlackService
-from utils.date_utils import format_date_and_time
+from services.slack.message_builder import SlackMessageBuilder
 
 
 class TestSlackMessageFormatting:
-    """Test suite to validate Slack message formatting matches expected behavior"""
-    
-    @pytest.fixture
-    def slack_service(self):
-        """Create a SlackService instance for testing"""
-        return SlackService()
-    
-    @pytest.fixture
-    def mock_datetime(self):
-        """Mock datetime for consistent testing"""
-        # Mock datetime to return a specific date/time for testing
-        mock_dt = Mock()
-        mock_dt.now.return_value = datetime(2025, 7, 14, 23, 12, 0)  # 07/14/25 at 11:12 PM
-        return mock_dt
-    
-    def test_fallback_season_info_message_format(self, slack_service):
-        """Test fallback message when season info cannot be parsed"""
-        # Arrange - data matching the first actual message
-        order_data = {
-            "order": {
-                "orderId": "gid://shopify/Order/12345",
-                "orderName": "#40192",
-                "orderCreatedAt": "2025-06-25T08:39:00Z",
-                "totalAmountPaid": 2.00,
-                "product": {
-                    "title": "joe test product",
-                    "productId": "gid://shopify/Product/67890"
-                }
-            }
-        }
-        
-        requestor_info = {
-            "name": {"first": "joe", "last": "test"},
-            "email": "jdazz87@gmail.com",
-            "refund_type": "refund",
-            "notes": ""
-        }
-        
-        # Act - The SlackService should complete successfully without making real requests
-        result = slack_service.send_refund_request_notification(
-            order_data=order_data,
-            refund_calculation={"success": False, "message": "Could not parse season dates"},
-            requestor_info=requestor_info,
-            sheet_link="https://docs.google.com/spreadsheets/test"
-        )
-        
-        # Assert - Service completes successfully using MockSlackApiClient (no real requests)
-        assert result["success"] is True
-        assert "message" in result
-        # The mock API client ensures no real Slack requests are made during tests
-    
-    def test_email_mismatch_error_message_format(self, slack_service):
-        """Test error message when email doesn't match order customer"""
-        # Arrange - data matching the second actual message
-        order_data = {
-            "order": {
-                "orderId": "gid://shopify/Order/54321",
-                "orderName": "#39611",
-                "product": {
-                    "title": "Big Apple Dodgeball - Wednesday - WTNB+ Division - Summer 2025",
-                    "productId": "gid://shopify/Product/98765"
-                }
-            }
-        }
-        
-        requestor_info = {
-            "name": {"first": "joe", "last": "test"},
-            "email": "jdazz87@gmail.com",
-            "refund_type": "credit",
-            "notes": ""
-        }
-        
-        # Act - The SlackService should complete successfully without making real requests
-        result = slack_service.send_refund_request_notification(
-            order_data=order_data,
-            requestor_info=requestor_info,
-            error_type="email_mismatch",
-            order_customer_email="lilaanchors@gmail.com",
-            sheet_link="https://docs.google.com/spreadsheets/test"
-        )
-        
-        # Assert - Service completes successfully using MockSlackApiClient (no real requests)
-        assert result["success"] is True
-        assert "message" in result
-        # The mock API client ensures no real Slack requests are made during tests
-    
-    def test_order_not_found_error_message_format(self, slack_service):
-        """Test error message when order is not found in Shopify"""
-        # Arrange - data matching the third actual message
-        requestor_info = {
-            "name": {"first": "joe", "last": "test"},
-            "email": "jdazz87@gmail.com",
-            "refund_type": "refund",
-            "notes": "test notes"
-        }
-        
-        # Act - The SlackService should complete successfully without making real requests
-        result = slack_service.send_refund_request_notification(
-            requestor_info=requestor_info,
-            error_type="order_not_found",
-            raw_order_number="invalidordernumber",
-            sheet_link="https://docs.google.com/spreadsheets/test"
-        )
-        
-        # Assert - Service completes successfully using MockSlackApiClient (no real requests)
-        assert result["success"] is True
-        assert "message" in result
-        # The mock API client ensures no real Slack requests are made during tests
-    
-    def test_successful_refund_request_message_format(self, slack_service):
-        """Test successful refund request message with proper season calculation"""
-        # Arrange - data matching the fourth actual message
-        order_data = {
-            "order": {
-                "orderId": "gid://shopify/Order/54321",
-                "orderName": "#39611",
-                "orderCreatedAt": "2025-06-17T03:18:00Z",
-                "totalAmountPaid": 115.00,
-                "product": {
-                    "title": "Big Apple Dodgeball - Wednesday - WTNB+ Division - Summer 2025",
-                    "productId": "gid://shopify/Product/98765"
-                }
-            }
-        }
-        
-        requestor_info = {
-            "name": {"first": "Amy", "last": "Dougherty"},
-            "email": "lilaanchors@gmail.com",
-            "refund_type": "refund",
-            "notes": "Duplicate registration"
-        }
-        
-        refund_calculation = {
-            "success": True,
-            "refund_amount": 92.00,
-            "refund_text": "Estimated Refund Due: $92.00\n(This request is calculated to have been submitted after the start of week 2. 80% after 15% penalty + 5% processing fee)",
-            "season_start_date": "7/9/25"
-        }
-        
-        # Act - The SlackService should complete successfully without making real requests
-        result = slack_service.send_refund_request_notification(
-            order_data=order_data,
-            refund_calculation=refund_calculation,
-            requestor_info=requestor_info,
-            sheet_link="https://docs.google.com/spreadsheets/test"
-        )
-        
-        # Assert - Service completes successfully using MockSlackApiClient (no real requests)
-        assert result["success"] is True
-        assert "message" in result
-        # The mock API client ensures no real Slack requests are made during tests
-    
-    def test_sport_group_mentions(self, slack_service):
-        """Test that sport group mentions are correctly applied"""
-        # Test that sport group mentions work (current testing config uses personal user mentions)
-        test_cases = [
-            ("Big Apple Kickball - Monday", "<@U0278M72535>"),  # Testing format (joe's user ID)
-            ("Big Apple Bowling - Tuesday", "<@U0278M72535>"),  # Testing format (joe's user ID)
-            ("Big Apple Pickleball - Wednesday", "<@U0278M72535>"),  # Testing format (joe's user ID)  
-            ("Big Apple Dodgeball - Thursday", "<@U0278M72535>"),  # Testing format (joe's user ID)
-            ("Some Other Sport", "@here")  # fallback
-        ]
-        
-        for product_title, expected_mention in test_cases:
-            result = slack_service.get_sport_group_mention(product_title)
-            assert result == expected_mention, f"Failed for {product_title}"
-    
-    def test_request_type_formatting(self, slack_service):
-        """Test that request type text is correctly formatted"""
-        assert slack_service._get_request_type_text("refund") == "💵 Refund back to original form of payment"
-        assert slack_service._get_request_type_text("credit") == "🎟️ Store Credit to use toward a future order"
-    
-    def test_order_url_formatting(self, slack_service):
-        """Test that order URLs are correctly formatted for Slack"""
-        # Test with full GID
-        order_id = "gid://shopify/Order/12345"
-        order_name = "#40192"
-        expected_url = "<https://admin.shopify.com/store/09fe59-3/orders/12345|#40192>"
-        assert slack_service.get_order_url(order_id, order_name) == expected_url
-        
-        # Test with order name that doesn't have #
-        order_name = "40192"
-        expected_url = "<https://admin.shopify.com/store/09fe59-3/orders/12345|#40192>"
-        assert slack_service.get_order_url(order_id, order_name) == expected_url
-    
-    def test_product_url_formatting(self, slack_service):
-        """Test that product URLs are correctly formatted"""
-        product_id = "gid://shopify/Product/67890"
-        expected_url = "https://admin.shopify.com/store/09fe59-3/products/67890"
-        assert slack_service.get_product_url(product_id) == expected_url
-    
-    def test_sheet_link_formatting(self, slack_service):
-        """Test that sheet links are correctly formatted"""
-        # With sheet link
-        sheet_link = "https://docs.google.com/spreadsheets/test"
-        expected = f"\n \n 🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
-        assert slack_service._get_sheet_link_line(sheet_link) == expected
-        
-        # Without sheet link
-        assert slack_service._get_sheet_link_line(None) == ""
-    
-    def test_requestor_line_formatting(self, slack_service):
-        """Test that requestor line is correctly formatted"""
-        requestor_name = {"first": "Amy", "last": "Dougherty"}
-        requestor_email = "lilaanchors@gmail.com"
-        expected = "📧 *Requested by:* Amy Dougherty (lilaanchors@gmail.com)\n\n"
-        assert slack_service._get_requestor_line(requestor_name, requestor_email) == expected
-    
-    def test_optional_notes_formatting(self, slack_service):
-        """Test that optional notes are correctly formatted"""
-        # With notes
-        notes = "Duplicate registration"
-        expected = "*Notes provided by requestor*: Duplicate registration\n\n"
-        assert slack_service._get_optional_request_notes(notes) == expected
-        
-        # Without notes
-        assert slack_service._get_optional_request_notes("") == ""
-        assert slack_service._get_optional_request_notes(None) == ""
-    
-    def test_message_structure_consistency(self, slack_service):
-        """Test that all message types follow consistent block structure"""
-        # All messages should have dividers and proper block structure
-        with patch.object(slack_service.api_client, 'send_message') as mock_send:
-            mock_send.return_value = {"success": True}
-            
-            # Test different message types
-            test_cases = [
-                # Success case
-                {
-                    "order_data": {"order": {"orderId": "123", "orderName": "#123", "orderCreatedAt": "2025-01-01T00:00:00Z", "totalAmountPaid": 100, "product": {"title": "Test Product", "productId": "456"}}},
-                    "refund_calculation": {"success": True, "refund_amount": 80, "refund_text": "Test refund", "season_start_date": "1/1/25"},
-                    "requestor_info": {"name": {"first": "Test", "last": "User"}, "email": "test@example.com", "refund_type": "refund", "notes": ""}
-                },
-                # Fallback case
-                {
-                    "order_data": {"order": {"orderId": "123", "orderName": "#123", "orderCreatedAt": "2025-01-01T00:00:00Z", "totalAmountPaid": 100, "product": {"title": "Test Product", "productId": "456"}}},
-                    "refund_calculation": {"success": False},
-                    "requestor_info": {"name": {"first": "Test", "last": "User"}, "email": "test@example.com", "refund_type": "refund", "notes": ""}
-                },
-                # Error cases
-                {
-                    "requestor_info": {"name": {"first": "Test", "last": "User"}, "email": "test@example.com", "refund_type": "refund", "notes": ""},
-                    "error_type": "order_not_found",
-                    "raw_order_number": "123"
-                }
-            ]
-            
-            for test_case in test_cases:
-                test_case["sheet_link"] = "https://docs.google.com/spreadsheets/test"
-                slack_service.send_refund_request_notification(**test_case)
-                
-                # For this test, we just verify that the message was sent successfully
-                # The detailed structure verification is done in other tests
-                assert mock_send.called
+    """Test Slack message formatting features."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        # Mock sport groups for Slack mentions
+        mock_sport_groups = {
+            "pickleball": "<!subteam^S12345|@pickleball-leads>",
+            "soccer": "<!subteam^S67890|@soccer-leads>", 
+            "kickball": "<!subteam^S11111|@kickball-leads>"
+        }
+        self.message_builder = SlackMessageBuilder(sport_groups=mock_sport_groups)
+        
+        # Mock order data
+        self.mock_order_data = {
+            "order": {
+                "orderId": "gid://shopify/Order/5875167625310",
+                "id": "5875167625310",
+                "name": "#42234",
+                "totalAmountPaid": 100.00,
+                "line_items": [{
+                    "title": "Test Product - Pickleball Monday",
+                    "product": {
+                        "title": "Test Product - Pickleball Monday",
+                        "id": "gid://shopify/Product/7350462185566"
+                    }
+                }]
+            },
+            "refund_calculation": {
+                "success": True,
+                "refund_amount": 95.00,
+                "season_start_date": "10/15/24",
+                "message": "*Estimated Refund Due:* $95.00\n (This request is calculated...)"
+            },
+            "original_data": {
+                "original_timestamp": "09/10/25 at 3:21 AM",
+                "season_start_date": "10/15/24",
+                "order_created_at": "09/09/25 at 1:16 AM",
+                "product_display": "<https://admin.shopify.com/store/09fe59-3/products/7350462185566|Test Product>",
+                "order_number_display": "<https://admin.shopify.com/store/09fe59-3/orders/5875167625310|#42234>",
+                "product_field_name": "Sport/Season/Day"
+            }
+        }
+        
+        # Mock requestor info
+        self.mock_requestor_name = {"first": "John", "last": "Doe"}
+        self.mock_requestor_email = "john.doe@example.com"
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"]) 
+    def test_status_footer_position_order_canceled(self):
+        """Test that 'Order Canceled' status appears at the bottom of the message."""
+        
+        result = self.message_builder.create_refund_decision_message(
+            order_data=self.mock_order_data,
+            requestor_name=self.mock_requestor_name,
+            requestor_email=self.mock_requestor_email,
+            refund_type="refund",
+            sport_mention="@here",
+            sheet_link="https://docs.google.com/spreadsheets/test",
+            order_cancelled=True,
+            slack_user_id="U0278M72535",
+            original_timestamp="09/10/25 at 3:21 AM"
+        )
+        
+        message_text = result["text"]
+        
+        # Verify the status appears at the end
+        assert message_text.endswith("🚀 *Order Canceled*, processed by <@U0278M72535>")
+        
+        # Verify the status does NOT appear at the beginning
+        assert not message_text.startswith("🚀 *Order Canceled*")
+        
+        # Verify proper user tagging format
+        assert "<@U0278M72535>" in message_text
+        assert "processed by U0278M72535" not in message_text  # Should not be raw ID
+
+    def test_status_footer_position_order_not_canceled(self):
+        """Test that 'Order Not Canceled' status appears at the bottom of the message."""
+        
+        result = self.message_builder.create_refund_decision_message(
+            order_data=self.mock_order_data,
+            requestor_name=self.mock_requestor_name,
+            requestor_email=self.mock_requestor_email,
+            refund_type="refund",
+            sport_mention="@here",
+            sheet_link="https://docs.google.com/spreadsheets/test",
+            order_cancelled=False,
+            slack_user_id="U0278M72535",
+            original_timestamp="09/10/25 at 3:21 AM"
+        )
+        
+        message_text = result["text"]
+        
+        # Verify the status appears at the end
+        assert message_text.endswith("ℹ️ *Order Not Canceled*, processed by <@U0278M72535>")
+        
+        # Verify the status does NOT appear at the beginning
+        assert not message_text.startswith("ℹ️ *Order Not Canceled*")
+        
+        # Verify proper user tagging format
+        assert "<@U0278M72535>" in message_text
+        assert "processed by U0278M72535" not in message_text  # Should not be raw ID
+    def test_user_channel_id_vs_member_id(self):
+        """Test that we're using member ID correctly for user mentions."""
+        
+        # According to the user:
+        # - Channel ID: "D026TPC6S3H"  
+        # - Member ID: "U0278M72535"
+        # We should use Member ID for user mentions
+        
+        member_id = "U0278M72535"
+        
+        # Test with member ID (correct)
+        result_member = self.message_builder.create_refund_decision_message(
+            order_data=self.mock_order_data,
+            requestor_name=self.mock_requestor_name,
+            requestor_email=self.mock_requestor_email,
+            refund_type="refund",
+            sport_mention="@here",
+            sheet_link="",
+            order_cancelled=True,
+            slack_user_id=member_id
+        )
+        
+        message_text = result_member["text"]
+        
+        # Should contain properly formatted mention
+        assert f"<@{member_id}>" in message_text
+        # Should NOT contain raw user ID in the processed by text
+        assert f"processed by {member_id}" not in message_text
+        # Should be at the bottom
+        assert message_text.endswith(f"🚀 *Order Canceled*, processed by <@{member_id}>")
+
+    def test_slack_text_property_in_response(self):
+        """Test that the slack_text property is correctly set in the response."""
+        
+        # Test canceled order
+        result_canceled = self.message_builder.create_refund_decision_message(
+            order_data=self.mock_order_data,
+            requestor_name=self.mock_requestor_name,
+            requestor_email=self.mock_requestor_email,
+            refund_type="refund",
+            sport_mention="@here",
+            sheet_link="",
+            order_cancelled=True,
+            slack_user_id="U0278M72535"
+        )
+        
+        assert result_canceled["slack_text"] == "Order Canceled"
+        
+        # Test not canceled order
+        result_not_canceled = self.message_builder.create_refund_decision_message(
+            order_data=self.mock_order_data,
+            requestor_name=self.mock_requestor_name,
+            requestor_email=self.mock_requestor_email,
+            refund_type="refund",
+            sport_mention="@here",
+            sheet_link="",
+            order_cancelled=False,
+            slack_user_id="U0278M72535"
+        )
+        
+        assert result_not_canceled["slack_text"] == "Order Not Canceled"

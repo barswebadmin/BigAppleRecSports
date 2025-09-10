@@ -55,7 +55,8 @@ class RefundCalculator:
             logger.error(f"Error getting original cost: {str(e)}")
             return float(order_data.get("total_price", 0))
     
-    def calculate_refund_due(self, order_data: Dict[str, Any], refund_type: str) -> Dict[str, Any]:
+    def calculate_refund_due(self, order_data: Dict[str, Any], refund_type: str, 
+                           request_submitted_at: Optional[datetime] = None) -> Dict[str, Any]:
         """
         Calculate refund amount based on order data and season information.
         
@@ -121,8 +122,8 @@ class RefundCalculator:
                     season_start_date_str=season_start_date_str,
                     off_dates_str=off_dates_str,
                     total_amount_paid=original_cost,  # Use original cost here
-                    refund_or_credit=refund_type,
-                    request_submitted_at=datetime.now(timezone.utc)
+                    refund_type=refund_type,
+                    request_submitted_at=request_submitted_at  # Use actual submission timestamp
                 )
                 
                 logger.info(f"Calculated refund amount: ${refund_amount:.2f} based on original cost: ${original_cost:.2f}")

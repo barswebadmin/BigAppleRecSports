@@ -45,4 +45,7 @@ RawGsProjects/
 # Temporary files
 *.tmp
 *.temp
-backend.bak/
+backend.bak/shrimp-rules.md
+shrimp-rules.md
+SECRETS_BACKUP.env
+*.env

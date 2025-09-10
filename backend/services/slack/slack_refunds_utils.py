@@ -13,6 +13,8 @@ from typing import Dict, Any, Optional, List
 import asyncio
 from datetime import datetime, timezone
 
+from utils.date_utils import extract_season_dates
+
 # External imports
 import requests
 from fastapi import HTTPException
@@ -569,12 +571,22 @@ class SlackRefundsUtils:
                         action_buttons=success_message_data["action_buttons"]
                     )
                 else:
-                    # Fallback if order fetch fails - use simple message
-                    status = "cancelled" if order_cancelled else "active"
-                    if is_debug_mode:
-                        message = f"✅ *[DEBUG] Mock refund processed by {slack_user_name}*\n\nOrder {raw_order_number} ({status}) - ${refund_amount:.2f} {refund_type} processed successfully."
-                    else:
-                        message = f"✅ *Refund processed by {slack_user_name}*\n\nOrder {raw_order_number} ({status}) - ${refund_amount:.2f} {refund_type} processed successfully."
+                    # Fallback if order fetch fails - build message similar to comprehensive format
+                    refund_or_credit = "Refund" if refund_type.lower() == "refund" else "Credit"
+                    status = "Canceled" if order_cancelled else "Not Canceled"
+                    
+                    # Build message in same format as comprehensive message (without inventory info)
+                    refund_type_text = self.message_builder._get_request_type_text(refund_type)
+                    
+                    message = f"*Request Type*: {refund_type_text}\n\n"
+                    message += f"*Order Number*: {raw_order_number}\n\n"
+                    message += f"*{refund_or_credit} Provided:* ${refund_amount:.2f}\n\n"
+                    
+                    # Add cancellation status footer
+                    message += f"🚀 *Order {status}*, processed by <@{slack_user_id}>\n\n" if order_cancelled else f"ℹ️ *Order {status}*, processed by <@{slack_user_id}>\n\n"
+                    
+                    # Add refund status footer  
+                    message += f"💰 *{refund_or_credit}ed by <@{slack_user_id}>*\n\n"
                     
                     # ✅ Update Slack with fallback success message
                     self.update_slack_on_shopify_success(
@@ -772,10 +784,12 @@ class SlackRefundsUtils:
                 except Exception as build_error:
                     print(f"❌ Error building no refund message: {str(build_error)}")
                     logger.error(f"Error building no refund message: {str(build_error)}")
-                    # Fall back to simple message
-                    status = "cancelled" if order_cancelled else "active"
-                    debug_prefix = "[DEBUG] " if is_debug_mode else ""
-                    simple_message = f"🚫 *{debug_prefix}No refund by @{slack_user_name}*\n\nOrder {raw_order_number} ({status}) - Request closed without refund."
+                    # Fall back to simple message in the new format
+                    status = "Canceled" if order_cancelled else "Not Canceled"
+                    simple_message = f"*Order Number*: {raw_order_number}\n\n"
+                    simple_message += f"*No Refund Provided*\n\n"
+                    simple_message += f"🚀 *Order {status}*, processed by <@{slack_user_id}>\n\n" if order_cancelled else f"ℹ️ *Order {status}*, processed by <@{slack_user_id}>\n\n"
+                    simple_message += f"🚫 *Not Refunded by <@{slack_user_id}>*\n\n"
                     
                     self.update_slack_on_shopify_success(
                         message_ts=thread_ts,
@@ -783,12 +797,18 @@ class SlackRefundsUtils:
                         action_buttons=[]
                     )
             else:
-                # Fallback if order fetch fails
-                status = "cancelled" if order_cancelled else "active"
-                if is_debug_mode:
-                    message = f"🚫 *[DEBUG] No refund by {slack_user_name}*\n\nOrder {raw_order_number} ({status}) - Request closed without refund."
-                else:
-                    message = f"🚫 *No refund by {slack_user_name}*\n\nOrder {raw_order_number} ({status}) - Request closed without refund."
+                # Fallback if order fetch fails - build message similar to comprehensive format
+                status = "Canceled" if order_cancelled else "Not Canceled"
+                
+                # Build message in same format as comprehensive message (without inventory info)
+                message = f"*Order Number*: {raw_order_number}\n\n"
+                message += f"*No Refund Provided*\n\n"
+                
+                # Add cancellation status footer
+                message += f"🚀 *Order {status}*, processed by <@{slack_user_id}>\n\n" if order_cancelled else f"ℹ️ *Order {status}*, processed by <@{slack_user_id}>\n\n"
+                
+                # Add refund status footer  
+                message += f"🚫 *Not Refunded by <@{slack_user_id}>*\n\n"
                 
                 try:
                     self.update_slack_on_shopify_success(
@@ -815,7 +835,6 @@ class SlackRefundsUtils:
                                       raw_order_number: str, order_cancelled: bool, requestor_name: Dict[str, str], requestor_email: str, processor_user: str,
                                       current_message_text: str, order_id: str = "", is_debug_mode: bool = False) -> Dict[str, Any]:
         """Build comprehensive success message with customer info, inventory, and restock buttons"""
-        debug_prefix = "[DEBUG] " if is_debug_mode else ""
         
         # Extract season start info from current message
         season_info = self.extract_season_start_info(current_message_text)
@@ -830,17 +849,67 @@ class SlackRefundsUtils:
         if not requestor_full_name:
             requestor_full_name = "Unknown Customer"
         
-        # Build main message
-        message = f":white_check_mark: {debug_prefix}Request to provide a ${refund_amount:.2f} {refund_type} for Order {raw_order_number} for {requestor_full_name} ({requestor_email}) has been processed by @{processor_user}\n"
+        # Build main message in the same format as cancel/proceed messages
+        refund_type_text = self.message_builder._get_request_type_text(refund_type)
+        
+        message = f"*Request Type*: {refund_type_text}\n\n"
+        message += f"📧 *Requested by:* {requestor_full_name} (<mailto:{requestor_email}|{requestor_email}>)\n\n"
+        message += f"*Order Number*: {self.message_builder.get_order_url(order_id or 'unknown', raw_order_number)}\n\n"
+        
+        # Create product URL if we have product ID and use consistent field name
+        if order_data and "line_items" in order_data and order_data["line_items"]:
+            first_line_item = order_data["line_items"][0]
+            product_data = first_line_item.get("product", {})
+            product_id = product_data.get("id", "")
+            if product_id:
+                product_url = self.message_builder.get_product_url(product_id)
+                message += f"*Sport/Season/Day:* <{product_url}|{product_title}>\n\n"
+            else:
+                message += f"*Sport/Season/Day:* {product_title}\n\n"
+        else:
+            message += f"*Sport/Season/Day:* {product_title}\n\n"
+        
+        # Extract timestamps and season date from current message
+        import re
+        submitted_match = re.search(r'\*Request Submitted At\*:\s*([^\n]+)', current_message_text)
+        created_match = re.search(r'\*Order Created At\*:\s*([^\n]+)', current_message_text)
+        season_date_match = re.search(r'\*Season Start Date\*:\s*([^\n]+)', current_message_text)
+        
+        # Use extracted season date if available, otherwise use the parsed one
+        if season_date_match:
+            season_start_date = season_date_match.group(1)
+        
+        if submitted_match:
+            message += f"*Request Submitted At*: {submitted_match.group(1)}\n\n"
+        if created_match:
+            message += f"*Order Created At:* {created_match.group(1)}\n\n"
+        
+        message += f"*Season Start Date*: {season_start_date}\n\n"
+        
+        # Extract total paid from current message
+        total_paid_match = re.search(r'\*Total Paid\*:\s*\$([0-9.]+)', current_message_text)
+        if total_paid_match:
+            message += f"*Total Paid:* ${total_paid_match.group(1)}\n\n"
+        
+        # Add refund provided amount (replacing "Estimated Refund Due")
+        refund_or_credit = "Refund" if refund_type.lower() == "refund" else "Credit"
+        message += f"*{refund_or_credit} Provided:* ${refund_amount:.2f}\n\n"
         
         # Add Google Sheets link
         if sheet_link:
-            message += f":link: <{sheet_link}|View Request in Google Sheets>\n"
-        else:
-            message += ":link: View Request in Google Sheets\n"
+            message += f"🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
         
-        # Add season start info
-        message += f":package: Season Start Date for {product_title} is {season_start_date}.\n"
+        # Add cancellation status footer
+        if order_cancelled:
+            message += f"🚀 *Order Canceled*, processed by <@{processor_user}>\n\n"
+        else:
+            message += f"ℹ️ *Order Not Canceled*, processed by <@{processor_user}>\n\n"
+        
+        # Add refund status footer  
+        message += f"💰 *{refund_or_credit}ed by <@{processor_user}>*\n\n"
+        
+        # Add season start info for inventory
+        message += f"📦 Season Start Date for {product_title} is {season_start_date}.\n"
         
         # Add inventory information
         message += " Current Inventory:\n"
@@ -885,6 +954,7 @@ class SlackRefundsUtils:
                     "value": json.dumps({
                         "action": "restock_variant",
                         "variantId": (variant.get("variantId") or variant.get("id") or ""),
+                        "inventoryItemId": variant.get("inventoryItemId", ""),
                         "variantTitle": variant_title,
                         "orderId": order_id,
                         "rawOrderNumber": raw_order_number
@@ -926,108 +996,165 @@ class SlackRefundsUtils:
         raw_order_number: str,
         order_data: Optional[Dict[str, Any]] = None
     ) -> str:
-        """Build completion message after refund and inventory restock."""
-        # Extract order metadata
-        order_name = order_data.get("name", "#Unknown") if order_data else "#Unknown"
-        customer_info = order_data.get("customer", {}) if order_data else {}
-        requestor_name = f"{customer_info.get('firstName', '')} {customer_info.get('lastName', '')}".strip()
-        if not requestor_name:
-            requestor_name = "Unknown Customer"
-
-        # Try to extract order link if possible
-        if order_data:
-            shopify_order_id = order_data.get("id", "")
-            order_numeric_id = shopify_order_id.split("/")[-1] if shopify_order_id else ""
-            order_link = f"https://admin.shopify.com/store/09fe59-3/orders/{order_numeric_id}" if order_numeric_id else ""
+        """Build completion message after restocking - keeps the same format as previous message but adds restock info."""
+        
+        # Start with the current message and modify it to add restock information
+        message = current_message_full_text
+        
+        # Remove only the inventory section and restock buttons from the end
+        # This section typically starts with a repeated "📦 Season Start Date" line
+        # We want to preserve all the original message content above this section
+        inventory_section_patterns = [
+            # Pattern 1: Full inventory section with season start repeat
+            r"\n\n📦 Season Start Date for .+? is .+?\.\n Current Inventory:\n.+?Restock Inventory\?",
+            # Pattern 2: Just the inventory section without season start repeat
+            r"\n Current Inventory:\n.+?Restock Inventory\?",
+            # Pattern 3: Minimal fallback
+            r"Current Inventory:.*?Restock Inventory\?"
+        ]
+        
+        for pattern in inventory_section_patterns:
+            if re.search(pattern, message, re.DOTALL):
+                message = re.sub(pattern, "", message, flags=re.DOTALL)
+                break
+        
+        # Clean up any trailing whitespace and empty lines
+        message = message.rstrip()
+        
+        # Remove any remaining season start date lines that might have been missed
+        message = re.sub(r"\n\n📦 Season Start Date for .+? is .+?\.", "", message)
+        message = re.sub(r"\n📦 Season Start Date for .+? is .+?\.", "", message)
+        message = re.sub(r"📦 Season Start Date for .+? is .+?\.\n", "", message)
+        
+        # Clean up again after the additional removals
+        message = message.rstrip()
+        
+        # Verify critical information is preserved (for debugging)
+        has_order_date = "*Order Created At:*" in message
+        has_total_paid = "*Total Paid:*" in message
+        if not has_order_date or not has_total_paid:
+            print(f"⚠️ Warning: Critical info may be missing - Order Date: {has_order_date}, Total Paid: {has_total_paid}")
+            print(f"📝 Current message length: {len(message)}")
+            print(f"📝 Message preview: {message[:500]}...")
+        
+        # Add restock information
+        if action_id.startswith("restock_"):
+            restock_note = f"🔄 *Inventory restocked ({variant_name}) by <@{restock_user}>*\n\n"
+        elif action_id == "do_not_restock":
+            restock_note = f"❌ *Inventory not restocked by <@{restock_user}>*\n\n"
         else:
-            order_link = ""
-
-        # Hardcoded waitlist link (can be made dynamic later if needed)
+            restock_note = f"🔄 *Restocking processed by <@{restock_user}>*\n\n"
+        
+        # Add the restock note
+        message += f"\n\n{restock_note}"
+        
+        # Add waitlist link
         waitlist_link = "https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1811075695"
-
-        # Build Slack message
-        season_info = self.extract_season_start_info(current_message_full_text)
-        product_title = season_info.get("product_title", "Unknown Product")
-        season_start_date = season_info.get("season_start_date", "Unknown")
-
-        message = (
-            f":white_check_mark: Request to provide a ${variant_name} refund for "
-            f"<{order_link}|Order {order_name}> for {requestor_name} has been processed by <@{restock_user}>.\n\n"
-            f":white_check_mark: Inventory restocked to {variant_name} successfully by <@{restock_user}>\n\n" if action_id == "restock_variant" else f":white_check_mark: Inventory not restocked (processed by <@{restock_user}>)\n\n"
-            f":package: Season Start Date for {product_title} is {season_start_date}.\n\n"
-            f":link: <{waitlist_link}|Open Waitlist to let someone in>\n\n"
-            f":link: <{sheet_link}|View Request in Google Sheets>\n\n"
-            
-        )
+        message += f"📋 *<{waitlist_link}|Open Waitlist to let someone in>*"
+        
         return message
 
     def build_comprehensive_no_refund_message(self, order_data: Dict[str, Any], raw_order_number: str, 
                                             order_cancelled: bool, requestor_name: Dict[str, str], requestor_email: str, processor_user: str,
                                             thread_ts: str, 
                                             current_message_full_text: str) -> Dict[str, Any]:
-        """Build comprehensive no refund message with customer info, inventory, and restock buttons"""
-        debug_prefix = "[DEBUG] " if settings.is_debug_mode else ""
+        """Build comprehensive no refund message in the same format as the success message"""
         
-        # Extract customer info from order data
-        customer_name = "Unknown Customer"
-        if order_data and "customer" in order_data:
-            customer = order_data["customer"]
-            if customer:
-                first_name = customer.get("firstName", "")
-                last_name = customer.get("lastName", "")
-                if first_name or last_name:
-                    customer_name = f"{first_name} {last_name}".strip()
+        # Extract order ID from order_data
+        order_id = order_data.get("id", "") if order_data else ""
         
-        # Fallback: try to extract customer name from current message text
-        if customer_name == "Unknown Customer":
-            import re
-            # Try multiple patterns for extracting customer name
-            name_patterns = [
-                # Pattern 1: "*Requested by:* Name (email)" or "*Requested by:* Name (<email|email>)"
-                r"\*Requested by:\*\s*([^(<]+)(?:\s*\(|$)",
-                # Pattern 2: "Requested by:* Name (email)" without asterisks  
-                r"Requested by:\*?\s*([^(<]+)(?:\s*\(|$)",
-                # Pattern 3: Extract from email context ":e-mail: *Requested by:* Name"
-                r":e-mail:\s*\*Requested by:\*\s*([^(<]+)(?:\s*\(|$)"
-            ]
+        # Extract product information from order data
+        product_title = "Unknown Product"
+        season_start_date = "Unknown"
+        
+        if order_data and "line_items" in order_data and order_data["line_items"]:
+            first_line_item = order_data["line_items"][0]
+            product_title = first_line_item.get("title", product_title)
             
-            for pattern in name_patterns:
-                customer_match = re.search(pattern, current_message_full_text)
-                if customer_match:
-                    extracted_name = customer_match.group(1).strip()
-                    if extracted_name and not extracted_name.startswith('<'):  # Avoid matching email links
-                        customer_name = extracted_name
-                        break
+            # Try to extract season start date from product description
+            if "product" in first_line_item and "descriptionHtml" in first_line_item["product"]:
+                description = first_line_item["product"]["descriptionHtml"]
+                season_dates = extract_season_dates(description)
+                if season_dates and season_dates[0]:  # season_dates is a tuple (start_date, off_dates)
+                    season_start_date = season_dates[0]
         
-        # Extract season start info from current message
-        season_info = self.extract_season_start_info(current_message_full_text)
-        product_title = season_info.get("product_title", "Unknown Product")
-        season_start_date = season_info.get("season_start_date", "Unknown")
+        # If we couldn't get the product info from order_data, try extracting from current message
+        if product_title == "Unknown Product":
+            season_info = self.extract_season_start_info(current_message_full_text)
+            product_title = season_info.get("product_title", product_title)
+            if season_start_date == "Unknown":
+                season_start_date = season_info.get("season_start_date", season_start_date)
         
-        # Extract Google Sheets link from current message
-        sheet_link = self.extract_sheet_link(current_message_full_text)
-        
-        # Format requestor name properly
+        # Format requestor name
         requestor_full_name = f"{requestor_name.get('first', '')} {requestor_name.get('last', '')}".strip()
         if not requestor_full_name:
             requestor_full_name = "Unknown Customer"
         
-        # Build main message
-        message = f":white_check_mark: {debug_prefix}Request for no refund for Order {raw_order_number} for {requestor_full_name} has been processed by @{processor_user}\n"
+        # Build main message in the same format as the comprehensive success message
+        refund_type_text = self.message_builder._get_request_type_text("refund")  # Default to refund for no-refund
+        
+        message = f"*Request Type*: {refund_type_text}\n\n"
+        message += f"📧 *Requested by:* {requestor_full_name} (<mailto:{requestor_email}|{requestor_email}>)\n\n"
+        message += f"*Order Number*: {self.message_builder.get_order_url(order_id, raw_order_number)}\n\n"
+        
+        # Create product URL if we have product ID and use consistent field name
+        if order_data and "line_items" in order_data and order_data["line_items"]:
+            first_line_item = order_data["line_items"][0]
+            product_data = first_line_item.get("product", {})
+            product_id = product_data.get("id", "")
+            if product_id:
+                product_url = self.message_builder.get_product_url(product_id)
+                message += f"*Sport/Season/Day:* <{product_url}|{product_title}>\n\n"
+            else:
+                message += f"*Sport/Season/Day:* {product_title}\n\n"
+        else:
+            message += f"*Sport/Season/Day:* {product_title}\n\n"
+        
+        # Extract timestamps and season date from current message
+        import re
+        submitted_match = re.search(r'\*Request Submitted At\*:\s*([^\n]+)', current_message_full_text)
+        created_match = re.search(r'\*Order Created At\*:\s*([^\n]+)', current_message_full_text)
+        season_date_match = re.search(r'\*Season Start Date\*:\s*([^\n]+)', current_message_full_text)
+        
+        # Use extracted season date if available, otherwise use the parsed one
+        if season_date_match:
+            season_start_date = season_date_match.group(1)
+        
+        if submitted_match:
+            message += f"*Request Submitted At*: {submitted_match.group(1)}\n\n"
+        if created_match:
+            message += f"*Order Created At:* {created_match.group(1)}\n\n"
+        
+        message += f"*Season Start Date*: {season_start_date}\n\n"
+        
+        # Extract total paid from current message
+        total_paid_match = re.search(r'\*Total Paid\*:\s*\$([0-9.]+)', current_message_full_text)
+        if total_paid_match:
+            message += f"*Total Paid:* ${total_paid_match.group(1)}\n\n"
+        
+        # Add "No Refund Provided" (replacing "Estimated Refund Due")
+        message += f"*No Refund Provided*\n\n"
         
         # Add Google Sheets link
+        sheet_link = self.extract_sheet_link(current_message_full_text)
         if sheet_link:
-            message += f":link: <{sheet_link}|View Request in Google Sheets>\n"
+            message += f"🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
+        
+        # Add cancellation status footer
+        if order_cancelled:
+            message += f"🚀 *Order Canceled*, processed by <@{processor_user}>\n\n"
         else:
-            message += ":link: View Request in Google Sheets\n"
+            message += f"ℹ️ *Order Not Canceled*, processed by <@{processor_user}>\n\n"
         
-        # Add season start info
-        message += f":package: Season Start Date for {product_title} is {season_start_date}.\n"
+        # Add refund status footer  
+        message += f"🚫 *Not Refunded by <@{processor_user}>*\n\n"
         
-        # Add inventory information
+        # Add season start info for inventory
+        message += f"📦 Season Start Date for {product_title} is {season_start_date}.\n"
+        
+        # Add inventory information and build restock buttons
         message += " Current Inventory:\n"
         
-        # Build inventory display and restock buttons from variants
         action_buttons = []
         variants_data = []
         
@@ -1067,8 +1194,9 @@ class SlackRefundsUtils:
                     "value": json.dumps({
                         "action": "restock_variant",
                         "variantId": (variant.get("variantId") or variant.get("id") or ""),
+                        "inventoryItemId": variant.get("inventoryItemId", ""),  # Include inventory item ID directly
                         "variantTitle": variant_title,
-                        "orderId": order_data.get("orderId", ""),
+                        "orderId": order_id,
                         "rawOrderNumber": raw_order_number
                     })
                 })
@@ -1088,7 +1216,7 @@ class SlackRefundsUtils:
             "action_id": "do_not_restock",
             "value": json.dumps({
                 "action": "do_not_restock",
-                "orderId": order_data.get("orderId", ""),
+                "orderId": order_id,
                 "rawOrderNumber": raw_order_number
             })
         })
@@ -1244,23 +1372,30 @@ class SlackRefundsUtils:
                     )
                 return {"success": False, "message": error_message}
 
-            # Step 1: Lookup inventory item ID
-            inventory_info = self.orders_service.shopify_service.get_inventory_item_and_quantity(variant_id)
-            if not inventory_info.get("success"):
-                error_msg = inventory_info.get("message", "Unknown error")
-                modal_error_message = f"Failed to get inventory info for {variant_title}.\n\n**Shopify Error:**\n{error_msg}"
-                if trigger_id:
-                    self.send_modal_error_to_user(trigger_id, modal_error_message, "Inventory Restock")
-                logger.error(f"❌ Inventory info failed: {modal_error_message}")
-                return {"success": False, "message": error_msg}
+            # Get inventory item ID directly from button value (no lookup needed!)
+            inventory_item_id = request_data.get("inventoryItemId")
+            
+            if not inventory_item_id:
+                # Fallback: if inventory item ID wasn't stored in button, do the lookup
+                print(f"⚠️ Inventory item ID not found in button data, falling back to Shopify lookup")
+                inventory_info = self.orders_service.shopify_service.get_inventory_item_and_quantity(variant_id)
+                if not inventory_info.get("success"):
+                    error_msg = inventory_info.get("message", "Unknown error")
+                    modal_error_message = f"Failed to get inventory info for {variant_title}.\n\n**Shopify Error:**\n{error_msg}"
+                    if trigger_id:
+                        self.send_modal_error_to_user(trigger_id, modal_error_message, "Inventory Restock")
+                    logger.error(f"❌ Inventory info failed: {modal_error_message}")
+                    return {"success": False, "message": error_msg}
+                inventory_item_id = inventory_info.get("inventoryItemId")
+                current_quantity = inventory_info.get("inventoryQuantity", 0)
+                print(f"📊 Current inventory for {variant_title}: {current_quantity}")
+            else:
+                print(f"✅ Using inventory item ID from button data: {inventory_item_id}")
+                current_quantity = "unknown"  # We don't need current quantity for adjustment, just for logging
 
-            inventory_item_id = inventory_info.get("inventoryItemId")
-            current_quantity = inventory_info.get("inventoryQuantity", 0)
-
-            print(f"📊 Current inventory for {variant_title}: {current_quantity}")
             print(f"🔑 Inventory item ID: {inventory_item_id}")
 
-            # Step 2: Adjust inventory by +1
+            # Adjust inventory by +1 using inventory item ID
             inventory_result = self.orders_service.shopify_service.adjust_inventory(inventory_item_id, delta=1)
             if not inventory_result.get("success"):
                 error_msg = inventory_result.get("message", "Unknown error")
@@ -1289,7 +1424,7 @@ class SlackRefundsUtils:
             return {
                 "success": True,
                 "message": f"Successfully restocked {variant_title} by +1",
-                "new_quantity": current_quantity + 1
+                "new_quantity": (current_quantity + 1) if isinstance(current_quantity, int) else "unknown"
             }
 
         except Exception as e:
@@ -1358,110 +1493,163 @@ class SlackRefundsUtils:
                 logger.info(f"✅ Modal shown successfully to {slack_user_name}")
                 return {"success": True, "message": "Modal displayed"}
             else:
-                error_msg = modal_result.get("error", "Failed to show modal")
+                error_msg = modal_result.get("error", "Unknown modal error")
+                slack_response = modal_result.get("slack_response", {})
                 logger.error(f"❌ Failed to show modal: {error_msg}")
-                return {"success": False, "message": error_msg}
+                logger.error(f"❌ Modal result: {modal_result}")
+                logger.error(f"❌ Slack response: {slack_response}")
+                return {"success": False, "message": f"Slack API error: {error_msg}"}
                 
         except Exception as e:
             error_message = f"Exception in handle_edit_request_details: {str(e)}"
             logger.error(f"❌ {error_message}")
             return {"success": False, "message": error_message}
     
-    async def handle_deny_refund_request(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
+    # Consolidated denial handler - always shows modal for better UX
+    async def handle_deny_refund_request(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
         """
-        Handle deny refund request button click - denies the refund request and sends denial email
+        Handle deny refund request button click - shows modal for custom message and confirmation
         """
-        print(f"\n🚫 === DENY REFUND REQUEST HANDLER ===")
-        print(f"👤 User: {slack_user_name} ({slack_user_id})")
-        print(f"📋 Request Data: {request_data}")
-        print("=== END DENY REFUND REQUEST ===\n")
-        
-        try:
-            # Extract request details
-            raw_order_number = request_data.get("rawOrderNumber", "")
-            refund_type = request_data.get("refundType", "refund")
-            first_name = requestor_name.get("first", "")
-            last_name = requestor_name.get("last", "")
-            request_submitted_at = request_data.get("requestSubmittedAt", "")
-            
-            # Build denial message
-            denial_message = f"🚫 *Refund Request Denied*\n\n"
-            denial_message += f"*Order Number:* {raw_order_number}\n"
-            denial_message += f"*Requested by:* {first_name} {last_name} ({requestor_email})\n"
-            denial_message += f"*Request Submitted At:* {request_submitted_at}\n"
-            denial_message += f"*Denied by:* <@{slack_user_name}>\n"
-            denial_message += f"*Denied at:* {format_date_and_time(datetime.now(timezone.utc))}\n\n"
-            denial_message += f"🚫 *This refund request has been denied.*\n\n"
-            denial_message += f"📧 The requestor will be notified via email about the denial."
-            
-            # TODO: Send denial email to requestor here
-            # For now, we'll just update the Slack message
-            
-            # Update Slack message
-            update_result = self.update_slack_on_shopify_success(
-                message_ts=thread_ts,
-                success_message=denial_message,
-                action_buttons=[]  # No buttons needed for denial
-            )
-            
-            if update_result.get("success"):
-                print(f"✅ Denial message sent to Slack")
-                return {"success": True, "message": "Refund request denied successfully"}
-            else:
-                error_msg = update_result.get("error", "Unknown error")
-                print(f"❌ Failed to update Slack message: {error_msg}")
-                return {"success": False, "message": f"Failed to update Slack: {error_msg}"}
-                
-        except Exception as e:
-            error_message = f"Exception in handle_deny_refund_request: {str(e)}"
-            logger.error(f"❌ {error_message}")
-            return {"success": False, "message": error_message}
+        return await self.handle_deny_refund_request_show_modal(request_data, channel_id, thread_ts, slack_user_name, slack_user_id, trigger_id, current_message_full_text)
     
-    async def handle_deny_email_mismatch(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
+    async def handle_deny_refund_request_show_modal(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
         """
-        Handle deny email mismatch button click - closes the request due to email mismatch
+        Consolidated modal handler for all denial types - shows modal for custom message and confirmation
         """
-        print(f"\n🚫 === DENY EMAIL MISMATCH HANDLER ===")
-        print(f"👤 User: {slack_user_name} ({slack_user_id})")
-        print(f"📋 Request Data: {request_data}")
-        print("=== END DENY EMAIL MISMATCH ===\n")
+        print(f"\n🚫 === DENY REQUEST MODAL ===")
+        print(f"📦 Request Data: {json.dumps(request_data, indent=2)}")
+        print(f"👤 User: {slack_user_name} (ID: {slack_user_id})")
+        print(f"🎯 Trigger ID: {trigger_id}")
+        print(f"🚫 === END DENY REQUEST MODAL DEBUG ===\n")
         
         try:
-            # Extract request details
+            # Extract request details from the button value or current message
             raw_order_number = request_data.get("rawOrderNumber", "")
             requestor_email = request_data.get("requestorEmail", "")
             first_name = request_data.get("first", "")
             last_name = request_data.get("last", "")
+            refund_type = request_data.get("refundType", "refund")
             request_submitted_at = request_data.get("requestSubmittedAt", "")
             
-            # Build denial message
-            denial_message = f":no_entry_sign: *Request Denied - Email Mismatch*\n\n"
-            denial_message += f"*Order Number:* {raw_order_number}\n"
-            denial_message += f"*Requested by:* {first_name} {last_name} ({requestor_email})\n"
-            denial_message += f"*Request Submitted At:* {request_submitted_at}\n"
-            denial_message += f"*Denied by:* {slack_user_name}\n\n"
-            denial_message += f":warning: *This request was denied due to email mismatch with the order's customer email.*\n\n"
-            denial_message += f"The requestor should be contacted to verify their email or order number if needed."
-            
-            # Update Slack message
-            update_result = self.update_slack_on_shopify_success(
-                message_ts=thread_ts,
-                success_message=denial_message,
-                action_buttons=[]  # No buttons needed for denial
+            # Build the modal blocks (works for all denial types)
+            modal_blocks = self._build_deny_request_modal_blocks(
+                raw_order_number=raw_order_number,
+                requestor_email=requestor_email,
+                first_name=first_name,
+                last_name=last_name,
+                refund_type=refund_type
             )
             
-            if update_result.get("success"):
-                logger.info(f"✅ Request denied successfully by {slack_user_name}")
-                return {"success": True, "message": "Request denied due to email mismatch"}
+            # Prepare private metadata with original message context
+            private_metadata = {
+                "raw_order_number": raw_order_number,
+                "requestor_email": requestor_email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "refund_type": refund_type,
+                "request_submitted_at": request_submitted_at,
+                "original_thread_ts": thread_ts,
+                "original_channel_id": channel_id,
+                "slack_user_name": slack_user_name,
+                "slack_user_id": slack_user_id
+            }
+            
+            # Show the modal
+            modal_result = self._show_modal_to_user(
+                trigger_id=trigger_id,
+                modal_title="Deny Refund Request",
+                modal_blocks=modal_blocks,
+                callback_id="deny_refund_request_modal_submission",
+                private_metadata=json.dumps(private_metadata)
+            )
+            
+            if modal_result.get("success"):
+                print(f"✅ Deny request modal shown successfully")
+                return {"success": True, "message": "Modal displayed"}
             else:
-                error_msg = update_result.get("error", "Failed to update message")
-                logger.error(f"❌ Failed to update message: {error_msg}")
-                return {"success": False, "message": error_msg}
+                error_msg = modal_result.get("error", "Unknown modal error")
+                slack_response = modal_result.get("slack_response", {})
+                print(f"❌ Failed to show deny modal: {error_msg}")
+                print(f"❌ Modal result: {modal_result}")
+                print(f"❌ Slack response: {slack_response}")
+                return {"success": False, "message": f"Slack API error: {error_msg}"}
                 
         except Exception as e:
-            error_message = f"Exception in handle_deny_email_mismatch: {str(e)}"
+            error_message = f"Exception in handle_deny_refund_request_show_modal: {str(e)}"
             logger.error(f"❌ {error_message}")
-            return {"success": False, "message": error_message}
+            return {"success": False, "error": error_message}
+    
+    async def handle_deny_refund_request_modal_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Consolidated modal submission handler for all denial types - send email via GAS and update Slack
+        """
+        print(f"\n🚫 === DENY REQUEST MODAL SUBMISSION ===")
+        print(f"📋 Full Payload: {json.dumps(payload, indent=2)}")
+        print("=== END DENY SUBMISSION DEBUG ===\n")
+        
+        try:
+            # Extract form values (works for all denial types)
+            values = payload.get("view", {}).get("state", {}).get("values", {})
+            custom_message = values.get("custom_message_input", {}).get("custom_message", {}).get("value", "")
+            include_staff_checkboxes = values.get("include_staff_info", {}).get("include_staff_info", {}).get("selected_options", [])
+            include_staff_info = len(include_staff_checkboxes) > 0
+            
+            # Extract metadata
+            private_metadata_str = payload.get("view", {}).get("private_metadata", "{}")
+            private_metadata = json.loads(private_metadata_str)
+            
+            original_thread_ts = private_metadata.get("original_thread_ts")
+            original_channel_id = private_metadata.get("original_channel_id")
+            slack_user_name = private_metadata.get("slack_user_name", "Unknown")
+            slack_user_id = private_metadata.get("slack_user_id", "Unknown")
+            raw_order_number = private_metadata.get("raw_order_number", "")
+            requestor_email = private_metadata.get("requestor_email", "")
+            first_name = private_metadata.get("first_name", "")
+            last_name = private_metadata.get("last_name", "")
+            
+            print(f"✉️ Sending denial email via GAS with:")
+            print(f"   Order: {raw_order_number}")
+            print(f"   Requestor: {first_name} {last_name} ({requestor_email})")
+            print(f"   Custom Message: {custom_message[:100]}...")
+            print(f"   Include Staff Info: {include_staff_info}")
+            print(f"   Staff: {slack_user_name} ({slack_user_id})")
+            
+            # Send email via GAS doPost
+            await self._send_denial_email_via_gas(
+                order_number=raw_order_number,
+                requestor_email=requestor_email,
+                first_name=first_name,
+                last_name=last_name,
+                custom_message=custom_message,
+                include_staff_info=include_staff_info,
+                slack_user_name=slack_user_name,
+                slack_user_id=slack_user_id
+            )
+            
+            # Update original Slack message
+            denial_confirmation_message = self._build_general_denial_confirmation_message(
+                order_number=raw_order_number,
+                requestor_email=requestor_email,
+                first_name=first_name,
+                last_name=last_name,
+                slack_user_name=slack_user_name,
+                custom_message_provided=bool(custom_message.strip()),
+                include_staff_info=include_staff_info
+            )
+            
+            # Update the original Slack message
+            update_result = self.update_slack_on_shopify_success(
+                message_ts=original_thread_ts,
+                success_message=denial_confirmation_message,
+                action_buttons=[]  # No buttons for final denial
+            )
+            
+            return {"response_action": "clear"}
+            
+        except Exception as e:
+            logger.error(f"❌ Exception in handle_deny_refund_request_modal_submission: {str(e)}")
+            return {"response_action": "clear"}
+    
     
     def _build_edit_request_modal_blocks(self, raw_order_number: str, requestor_email: str, 
                                        first_name: str, last_name: str, refund_type: str, 
@@ -1563,7 +1751,7 @@ class SlackRefundsUtils:
             
             response = self.api_client.send_modal(trigger_id, modal_view)
             
-            if response.get("ok"):
+            if response.get("success"):
                 return {"success": True}
             else:
                 error = response.get("error", "Unknown error")
@@ -1684,31 +1872,42 @@ class SlackRefundsUtils:
                 "sheet_link": original_request_data.get("sheet_link", "")
             }
             
-            # Calculate refund amount using the order data
-            from services.orders.refund_calculator import RefundCalculator
-            calculator = RefundCalculator()
-            
-            refund_calculation = calculator.calculate_refund(
-                order_data=order_data,
-                refund_type=requestor_info["refund_type"]
+            # Calculate refund amount using the existing orders service method
+            refund_calculation = self.orders_service.calculate_refund_due(
+                order_data, 
+                requestor_info["refund_type"]
             )
             
-            # Build success message with order details and refund buttons
-            success_message_data = self.message_builder.build_success_message(
-                order_data=order_data,
-                refund_amount=refund_calculation["refund_amount"],
-                refund_type=requestor_info["refund_type"],
-                raw_order_number=updated_order_number,
-                order_cancelled=refund_calculation.get("order_cancelled", False),
-                requestor_name={
+            if not refund_calculation["success"]:
+                print(f"❌ Failed to calculate refund: {refund_calculation.get('message', 'Unknown error')}")
+                return {"response_action": "clear"}
+            
+            # Fetch customer data for profile linking (same as initial refund request)
+            print(f"🔍 Fetching customer data for email: {updated_requestor_email}")
+            customer_result = self.orders_service.shopify_service.get_customer_by_email(updated_requestor_email)
+            customer_data = customer_result.get("customer") if customer_result.get("success") else None
+            if customer_data:
+                print(f"✅ Customer found: {customer_data.get('firstName', '')} {customer_data.get('lastName', '')}")
+            else:
+                print(f"📭 No customer found for email: {updated_requestor_email}")
+            
+            # Build success message using the exact same format as initial successful requests
+            updated_requestor_info_for_message = {
+                "name": {
                     "first": requestor_info["first"],
                     "last": requestor_info["last"]
                 },
-                requestor_email=requestor_info["email"],
-                notes=requestor_info["notes"],
-                sheet_link=requestor_info["sheet_link"],
-                order_id=order_data.get("id", ""),
-                updated_via_modal=True  # Flag to indicate this was updated via modal
+                "email": requestor_info["email"],
+                "refund_type": requestor_info["refund_type"],
+                "notes": requestor_info["notes"],
+                "customer_data": customer_data  # Include customer data for profile linking
+            }
+            
+            success_message_data = self.message_builder.build_success_message(
+                order_data={"order": order_data},
+                refund_calculation=refund_calculation,
+                requestor_info=updated_requestor_info_for_message,
+                sheet_link=""
             )
             
             # Get the original message timestamp from private metadata or context
@@ -1719,7 +1918,7 @@ class SlackRefundsUtils:
             # This might need to be passed through the private metadata
             
             print(f"🔄 Updating original Slack message with success details")
-            print(f"📊 Refund calculation: ${refund_calculation['refund_amount']}")
+            print(f"📊 Refund calculation: ${refund_calculation.get('refund_amount', 'unknown')}")
             
             # Update the original message with success details
             if original_thread_ts and original_channel_id:
@@ -1751,69 +1950,6 @@ class SlackRefundsUtils:
                 }
             }
     
-    async def handle_deny_email_mismatch_modal(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
-        """
-        Handle the deny email mismatch modal button click - show modal for custom denial message
-        """
-        print(f"\n🚫 === DENY EMAIL MISMATCH MODAL ===")
-        print(f"👤 User: {slack_user_name} (ID: {slack_user_id})")
-        print(f"📦 Request Data: {request_data}")
-        print(f"🎯 Trigger ID: {trigger_id}")
-        print(f"🚫 === END DENY EMAIL MISMATCH MODAL DEBUG ===\n")
-        
-        try:
-            # Extract request details
-            raw_order_number = request_data.get("rawOrderNumber", "")
-            requestor_email = request_data.get("requestorEmail", "")
-            first_name = request_data.get("first", "")
-            last_name = request_data.get("last", "")
-            refund_type = request_data.get("refundType", "refund")
-            request_submitted_at = request_data.get("requestSubmittedAt", "")
-            
-            # Build the modal blocks
-            modal_blocks = self._build_deny_request_modal_blocks(
-                raw_order_number=raw_order_number,
-                requestor_email=requestor_email,
-                first_name=first_name,
-                last_name=last_name,
-                refund_type=refund_type
-            )
-            
-            # Prepare private metadata with original message context
-            private_metadata = {
-                "raw_order_number": raw_order_number,
-                "requestor_email": requestor_email,
-                "first_name": first_name,
-                "last_name": last_name,
-                "refund_type": refund_type,
-                "request_submitted_at": request_submitted_at,
-                "original_thread_ts": thread_ts,
-                "original_channel_id": channel_id,
-                "slack_user_name": slack_user_name,
-                "slack_user_id": slack_user_id
-            }
-            
-            # Show the modal
-            modal_result = await self._show_modal_to_user(
-                trigger_id=trigger_id,
-                modal_title="Deny Refund Request",
-                modal_blocks=modal_blocks,
-                callback_id="deny_email_mismatch_submission",
-                private_metadata=json.dumps(private_metadata)
-            )
-            
-            if modal_result.get("success"):
-                print(f"✅ Deny request modal shown successfully")
-                return {"success": True, "message": "Modal displayed"}
-            else:
-                error_msg = modal_result.get("error", "Unknown error")
-                print(f"❌ Failed to show deny request modal: {error_msg}")
-                return {"success": False, "error": error_msg}
-                
-        except Exception as e:
-            error_message = f"Exception in handle_deny_email_mismatch_modal: {str(e)}"
-            logger.error(f"❌ {error_message}")
-            return {"success": False, "error": error_message}
     
     def _build_deny_request_modal_blocks(self, raw_order_number: str, requestor_email: str, first_name: str, last_name: str, refund_type: str) -> List[Dict[str, Any]]:
         """
@@ -1822,15 +1958,25 @@ class SlackRefundsUtils:
         refund_type_text = "refund" if refund_type.lower() == "refund" else "credit"
         requestor_name = f"{first_name} {last_name}".strip()
         
-        # Default denial message
-        default_message = (
-            f"Hi {first_name},\\n\\n"
-            f"Your request for a {refund_type_text} has not been processed successfully. "
-            f"The email associated with the order number did not match the email you provided in the request. "
-            f"Please confirm you submitted your request using the same email address as is associated with your order - "
-            f"sign in to see your order history to find the correct order number - and try again.\\n\\n"
-            f"If you believe this is in error, please reach out to refunds@bigapplerecsports.com."
-        )
+        # Default denial message (check if this is a general denial or email mismatch)
+        is_email_mismatch = refund_type.lower() == "email_mismatch"
+        
+        if is_email_mismatch:
+            default_message = (
+                f"Hi {first_name},\\n\\n"
+                f"Your request for a {refund_type_text} has not been processed successfully. "
+                f"The email associated with the order number did not match the email you provided in the request. "
+                f"Please confirm you submitted your request using the same email address as is associated with your order - "
+                f"sign in to see your order history to find the correct order number - and try again.\\n\\n"
+                f"If you believe this is in error, please reach out to refunds@bigapplerecsports.com."
+            )
+        else:
+            default_message = (
+                f"Hi {first_name},\\n\\n"
+                f"We're sorry, but we were not able to approve your refund request for Order {raw_order_number}. "
+                f"Please sign in to view your orders and try again if needed.\\n\\n"
+                f"If you have any questions, please reach out to refunds@bigapplerecsports.com."
+            )
         
         blocks = [
             {
@@ -1890,104 +2036,13 @@ class SlackRefundsUtils:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"📧 *Email will be sent to:* {requestor_email}\\n📝 *Subject:* Big Apple Rec Sports - Refund Request Denied for Order {raw_order_number}"
+                    "text": f"📧 *Email will be sent to:* {requestor_email}\\n📝 *Subject:* Big Apple Rec Sports - Order {raw_order_number} - Refund Request Denied"
                 }
             }
         ]
         
         return blocks
     
-    async def handle_deny_email_mismatch_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle modal submission for deny email mismatch - send custom denial email
-        """
-        print(f"\\n🚫 === DENY EMAIL MISMATCH SUBMISSION ===")
-        print(f"📋 Payload: {json.dumps(payload, indent=2)}")
-        print("=== END DENY SUBMISSION DEBUG ===\\n")
-        
-        try:
-            # Extract form values
-            values = payload.get("view", {}).get("state", {}).get("values", {})
-            
-            # Get custom message (optional)
-            custom_message_block = values.get("custom_message_input", {})
-            custom_message = custom_message_block.get("custom_message", {}).get("value", "")
-            
-            # Get staff info inclusion checkbox
-            staff_info_block = values.get("include_staff_info", {})
-            include_staff_info = bool(staff_info_block.get("include_staff_info", {}).get("selected_options", []))
-            
-            # Extract original request context from private metadata
-            private_metadata_str = payload.get("view", {}).get("private_metadata", "{}")
-            original_context = json.loads(private_metadata_str)
-            
-            raw_order_number = original_context.get("raw_order_number", "")
-            requestor_email = original_context.get("requestor_email", "")
-            first_name = original_context.get("first_name", "")
-            last_name = original_context.get("last_name", "")
-            refund_type = original_context.get("refund_type", "refund")
-            original_thread_ts = original_context.get("original_thread_ts", "")
-            original_channel_id = original_context.get("original_channel_id", "")
-            slack_user_name = original_context.get("slack_user_name", "")
-            slack_user_id = original_context.get("slack_user_id", "")
-            
-            print(f"📧 Sending denial email to: {requestor_email}")
-            print(f"🔧 Include staff info: {include_staff_info}")
-            print(f"📝 Custom message: {custom_message[:100]}..." if custom_message else "📝 Using default message")
-            
-            # Build and send the denial email
-            email_result = await self._send_denial_email(
-                requestor_email=requestor_email,
-                requestor_name={"first": first_name, "last": last_name},
-                raw_order_number=raw_order_number,
-                refund_type=refund_type,
-                custom_message=custom_message,
-                include_staff_info=include_staff_info,
-                staff_name=slack_user_name,
-                staff_id=slack_user_id
-            )
-            
-            if email_result.get("success"):
-                # Update the original Slack message with denial confirmation
-                denial_confirmation_message = self._build_denial_confirmation_message(
-                    requestor_email=requestor_email,
-                    requestor_name={"first": first_name, "last": last_name},
-                    raw_order_number=raw_order_number,
-                    staff_name=slack_user_name,
-                    include_staff_info=include_staff_info
-                )
-                
-                # Update original message
-                update_result = self.update_slack_on_shopify_success(
-                    message_ts=original_thread_ts,
-                    success_message=denial_confirmation_message,
-                    action_buttons=[]
-                )
-                
-                if update_result.get("success"):
-                    print(f"✅ Original message updated with denial confirmation")
-                else:
-                    print(f"⚠️ Failed to update original message: {update_result.get('error', 'Unknown error')}")
-                
-                return {"response_action": "clear"}
-            else:
-                error_msg = email_result.get("error", "Unknown error sending email")
-                return {
-                    "response_action": "errors",
-                    "errors": {
-                        "custom_message_input": f"Failed to send email: {error_msg}"
-                    }
-                }
-                
-        except Exception as e:
-            error_message = f"Exception in handle_deny_email_mismatch_submission: {str(e)}"
-            logger.error(f"❌ {error_message}")
-            return {
-                "response_action": "errors",
-                "errors": {
-                    "custom_message_input": "An error occurred while processing the denial"
-                }
-            }
     
     async def _send_denial_email(self, requestor_email: str, requestor_name: Dict[str, str], raw_order_number: str, 
                                  refund_type: str, custom_message: str, include_staff_info: bool, 
@@ -2069,5 +2124,113 @@ class SlackRefundsUtils:
             message += f"📧 *Email included staff information*\\n"
         
         message += f"\\n*Reason:* Email address did not match order customer email"
+        
+        return message
+    
+    async def _send_denial_email_via_gas(self, order_number: str, requestor_email: str, first_name: str, last_name: str, custom_message: str, include_staff_info: bool, slack_user_name: str, slack_user_id: str):
+        """
+        Send denial email via Google Apps Script doPost endpoint
+        """
+        try:
+            # Get GAS webhook URL from environment variables
+            import os
+            gas_webhook_url = os.getenv('GAS_REFUNDS_WEBHOOK_URL')
+            if not gas_webhook_url:
+                raise ValueError("GAS_REFUNDS_WEBHOOK_URL environment variable is required but not set")
+            
+            # Prepare the payload for the GAS doPost
+            payload = {
+                "action": "send_denial_email",
+                "order_number": order_number,
+                "requestor_email": requestor_email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "custom_message": custom_message,
+                "include_staff_info": include_staff_info,
+                "slack_user_name": slack_user_name,
+                "slack_user_id": slack_user_id
+            }
+            
+            print(f"📡 Sending denial email request to GAS: {gas_webhook_url}")
+            print(f"📦 Payload: {json.dumps(payload, indent=2)}")
+            
+            # Send HTTP request to GAS doPost endpoint
+            import requests
+            
+            try:
+                response = requests.post(
+                    gas_webhook_url,
+                    headers={
+                        'Content-Type': 'application/json',
+                    },
+                    json=payload,
+                    timeout=30,
+                    verify=False  # For development - SSL issues with local testing
+                )
+                
+                print(f"📥 GAS Response Status: {response.status_code}")
+                print(f"📄 GAS Response: {response.text}")
+                
+                if response.status_code == 200:
+                    response_data = response.json()
+                    if response_data.get("success"):
+                        logger.info(f"✅ Denial email sent successfully via GAS")
+                    else:
+                        logger.error(f"❌ GAS reported failure: {response_data.get('message', 'Unknown error')}")
+                else:
+                    logger.error(f"❌ GAS HTTP error: {response.status_code} - {response.text}")
+                    
+            except requests.exceptions.SSLError as ssl_error:
+                logger.warning(f"SSL Error with GAS - trying without verification: {ssl_error}")
+                # Retry without SSL verification
+                response = requests.post(
+                    gas_webhook_url,
+                    headers={
+                        'Content-Type': 'application/json',
+                    },
+                    json=payload,
+                    timeout=30,
+                    verify=False
+                )
+                
+                print(f"📥 GAS Response Status (no SSL): {response.status_code}")
+                print(f"📄 GAS Response (no SSL): {response.text}")
+                
+                if response.status_code == 200:
+                    logger.info(f"✅ Denial email sent successfully via GAS (no SSL verification)")
+                else:
+                    logger.error(f"❌ GAS HTTP error (no SSL): {response.status_code} - {response.text}")
+            
+            logger.info(f"✉️ Denial email request sent to GAS for order {order_number} to {requestor_email}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error sending denial email via GAS: {str(e)}")
+            raise
+    
+    def _build_general_denial_confirmation_message(self, order_number: str, requestor_email: str, first_name: str, last_name: str, slack_user_name: str, custom_message_provided: bool, include_staff_info: bool) -> str:
+        """
+        Build confirmation message for Slack after denial email is sent
+        """
+        from utils.date_utils import format_date_and_time
+        from datetime import datetime, timezone
+        
+        current_time = format_date_and_time(datetime.now(timezone.utc))
+        
+        message = (
+            f"🚫 *Refund Request Denied*\\n\\n"
+            f"*Order Number:* {order_number}\\n"
+            f"*Requestor:* {first_name} {last_name} ({requestor_email})\\n"
+            f"*Processed by:* <@{slack_user_name}>\\n"
+            f"*Processed at:* {current_time}\\n\\n"
+            f"✅ **Denial email sent to requestor**\\n"
+        )
+        
+        if custom_message_provided:
+            message += f"📝 *Custom message included*\\n"
+        
+        if include_staff_info:
+            message += f"📧 *Staff contact information included*\\n"
+        
+        message += f"\\n*The requestor has been notified that their refund request was denied.*"
         
         return message

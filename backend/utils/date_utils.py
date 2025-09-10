@@ -140,14 +140,14 @@ def extract_season_dates(description_html: str) -> Tuple[Optional[str], Optional
         return None, None
 
 def calculate_refund_amount(season_start_date_str: str, off_dates_str: Optional[str], 
-                          total_amount_paid: float, refund_or_credit: str, 
+                          total_amount_paid: float, refund_type: str, 
                           request_submitted_at: Optional[datetime] = None) -> Tuple[float, str]:
     """
     Calculate refund amount based on timing and season dates
     Based on getRefundDue from getRefundDue.gs
     """
     try:
-        if not season_start_date_str or not total_amount_paid or not refund_or_credit:
+        if not season_start_date_str or not total_amount_paid or not refund_type:
             return 0, 'Error calculating refund due - please check order and product'
         
         if total_amount_paid == 0:
@@ -202,9 +202,9 @@ def calculate_refund_amount(season_start_date_str: str, off_dates_str: Optional[
         week_dates.insert(0, early_tier_cutoff)
         
         # Define refund tiers
-        refund_tiers = [95, 90, 80, 70, 60, 50] if refund_or_credit == "refund" else [100, 95, 85, 75, 65, 55]
+        refund_tiers = [95, 90, 80, 70, 60, 50] if refund_type == "refund" else [100, 95, 85, 75, 65, 55]
         penalties = [0, 5, 15, 25, 35, 45]
-        add_processing = refund_or_credit == "refund"
+        add_processing = refund_type == "refund"
         
         refund_percentage = 0
         penalty = 0
