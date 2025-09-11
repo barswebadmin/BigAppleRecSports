@@ -210,6 +210,25 @@ class TestRefundsEndpointIntegration:
             "data": self.mock_order_data
         }
         
+        # Mock no existing refunds
+        mock_orders_service.check_existing_refunds.return_value = {
+            "success": True,
+            "existing_refunds": []
+        }
+        
+        # Mock refund calculation
+        mock_orders_service.calculate_refund_due.return_value = {
+            "success": True,
+            "refund_amount": 1.90,
+            "message": "Refund calculated successfully"
+        }
+        
+        # Mock customer lookup
+        mock_orders_service.shopify_service.get_customer_by_email.return_value = {
+            "success": True,
+            "customer": {"id": "123", "firstName": "j", "lastName": "r"}
+        }
+        
         # Mock successful Slack notification
         mock_slack_service.send_refund_request_notification.return_value = {
             "success": True,
@@ -221,7 +240,7 @@ class TestRefundsEndpointIntegration:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert "successfully sent to Slack" in data["message"]
+        assert "sent to Slack successfully" in data["message"]
         
         # Verify order was fetched with correct order number
         mock_orders_service.fetch_order_details_by_email_or_order_name.assert_called_once_with(
@@ -249,10 +268,9 @@ class TestRefundsEndpointIntegration:
         
         response = client.post("/refunds/send-to-slack", json=self.valid_request_data)
         
-        assert response.status_code == 200  # Should still return 200 since error was handled
+        assert response.status_code == 406  # Order not found
         data = response.json()
-        assert data["success"] is True  # Success because error was handled properly
-        assert "Order not found" in data["message"]
+        assert "Order 42234 not found" in data["detail"]
         
         # Verify error notification was sent to Slack
         mock_slack_service.send_refund_request_notification.assert_called_once()
@@ -280,10 +298,9 @@ class TestRefundsEndpointIntegration:
         
         response = client.post("/refunds/send-to-slack", json=self.valid_request_data)
         
-        assert response.status_code == 200
+        assert response.status_code == 409  # Email mismatch conflict
         data = response.json()
-        assert data["success"] is True
-        assert "email does not match" in data["message"]
+        assert "does not match order customer email" in data["detail"]
         
         # Verify error notification was sent to Slack
         mock_slack_service.send_refund_request_notification.assert_called_once()

@@ -99,7 +99,7 @@ class TestCoreStatusLogic:
         
         # Core requirements
         assert "✅ Refund processing completed" in message_text
-        assert "$50.00 **refund** issued by <@U67890>" in message_text
+        assert "$50.00 *refund* issued by <@U67890>" in message_text
         assert "📋 Refund processing pending" not in message_text
 
     def test_no_refund_updates_status(self, slack_utils):
@@ -148,7 +148,7 @@ class TestCoreStatusLogic:
         )
         
         # Core requirements
-        assert "🔄 *Inventory restocked (Test Variant) by <@U99999>*" in result
+        assert "✅ *Inventory restocked (Test Variant) by <@U99999>*" in result
         assert "📋 Inventory restocking pending" not in result
 
     def test_user_attribution_format(self, message_builder):

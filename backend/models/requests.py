@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator, ConfigDict
 from typing import List, Optional, Dict, Union
+import re
 
 class ProcessLeadershipCSVRequest(BaseModel):
     model_config = ConfigDict(
@@ -40,7 +41,7 @@ class RefundSlackNotificationRequest(BaseModel):
     requestor_name: Union[str, Dict[str, str]]  # Can be string or {"first": "John", "last": "Doe"}
     requestor_email: str
     refund_type: str  # "refund" or "credit"
-    notes: str
+    notes: Optional[str] = None
     sheet_link: Optional[str] = None  # Google Sheets link to the specific row
     request_submitted_at: Optional[str] = None  # ISO 8601 timestamp when form was submitted
     
@@ -63,4 +64,21 @@ class RefundSlackNotificationRequest(BaseModel):
                 "last": v.get("last", "")
             }
         else:
-            raise ValueError(f"requestor_name must be string or dict, got {type(v)}") 
+            raise ValueError(f"requestor_name must be string or dict, got {type(v)}")
+    
+    @field_validator('requestor_email')
+    @classmethod
+    def validate_email(cls, v):
+        """Validate email format"""
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError(f"Invalid email format: {v}")
+        return v
+    
+    @field_validator('refund_type')
+    @classmethod 
+    def validate_refund_type(cls, v):
+        """Validate refund_type is either 'refund' or 'credit'"""
+        if v.lower() not in ["refund", "credit"]:
+            raise ValueError(f"refund_type must be 'refund' or 'credit', got '{v}'")
+        return v.lower() 

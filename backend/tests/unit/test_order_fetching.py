@@ -92,10 +92,11 @@ class TestOrderFetching:
             assert result["data"]["name"] == f"#{self.test_order_number}"
             assert result["data"]["customer"]["email"] == self.test_email
             
-            # Verify the GraphQL query was formatted correctly
-            mock_request.assert_called_once()
-            query_arg = mock_request.call_args[0][0]
-            assert f"name:#{self.test_order_number}" in query_arg["query"]
+            # Verify the GraphQL queries were called (order fetch + product variants)
+            assert mock_request.call_count == 2
+            # First call should be for order details
+            first_call_query = mock_request.call_args_list[0][0][0]["query"]
+            assert f"name:#{self.test_order_number}" in first_call_query
     
     def test_orders_service_fetch_by_order_name_with_hash_prefix(self):
         """Test OrdersService handles order number with # prefix correctly"""
@@ -109,10 +110,10 @@ class TestOrderFetching:
             
             assert result["success"] is True
             
-            # Verify the query doesn't have double # prefix
-            query_arg = mock_request.call_args[0][0]
-            assert f"name:#{self.test_order_number}" in query_arg["query"]
-            assert f"name:##{self.test_order_number}" not in query_arg["query"]
+            # Verify the query doesn't have double # prefix (check first call - order search)
+            first_call_query = mock_request.call_args_list[0][0][0]["query"]
+            assert f"name:#{self.test_order_number}" in first_call_query
+            assert f"name:##{self.test_order_number}" not in first_call_query
     
     def test_orders_service_fetch_by_email_success(self):
         """Test OrdersService successfully fetches order by email"""
@@ -124,11 +125,14 @@ class TestOrderFetching:
             result = orders_service.fetch_order_details_by_email_or_order_name(email=self.test_email)
             
             assert result["success"] is True
-            assert result["data"]["customer"]["email"] == self.test_email
+            # Email search returns a list of orders, check the first one
+            assert len(result["data"]) > 0
+            first_order = result["data"][0]
+            assert first_order["customer"]["email"] == self.test_email
             
-            # Verify the GraphQL query used email search
-            query_arg = mock_request.call_args[0][0]
-            assert f"email:{self.test_email}" in query_arg["query"]
+            # Verify the GraphQL query used email search (check first call - order search)
+            first_call_query = mock_request.call_args_list[0][0][0]["query"]
+            assert f"email:{self.test_email}" in first_call_query
     
     def test_orders_service_no_order_found(self):
         """Test OrdersService handles case when order is not found"""
@@ -188,6 +192,7 @@ class TestOrderFetching:
             "success": True,
             "data": {
                 "id": self.test_order_id,
+                "orderId": self.test_order_id,
                 "name": f"#{self.test_order_number}",
                 "created_at": "2025-09-09T05:16:45Z",
                 "total_price": "2.0",
@@ -247,6 +252,7 @@ class TestOrderFetching:
             {"success": False, "message": "Order not found"},
             {"success": True, "data": {
                 "id": self.test_order_id,
+                "orderId": self.test_order_id,
                 "name": f"#{self.test_order_number}",
                 "created_at": "2025-09-09T05:16:45Z",
                 "total_price": "2.0",

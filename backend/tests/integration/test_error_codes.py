@@ -1,34 +1,31 @@
 #!/usr/bin/env python3
 """
-INTEGRATION tests for error codes that test actual HTTP endpoints
-NOTE: These tests make real HTTP requests and require a running server.
-For unit tests with mocked services, use test_error_codes_unit.py instead.
+INTEGRATION tests for error codes that test actual HTTP endpoints via FastAPI test client
 """
 
 import pytest
-import requests
 import json
 from unittest.mock import patch, MagicMock
+from fastapi.testclient import TestClient
+from main import app
 
-# Test configuration
-BACKEND_URL = "http://127.0.0.1:8000"
+client = TestClient(app)
 
 @pytest.fixture
 def mock_slack_service():
     """Mock the SlackService to prevent actual Slack messages"""
-    with patch('routers.refunds.SlackService') as mock_service:
-        mock_instance = MagicMock()
-        mock_service.return_value = mock_instance
-        mock_instance.send_refund_request_notification.return_value = True
-        yield mock_instance
+    with patch('routers.refunds.slack_service') as mock_service:
+        mock_service.send_refund_request_notification.return_value = {
+            "success": True,
+            "message": "Test notification sent"
+        }
+        yield mock_service
 
 @pytest.fixture
 def mock_orders_service():
     """Mock the OrdersService for consistent test responses"""
-    with patch('routers.refunds.OrdersService') as mock_service:
-        mock_instance = MagicMock()
-        mock_service.return_value = mock_instance
-        yield mock_instance
+    with patch('routers.refunds.orders_service') as mock_service:
+        yield mock_service
 
 class TestErrorCodes:
     """Test class for error code verification"""
@@ -37,8 +34,11 @@ class TestErrorCodes:
         """Test that order not found returns 406 status code"""
         print("🧪 Testing order not found (should return 406)...")
         
-        # Mock OrdersService to return no orders
-        mock_orders_service.get_order_by_name.return_value = None
+        # Mock OrdersService to return order not found
+        mock_orders_service.fetch_order_details_by_email_or_order_name.return_value = {
+            "success": False,
+            "message": "Order not found"
+        }
         
         payload = {
             "order_number": "#99999999",  # Non-existent order
@@ -50,11 +50,7 @@ class TestErrorCodes:
         }
         
         try:
-            response = requests.post(
-                f"{BACKEND_URL}/refunds/send-to-slack",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
+            response = client.post("/refunds/send-to-slack", json=payload)
             
             print(f"📥 Response status: {response.status_code}")
             response_data = response.json()
@@ -64,8 +60,10 @@ class TestErrorCodes:
             assert "not found" in response_data["detail"].lower()
             print("✅ Order not found test passed - returned 406!")
             
-            # Verify Slack was not called for error cases
-            mock_slack_service.send_refund_request_notification.assert_not_called()
+            # Verify Slack was called with error notification
+            mock_slack_service.send_refund_request_notification.assert_called_once()
+            call_args = mock_slack_service.send_refund_request_notification.call_args
+            assert call_args.kwargs["error_type"] == "order_not_found"
             
         except Exception as e:
             pytest.fail(f"Error testing order not found: {e}")
@@ -82,7 +80,10 @@ class TestErrorCodes:
             "line_items": [{"title": "Test Product"}],
             "total_price": "25.00"
         }
-        mock_orders_service.get_order_by_name.return_value = mock_order
+        mock_orders_service.fetch_order_details_by_email_or_order_name.return_value = {
+            "success": True,
+            "data": mock_order
+        }
         
         payload = {
             "order_number": "#12345",
@@ -94,11 +95,7 @@ class TestErrorCodes:
         }
         
         try:
-            response = requests.post(
-                f"{BACKEND_URL}/refunds/send-to-slack",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
+            response = client.post("/refunds/send-to-slack", json=payload)
             
             print(f"📥 Response status: {response.status_code}")
             response_data = response.json()
@@ -108,8 +105,10 @@ class TestErrorCodes:
             assert "email mismatch" in response_data["detail"].lower() or "does not match" in response_data["detail"].lower()
             print("✅ Email mismatch test passed - returned 409!")
             
-            # Verify Slack was not called for error cases
-            mock_slack_service.send_refund_request_notification.assert_not_called()
+            # Verify Slack was called with error notification
+            mock_slack_service.send_refund_request_notification.assert_called_once()
+            call_args = mock_slack_service.send_refund_request_notification.call_args
+            assert call_args.kwargs["error_type"] == "email_mismatch"
             
         except Exception as e:
             pytest.fail(f"Error testing email mismatch: {e}")
@@ -126,7 +125,29 @@ class TestErrorCodes:
             "line_items": [{"title": "Test Product"}],
             "total_price": "25.00"
         }
-        mock_orders_service.get_order_by_name.return_value = mock_order
+        mock_orders_service.fetch_order_details_by_email_or_order_name.return_value = {
+            "success": True,
+            "data": mock_order
+        }
+        
+        # Mock no existing refunds
+        mock_orders_service.check_existing_refunds.return_value = {
+            "success": True,
+            "existing_refunds": []
+        }
+        
+        # Mock refund calculation
+        mock_orders_service.calculate_refund_due.return_value = {
+            "success": True,
+            "refund_amount": 19.00,
+            "message": "Refund calculated successfully"
+        }
+        
+        # Mock customer lookup
+        mock_orders_service.shopify_service.get_customer_by_email.return_value = {
+            "success": True,
+            "customer": {"id": "123", "firstName": "Valid", "lastName": "User"}
+        }
         
         payload = {
             "order_number": "#12345",
@@ -138,11 +159,7 @@ class TestErrorCodes:
         }
         
         try:
-            response = requests.post(
-                f"{BACKEND_URL}/refunds/send-to-slack",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
+            response = client.post("/refunds/send-to-slack", json=payload)
             
             print(f"📥 Response status: {response.status_code}")
             response_data = response.json()
@@ -181,11 +198,7 @@ def run_tests_standalone():
         }
         
         try:
-            response = requests.post(
-                f"{BACKEND_URL}/refunds/send-to-slack",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
+            response = client.post("/refunds/send-to-slack", json=payload)
             
             print(f"📥 Response status: {response.status_code}")
             response_data = response.json()

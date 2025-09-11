@@ -62,9 +62,9 @@ class SlackService:
         self.message_builder = SlackMessageBuilder(self.sport_groups)
         self.refunds_utils = SlackRefundsUtils(self.orders_service, self.settings, self.message_builder)
         
-        # Use mock API client during tests to prevent real Slack requests
-        if is_test_mode:
-            logger.info("🧪 Test mode detected - using MockSlackApiClient")
+        # Use mock API client during tests and development to prevent real Slack requests
+        if is_test_mode or settings.is_debug_mode:
+            logger.info("🧪 Test/Debug mode detected - using MockSlackApiClient")
             self.api_client = MockSlackApiClient(
                 self.refunds_channel["bearer_token"],
                 self.refunds_channel["channel_id"]

@@ -179,6 +179,12 @@ class TestRefundRouterErrorCodes:
             "message": "Refund calculated successfully"
         }
         
+        # Mock check_existing_refunds to return no existing refunds
+        mock_orders_service.check_existing_refunds.return_value = {
+            "success": True,
+            "existing_refunds": []
+        }
+        
         # Mock Slack service to return failure
         mock_slack_service.send_refund_request_notification.return_value = {
             "success": False,

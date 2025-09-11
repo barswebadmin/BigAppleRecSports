@@ -78,11 +78,11 @@ class TestVariantNameHandling:
         
         # Check button action IDs
         action_ids = [btn["action_id"] for btn in action_buttons]
-        assert "restock_veteran" in action_ids
-        assert "restock_early" in action_ids
-        assert "restock_open" in action_ids
-        assert "restock_coming_off_waitlist_reg" in action_ids
-        assert "do_not_restock" in action_ids
+        assert "confirm_restock_veteran" in action_ids
+        assert "confirm_restock_early" in action_ids
+        assert "confirm_restock_open" in action_ids
+        assert "confirm_restock_coming_off_waitlist_reg" in action_ids
+        assert "confirm_do_not_restock" in action_ids
 
     def test_variant_extraction_from_product_variants_format(self):
         """Test extracting variants from order data in product.variants format"""
@@ -207,7 +207,7 @@ class TestVariantNameHandling:
         # Find the veteran restock button
         veteran_button = None
         for btn in action_buttons:
-            if btn["action_id"] == "restock_veteran":
+            if btn["action_id"] == "confirm_restock_veteran":
                 veteran_button = btn
                 break
         
@@ -218,7 +218,7 @@ class TestVariantNameHandling:
         button_value = json.loads(veteran_button["value"])
         
         # Check required fields in button value
-        assert button_value["action"] == "restock_variant"
+        assert button_value["action"] == "confirm_restock_variant"
         assert button_value["variantId"] == "gid://shopify/ProductVariant/41558875045982"
         assert button_value["variantTitle"] == "Veteran Registration"
         assert button_value["orderId"] == "gid://shopify/Order/5876418969694"
@@ -257,7 +257,7 @@ class TestVariantNameHandling:
         # Find the "Do Not Restock" button
         do_not_restock_button = None
         for btn in action_buttons:
-            if btn["action_id"] == "do_not_restock":
+            if btn["action_id"] == "confirm_do_not_restock":
                 do_not_restock_button = btn
                 break
         
@@ -265,14 +265,14 @@ class TestVariantNameHandling:
         
         # Check button properties
         assert do_not_restock_button["text"]["text"] == "Do Not Restock"
-        assert do_not_restock_button["action_id"] == "do_not_restock"
+        assert do_not_restock_button["action_id"] == "confirm_do_not_restock"
         
         # Parse the button value
         import json
         button_value = json.loads(do_not_restock_button["value"])
         
         # Check required fields for "do not restock"
-        assert button_value["action"] == "do_not_restock"
+        assert button_value["action"] == "confirm_do_not_restock"
         assert button_value["orderId"] == "gid://shopify/Order/5876418969694"
         assert button_value["rawOrderNumber"] == "#42305"
 
@@ -314,7 +314,7 @@ class TestVariantNameHandling:
             action_buttons = result["action_buttons"]
             action_ids = [btn["action_id"] for btn in action_buttons]
             
-            assert expected_action_id in action_ids
+            assert f"confirm_{expected_action_id}" in action_ids
 
     def test_no_variants_available(self):
         """Test behavior when no variants are available"""
@@ -338,7 +338,7 @@ class TestVariantNameHandling:
         
         # Should only have "Do Not Restock" button when no variants available
         assert len(action_buttons) == 1
-        assert action_buttons[0]["action_id"] == "do_not_restock"
+        assert action_buttons[0]["action_id"] == "confirm_do_not_restock"
         assert action_buttons[0]["text"]["text"] == "Do Not Restock"
 
     def test_empty_variants_list(self):
@@ -363,4 +363,4 @@ class TestVariantNameHandling:
         
         # Should only have "Do Not Restock" button when variants list is empty
         assert len(action_buttons) == 1
-        assert action_buttons[0]["action_id"] == "do_not_restock"
+        assert action_buttons[0]["action_id"] == "confirm_do_not_restock"

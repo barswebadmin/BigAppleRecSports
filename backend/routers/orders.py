@@ -65,6 +65,9 @@ async def get_order(
             "data": enhanced_response
         }
         
+    except HTTPException:
+        # Re-raise HTTPExceptions as-is (like 406 for order not found)
+        raise
     except Exception as e:
         logger.error(f"Error fetching order {order_number}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching order: {str(e)}")

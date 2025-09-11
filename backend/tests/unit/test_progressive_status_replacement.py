@@ -162,7 +162,7 @@ class TestProgressiveStatusReplacement:
         
         # The key test: verify refund processing is completed and no duplicate
         assert "✅ Refund processing completed" in message_text
-        assert "$50.00 **refund** issued by <@U67890>" in message_text
+        assert "$50.00 *refund* issued by <@U67890>" in message_text
         
         # Verify no old refund processing pending line remains
         assert "📋 Refund processing pending" not in message_text
@@ -239,13 +239,13 @@ $50.00 **refund** issued by <@U67890>"""
         assert "✅ Refund processing completed" in result
         
         # Verify inventory restocking is completed with new user
-        assert "🔄 *Inventory restocked (Test Variant) by <@U99999>*" in result
+        assert "✅ *Inventory restocked (Test Variant) by <@U99999>*" in result
         
         # Verify no old inventory restocking pending line remains
         assert "📋 Inventory restocking pending" not in result
         
-        # Verify no duplicate lines
-        inventory_lines = [line for line in result.split('\n') if "Inventory" in line and "restocking" in line]
+        # Verify no duplicate lines - check for any inventory-related lines
+        inventory_lines = [line for line in result.split('\n') if "Inventory" in line]
         assert len(inventory_lines) == 1, f"Found duplicate inventory lines: {inventory_lines}"
 
     def test_inventory_restocking_no_replacement(self, slack_utils):
@@ -346,6 +346,10 @@ $50.00 **refund** issued by <@U67890>"""
         order_data = {
             "order": {
                 "id": "gid://shopify/Order/12345",
+                "product": {
+                    "id": "gid://shopify/Product/7350462185566",
+                    "title": "Test Product"
+                },
                 "line_items": [{"title": "Test Product"}],
                 "customer": {"email": "test@example.com"}
             },
@@ -357,7 +361,7 @@ $50.00 **refund** issued by <@U67890>"""
             requestor_name={"first": "John", "last": "Doe"},
             requestor_email="test@example.com",
             refund_type="refund",
-            sport_mention="@test",
+            sport_mention="@sport_groups_test",
             order_cancelled=False,
             slack_user_id="U12345ABC"  # Test with longer user ID
         )
@@ -368,6 +372,12 @@ $50.00 **refund** issued by <@U67890>"""
         assert "<@U12345ABC>" in message_text
         assert "processed by <@U12345ABC>" in message_text
         
-        # Verify it's not malformed
-        assert "@U12345ABC>" not in message_text  # Missing opening <
-        assert "<@U12345ABC" not in message_text  # Missing closing >
+        # Verify it's not malformed in the processed by line specifically  
+        slack_user_id = "U12345ABC"
+        lines = message_text.split('\n')
+        processed_by_lines = [line for line in lines if "processed by" in line]
+        for line in processed_by_lines:
+            assert f"<@{slack_user_id}>" in line  # Proper format
+            # Check for malformed patterns that would NOT be substrings of the correct format
+            assert f" @{slack_user_id}>" not in line  # Missing opening < (with space before)
+            assert f"<@{slack_user_id} " not in line  # Missing closing > (with space after)

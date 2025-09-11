@@ -63,6 +63,25 @@ class TestRefundsAPI:
             "data": self.mock_order_data
         }
         
+        # Mock no existing refunds
+        mock_orders_service.check_existing_refunds.return_value = {
+            "success": True,
+            "existing_refunds": []
+        }
+        
+        # Mock refund calculation
+        mock_orders_service.calculate_refund_due.return_value = {
+            "success": True,
+            "refund_amount": 19.00,
+            "message": "Refund calculated successfully"
+        }
+        
+        # Mock customer lookup
+        mock_orders_service.shopify_service.get_customer_by_email.return_value = {
+            "success": True,
+            "customer": {"id": "123", "firstName": "j", "lastName": "r"}
+        }
+        
         # Mock successful Slack notification
         mock_slack_service.send_refund_request_notification.return_value = {
             "success": True,
@@ -248,6 +267,25 @@ class TestRefundsAPI:
             "data": self.mock_order_data
         }
         
+        # Mock no existing refunds
+        mock_orders_service.check_existing_refunds.return_value = {
+            "success": True,
+            "existing_refunds": []
+        }
+        
+        # Mock refund calculation
+        mock_orders_service.calculate_refund_due.return_value = {
+            "success": True,
+            "refund_amount": 19.00,
+            "message": "Refund calculated successfully"
+        }
+        
+        # Mock customer lookup
+        mock_orders_service.shopify_service.get_customer_by_email.return_value = {
+            "success": True,
+            "customer": {"id": "123", "firstName": "j", "lastName": "r"}
+        }
+        
         mock_slack_service.send_refund_request_notification.return_value = {
             "success": True,
             "message": "Success"
@@ -301,6 +339,25 @@ class TestRefundsAPI:
             "data": self.mock_order_data
         }
         
+        # Mock no existing refunds (so we get to Slack call)
+        mock_orders_service.check_existing_refunds.return_value = {
+            "success": True,
+            "existing_refunds": []
+        }
+        
+        # Mock refund calculation
+        mock_orders_service.calculate_refund_due.return_value = {
+            "success": True,
+            "refund_amount": 19.00,
+            "message": "Refund calculated successfully"
+        }
+        
+        # Mock customer lookup
+        mock_orders_service.shopify_service.get_customer_by_email.return_value = {
+            "success": True,
+            "customer": {"id": "123", "firstName": "j", "lastName": "r"}
+        }
+        
         # Mock Slack service throwing an exception
         mock_slack_service.send_refund_request_notification.side_effect = Exception("Slack API error")
         
@@ -350,6 +407,25 @@ class TestRefundsAPIIntegration:
                 "name": "#12345",
                 "customer": {"email": "test@example.com"}
             }
+        }
+        
+        # Mock no existing refunds
+        mock_orders_service.check_existing_refunds.return_value = {
+            "success": True,
+            "existing_refunds": []
+        }
+        
+        # Mock refund calculation
+        mock_orders_service.calculate_refund_due.return_value = {
+            "success": True,
+            "refund_amount": 19.00,
+            "message": "Refund calculated successfully"
+        }
+        
+        # Mock customer lookup
+        mock_orders_service.shopify_service.get_customer_by_email.return_value = {
+            "success": True,
+            "customer": {"id": "123", "firstName": "j", "lastName": "r"}
         }
         
         mock_slack_service.send_refund_request_notification.return_value = {

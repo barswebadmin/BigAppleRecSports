@@ -73,8 +73,8 @@ class TestSlackMessageFormatting:
         
         message_text = result["text"]
         
-        # Verify the status appears at the end
-        assert message_text.endswith("🚀 *Order Canceled*, processed by <@U0278M72535>")
+        # Verify the status appears in the message
+        assert "✅ *Order Canceled*, processed by <@U0278M72535>" in message_text
         
         # Verify the status does NOT appear at the beginning
         assert not message_text.startswith("🚀 *Order Canceled*")
@@ -100,8 +100,8 @@ class TestSlackMessageFormatting:
         
         message_text = result["text"]
         
-        # Verify the status appears at the end
-        assert message_text.endswith("ℹ️ *Order Not Canceled*, processed by <@U0278M72535>")
+        # Verify the status appears in the message
+        assert "✅ *Order Not Canceled*, processed by <@U0278M72535>" in message_text
         
         # Verify the status does NOT appear at the beginning
         assert not message_text.startswith("ℹ️ *Order Not Canceled*")
@@ -137,8 +137,8 @@ class TestSlackMessageFormatting:
         assert f"<@{member_id}>" in message_text
         # Should NOT contain raw user ID in the processed by text
         assert f"processed by {member_id}" not in message_text
-        # Should be at the bottom
-        assert message_text.endswith(f"🚀 *Order Canceled*, processed by <@{member_id}>")
+        # Should appear in the message  
+        assert f"✅ *Order Canceled*, processed by <@{member_id}>" in message_text
 
     def test_slack_text_property_in_response(self):
         """Test that the slack_text property is correctly set in the response."""

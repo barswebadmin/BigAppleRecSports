@@ -213,13 +213,12 @@ class TestSlackUpdateLogic:
         result = await self.utils.handle_edit_request_details_submission(payload)
         
         # Verify
-        assert result["response_action"] == "clear"
+        assert result["response_action"] == "errors"
         
-        # Verify error message was built
-        self.mock_message_builder.build_error_message.assert_called_once()
-        error_call = self.mock_message_builder.build_error_message.call_args
-        assert error_call[1]["error_type"] == "order_not_found"
-        assert error_call[1]["raw_order_number"] == "99999"
+        # Verify error response structure
+        assert "errors" in result
+        assert "order_number_input" in result["errors"]
+        assert "Order not found with this number" in result["errors"]["order_number_input"]
     
     @pytest.mark.asyncio
     async def test_handle_edit_request_details_submission_email_mismatch_persists(self):
@@ -268,13 +267,12 @@ class TestSlackUpdateLogic:
         result = await self.utils.handle_edit_request_details_submission(payload)
         
         # Verify
-        assert result["response_action"] == "clear"
+        assert result["response_action"] == "errors"
         
-        # Verify email mismatch error was built
-        self.mock_message_builder.build_error_message.assert_called_once()
-        error_call = self.mock_message_builder.build_error_message.call_args
-        assert error_call[1]["error_type"] == "email_mismatch"
-        assert error_call[1]["order_customer_email"] == "different@example.com"
+        # Verify email mismatch error response structure  
+        assert "errors" in result
+        assert "requestor_email_input" in result["errors"]
+        assert "Email still does not match" in result["errors"]["requestor_email_input"]
     
     @pytest.mark.asyncio
     async def test_integration_flow_verification(self):

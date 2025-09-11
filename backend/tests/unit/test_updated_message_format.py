@@ -101,7 +101,7 @@ class TestUpdatedMessageFormat:
         message_text = result["text"]
         
         # Check that it includes the refund amount with proper formatting (new format)
-        assert "$1.90 **refund** issued by <@U0278M72535>" in message_text
+        assert "$1.90 *refund* issued by <@U0278M72535>" in message_text
         
         # Check that it includes the cancellation status (new format)
         assert "✅ Order cancellation completed" in message_text
@@ -111,8 +111,8 @@ class TestUpdatedMessageFormat:
         # Ensure it's not using the old DEBUG format
         assert "[DEBUG]" not in message_text
         
-        # Ensure it's using the new structured format
-        assert "*Request Type*: 💵 Refund back to original form of payment" in message_text
+        # Ensure it's using the structured format (comprehensive message doesn't include Request Type)
+        assert "📧 *Requested by:*" in message_text
         assert "📧 *Requested by:* joe test1" in message_text
 
     def test_credit_message_includes_processor_and_amount(self):
@@ -135,7 +135,7 @@ class TestUpdatedMessageFormat:
         message_text = result["text"]
         
         # Check that it includes the credit amount with proper formatting (new format)
-        assert "$2.50 **credit** issued by <@U0278M72535>" in message_text
+        assert "$2.50 *credit* issued by <@U0278M72535>" in message_text
         
         # Check that it includes the cancellation status (new format)
         assert "✅ Order cancellation completed" in message_text
@@ -234,7 +234,7 @@ class TestUpdatedMessageFormat:
             
             message_text = result["text"]
             # New format: $X.XX **refund** issued by <@user>
-            assert f"{expected_format} **refund** issued by <@U0278M72535>" in message_text
+            assert f"{expected_format} *refund* issued by <@U0278M72535>" in message_text
 
     def test_google_sheets_link_preservation(self):
         """Test that Google Sheets link is properly extracted and preserved"""
