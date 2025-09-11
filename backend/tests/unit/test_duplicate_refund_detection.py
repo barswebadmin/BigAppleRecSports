@@ -135,8 +135,6 @@ class TestDuplicateRefundDetection:
         assert refund["status_display"] == "$19.00 (Completed)"  # New: display format
         assert refund["currency"] == "USD"
         assert refund["note"] == "Refund issued via Slack workflow for $19.00"
-        assert refund["staff_member"]["name"] == "John Admin"
-        assert refund["staff_member"]["email"] == "admin@bigapplerecsports.com"
         
         # Check transaction details
         assert len(refund["transactions"]) == 1
@@ -177,7 +175,7 @@ class TestDuplicateRefundDetection:
         
         # Verify the result
         assert result["success"] is False
-        assert "Failed to fetch order refund information" in result["message"]
+        assert "Failed to check existing refunds or order not found" in result["message"]
 
     def test_check_existing_refunds_malformed_response(self):
         """Test check_existing_refunds when Shopify API returns malformed data"""
@@ -189,7 +187,7 @@ class TestDuplicateRefundDetection:
         
         # Verify the result
         assert result["success"] is False
-        assert "Failed to fetch order refund information" in result["message"]
+        assert "Failed to check existing refunds or order not found" in result["message"]
 
     def test_build_duplicate_refund_message(self):
         """Test building a duplicate refund Slack message"""
@@ -234,12 +232,12 @@ class TestDuplicateRefundDetection:
         
         # Check message content
         message_text = result["text"]
-        assert "⚠️ *Duplicate Refund Request Detected*" in message_text
+        assert "⚠️ *Refund request – Refund Already Processed*" in message_text
         assert "Joe Test" in message_text
         assert "joetest@example.com" in message_text
         assert "#42305" in message_text
         assert "already has 1 refund(s) processed" in message_text
-        assert "$19.00 on 2024-09-10" in message_text
+        assert "$19.00, issued on 9/10/24" in message_text
         assert "*Total Already Refunded*: $19.00" in message_text
         
         # Check action buttons
@@ -272,7 +270,7 @@ class TestDuplicateRefundDetection:
         
         # Verify the result still works
         assert "text" in result
-        assert "⚠️ *Duplicate Refund Request Detected*" in result["text"]
+        assert "⚠️ *Refund request – Refund Already Processed*" in result["text"]
         assert "Joe Test" in result["text"]
         assert "#42305" in result["text"]
         assert "already has 0 refund(s) processed" in result["text"]

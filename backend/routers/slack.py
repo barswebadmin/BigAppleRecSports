@@ -110,6 +110,8 @@ async def handle_slack_interactions(request: Request):
                 return await slack_service.handle_edit_request_details_submission(payload)
             elif callback_id == "deny_refund_request_modal_submission":
                 return await slack_service.handle_deny_refund_request_modal_submission(payload)
+            elif callback_id == "restock_confirmation_modal":
+                return await slack_service.handle_restock_confirmation_submission(payload)
             else:
                 logger.warning(f"Unknown modal callback_id: {callback_id}")
                 return {"response_action": "clear"}
@@ -319,7 +321,11 @@ async def handle_slack_interactions(request: Request):
                 
 
                 # === STEP 3 HANDLERS: RESTOCK INVENTORY (Restock / Do Not Restock) ===
+                elif action_id and (action_id.startswith("confirm_restock") or action_id == "confirm_do_not_restock"):
+                    # Show confirmation modal for restock actions
+                    return await slack_service.handle_restock_confirmation_request(request_data, action_id, trigger_id, channel_id, thread_ts, current_message_full_text)
                 elif action_id and (action_id.startswith("restock") or action_id == "do_not_restock"):
+                    # Handle confirmed restock actions (called from modal submission)
                     return await slack_service.handle_restock_inventory(request_data, action_id, channel_id, thread_ts, slack_user_name, current_message_full_text, trigger_id)
                 else:
                     if not action_id:

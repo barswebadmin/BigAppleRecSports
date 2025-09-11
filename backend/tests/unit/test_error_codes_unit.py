@@ -111,6 +111,14 @@ class TestRefundRouterErrorCodes:
             }
         }
         
+        # Mock check_existing_refunds to return no existing refunds
+        mock_orders_service.check_existing_refunds.return_value = {
+            "success": True,
+            "has_refunds": False,
+            "total_refunds": 0,
+            "refunds": []
+        }
+        
         # Mock calculate_refund_due method
         mock_orders_service.calculate_refund_due.return_value = {
             "success": True,

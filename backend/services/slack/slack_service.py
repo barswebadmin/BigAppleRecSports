@@ -60,7 +60,7 @@ class SlackService:
         
         # Initialize helper components
         self.message_builder = SlackMessageBuilder(self.sport_groups)
-        self.refunds_utils = SlackRefundsUtils(self.orders_service, self.settings,)
+        self.refunds_utils = SlackRefundsUtils(self.orders_service, self.settings, self.message_builder)
         
         # Use mock API client during tests to prevent real Slack requests
         if is_test_mode:
@@ -158,7 +158,9 @@ class SlackService:
         refund_calculation: Optional[Dict[str, Any]] = None,
         error_type: Optional[str] = None,
         raw_order_number: Optional[str] = None,
-        order_customer_email: Optional[str] = None
+        order_customer_email: Optional[str] = None,
+        existing_refunds_data: Optional[Dict[str, Any]] = None,
+        request_initiated_at: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Send a refund request notification to Slack.
@@ -200,7 +202,8 @@ class SlackService:
                     order_data=order_data,
                     refund_calculation=refund_calculation,
                     requestor_info=requestor_info,
-                    sheet_link=sheet_link
+                    sheet_link=sheet_link,
+                    request_initiated_at=request_initiated_at
                 )
                 
             elif error_type:
@@ -220,7 +223,8 @@ class SlackService:
                     raw_order_number=raw_order_number or "",
                     order_customer_email=order_customer_email or "",
                     order_data=order_data,
-                    customer_orders_url=customer_orders_url
+                    customer_orders_url=customer_orders_url,
+                    existing_refunds_data=existing_refunds_data
                 )
                 
             elif order_data:
@@ -606,8 +610,8 @@ class SlackService:
     async def handle_proceed_without_cancel(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
         return await self.refunds_utils.handle_proceed_without_cancel(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
     
-    async def handle_deny_refund_request(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_id: str, slack_user_name: str, current_message_full_text: str, trigger_id: Optional[str] = None) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_deny_refund_request(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id)
+    async def handle_deny_refund_request_show_modal(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_deny_refund_request_show_modal(request_data, channel_id, thread_ts, slack_user_name, slack_user_id, trigger_id, current_message_full_text)
     
     async def handle_process_refund(self, request_data: Dict[str, str], channel_id: str, requestor_name: Dict[str, str], requestor_email: str, thread_ts: str, slack_user_name: str, current_message_full_text: str, slack_user_id: str = "", trigger_id: Optional[str] = None) -> Dict[str, Any]:
         return await self.refunds_utils.handle_process_refund(request_data, channel_id, requestor_name, requestor_email, thread_ts, slack_user_name, current_message_full_text, slack_user_id, trigger_id)
@@ -632,17 +636,19 @@ class SlackService:
     async def handle_edit_request_details(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
         return await self.refunds_utils.handle_edit_request_details(request_data, channel_id, thread_ts, slack_user_name, slack_user_id, trigger_id, current_message_full_text)
 
-    async def handle_deny_email_mismatch(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_deny_email_mismatch(request_data, channel_id, thread_ts, slack_user_name, slack_user_id, trigger_id, current_message_full_text)
-
     async def handle_edit_request_details_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return await self.refunds_utils.handle_edit_request_details_submission(payload)
     
-    async def handle_deny_email_mismatch_modal(self, request_data: Dict[str, str], channel_id: str, thread_ts: str, slack_user_name: str, slack_user_id: str, trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_deny_email_mismatch_modal(request_data, channel_id, thread_ts, slack_user_name, slack_user_id, trigger_id, current_message_full_text)
+    async def handle_deny_refund_request_modal_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_deny_refund_request_modal_submission(payload)
     
-    async def handle_deny_email_mismatch_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.refunds_utils.handle_deny_email_mismatch_submission(payload)
+    async def handle_restock_confirmation_request(self, request_data: Dict[str, str], action_id: str, trigger_id: str, 
+                                                 channel_id: str, thread_ts: str, current_message_full_text: str) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_restock_confirmation_request(request_data, action_id, trigger_id, 
+                                                                           channel_id, thread_ts, current_message_full_text)
+    
+    async def handle_restock_confirmation_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.refunds_utils.handle_restock_confirmation_submission(payload)
 
     def build_comprehensive_success_message(self, order_data: Dict[str, Any], refund_amount: float, refund_type: str,
                                       raw_order_number: str, order_cancelled: bool, requestor_name: Dict[str, str], requestor_email: str, processor_user: str,

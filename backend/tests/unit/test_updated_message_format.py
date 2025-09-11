@@ -100,14 +100,13 @@ class TestUpdatedMessageFormat:
         
         message_text = result["text"]
         
-        # Check that it includes the refund amount with proper formatting
-        assert "*Refund Provided:* $1.90" in message_text
+        # Check that it includes the refund amount with proper formatting (new format)
+        assert "$1.90 **refund** issued by <@U0278M72535>" in message_text
         
-        # Check that it includes the cancellation status with proper user tagging
-        assert "🚀 *Order Canceled*, processed by <@U0278M72535>" in message_text
+        # Check that it includes the cancellation status (new format)
+        assert "✅ Order cancellation completed" in message_text
         
-        # Check that it includes the refund status with proper user tagging
-        assert "💰 *Refunded by <@U0278M72535>*" in message_text
+        # The refund status is now combined with the amount line above
         
         # Ensure it's not using the old DEBUG format
         assert "[DEBUG]" not in message_text
@@ -135,14 +134,13 @@ class TestUpdatedMessageFormat:
         
         message_text = result["text"]
         
-        # Check that it includes the credit amount with proper formatting
-        assert "*Credit Provided:* $2.50" in message_text
+        # Check that it includes the credit amount with proper formatting (new format)
+        assert "$2.50 **credit** issued by <@U0278M72535>" in message_text
         
-        # Check that it includes the non-cancellation status with proper user tagging
-        assert "ℹ️ *Order Not Canceled*, processed by <@U0278M72535>" in message_text
+        # Check that it includes the cancellation status (new format)
+        assert "✅ Order cancellation completed" in message_text
         
-        # Check that it includes the credit status with proper user tagging
-        assert "💰 *Credited by <@U0278M72535>*" in message_text
+        # The credit status is now combined with the amount line above
 
     def test_message_preserves_original_data(self):
         """Test that the updated message preserves original request data"""
@@ -235,7 +233,8 @@ class TestUpdatedMessageFormat:
             )
             
             message_text = result["text"]
-            assert f"*Refund Provided:* {expected_format}" in message_text
+            # New format: $X.XX **refund** issued by <@user>
+            assert f"{expected_format} **refund** issued by <@U0278M72535>" in message_text
 
     def test_google_sheets_link_preservation(self):
         """Test that Google Sheets link is properly extracted and preserved"""

@@ -84,7 +84,7 @@ class SlackMessageBuilder:
         """Get formatted sheet link line"""
         try:
             if sheet_link and isinstance(sheet_link, str) and sheet_link.strip():
-                return f"\n \n 🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
+                return f"\n🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
             return ""
         except Exception:
             return ""
@@ -296,13 +296,17 @@ class SlackMessageBuilder:
         try:
             first_name = requestor_name.get("first", "")
             last_name = requestor_name.get("last", "")
+            full_name = f"{first_name} {last_name}".strip()
+            
+            # Ensure order number has # prefix for consistency
+            order_name = raw_order_number if raw_order_number.startswith('#') else f"#{raw_order_number}"
             
             return {
                 "type": "button",
                 "text": {"type": "plain_text", "text": "✏️ Edit Request Details"},
                 "style": "primary",
                 "action_id": "edit_request_details",
-                "value": f"rawOrderNumber={raw_order_number}|refundType={refund_type}|requestorEmail={requestor_email}|first={first_name}|last={last_name}|notes={request_notes}|requestSubmittedAt={current_time}"
+                "value": f"orderName={order_name}|requestorName={full_name}|requestorEmail={requestor_email}|refundType={refund_type}|submittedAt={current_time}"
             }
         except Exception:
             return {
@@ -379,7 +383,7 @@ class SlackMessageBuilder:
             # Use preserved product/sport display
             if original_data.get("product_display"):
                 product_display = original_data["product_display"]
-                product_field_name = original_data.get("product_field_name", "Sport/Season/Day")
+                product_field_name = original_data.get("product_field_name", "Product Title")
             else:
                 # Fallback to generating product info
                 product = order.get("product", {})
@@ -420,7 +424,11 @@ class SlackMessageBuilder:
             # Build message text - start without header (we'll add status at the bottom)
             message_text = ""
             message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
-            message_text += self._get_requestor_line(requestor_name, requestor_email)
+            # Extract customer data from order for profile hyperlink
+            customer_data = None
+            if order and "customer" in order:
+                customer_data = order["customer"]
+            message_text += self._get_requestor_line(requestor_name, requestor_email, customer_data)
             message_text += f"*Order Number*: {order_number_display}\n\n"
             message_text += f"*{product_field_name}:* {product_display}\n\n"
             message_text += f"*Request Submitted At*: {current_time}\n\n"
@@ -442,23 +450,29 @@ class SlackMessageBuilder:
                 message_text += "\n"
             
             # Add inventory information if available
+            inventory_text = ""  # Initialize to avoid UnboundLocalError
             if order_data.get("inventory_summary"):
                 product_title = original_data.get("product_display", "Unknown Product")
                 # Remove link formatting for inventory display
                 if "|" in product_title:
                     product_title = product_title.split("|")[1].replace(">", "")
                 inventory_text = self._build_inventory_text(order_data, product_title, season_start_date)
+            if inventory_text:
                 message_text += f"{inventory_text}\n\n"
             
             message_text += self._get_sheet_link_line(sheet_link)
             
-            # Add status footer - change based on cancellation status with proper user tagging
+            # Add progress indicators showing order step completed, other steps pending
             if order_cancelled:
-                status_footer = f"\n\n🚀 *Order Canceled*, processed by <@{slack_user_id}>"
+                updated_status = f"✅ *Order Canceled*, processed by <@{slack_user_id}>"
             else:
-                status_footer = f"\n\nℹ️ *Order Not Canceled*, processed by <@{slack_user_id}>"
+                updated_status = f"✅ *Order Not Canceled*, processed by <@{slack_user_id}>"
             
-            message_text += status_footer
+            # Add the 3-step progress indicator system
+            message_text += f"{updated_status}\n"
+            message_text += f"📋 Refund processing pending\n"
+            message_text += f"📋 Inventory restocking pending\n\n"
+            
             
             # Create refund decision buttons (Step 2)
             action_buttons = [
@@ -497,11 +511,8 @@ class SlackMessageBuilder:
             product = order.get("product", {})
             product_id = product.get("productId", "")
             
-            if product_id:
-                product_url = self.get_product_url(product_id)
-                text = f"📦 *Season Start Date for <{product_url}|{product_title}> is {season_start_date}.*\n*Current Inventory:*\n"
-            else:
-                text = f"📦 *Season Start Date for {product_title} is {season_start_date}.*\n*Current Inventory:*\n"
+            # Remove the duplicate season start date line as requested - keep only "Current Inventory:"
+            text = f"*Current Inventory:*\n"
             
             for key in inventory_order:
                 if key in inventory_list and inventory_list[key].get("inventory") is not None:
@@ -526,7 +537,8 @@ class SlackMessageBuilder:
         order_data: Dict[str, Any],
         refund_calculation: Dict[str, Any],
         requestor_info: Dict[str, Any],
-        sheet_link: str
+        sheet_link: str,
+        request_initiated_at: Optional[str] = None
     ) -> Dict[str, Any]:
         """Build a successful refund request message with action buttons"""
         try:
@@ -534,7 +546,10 @@ class SlackMessageBuilder:
             product = order.get("product", {})
             
             # Common elements - use safe access
-            current_time = format_date_and_time(datetime.now(timezone.utc))
+            if request_initiated_at:
+                current_time = request_initiated_at
+            else:
+                current_time = format_date_and_time(datetime.now(timezone.utc))
             order_created_time = self._get_order_created_time(order)
             
             # Safely get order ID and name with fallbacks
@@ -543,9 +558,21 @@ class SlackMessageBuilder:
             
             order_url = self.get_order_url(order_id, order_name)
             
-            # Safely get product info
+            # Safely get product info - try multiple locations
             product_id = product.get("productId") or product.get("id") or ""
             product_title = product.get("title", "Unknown Product")
+            
+            # If product title is still unknown, try extracting from line_items (Shopify structure)
+            if product_title == "Unknown Product" and order.get("line_items"):
+                line_items = order.get("line_items", [])
+                if line_items and isinstance(line_items, list) and len(line_items) > 0:
+                    first_item = line_items[0]
+                    product_title = first_item.get("title", "Unknown Product")
+                    # Also try to get product_id from line_items if not found above
+                    if not product_id:
+                        product_data = first_item.get("product", {})
+                        product_id = product_data.get("id", "")
+            
             product_url = self.get_product_url(product_id) if product_id else "#"
             sport_mention = self.get_sport_group_mention(product_title)
             
@@ -579,7 +606,7 @@ class SlackMessageBuilder:
             message_text += f"*Request Submitted At*: {current_time}\n\n"
             message_text += f"*Order Number*: {order_url}\n\n"
             message_text += f"*Order Created At:* {order_created_time}\n\n"
-            message_text += f"*Sport/Season/Day:* <{product_url}|{product_title}>\n\n"
+            message_text += f"*Product Title:* <{product_url}|{product_title}>\n\n"
             message_text += f"*Season Start Date*: {season_start_date}\n\n"
             # Add Original Price field if different from Total Paid
             if original_cost is not None and abs(original_cost - total_paid) > 0.01:
@@ -592,11 +619,17 @@ class SlackMessageBuilder:
                 message_text += "\n"
             message_text += self._get_optional_request_notes(request_notes)
             
+            # Add progress indicators (3-step system: order canceled/not → refund provided/not → restocked/not)
+            message_text += f"📋 Order cancellation pending\n"
+            message_text += f"📋 Refund processing pending\n"
+            message_text += f"📋 Inventory restocking pending\n\n"
+            
             # Add inventory information if available
             if order_data.get("inventory_summary"):
                 inventory_text = self._build_inventory_text(order_data, product_title, season_start_date)
                 message_text += f"{inventory_text}\n\n"
             
+            # Add Google Sheets link
             message_text += self._get_sheet_link_line(sheet_link)
             message_text += f"*Attn*: {sport_mention}"
             
@@ -698,7 +731,8 @@ class SlackMessageBuilder:
             message_text = f"{header_text}"
             message_text += f"⚠️ *Order Found in Shopify but Missing Season Info (or Product Is Not a Regular Season)*\n\n"
             message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
-            message_text += self._get_requestor_line(requestor_name, requestor_email)
+            customer_data = requestor_info.get("customer_data")
+            message_text += self._get_requestor_line(requestor_name, requestor_email, customer_data)
             message_text += f"*Request Submitted At*: {current_time}\n\n"
             message_text += f"*Order Number Provided*: {order_url}\n\n"
             message_text += f"*Order Created At:* {order_created_time}\n\n"
@@ -780,7 +814,8 @@ class SlackMessageBuilder:
                 error_text = "❌ *Error with Refund Request - Order Not Found in Shopify*\n\n"
                 error_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
                 error_text += f"*Request Submitted At*: {current_time}\n\n"
-                error_text += self._get_requestor_line(requestor_name, requestor_email)
+                customer_data = requestor_info.get("customer_data")
+                error_text += self._get_requestor_line(requestor_name, requestor_email, customer_data)
                 error_text += f"🔎 *Order Number Provided:* {raw_order_number or 'N/A'} - this order cannot be found in Shopify\n\n"
                 error_text += self._get_optional_request_notes(request_notes)
                 error_text += f"📩 *The requestor has been emailed to please provide correct order info. No action needed at this time.*\n"
@@ -811,7 +846,8 @@ class SlackMessageBuilder:
                 error_text = "❌ *Error with Refund Request*\n\n"
                 error_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
                 error_text += f"*Request Submitted At*: {current_time}\n\n"
-                error_text += self._get_requestor_line(requestor_name, requestor_email)
+                customer_data = requestor_info.get("customer_data")
+                error_text += self._get_requestor_line(requestor_name, requestor_email, customer_data)
                 error_text += self._get_optional_request_notes(request_notes)
                 error_text += self._get_sheet_link_line(sheet_link)
             
@@ -880,8 +916,16 @@ class SlackMessageBuilder:
             message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
             message_text += f"*Request Submitted At*: {current_time}\n\n"
             
-            # Enhanced requestor line with link to view orders by email  
+            # Enhanced requestor line with customer profile hyperlink and orders link
             requestor_full_name = f"{requestor_name.get('first', '')} {requestor_name.get('last', '')}".strip()
+            customer_data = requestor_info.get("customer_data")
+            
+            # Build requestor line with customer profile hyperlink if available
+            if requestor_full_name and customer_data and customer_data.get("id"):
+                customer_url = self.get_customer_url(customer_data["id"])
+                requestor_line = f"📧 *Requested by:* <{customer_url}|{requestor_full_name}> (<mailto:{requestor_email}|{requestor_email}>)"
+            else:
+                requestor_line = f"📧 *Requested by:* {requestor_full_name} (<mailto:{requestor_email}|{requestor_email}>)"
             
             # Use provided customer orders URL or show no customer found message
             if customer_orders_url:
@@ -890,7 +934,7 @@ class SlackMessageBuilder:
                 # No customer found with that email in Shopify
                 orders_link_text = f"(No Shopify customer found associated with the email {requestor_email})"
             
-            message_text += f"📧 *Requested by:* {requestor_full_name} (<mailto:{requestor_email}|{requestor_email}>) \n{orders_link_text}\n\n"
+            message_text += f"{requestor_line} \n{orders_link_text}\n\n"
             
             message_text += f"*Email Associated with Order:* <mailto:{order_customer_email}|{order_customer_email}>\n\n"
             
@@ -1009,13 +1053,25 @@ class SlackMessageBuilder:
                     else:
                         amount_text = f"${refund_amount:.2f}"
                     
-                    refunds_list.append(f"• {amount_text} on {refund_date[:10]}")
+                    # Format date as M/d/yy
+                    formatted_date = refund_date
+                    if refund_date != "Unknown":
+                        try:
+                            # Parse ISO date and format as M/d/yy
+                            parsed_date = datetime.fromisoformat(refund_date.replace('Z', '+00:00'))
+                            formatted_date = parsed_date.strftime("%-m/%-d/%y")
+                        except Exception:
+                            # Fallback to original format if parsing fails
+                            formatted_date = refund_date[:10]
+                    
+                    refunds_list.append(f"• {amount_text}, issued on {formatted_date}")
             
             # Build message text
-            message_text = f"⚠️ *Duplicate Refund Request Detected*\n\n"
+            message_text = f"⚠️ *Refund request – Refund Already Processed*\n\n"
             message_text += f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
             message_text += f"*Request Submitted At*: {current_time}\n\n"
-            message_text += self._get_requestor_line(requestor_name, requestor_email)
+            customer_data = requestor_info.get("customer_data")
+            message_text += self._get_requestor_line(requestor_name, requestor_email, customer_data)
             
             if order_admin_url:
                 message_text += f"*Order Number*: <{order_admin_url}|{order_name}>\n\n"

@@ -29,6 +29,25 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
         logger.info(f"   Refund Type: {request.refund_type}")
         logger.info(f"   Notes: {request.notes}")
         logger.info(f"   Sheet Link: {request.sheet_link}")
+        logger.info(f"   Request Submitted At: {request.request_submitted_at}")
+        
+        # Step 0: Parse and format request submission timestamp early
+        from utils.date_utils import format_date_and_time
+        if request.request_submitted_at:
+            try:
+                request_submitted_datetime = dateutil.parser.parse(request.request_submitted_at)
+                request_initiated_at = format_date_and_time(request_submitted_datetime)
+                logger.info(f"✅ Using provided submission timestamp: {request_initiated_at}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to parse submission timestamp '{request.request_submitted_at}': {e}")
+                request_submitted_datetime = datetime.now(timezone.utc)
+                request_initiated_at = format_date_and_time(request_submitted_datetime)
+                logger.info(f"📅 Using fallback submission timestamp: {request_initiated_at}")
+        else:
+            request_submitted_datetime = datetime.now(timezone.utc)
+            request_initiated_at = format_date_and_time(request_submitted_datetime)
+            logger.info(f"📅 Using current time as submission timestamp: {request_initiated_at}")
+        
         logger.info(f"🔍 Processing refund Slack notification for order {request.order_number}")
         
         # Add simple flow tracking
@@ -60,7 +79,8 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
                     requestor_info=requestor_info,
                     sheet_link=request.sheet_link or "",
                     error_type="order_not_found",
-                    raw_order_number=request.order_number
+                    raw_order_number=request.order_number,
+                    request_initiated_at=request_initiated_at
                 )
                 logger.info(f"✅ Slack notification sent successfully: {slack_result.get('success', 'Unknown status')}")
             except Exception as slack_error:
@@ -143,22 +163,8 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
                 detail=f"Order {request.order_number} already has {existing_refunds_result.get('total_refunds', 0)} refund(s) processed"
             )
         
-        # Step 4: Parse submission timestamp if provided, fallback to current time
-        request_submitted_at = None
-        if request.request_submitted_at:
-            try:
-                request_submitted_at = dateutil.parser.parse(request.request_submitted_at)
-                logger.info(f"Using provided submission timestamp: {request_submitted_at}")
-            except Exception as e:
-                logger.warning(f"Failed to parse submission timestamp '{request.request_submitted_at}': {e}")
-        
-        # Fallback to current timestamp if not provided or failed to parse
-        if request_submitted_at is None:
-            request_submitted_at = datetime.now(timezone.utc)
-            logger.info(f"Using fallback submission timestamp (current time): {request_submitted_at}")
-        
-        # Step 5: Calculate refund information (this caches the calculation)
-        refund_calculation = orders_service.calculate_refund_due(order_data, request.refund_type, request_submitted_at)
+        # Step 4: Calculate refund information (this caches the calculation)
+        refund_calculation = orders_service.calculate_refund_due(order_data, request.refund_type, request_submitted_datetime)
         
         # Step 5.5: Fetch customer data for profile linking
         logger.info(f"🔍 Step 5.5: Fetching customer data for email: {request.requestor_email}")
@@ -183,7 +189,8 @@ async def send_refund_to_slack(request: RefundSlackNotificationRequest) -> Dict[
             order_data={"order": order_data},
             refund_calculation=refund_calculation,
             requestor_info=requestor_info,
-            sheet_link=request.sheet_link or ""
+            sheet_link=request.sheet_link or "",
+            request_initiated_at=request_initiated_at
         )
         
         if not slack_result["success"]:

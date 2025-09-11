@@ -208,12 +208,12 @@ class OrdersService:
             logger.error(f"Error fetching product variants for {product_id}: {str(e)}")
             return []
     
-    def calculate_refund_due(self, order_data: Dict[str, Any], refund_type: str) -> Dict[str, Any]:
+    def calculate_refund_due(self, order_data: Dict[str, Any], refund_type: str, request_submitted_at: Optional[datetime] = None) -> Dict[str, Any]:
         """
         Calculate refund amount for an order.
         Delegates to the RefundCalculator helper.
         """
-        return self.refund_calculator.calculate_refund_due(order_data, refund_type)
+        return self.refund_calculator.calculate_refund_due(order_data, refund_type, request_submitted_at)
     
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
         """
@@ -228,3 +228,190 @@ class OrdersService:
         Delegates to ShopifyOperations helper.
         """
         return self.shopify_service.create_refund(order_id, amount, refund_type)
+
+    def check_existing_refunds(self, order_id: str) -> Dict[str, Any]:
+        """
+        Check for existing refunds on an order.
+        Returns structured data about any refunds found.
+        """
+        try:
+            logger.info(f"Checking for existing refunds on order: {order_id}")
+
+            # Prepare GraphQL query for refunds
+            query = {
+                "query": """
+                    query getOrderRefunds($id: ID!) {
+                        order(id: $id) {
+                            id
+                            name
+                            refunds {
+                                id
+                                createdAt
+                                updatedAt
+                                note
+                                legacyResourceId
+                                totalRefundedSet {
+                                    presentmentMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                                transactions(first: 10) {
+                                    edges {
+                                        node {
+                                            id
+                                            kind
+                                            status
+                                            amount
+                                            gateway
+                                            createdAt
+                                        }
+                                    }
+                                }
+                                refundLineItems(first: 10) {
+                                    edges {
+                                        node {
+                                            id
+                                            quantity
+                                            lineItem {
+                                                id
+                                                title
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """,
+                "variables": {"id": order_id}
+            }
+            
+            response = self.shopify_service._make_shopify_request(query=query)
+            
+            if not response or "data" not in response or not response["data"]["order"]:
+                return {
+                    "success": False,
+                    "message": "Failed to check existing refunds or order not found"
+                }
+            
+            order_data = response["data"]["order"]
+            
+            # Handle both GraphQL response format and test data format
+            refunds_data = order_data.get("refunds", [])
+            if isinstance(refunds_data, dict) and "edges" in refunds_data:
+                # GraphQL format: { edges: [...] }
+                refunds_edges = refunds_data["edges"]
+            elif isinstance(refunds_data, list):
+                # Test data format: [...] (direct list)
+                refunds_edges = [{"node": refund} for refund in refunds_data]
+            else:
+                refunds_edges = []
+
+            processed_refunds = []
+            total_amount = 0.0
+            pending_refunds = 0
+            resolved_refunds = 0
+            pending_amount = 0.0
+            resolved_amount = 0.0
+
+            for edge in refunds_edges:
+                refund = edge["node"]
+                
+                # Calculate transaction amounts and determine status
+                transactions_edges = refund.get("transactions", {}).get("edges", [])
+                if isinstance(refund.get("transactions"), list):
+                    # Handle test data format where transactions is direct list
+                    transactions_edges = [{"node": t} for t in refund.get("transactions", [])]
+                
+                refund_amount = 0.0
+                refund_status = "completed"  # Default to completed
+                
+                transactions = []
+                for transaction_edge in transactions_edges:
+                    transaction = transaction_edge["node"]
+                    amount = float(transaction.get("amount", 0))
+                    status = transaction.get("status", "SUCCESS")
+                    
+                    # Determine overall refund status based on transactions
+                    if status == "PENDING":
+                        refund_status = "pending"
+                    
+                    refund_amount += amount
+                    transactions.append({
+                        "id": transaction.get("id"),
+                        "kind": transaction.get("kind"),
+                        "status": status,
+                        "amount": transaction.get("amount"),
+                        "gateway": transaction.get("gateway"),
+                        "created_at": transaction.get("createdAt")
+                    })
+                
+                # If no transactions, check totalRefundedSet
+                if refund_amount == 0.0:
+                    total_refunded_set = refund.get("totalRefundedSet", {})
+                    if total_refunded_set:
+                        presentment_money = total_refunded_set.get("presentmentMoney", {})
+                        refund_amount = float(presentment_money.get("amount", 0))
+                
+                # Process line items
+                line_items = []
+                line_items_edges = refund.get("refundLineItems", {}).get("edges", [])
+                for line_item_edge in line_items_edges:
+                    line_item_node = line_item_edge["node"]
+                    line_item = line_item_node.get("lineItem", {})
+                    line_items.append({
+                        "id": line_item.get("id"),
+                        "title": line_item.get("title"),
+                        "quantity": line_item_node.get("quantity")
+                    })
+                
+                # Count pending vs resolved
+                if refund_status == "pending":
+                    pending_refunds += 1
+                    pending_amount += refund_amount
+                else:
+                    resolved_refunds += 1
+                    resolved_amount += refund_amount
+                
+                total_amount += refund_amount
+                
+                # Create status display
+                status_display = f"${refund_amount:.2f} ({'Pending' if refund_status == 'pending' else 'Completed'})"
+                
+                processed_refunds.append({
+                    "id": refund.get("id"),
+                    "total_refunded": str(refund_amount),
+                    "amount": refund_amount,
+                    "status": refund_status,
+                    "status_display": status_display,
+                    "pending_amount": refund_amount if refund_status == "pending" else 0.0,
+                    "completed_amount": refund_amount if refund_status == "completed" else 0.0,
+                    "currency": refund.get("totalRefundedSet", {}).get("presentmentMoney", {}).get("currencyCode", "USD"),
+                    "created_at": refund.get("createdAt"),
+                    "updated_at": refund.get("updatedAt"),
+                    "note": refund.get("note", ""),
+                    "transactions": transactions,
+                    "line_items": line_items
+                })
+
+            return {
+                "success": True,
+                "has_refunds": len(processed_refunds) > 0,
+                "total_refunds": len(processed_refunds),
+                "pending_refunds": pending_refunds,
+                "resolved_refunds": resolved_refunds,
+                "pending_amount": pending_amount,
+                "resolved_amount": resolved_amount,
+                "total_amount": total_amount,
+                "order_id": order_data.get("id"),
+                "order_name": order_data.get("name"),
+                "refunds": processed_refunds
+            }
+
+        except Exception as e:
+            logger.error(f"Error checking existing refunds for order {order_id}: {e}")
+            return {
+                "success": False,
+                "message": f"Error checking existing refunds: {str(e)}"
+            }
