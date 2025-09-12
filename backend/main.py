@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routers import leadership, orders, refunds, slack
+from routers import leadership, orders, refunds, slack, webhooks
 from config import settings
 from version import get_version_info
 import logging
@@ -70,6 +70,7 @@ app.include_router(leadership.router)
 app.include_router(orders.router)
 app.include_router(refunds.router)
 app.include_router(slack.router)
+app.include_router(webhooks.router)
 
 @app.get("/")
 async def root():
