@@ -4,10 +4,16 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: "cd backend && pip install -r requirements.txt"
+    buildCommand: "cd backend && pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt"
     startCommand: "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: ENVIRONMENT
         value: production
+      - key: SSL_CERT_FILE
+        value: /etc/ssl/certs/ca-certificates.crt
+      - key: REQUESTS_CA_BUNDLE
+        value: /etc/ssl/certs/ca-certificates.crt
+      - key: CURL_CA_BUNDLE
+        value: /etc/ssl/certs/ca-certificates.crt
       # Note: SHOPIFY_STORE and SHOPIFY_TOKEN must be set manually in Render dashboard
       # for security reasons - they cannot be in the yaml file
