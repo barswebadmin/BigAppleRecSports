@@ -31,7 +31,7 @@ move_inventory_path = os.path.join(os.path.dirname(__file__), '../../MoveInvento
 sys.path.insert(0, move_inventory_path)
 
 # Dynamically import the correct lambda_function to avoid cached imports
-import importlib.util
+import importlib.util  # noqa: E402
 spec = importlib.util.spec_from_file_location("lambda_function", 
                                                os.path.join(move_inventory_path, "lambda_function.py"))
 if spec is None or spec.loader is None:

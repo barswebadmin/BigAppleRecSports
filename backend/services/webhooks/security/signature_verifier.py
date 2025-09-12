@@ -22,8 +22,8 @@ class SignatureVerifier:
     def verify(self, body: bytes, signature: str) -> bool:
         """Verify webhook signature using HMAC-SHA256"""
         if not self.webhook_secret:
-            logger.warning("Missing webhook secret - skipping verification")
-            return True
+            logger.error("Missing webhook secret - rejecting request")
+            return False
             
         if not signature:
             logger.warning("Missing webhook signature - rejecting request") 

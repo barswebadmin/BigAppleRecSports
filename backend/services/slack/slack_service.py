@@ -31,7 +31,7 @@ class SlackService:
         is_production = settings.environment == "production" and not is_test_mode
         
         self.refunds_channel = {
-            "name": "#refunds" if is_production else "#joe-test",
+            "name": "#registration-refunds" if is_production else "#joe-test",
             "channel_id": "C08J1EN7SFR" if is_production else "C092RU7R6PL",
             "bearer_token": settings.slack_refunds_bot_token or ""
         }

@@ -9,7 +9,6 @@ import re
 import subprocess
 import sys
 from datetime import datetime
-from pathlib import Path
 
 def get_git_root():
     """Get the git repository root directory"""

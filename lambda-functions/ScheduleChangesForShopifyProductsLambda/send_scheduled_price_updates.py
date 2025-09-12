@@ -1,8 +1,6 @@
 import boto3
 import json
 import os
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 def send_scheduled_price_updates(action, updated_price_schedule, product_gid, open_variant_gid, waitlist_variant_gid, sport, day, division, season_start_date, off_dates_comma_separated):
     print("📍 Entered send_scheduled_price_updates()")
