@@ -742,7 +742,10 @@ class TestEndToEndRefundFlows:
     @pytest.mark.asyncio
     @patch("services.slack.SlackService.update_slack_message")
     @patch("services.orders.OrdersService.cancel_order")
-    async def test_cancel_order_button_flow(self, mock_cancel, mock_update):
+    @patch("services.orders.OrdersService.fetch_order_details_by_email_or_order_name")
+    async def test_cancel_order_button_flow(
+        self, mock_fetch_order, mock_cancel, mock_update
+    ):
         """
         Test: User clicks "Cancel Order → Proceed" button.
         Should cancel order in Shopify and update Slack message with cancel status.
@@ -751,6 +754,10 @@ class TestEndToEndRefundFlows:
         and new buttons for "Process Refund", "Custom Amount", "Do Not Provide Refund".
         """
         # Arrange
+        mock_fetch_order.return_value = {
+            "success": True,
+            "data": {"id": "gid://shopify/Order/5875167625310", "name": "#42234"},
+        }
         mock_cancel.return_value = self.mock_shopify_responses["cancel_order_success"]
         mock_update.return_value = self.mock_slack_responses["message_updated"]
 
@@ -838,7 +845,10 @@ class TestEndToEndRefundFlows:
     @patch("services.slack.SlackService.update_slack_message")
     @patch("services.orders.OrdersService.create_refund_or_credit")
     @patch("services.orders.OrdersService.fetch_product_variants")
-    async def test_process_refund_flow(self, mock_variants, mock_refund, mock_update):
+    @patch("services.orders.OrdersService.fetch_order_details_by_email_or_order_name")
+    async def test_process_refund_flow(
+        self, mock_fetch_order, mock_variants, mock_refund, mock_update
+    ):
         """
         Test: User clicks "Process Refund" button.
         Should create refund in Shopify and update message with refund status and restock options.
@@ -847,6 +857,21 @@ class TestEndToEndRefundFlows:
         and variant-specific restock buttons.
         """
         # Arrange
+        mock_fetch_order.return_value = {
+            "success": True,
+            "data": {
+                "id": "gid://shopify/Order/5875167625310",
+                "name": "#42234",
+                "variants": [
+                    {
+                        "variantId": "var123",
+                        "variantTitle": "Tuesday Registration",
+                        "availableQuantity": 10,
+                        "inventoryItemId": "inv123",
+                    }
+                ],
+            },
+        }
         mock_refund.return_value = self.mock_shopify_responses["refund_success"]
         mock_variants.return_value = self.mock_shopify_responses["variant_names"]
         mock_update.return_value = self.mock_slack_responses["message_updated"]
@@ -879,7 +904,7 @@ class TestEndToEndRefundFlows:
 
         # Assert
         mock_refund.assert_called_once_with("5875167625310", 95.00, "refund")
-        mock_variants.assert_called_once()
+        # Note: mock_variants is not called since variants come from order data, not separate API call
 
         # Note: In test mode, services may use debug mode without actual message updates
         # The refund creation and variant fetching logic is verified above
@@ -889,7 +914,8 @@ class TestEndToEndRefundFlows:
     @pytest.mark.asyncio
     @patch("services.slack.SlackService.update_slack_message")
     @patch("services.orders.OrdersService.fetch_product_variants")
-    async def test_no_refund_flow(self, mock_variants, mock_update):
+    @patch("services.orders.OrdersService.fetch_order_details_by_email_or_order_name")
+    async def test_no_refund_flow(self, mock_fetch_order, mock_variants, mock_update):
         """
         Test: User clicks "Do Not Provide Refund" button.
         Should update message showing no refund was issued but still offer restock options.
@@ -898,6 +924,21 @@ class TestEndToEndRefundFlows:
         and "No Refund Issued by @user" with restock options.
         """
         # Arrange
+        mock_fetch_order.return_value = {
+            "success": True,
+            "data": {
+                "id": "gid://shopify/Order/5875167625310",
+                "name": "#42234",
+                "variants": [
+                    {
+                        "variantId": "var123",
+                        "variantTitle": "Tuesday Registration",
+                        "availableQuantity": 10,
+                        "inventoryItemId": "inv123",
+                    }
+                ],
+            },
+        }
         mock_variants.return_value = self.mock_shopify_responses["variant_names"]
         mock_update.return_value = self.mock_slack_responses["message_updated"]
 
@@ -928,7 +969,7 @@ class TestEndToEndRefundFlows:
         )
 
         # Assert
-        mock_variants.assert_called_once()
+        # Note: mock_variants is not called since variants come from order data, not separate API call
 
         # Note: In test mode, services may use debug mode without actual message updates
         # The variant fetching logic is verified above
