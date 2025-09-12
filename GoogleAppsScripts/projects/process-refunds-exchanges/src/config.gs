@@ -12,10 +12,10 @@ const SHEET_GID = "1435845892";
 const WAITLIST_RESPONSES_URL = 'https://docs.google.com/spreadsheets/d/1wFoayUoIx1PPOO0TtuS0Jnwb5hoIbgCd_kebMeYNzGQ/edit?resourcekey=&gid=744639660#gid=744639660';
 const SHOPIFY_LOGIN_URL = 'https://shopify.com/55475535966/account';
 
-const MODE = 'DEVELOPMENT'; // Options: 'DEVELOPMENT', 'PROD-TEST', 'PROD'
+const MODE = 'PROD'; // Options: 'DEVELOPMENT', 'PROD-TEST', 'PROD'
 
 const NGROK_URL = 'https://db88b7c69780.ngrok-free.app';
-const PROD_URL = 'https://barsbackend.onrender.com';
+const PROD_URL = 'https://bars-backend.onrender.com';
 
 const DEBUG_EMAIL = 'web@bigapplerecsports.com';
 

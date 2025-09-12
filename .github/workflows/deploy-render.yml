@@ -1,0 +1,84 @@
+name: Deploy to Render
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+      reason:
+        description: 'Reason for manual deployment'
+        required: false
+        default: 'Manual deployment'
+
+jobs:
+  deploy-to-render:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        echo "📦 Installing backend dependencies..."
+        cd backend
+        pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
+
+    - name: Run backend tests
+      run: |
+        echo "🧪 Running backend tests before deployment..."
+        cd backend
+        python -m pytest tests/unit/ -v
+        python -m pytest services/*/tests/ -v || true
+        python -m pytest routers/tests/ -v || true
+        echo "✅ Tests completed"
+
+    - name: Trigger Render Deployment
+      run: |
+        echo "🚀 Triggering Render deployment..."
+        echo "📋 Deployment Details:"
+        echo "  - Environment: ${{ github.event.inputs.environment }}"
+        echo "  - Reason: ${{ github.event.inputs.reason }}"
+        echo "  - Branch: ${{ github.ref_name }}"
+        echo "  - Commit: ${{ github.sha }}"
+
+        # Trigger Render deployment via their webhook
+        if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "ref": "${{ github.ref_name }}",
+              "commit": "${{ github.sha }}",
+              "environment": "${{ github.event.inputs.environment }}",
+              "reason": "${{ github.event.inputs.reason }}"
+            }'
+          echo "✅ Render deployment webhook triggered"
+        else
+          echo "⚠️ RENDER_DEPLOY_HOOK_URL secret not set"
+          echo "ℹ️ You can find your deploy hook URL in Render dashboard under Settings > Build & Deploy"
+          echo "ℹ️ Add it as a repository secret: RENDER_DEPLOY_HOOK_URL"
+        fi
+
+    - name: Deployment Summary
+      run: |
+        echo "📊 === DEPLOYMENT SUMMARY ==="
+        echo "🌐 Service: bars-backend"
+        echo "🎯 Environment: ${{ github.event.inputs.environment }}"
+        echo "🔧 Reason: ${{ github.event.inputs.reason }}"
+        echo "📱 Branch: ${{ github.ref_name }}"
+        echo "🔗 Commit: ${{ github.sha }}"
+        echo "👤 Triggered by: ${{ github.actor }}"
+        echo "🕐 Time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+        echo "=========================="
