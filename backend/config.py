@@ -52,6 +52,12 @@ class Settings:
         if not self.shopify_token and self.environment == "production":
             raise ValueError("SHOPIFY_TOKEN environment variable is required")
 
+        # Debug: Log environment information in CI
+        if os.getenv("CI"):
+            print(f"[DEBUG] Environment: {self.environment}")
+            print(f"[DEBUG] SHOPIFY_TOKEN present: {bool(self.shopify_token)}")
+            print(f"[DEBUG] ENVIRONMENT env var: {os.getenv('ENVIRONMENT')}")
+
     @property
     def graphql_url(self):
         return f"https://{self.shopify_store}/admin/api/2025-07/graphql.json"
