@@ -45,13 +45,18 @@ def test_display_text_generation():
     print(f"📝 Length: {len(display_text)} characters")
     print(f"📝 Lines: {len(display_text.split(chr(10)))} lines")
     
+    # Assert display text was generated and contains expected content
+    assert display_text is not None, "Display text should not be None"
+    assert len(display_text) > 0, "Display text should not be empty"
+    assert "success" in display_text.lower(), "Display text should indicate success"
+    assert "leadership" in display_text.lower(), "Display text should mention leadership"
+    assert "2024" in display_text, "Display text should contain the year"
+    
     print("\n" + "="*50)
     print("GENERATED DISPLAY TEXT:")
     print("="*50)
     print(display_text)
     print("="*50)
-    
-    return display_text
 
 def test_error_display_text():
     """Test error case display text generation"""
@@ -68,7 +73,10 @@ def test_error_display_text():
     print("✅ Error display text generated!")
     print(f"📝 Error text: {error_display_text}")
     
-    return error_display_text
+    # Assert error display text is properly formatted
+    assert error_display_text is not None, "Error display text should not be None"
+    assert len(error_display_text) > 0, "Error display text should not be empty"
+    assert "error" in error_display_text.lower() or "no valid" in error_display_text.lower(), "Error text should indicate an error or issue"
 
 if __name__ == "__main__":
     print("🚀 Running Leadership Service Tests...")

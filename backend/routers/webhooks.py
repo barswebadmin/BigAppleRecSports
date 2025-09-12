@@ -26,4 +26,8 @@ async def handle_product_webhook(request: Request):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
     
     result = webhooks_service.handle_shopify_webhook(headers, body)
-    return {"success": True, "message": "Webhook received and processed"}
+    
+    # Enhanced logging with detailed results
+    logger.info(f"🎯 SHOPIFY WEBHOOK RESULT: {result}")
+    
+    return result

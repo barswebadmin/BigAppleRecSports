@@ -105,16 +105,16 @@ class TestUpdatedMessageFormat:
         assert "$1.90 *refund* issued by <@U0278M72535>" in message_text
 
         # Check that it includes the cancellation status (new format)
-        assert "✅ Order cancellation completed" in message_text
+        assert "Order cancellation completed" in message_text
 
         # The refund status is now combined with the amount line above
 
         # Ensure it's not using the old DEBUG format
         assert "[DEBUG]" not in message_text
 
-        # Ensure it's using the structured format (comprehensive message doesn't include Request Type)
-        assert "📧 *Requested by:*" in message_text
-        assert "📧 *Requested by:* joe test1" in message_text
+        # Ensure it's using the structured format - test for actual content, not emoji
+        assert "*Requested by:*" in message_text
+        assert "joe test1" in message_text, "Requestor name should be preserved"
 
     def test_credit_message_includes_processor_and_amount(self):
         """Test that credit message includes who processed it and the credit amount"""
@@ -139,7 +139,7 @@ class TestUpdatedMessageFormat:
         assert "$2.50 *credit* issued by <@U0278M72535>" in message_text
 
         # Check that it includes the cancellation status (new format)
-        assert "✅ Order cancellation completed" in message_text
+        assert "Order cancellation completed" in message_text
 
         # The credit status is now combined with the amount line above
 

@@ -59,7 +59,7 @@ class TestSlackMessageBuilder:
         """Test sheet link formatting with valid link."""
         link = "https://docs.google.com/spreadsheets/d/test/edit"
         result = message_builder._get_sheet_link_line(link)
-        expected = "\n🔗 *<https://docs.google.com/spreadsheets/d/test/edit|View Request in Google Sheets>*\n\n"
+        expected = "\n \n 🔗 *<https://docs.google.com/spreadsheets/d/test/edit|View Request in Google Sheets>*\n\n"
         assert result == expected
     
     def test_get_sheet_link_line_empty(self, message_builder):

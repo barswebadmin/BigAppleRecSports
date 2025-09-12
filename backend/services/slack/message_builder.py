@@ -101,7 +101,7 @@ class SlackMessageBuilder:
         """Get formatted sheet link line"""
         try:
             if sheet_link and isinstance(sheet_link, str) and sheet_link.strip():
-                return f"\n🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
+                return f"\n \n 🔗 *<{sheet_link}|View Request in Google Sheets>*\n\n"
             return ""
         except Exception:
             return ""
@@ -1251,7 +1251,7 @@ class SlackMessageBuilder:
             return {
                 "text": message_text,
                 "action_buttons": action_buttons,
-                "slack_text": "⚠️ Email Mismatch - Action Required",
+                "slack_text": "⚠️ *Refunds - Email Mismatch - Action Required*",
             }
 
         except Exception as e:

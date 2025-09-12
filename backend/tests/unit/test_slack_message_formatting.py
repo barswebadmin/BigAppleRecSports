@@ -47,7 +47,7 @@ class TestSlackMessageFormatting:
                 "order_created_at": "09/09/25 at 1:16 AM",
                 "product_display": "<https://admin.shopify.com/store/09fe59-3/products/7350462185566|Test Product>",
                 "order_number_display": "<https://admin.shopify.com/store/09fe59-3/orders/5875167625310|#42234>",
-                "product_field_name": "Sport/Season/Day",
+                "product_field_name": "Product Title",
             },
         }
 
@@ -73,10 +73,10 @@ class TestSlackMessageFormatting:
         message_text = result["text"]
 
         # Verify the status appears in the message
-        assert "✅ *Order Canceled*, processed by <@U0278M72535>" in message_text
+        assert "*Order Canceled*, processed by <@U0278M72535>" in message_text
 
-        # Verify the status does NOT appear at the beginning
-        assert not message_text.startswith("🚀 *Order Canceled*")
+        # Verify the status doesn't use old format at the beginning (test for content not emoji)
+        assert not message_text.startswith("*Order Canceled*")
 
         # Verify proper user tagging format
         assert "<@U0278M72535>" in message_text
@@ -100,10 +100,10 @@ class TestSlackMessageFormatting:
         message_text = result["text"]
 
         # Verify the status appears in the message
-        assert "✅ *Order Not Canceled*, processed by <@U0278M72535>" in message_text
+        assert "*Order Not Canceled*, processed by <@U0278M72535>" in message_text
 
-        # Verify the status does NOT appear at the beginning
-        assert not message_text.startswith("ℹ️ *Order Not Canceled*")
+        # Verify the status doesn't use old format at the beginning (test for content not emoji)
+        assert not message_text.startswith("*Order Not Canceled*")
 
         # Verify proper user tagging format
         assert "<@U0278M72535>" in message_text

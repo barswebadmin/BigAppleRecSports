@@ -5,6 +5,7 @@ Test script to show the new email mismatch message format with buttons
 
 import json
 import sys
+from unittest.mock import patch, MagicMock
 
 sys.path.append(".")
 
@@ -23,75 +24,77 @@ def mock_format_date_and_time(dt):
     return "09/09/25 at 7:29 PM"
 
 
-# Mock the imports
-import sys  # noqa: E402
-from unittest.mock import MagicMock  # noqa: E402
-
-sys.modules["utils.date_utils"] = MagicMock()
-sys.modules["utils.date_utils"].format_date_and_time = mock_format_date_and_time
-sys.modules["utils.date_utils"].parse_shopify_datetime = MagicMock()
-sys.modules["utils.date_utils"].convert_to_eastern_time = MagicMock()
-sys.modules["utils.date_utils"].get_eastern_timezone = MagicMock()
-
-from services.slack.message_builder import SlackMessageBuilder  # noqa: E402
+def mock_parse_shopify_datetime(dt):
+    return MockDatetime()
 
 
 def test_email_mismatch_message():
     print("🧪 Testing Email Mismatch Message with Buttons")
     print("=" * 60)
 
-    # Create a SlackMessageBuilder instance
-    sport_groups = {
-        "@bowling": ["bowling"],
-        "@kickball": ["kickball"],
-        "@dodgeball": ["dodgeball"],
-    }
-    builder = SlackMessageBuilder(sport_groups)
+    # Use proper context manager mocking instead of global sys.modules pollution
+    with patch("utils.date_utils.format_date_and_time", side_effect=mock_format_date_and_time), \
+         patch("utils.date_utils.parse_shopify_datetime", side_effect=mock_parse_shopify_datetime):
+        
+        # Import inside the context manager to ensure proper mocking
+        from services.slack.message_builder import SlackMessageBuilder
+        
+        # Create a SlackMessageBuilder instance
+        sport_groups = {
+            "@bowling": ["bowling"],
+            "@kickball": ["kickball"],
+            "@dodgeball": ["dodgeball"],
+        }
+        builder = SlackMessageBuilder(sport_groups)
 
-    # Test data matching your curl request
-    requestor_info = {
-        "name": {"first": "John", "last": "Doe"},
-        "email": "jdazz87@gmail.com",
-        "refund_type": "refund",
-        "notes": "valid test",
-    }
+        # Test data matching your curl request
+        requestor_info = {
+            "name": {"first": "John", "last": "Doe"},
+            "email": "jdazz87@gmail.com",
+            "refund_type": "refund",
+            "notes": "valid test",
+        }
 
-    # Test the new email mismatch message
-    result = builder.build_email_mismatch_message(
-        requestor_info=requestor_info,
-        raw_order_number="42291",
-        order_customer_email="julialsaltzman@gmail.com",
-        sheet_link="https://docs.google.com/spreadsheets/d/test/edit#gid=1&range=A6",
-        order_data={"order": {"line_items": [{"title": "Kickball League"}]}},
-    )
-
-    print("📧 NEW EMAIL MISMATCH MESSAGE:")
-    print("-" * 40)
-    print("Slack Text:", result.get("slack_text", "N/A"))
-    print()
-    print("Message Text:")
-    print(result.get("text", "No text"))
-    print()
-
-    action_buttons = result.get("action_buttons", [])
-    print(f"🔘 Action Buttons ({len(action_buttons)}):")
-    for i, button in enumerate(action_buttons, 1):
-        button_text = button.get("text", {}).get("text", "No text")
-        action_id = button.get("action_id", "No ID")
-        style = button.get("style", "default")
-        has_confirm = "confirm" in button
-        print(
-            f"  {i}. {button_text} (action_id: {action_id}, style: {style}, confirm: {has_confirm})"
+        # Test the new email mismatch message
+        result = builder.build_email_mismatch_message(
+            requestor_info=requestor_info,
+            raw_order_number="42291",
+            order_customer_email="julialsaltzman@gmail.com",
+            sheet_link="https://docs.google.com/spreadsheets/d/test/edit#gid=1&range=A6",
+            order_data={"order": {"line_items": [{"title": "Kickball League"}]}},
         )
 
-    print()
-    print("🔍 BUTTON DETAILS:")
-    print("-" * 40)
-    for i, button in enumerate(action_buttons, 1):
-        print(f"Button {i}: {json.dumps(button, indent=2)}")
+        print("📧 NEW EMAIL MISMATCH MESSAGE:")
+        print("-" * 40)
+        print("Slack Text:", result.get("slack_text", "N/A"))
+        print()
+        print("Message Text:")
+        print(result.get("text", "No text"))
         print()
 
-    return result
+        action_buttons = result.get("action_buttons", [])
+        print(f"🔘 Action Buttons ({len(action_buttons)}):")
+        for i, button in enumerate(action_buttons, 1):
+            button_text = button.get("text", {}).get("text", "No text")
+            action_id = button.get("action_id", "No ID")
+            style = button.get("style", "default")
+            has_confirm = "confirm" in button
+            print(
+                f"  {i}. {button_text} (action_id: {action_id}, style: {style}, confirm: {has_confirm})"
+            )
+
+        print()
+        print("🔍 BUTTON DETAILS:")
+        print("-" * 40)
+        for i, button in enumerate(action_buttons, 1):
+            print(f"Button {i}: {json.dumps(button, indent=2)}")
+            print()
+
+        # Assert the test generated valid results
+        assert result is not None, "Result should not be None"
+        assert "text" in result, "Result should contain 'text' field"
+        assert "action_buttons" in result, "Result should contain 'action_buttons' field"
+        assert len(result["action_buttons"]) == 2, "Should have exactly 2 action buttons"
 
 
 def show_old_vs_new():

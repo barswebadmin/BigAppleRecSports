@@ -32,6 +32,7 @@ class TestWebhooksService:
         self.sample_product_data = {
             "id": 7350462185566,
             "title": "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025",
+            "handle": "big-apple-dodgeball-tuesday-open-division-fall-2025",
             "variants": [
                 {
                     "id": 41558875045982,
@@ -348,7 +349,14 @@ class TestWebhooksService:
         result = self.service.handle_shopify_webhook(headers, body)
 
         assert result["success"] is True
-        assert result["message"] == "Product still has inventory"
+        assert "still has inventory" in result["message"]
+        # Should include detailed product information
+        assert "product_info" in result
+        assert result["product_info"]["title"] == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
+        assert result["product_info"]["total_inventory"] == 42  # 10 + 11 + 21 + 0
+        assert result["product_info"]["sold_out"] is False
+        assert "admin.shopify.com" in result["product_info"]["admin_url"]
+        assert "myshopify.com/products/big-apple-dodgeball" in result["product_info"]["store_url"]
         mock_send.assert_not_called()
 
         # Should process complete pipeline when product is sold out (end-to-end flow)
@@ -362,8 +370,17 @@ class TestWebhooksService:
         result = self.service.handle_shopify_webhook(headers, body)
 
         assert result["success"] is True
-        assert result["message"] == "Product sold out, waitlist form updated"
+        assert "sold out" in result["message"] and "waitlist form updated" in result["message"]
+        # Should include detailed product information for sold out products
+        assert "product_info" in result
+        assert result["product_info"]["title"] == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
+        assert result["product_info"]["total_inventory"] == 0
+        assert result["product_info"]["sold_out"] is True
+        assert "admin.shopify.com" in result["product_info"]["admin_url"]
+        assert "myshopify.com/products/big-apple-dodgeball" in result["product_info"]["store_url"]
+        # Should include parsed product data and waitlist result
         assert result["parsed_product"]["sport"] == "Dodgeball"  # Now Title case
+        assert "waitlist_result" in result
         mock_send.assert_called_once()
 
         # Should handle invalid JSON gracefully (error handling integration)

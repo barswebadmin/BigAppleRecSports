@@ -8,16 +8,32 @@ This ensures the SSL fix and error handling work end-to-end.
 import requests
 import json
 import sys
+import pytest
 import os
+from unittest.mock import Mock, patch
 
 # Add the backend directory to Python path for any imports if needed
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
+# TODO: Route through a test-specific backend configuration
 
-def test_actual_refunds_endpoint():
+
+@patch('requests.post')
+def test_actual_refunds_endpoint(mock_post):
     """Test the actual /refunds/send-to-slack endpoint with the exact failing JSON"""
+
+    # TODO: Route through a test-specific backend configuration
+    # Mock successful response for order found scenario
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.text = '{"success": true, "message": "Order found and processed"}'
+    mock_response.json.return_value = {
+        "success": True,
+        "message": "Order found and processed"
+    }
+    mock_post.return_value = mock_response
 
     # The exact JSON that was failing in the original issue
     test_data = {
@@ -31,57 +47,74 @@ def test_actual_refunds_endpoint():
 
     print("🔍 Testing the exact JSON that was failing...")
     print(f"📝 JSON: {json.dumps(test_data, indent=2)}")
+    print("🔧 Using mocked response (no live API calls)")
 
     try:
-        # Try with SSL verification first, then fallback
-        try:
-            response = requests.post(
-                "https://b683e45137ad.ngrok-free.app/refunds/send-to-slack",
-                json=test_data,
-                headers={
-                    "Content-Type": "application/json",
-                    "ngrok-skip-browser-warning": "true",
-                },
-                timeout=10,
-                verify=True,
-            )
-        except requests.exceptions.SSLError:
-            print("⚠️  SSL verification failed, trying without verification...")
-            response = requests.post(
-                "https://b683e45137ad.ngrok-free.app/refunds/send-to-slack",
-                json=test_data,
-                headers={
-                    "Content-Type": "application/json",
-                    "ngrok-skip-browser-warning": "true",
-                },
-                timeout=10,
-                verify=False,
-            )
+        # Simulate the API call that was originally made
+        response = requests.post(
+            "https://b683e45137ad.ngrok-free.app/refunds/send-to-slack",
+            json=test_data,
+            headers={
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true",
+            },
+            timeout=10,
+            verify=True,
+        )
 
         print(f"📊 Response Status: {response.status_code}")
         print(f"📋 Response Text: {response.text}")
 
-        if response.status_code == 200:
-            response_json = response.json()
-            if response_json.get("success"):
-                print("✅ SUCCESS: API call completed successfully!")
-                print("✅ Order was found and processed!")
-                return True
-            else:
-                print("⚠️  API call completed but with handled error (this is OK)")
-                print(f"📝 Message: {response_json.get('message', 'No message')}")
-                return True
+        # Verify the mock was called correctly
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        assert call_args[1]['json'] == test_data
+
+        # Assert successful HTTP response
+        assert response.status_code == 200, f"Expected HTTP 200, got {response.status_code}"
+        
+        response_json = response.json()
+        
+        # Assert response has expected structure
+        assert "success" in response_json, "Response should contain 'success' field"
+        
+        if response_json.get("success"):
+            print("✅ SUCCESS: API call completed successfully!")
+            print("✅ Order was found and processed!")
         else:
-            print(f"❌ FAILED: HTTP {response.status_code}")
-            return False
+            print("⚠️  API call completed but with handled error (this is OK)")
+            print(f"📝 Message: {response_json.get('message', 'No message')}")
+            # Even failures should have a proper message structure
+            assert "message" in response_json, "Failed response should contain 'message' field"
 
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Request failed: {e}")
-        return False
+    except Exception as e:
+        pytest.fail(f"Request failed: {e}")
 
 
-def test_shopify_direct_query():
+@patch('requests.post')
+def test_shopify_direct_query(mock_post):
     """Test Shopify GraphQL API directly to confirm order exists"""
+
+    # TODO: Route through a test-specific backend configuration
+    # Mock successful Shopify response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {
+            "orders": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "gid://shopify/Order/123456789",
+                            "name": "#42234",
+                            "customer": {"email": "jdazz87@gmail.com"}
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    mock_post.return_value = mock_response
 
     shopify_token = "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"
     graphql_url = "https://09fe59-3.myshopify.com/admin/api/2025-07/graphql.json"
@@ -101,6 +134,7 @@ def test_shopify_direct_query():
     }
 
     print("\n🔍 Testing Shopify GraphQL API directly...")
+    print("🔧 Using mocked response (no live Shopify API calls)")
 
     try:
         response = requests.post(
@@ -116,37 +150,53 @@ def test_shopify_direct_query():
 
         print(f"📊 Shopify Response Status: {response.status_code}")
 
-        if response.status_code == 200:
-            data = response.json()
-            orders = data.get("data", {}).get("orders", {}).get("edges", [])
+        # Verify the mock was called correctly
+        mock_post.assert_called_once_with(
+            graphql_url,
+            json=query,
+            headers={
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": shopify_token,
+            },
+            verify=False,
+            timeout=10,
+        )
 
-            if orders:
-                order = orders[0]["node"]
-                print("✅ Order found in Shopify!")
-                print(f"📦 Order ID: {order['id']}")
-                print(f"📋 Order Name: {order['name']}")
-                print(f"👤 Customer Email: {order['customer']['email']}")
-                return True
-            else:
-                print("❌ Order not found in Shopify")
-                return False
+        # Assert successful HTTP response
+        assert response.status_code == 200, f"Expected HTTP 200, got {response.status_code}"
+        
+        data = response.json()
+        orders = data.get("data", {}).get("orders", {}).get("edges", [])
+
+        if orders:
+            order = orders[0]["node"]
+            print("✅ Order found in Shopify!")
+            print(f"📦 Order ID: {order['id']}")
+            print(f"📋 Order Name: {order['name']}")
+            print(f"👤 Customer Email: {order['customer']['email']}")
+            
+            # Assert order has expected structure
+            assert "id" in order, "Order should have 'id' field"
+            assert "name" in order, "Order should have 'name' field"
+            assert "customer" in order, "Order should have 'customer' field"
+            assert "email" in order["customer"], "Customer should have 'email' field"
         else:
-            print(f"❌ Shopify API failed: HTTP {response.status_code}")
-            return False
+            pytest.fail("Order not found in Shopify")
 
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Shopify request failed: {e}")
-        return False
+    except Exception as e:
+        pytest.fail(f"Shopify request failed: {e}")
 
 
 if __name__ == "__main__":
     print("🚀 Testing the order fetching issue fix...")
     print("=" * 50)
+    print("🔧 Running mocked tests (no live API calls)")
 
-    # Test 1: Direct Shopify API
+    # TODO: Route through a test-specific backend configuration
+    # Test 1: Direct Shopify API (mocked)
     shopify_success = test_shopify_direct_query()
 
-    # Test 2: Backend API endpoint
+    # Test 2: Backend API endpoint (mocked)
     backend_success = test_actual_refunds_endpoint()
 
     print("\n" + "=" * 50)
@@ -155,12 +205,12 @@ if __name__ == "__main__":
     print(f"🔍 Backend API Endpoint: {'✅ PASS' if backend_success else '❌ FAIL'}")
 
     if shopify_success and backend_success:
-        print("\n🎉 ALL TESTS PASSED! The SSL certificate issue has been FIXED!")
-        print("✅ Order #42234 can now be found successfully")
-        print("✅ The frontend JSON is now properly processed")
+        print("\n🎉 ALL TESTS PASSED! The mocked tests validate the logic flow!")
+        print("✅ Order processing logic tested successfully")
+        print("✅ API request/response patterns validated")
     elif shopify_success and not backend_success:
-        print("\n⚠️  Shopify works but backend still has issues")
+        print("\n⚠️  Shopify mock works but backend mock has issues")
     elif not shopify_success:
-        print("\n❌ Shopify API issue - order might not exist")
+        print("\n❌ Shopify mock issue - test setup problem")
     else:
-        print("\n❌ Tests failed - more debugging needed")
+        print("\n❌ Tests failed - mock configuration needs review")

@@ -63,6 +63,8 @@ class SlackService:
         self.refunds_utils = SlackRefundsUtils(self.orders_service, self.settings, self.message_builder)
         
         # Use mock API client during tests and development to prevent real Slack requests
+        logger.info(f"🔍 BACKEND DEBUG: env='{settings.environment}', test_mode={is_test_mode}, debug_mode={settings.is_debug_mode}")
+        
         if is_test_mode or settings.is_debug_mode:
             logger.info("🧪 Test/Debug mode detected - using MockSlackApiClient")
             self.api_client = MockSlackApiClient(

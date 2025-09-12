@@ -213,17 +213,16 @@ class SlackRefundsUtils:
             r"\*Product Title\*:\s*<[^|]+\|([^>]+)>",
             # Pattern 4: Product Title field with full Slack link
             r"\*Product Title\*:\s*(<[^>]+>)",
-            # Pattern 5: Sport/Season/Day field with Slack link - extract title from <URL|title>
-            r"\*Sport/Season/Day\*:\s*<[^|]+\|([^>]+)>",
-            # Pattern 6: Sport/Season/Day field with full Slack link
-            r"\*Sport/Season/Day\*:\s*(<[^>]+>)",
+            # Pattern 5: Product Title field with Slack link - extract title from <URL|title>
+            r"\*Product Title\*:\s*<[^|]+\|([^>]+)>",
+            # Pattern 6: Product Title field with full Slack link
+            r"\*Product Title\*:\s*(<[^>]+>)",
             # Pattern 7: Product title with link <URL|title> (extract title only)
             r"Product Title:\s*<[^|]+\|([^>]+)>",
-            r"Sport/Season/Day:\s*<[^|]+\|([^>]+)>",
             # Pattern 8: Product Title field (plain text)
             r"Product Title:\s*([^<\n]+)",
-            # Pattern 9: Sport/Season/Day field (plain text)
-            r"Sport/Season/Day:\s*([^<\n]+)",
+            # Pattern 9: Product Title field (plain text)
+            r"Product Title:\s*([^<\n]+)",
             # Pattern 10: Handle current format with Product Title link
             r"\*Product Title\*:\s*<[^|]*\|([^>]+)>\s*\n\s*\*Season Start Date\*:\s*([^\n]+)",
             # Pattern 11: Handle format without link in Product Title
@@ -234,8 +233,8 @@ class SlackRefundsUtils:
         product_link = None
         season_start_date = "Unknown"
 
-        # Try new combined patterns first (patterns 10-11)
-        for i, pattern in enumerate(patterns[9:], start=10):
+        # Try new combined patterns first (patterns 9-10)  
+        for i, pattern in enumerate(patterns[9:], start=9):
             season_match = re.search(pattern, message_text)
             if season_match:
                 product_title = season_match.group(1).strip()
@@ -794,7 +793,11 @@ class SlackRefundsUtils:
                         "channel_id": channel_id,
                         "thread_ts": thread_ts,
                         "slack_user_id": slack_user_id,
+                        "slack_user_name": slack_user_name,
                         "current_message_full_text": current_message_full_text,
+                        "requestor_first_name": requestor_name.get("first", ""),
+                        "requestor_last_name": requestor_name.get("last", ""),
+                        "requestor_email": requestor_email,
                     }
                 ),
                 "title": {"type": "plain_text", "text": "Custom Refund"},

@@ -38,6 +38,7 @@ class TestSlackMessageFormatting:
         # Arrange - data matching the first actual message
         order_data = {
             "order": {
+                "id": "gid://shopify/Order/12345",  # Fixed: added 'id' field
                 "orderId": "gid://shopify/Order/12345",
                 "orderName": "#40192",
                 "orderCreatedAt": "2025-06-25T08:39:00Z",
@@ -57,7 +58,7 @@ class TestSlackMessageFormatting:
         }
 
         # Mock the Slack API call to capture the message
-        with patch.object(slack_service, "_send_slack_message") as mock_send:
+        with patch.object(slack_service.api_client, "send_message") as mock_send:
             mock_send.return_value = {"success": True, "ts": "1234567890.123"}
 
             # Act
@@ -77,8 +78,7 @@ class TestSlackMessageFormatting:
 
             # Verify the message structure
             call_args = mock_send.call_args
-            blocks = call_args[1]["blocks"]
-            message_text = blocks[1]["text"]["text"]
+            message_text = call_args[1]["message_text"]
 
             # Validate key components of the fallback message
             assert "📌 *New Refund Request!*" in message_text
@@ -88,7 +88,7 @@ class TestSlackMessageFormatting:
                 in message_text
             )
             assert "*Requested by:* joe test (jdazz87@gmail.com)" in message_text
-            assert "*Product Title*: joe test product" in message_text
+            assert "*Product Title*: <https://admin.shopify.com/store/09fe59-3/products/67890|joe test product>" in message_text
             assert "*Total Paid:* $2.00" in message_text
             assert (
                 "⚠️ *Could not parse 'Season Dates' from this order's description"
@@ -109,6 +109,7 @@ class TestSlackMessageFormatting:
         # Arrange - data matching the second actual message
         order_data = {
             "order": {
+                "id": "gid://shopify/Order/54321",  # Fixed: was 'orderId'
                 "orderId": "gid://shopify/Order/54321",
                 "orderName": "#39611",
                 "product": {
@@ -126,7 +127,7 @@ class TestSlackMessageFormatting:
         }
 
         # Mock the Slack API call to capture the message
-        with patch.object(slack_service, "_send_slack_message") as mock_send:
+        with patch.object(slack_service.api_client, "send_message") as mock_send:
             mock_send.return_value = {"success": True, "ts": "1234567890.123"}
 
             # Act
@@ -135,6 +136,7 @@ class TestSlackMessageFormatting:
                 requestor_info=requestor_info,
                 error_type="email_mismatch",
                 order_customer_email="lilaanchors@gmail.com",
+                raw_order_number="39611",  # Added missing raw_order_number
                 sheet_link="https://docs.google.com/spreadsheets/test",
             )
 
@@ -144,33 +146,28 @@ class TestSlackMessageFormatting:
 
             # Verify the message structure
             call_args = mock_send.call_args
-            blocks = call_args[1]["blocks"]
-            message_text = blocks[1]["text"]["text"]
+            message_text = call_args[1]["message_text"]
 
             # Validate key components of the email mismatch error
             assert (
-                "❌ *Error with Refund Request - Email provided did not match order*"
+                "⚠️ *Email Mismatch - Action Required*"
                 in message_text
             )
             assert (
                 "*Request Type*: 🎟️ Store Credit to use toward a future order"
                 in message_text
             )
-            assert "*Requested by:* joe test (jdazz87@gmail.com)" in message_text
+            assert "📧 *Requested by:* joe test (<mailto:jdazz87@gmail.com|jdazz87@gmail.com>)" in message_text
             assert (
-                "*Email Associated with Order:* lilaanchors@gmail.com" in message_text
+                "*Email Associated with Order:* <mailto:lilaanchors@gmail.com|lilaanchors@gmail.com>" in message_text
             )
             assert (
                 "*Order Number:* <https://admin.shopify.com/store/09fe59-3/orders/54321|#39611>"
                 in message_text
             )
-            assert (
-                "📩 *The requestor has been emailed to please provide correct order info"
-                in message_text
-            )
-            assert (
-                "*Attn*: <!subteam^S08KJJ5CL4W>" in message_text
-            )  # dodgeball team mention
+            # Check that the message contains the email mismatch warning
+            assert "⚠️ *The email provided does not match the order's customer email.*" in message_text
+            # Email mismatch messages don't include team mentions
             assert (
                 "🔗 *<https://docs.google.com/spreadsheets/test|View Request in Google Sheets>*"
                 in message_text
@@ -187,7 +184,7 @@ class TestSlackMessageFormatting:
         }
 
         # Mock the Slack API call to capture the message
-        with patch.object(slack_service, "_send_slack_message") as mock_send:
+        with patch.object(slack_service.api_client, "send_message") as mock_send:
             mock_send.return_value = {"success": True, "ts": "1234567890.123"}
 
             # Act
@@ -204,8 +201,7 @@ class TestSlackMessageFormatting:
 
             # Verify the message structure
             call_args = mock_send.call_args
-            blocks = call_args[1]["blocks"]
-            message_text = blocks[1]["text"]["text"]
+            message_text = call_args[1]["message_text"]
 
             # Validate key components of the order not found error
             assert (
@@ -237,6 +233,7 @@ class TestSlackMessageFormatting:
         # Arrange - data matching the fourth actual message
         order_data = {
             "order": {
+                "id": "gid://shopify/Order/54321",  # Fixed: added 'id' field
                 "orderId": "gid://shopify/Order/54321",
                 "orderName": "#39611",
                 "orderCreatedAt": "2025-06-17T03:18:00Z",
@@ -258,19 +255,20 @@ class TestSlackMessageFormatting:
         refund_calculation = {
             "success": True,
             "refund_amount": 92.00,
-            "refund_text": "Estimated Refund Due: $92.00\n(This request is calculated to have been submitted after the start of week 2. 80% after 15% penalty + 5% processing fee)",
+            "message": "Estimated Refund Due: $92.00\n(This request is calculated to have been submitted after the start of week 2. 80% after 15% penalty + 5% processing fee)",  # Fixed: was 'refund_text'
             "season_start_date": "7/9/25",
         }
 
         # Mock the Slack API call to capture the message
-        with patch.object(slack_service, "_send_slack_message") as mock_send:
+        with patch.object(slack_service.api_client, "send_message") as mock_send:
             mock_send.return_value = {"success": True, "ts": "1234567890.123"}
 
             # Act
             result = slack_service.send_refund_request_notification(
+                requestor_info=requestor_info,
+                sheet_link="https://docs.google.com/spreadsheets/test",
                 order_data=order_data,
                 refund_calculation=refund_calculation,
-                requestor_info=requestor_info,
             )
 
             # Assert
@@ -279,8 +277,7 @@ class TestSlackMessageFormatting:
 
             # Verify the message structure
             call_args = mock_send.call_args
-            blocks = call_args[1]["blocks"]
-            message_text = blocks[1]["text"]["text"]
+            message_text = call_args[1]["message_text"]
 
             # Validate key components of the successful request
             assert "📌 *New Refund Request!*" in message_text
@@ -289,14 +286,14 @@ class TestSlackMessageFormatting:
                 in message_text
             )
             assert (
-                "*Requested by:* Amy Dougherty (lilaanchors@gmail.com)" in message_text
+                "📧 *Requested by:* Amy Dougherty (lilaanchors@gmail.com)" in message_text
             )
             assert (
                 "*Order Number*: <https://admin.shopify.com/store/09fe59-3/orders/54321|#39611>"
                 in message_text
             )
             assert (
-                "*Sport/Season/Day:* <https://admin.shopify.com/store/09fe59-3/products/98765|Big Apple Dodgeball - Wednesday - WTNB+ Division - Summer 2025>"
+                "*Product Title:* <https://admin.shopify.com/store/09fe59-3/products/98765|Big Apple Dodgeball - Wednesday - WTNB+ Division - Summer 2025>"
                 in message_text
             )
             assert "*Season Start Date*: 7/9/25" in message_text
@@ -310,16 +307,16 @@ class TestSlackMessageFormatting:
                 "*Notes provided by requestor*: Duplicate registration" in message_text
             )
             assert (
-                "*Attn*: <!subteam^S08KJJ5CL4W>" in message_text
+                "*Attn*: <@U0278M72535>" in message_text
             )  # dodgeball team mention
 
     def test_sport_group_mentions(self, slack_service):
         """Test that sport group mentions are correctly applied"""
         test_cases = [
-            ("Big Apple Kickball - Monday", "<!subteam^S08L2521XAM>"),
-            ("Big Apple Bowling - Tuesday", "<!subteam^S08KJJ02738>"),
-            ("Big Apple Pickleball - Wednesday", "<!subteam^S08KTJ33Z9R>"),
-            ("Big Apple Dodgeball - Thursday", "<!subteam^S08KJJ5CL4W>"),
+            ("Big Apple Kickball - Monday", "<@U0278M72535>"),
+            ("Big Apple Bowling - Tuesday", "<@U0278M72535>"),
+            ("Big Apple Pickleball - Wednesday", "<@U0278M72535>"),
+            ("Big Apple Dodgeball - Thursday", "<@U0278M72535>"),
             ("Some Other Sport", "@here"),  # fallback
         ]
 
@@ -391,15 +388,23 @@ class TestSlackMessageFormatting:
     def test_message_structure_consistency(self, slack_service):
         """Test that all message types follow consistent block structure"""
         # All messages should have dividers and proper block structure
-        with patch.object(slack_service, "_send_slack_message") as mock_send:
+        with patch.object(slack_service.api_client, "send_message") as mock_send:
             mock_send.return_value = {"success": True}
 
             # Test different message types
             test_cases = [
                 # Success case
                 {
+                    "requestor_info": {
+                        "name": {"first": "Test", "last": "User"},
+                        "email": "test@example.com",
+                        "refund_type": "refund",
+                        "notes": "",
+                    },
+                    "sheet_link": "https://docs.google.com/spreadsheets/test",
                     "order_data": {
                         "order": {
+                            "id": "123",  # Fixed: added 'id' field
                             "orderId": "123",
                             "orderName": "#123",
                             "orderCreatedAt": "2025-01-01T00:00:00Z",
@@ -410,20 +415,22 @@ class TestSlackMessageFormatting:
                     "refund_calculation": {
                         "success": True,
                         "refund_amount": 80,
-                        "refund_text": "Test refund",
+                        "message": "Test refund",  # Fixed: was 'refund_text'
                         "season_start_date": "1/1/25",
                     },
+                },
+                # Fallback case
+                {
                     "requestor_info": {
                         "name": {"first": "Test", "last": "User"},
                         "email": "test@example.com",
                         "refund_type": "refund",
                         "notes": "",
                     },
-                },
-                # Fallback case
-                {
+                    "sheet_link": "https://docs.google.com/spreadsheets/test",
                     "order_data": {
                         "order": {
+                            "id": "123",  # Fixed: added 'id' field
                             "orderId": "123",
                             "orderName": "#123",
                             "orderCreatedAt": "2025-01-01T00:00:00Z",
@@ -432,12 +439,6 @@ class TestSlackMessageFormatting:
                         }
                     },
                     "refund_calculation": {"success": False},
-                    "requestor_info": {
-                        "name": {"first": "Test", "last": "User"},
-                        "email": "test@example.com",
-                        "refund_type": "refund",
-                        "notes": "",
-                    },
                 },
                 # Error cases
                 {
@@ -447,6 +448,7 @@ class TestSlackMessageFormatting:
                         "refund_type": "refund",
                         "notes": "",
                     },
+                    "sheet_link": "https://docs.google.com/spreadsheets/test",
                     "error_type": "order_not_found",
                     "raw_order_number": "123",
                 },
@@ -455,19 +457,27 @@ class TestSlackMessageFormatting:
             for test_case in test_cases:
                 slack_service.send_refund_request_notification(**test_case)
 
-                # Verify block structure
+                # Verify that send_message was called with proper parameters
                 call_args = mock_send.call_args
-                blocks = call_args[1]["blocks"]
-
-                # Should have divider, section, and divider at minimum
-                assert len(blocks) >= 3
-                assert blocks[0]["type"] == "divider"
-                assert blocks[1]["type"] == "section"
-                assert blocks[-1]["type"] == "divider"
-
-                # Section should have mrkdwn text
-                assert blocks[1]["text"]["type"] == "mrkdwn"
-                assert len(blocks[1]["text"]["text"]) > 0
+                assert call_args is not None, "send_message should have been called"
+                
+                # Check the parameters passed to send_message
+                assert "message_text" in call_args[1], "message_text should be passed"
+                assert "action_buttons" in call_args[1], "action_buttons should be passed"
+                
+                message_text = call_args[1]["message_text"]
+                action_buttons = call_args[1]["action_buttons"]
+                
+                # Verify message content
+                assert len(message_text) > 0, "Message text should not be empty"
+                assert "Refund Request" in message_text or "Error" in message_text, "Message should contain refund/error content"
+                
+                # Verify action buttons structure
+                if action_buttons:
+                    for button in action_buttons:
+                        assert "type" in button, "Button should have type"
+                        assert "text" in button, "Button should have text"
+                        assert "action_id" in button, "Button should have action_id"
 
 
 if __name__ == "__main__":

@@ -122,6 +122,54 @@ async def handle_slack_interactions(request: Request):
                 return await slack_service.handle_restock_confirmation_submission(
                     payload
                 )
+            elif callback_id == "custom_refund_submit":
+                print("🧾 Received custom refund modal submission")
+
+                # Extract values from the modal input
+                values = payload["view"]["state"]["values"]
+                refund_amount = values["refund_input_block"][
+                    "custom_refund_amount"
+                ]["value"]
+
+                # Extract metadata
+                private_metadata = payload["view"].get("private_metadata")
+                if not private_metadata:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Missing private_metadata in view submission",
+                    )
+
+                metadata = json.loads(private_metadata)
+
+                # Extract requestor information from metadata or Slack user
+                slack_user_name = metadata.get("slack_user_name", "Unknown User")
+                requestor_name = {
+                    "first": metadata.get("requestor_first_name", ""),
+                    "last": metadata.get("requestor_last_name", "")
+                }
+                requestor_email = metadata.get("requestor_email", "")
+
+                # Build the request_data to match what process_refund expects
+                request_data = {
+                    "orderId": metadata["orderId"],
+                    "rawOrderNumber": metadata["rawOrderNumber"],
+                    "refundAmount": refund_amount,
+                    "refundType": metadata["refundType"],
+                    "orderCancelled": "false",
+                }
+
+                # Call process_refund with the updated amount
+                return await slack_service.handle_process_refund(
+                    request_data=request_data,
+                    channel_id=metadata["channel_id"],
+                    requestor_name=requestor_name,
+                    requestor_email=requestor_email,
+                    thread_ts=metadata["thread_ts"],
+                    slack_user_name=slack_user_name,
+                    current_message_full_text=metadata["current_message_full_text"],
+                    slack_user_id=payload["user"]["id"],
+                    trigger_id=payload.get("trigger_id"),
+                )
             else:
                 logger.warning(f"Unknown modal callback_id: {callback_id}")
                 return {"response_action": "clear"}
@@ -313,52 +361,6 @@ async def handle_slack_interactions(request: Request):
                         trigger_id,
                     )
 
-                # === STEP 2b: HANDLE CUSTOM REFUND MODAL SUBMISSION ===
-                if (
-                    payload
-                    and payload.get("type") == "view_submission"
-                    and payload.get("view", {}).get("callback_id")
-                    == "custom_refund_submit"
-                ):
-                    print("🧾 Received custom refund modal submission")
-
-                    # Extract values from the modal input
-                    values = payload["view"]["state"]["values"]
-                    refund_amount = values["refund_input_block"][
-                        "custom_refund_amount"
-                    ]["value"]
-
-                    # Extract metadata
-                    private_metadata = payload["view"].get("private_metadata")
-                    if not private_metadata:
-                        raise HTTPException(
-                            status_code=400,
-                            detail="Missing private_metadata in view submission",
-                        )
-
-                    metadata = json.loads(private_metadata)
-
-                    # Build the request_data to match what process_refund expects
-                    request_data = {
-                        "orderId": metadata["orderId"],
-                        "rawOrderNumber": metadata["rawOrderNumber"],
-                        "refundAmount": refund_amount,
-                        "refundType": metadata["refundType"],
-                        "orderCancelled": "false",
-                    }
-
-                    # Call process_refund with the updated amount
-                    return await slack_service.handle_process_refund(
-                        request_data=request_data,
-                        channel_id=metadata["channel_id"],
-                        requestor_name=requestor_name,
-                        requestor_email=requestor_email,
-                        thread_ts=metadata["thread_ts"],
-                        slack_user_name=metadata["slack_user_name"],
-                        current_message_full_text=metadata["current_message_full_text"],
-                        slack_user_id=payload["user"]["id"],
-                        trigger_id=payload.get("trigger_id"),
-                    )
 
                 # === EMAIL MISMATCH HANDLERS ===
                 elif action_id == "edit_request_details":

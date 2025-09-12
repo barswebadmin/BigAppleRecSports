@@ -26,20 +26,30 @@ def test_csv_to_objects():
     objects = csv_service.process_csv_input(TEST_CSV_DATA)
     print(f"📊 Converted {len(objects)} rows to objects")
     
+    # Assert we got the expected number of objects (all data rows, filtering happens later)
+    assert len(objects) == 6, f"Expected 6 objects (all data rows), got {len(objects)}"
+    
     # Test email extraction
     emails = csv_service.extract_emails_from_objects(objects, "personal email")
     print(f"📧 Extracted {len(emails)} emails from 'personal email' column")
     
+    # Assert we extracted the expected number of emails
+    assert len(emails) == 4, f"Expected 4 valid emails, got {len(emails)}"
+    
     # Display sample object
     if objects:
         print(f"📋 Sample object: {objects[0]}")
+        # Assert the first object has expected structure
+        assert "Personal Email" in objects[0], "Object should contain 'Personal Email' field"
     
     # Display extracted emails
     if emails:
         print(f"📧 Extracted emails: {emails}")
+        # Assert all extracted emails are valid
+        for email in emails:
+            assert "@" in email, f"Invalid email format: {email}"
     
     print("✅ CSV to objects conversion test completed")
-    return objects, emails
 
 def test_csv_info():
     """Test CSV info extraction"""
@@ -49,8 +59,19 @@ def test_csv_info():
     csv_info = csv_service.get_csv_info(TEST_CSV_DATA)
     
     print(f"📊 CSV Info: {csv_info}")
+    
+    # Assert CSV info contains expected fields
+    assert "total_rows" in csv_info, "CSV info should contain total_rows"
+    assert "data_rows_count" in csv_info, "CSV info should contain data_rows_count"
+    assert "total_columns" in csv_info, "CSV info should contain total_columns"
+    assert "email_columns" in csv_info, "CSV info should contain email_columns"
+    
+    # Assert expected values
+    assert csv_info["total_rows"] == 7, f"Expected 7 total rows, got {csv_info['total_rows']}"
+    assert csv_info["data_rows_count"] == 6, f"Expected 6 data rows, got {csv_info['data_rows_count']}"
+    assert csv_info["total_columns"] == 5, f"Expected 5 columns, got {csv_info['total_columns']}"
+    
     print("✅ CSV info test completed")
-    return csv_info
 
 def test_year_extraction():
     """Test year extraction from titles"""
