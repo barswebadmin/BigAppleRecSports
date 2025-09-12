@@ -1,4 +1,3 @@
-const SHOPIFY_ACCESS_TOKEN = "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";
 const SHOPIFY_GRAPHQL_URL = "https://09fe59-3.myshopify.com/admin/api/2025-01/graphql.json"
 const SHEET_ID = "1j_nZjp3zU2cj-3Xgv1uX-velcfr9vmGu7SIpwNbhRPQ";
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit#gid=794849966&range=`;
@@ -47,7 +46,7 @@ function sendSlackMessage(destination, message) {
     // Log Slack API error messages if any
     const slackError = responseJson.error || "Unknown Slack API error";
     throw new Error(`❌ Failed to send Slack message to ${destination.name}. Slack Error: ${slackError}`);
-  
+
   } catch (error) {
     Logger.log(`❌ Error sending message to Slack: ${error.message}`);
     throw new Error(`⚠️ The 'Process Payment Assistance and Payment Plans' workflow failed to send a Slack message: ${error.message}`);
@@ -149,8 +148,8 @@ const generateRepaymentDetails = ({ planDetails, matchingProductRow }) => {
         Logger.log(`half: ${halfwayDate}, end: ${seasonEndDate}, paymentAmount: ${paymentAmount}`)
         repaymentDetails.push(`Payment 1: $${paymentAmount} due on ${formatDate(halfwayDate)}`);
         repaymentDetails.push(`Payment 2: $${paymentAmount} due on ${formatDate(seasonEndDate)}`);
-    } 
-    
+    }
+
     else if (numOfPayments === 3) {
         const paymentAmount = (price / numOfPayments).toFixed(2);
         let paymentDate = new Date(); // Start with today

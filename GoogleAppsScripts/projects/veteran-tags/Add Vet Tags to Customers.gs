@@ -1,17 +1,16 @@
 const SHOPIFY_STORE = "09fe59-3.myshopify.com";
-const SHOPIFY_TOKEN = "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";
 const GRAPHQL_URL = `https://${SHOPIFY_STORE}/admin/api/2025-01/graphql.json`;
 
 // ✅ **Finds the row where a given field exists in Column A (case insensitive)**
 function getFieldValue(sheet, fieldName) {
   const data = sheet.getRange("A:A").getValues().flat(); // Get all values from Column A
   const rowIndex = data.findIndex(cell => cell && cell.toString().toLowerCase().includes(fieldName.toLowerCase()));
-  
+
   if (rowIndex === -1) {
     ui.alert(`⚠️ Missing value for ${fieldName}.`);
     return null;
   }
-  
+
   return sheet.getRange(rowIndex + 1, 2).getValue(); // Return value from Column B (same row)
 }
 
@@ -64,8 +63,8 @@ function getCustomerDetails(email) {
 // ✅ **Update Customer Tags on Shopify**
 function addVeteranTagToEmail(customerId, updatedTags) {
   const mutation = {
-    query: `mutation updateCustomerMetafields($input: CustomerInput!) { 
-      customerUpdate(input: $input) { customer { id tags } userErrors { message field } } 
+    query: `mutation updateCustomerMetafields($input: CustomerInput!) {
+      customerUpdate(input: $input) { customer { id tags } userErrors { message field } }
     }`,
     variables: { input: { id: customerId, tags: updatedTags } }
   };
@@ -92,7 +91,7 @@ function addVeteranTagToEmail(customerId, updatedTags) {
 // ✅ **Main Function**
 function addVeteranTagToCustomerEmails() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  
+
   // ✅ **Extract values dynamically**
   const fieldsToProcess = {
     sport: getFieldValue(sheet, "Sport"),
@@ -156,7 +155,7 @@ function addVeteranTagToCustomerEmails() {
   } catch (e) {
     ui.alert("⚠️ The inventory move schedule could not be updated.");
   }
-  
+
   const errors = [];
   const veteransList = [];
 
@@ -199,12 +198,11 @@ function addVeteranTagToCustomerEmails() {
     } catch(e) {
       ui.alert(`⚠️ Not all players could be emailed! Please see the following errors: ${e}`);
     }
-    
+
   }
-  
 
-  
-  
-  
+
+
+
+
 }
-

@@ -1,33 +1,3 @@
-const financialAssistanceSlackChannel = {
-  channelId: 'C08J219EXN0',
-  name: '#financial-assistance-and-payment-plans',
-  bearerToken: 'xoxb-2602080084-8610961250834-FPVrAJgSXAImytWSf2GKL0Zq'
-}
-
-const slackExecChannel = {
-  name: '#exec-leadership-2025',
-  channelId: 'C086GG1H9BK',
-  bearerToken: 'xoxb-2602080084-8601708038470-Z0eD6HhHG68MitN5xsfGstu5'
-}
-
-const slackWebChannel = {
-  name: '#web',
-  channelId: 'C02KAENF6',
-  bearerToken: 'xoxb-2602080084-8610974674770-K6rtRGsLT6obQfluL1fPpdEs'
-}
-
-const joeSlackDM = {
-  name: '@Joe Randazzo',
-  channelId: 'D026TPC6S3H',
-  bearerToken: 'xoxb-2602080084-8610961250834-FPVrAJgSXAImytWSf2GKL0Zq'
-}
-
-const joeTestChannel = {
-  name: "#joe-test",
-  channelId: "C092RU7R6PL",
-  bearerToken: 'xoxb-2602080084-8610961250834-FPVrAJgSXAImytWSf2GKL0Zq'
-}
-
 function sendPaymentPlanRequest(e,rowId) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const data = sheet.getDataRange().getValues();
@@ -57,10 +27,10 @@ function sendPaymentPlanRequest(e,rowId) {
 
   const getRowNumber = rowId => {
     const rowIndex = data.slice(1).findIndex(row => row[rowIdIndex] === rowId);
-    
+
     // If not found, return null
     if (rowIndex === -1) return null;
-    
+
     // Convert 0-based index to 1-based row number in the sheet
     return rowIndex + 2; // +2 to account for the header row (row 1)
 };
@@ -68,7 +38,7 @@ function sendPaymentPlanRequest(e,rowId) {
   const SHEET_ID = "1j_nZjp3zU2cj-3Xgv1uX-velcfr9vmGu7SIpwNbhRPQ";
   const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit#gid=794849966&range=`;
   const rowLink = `${SHEET_URL}${getColumnNumber(fullNameIndex)}${getRowNumber(rowId)}`;
-  
+
   const slackMessage = {
     text: `📌 *New Payment Plan Request Received!*`,
     blocks: [
@@ -78,13 +48,13 @@ function sendPaymentPlanRequest(e,rowId) {
           type: "mrkdwn",
           text: `\n
           *New Payment Plan Request!* \n\n
-          *Submitted on:* ${new Date(requestTimestamp).toLocaleString("en-US", { 
-              year: "2-digit", 
-              month: "numeric", 
-              day: "numeric", 
-              hour: "numeric", 
-              minute: "2-digit", 
-              hour12: true 
+          *Submitted on:* ${new Date(requestTimestamp).toLocaleString("en-US", {
+              year: "2-digit",
+              month: "numeric",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true
             })} \n
           *Player Name:* ${requestName}\n
           *Email:* ${requestEmail}\n
@@ -166,6 +136,5 @@ function sendPaymentPlanRequest(e,rowId) {
     Logger.log(`❌ Error sending Slack message: ${e.message}`);
     sendSlackMessage(financialAssistanceSlackChannel, { text: `⚠️ Slack Error: ${e.message}` });
   }
-  
-}
 
+}

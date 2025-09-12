@@ -20,7 +20,7 @@ sys.path.append(
 # TODO: Route through a test-specific backend configuration
 
 
-@patch('requests.post')
+@patch("requests.post")
 def test_actual_refunds_endpoint(mock_post):
     """Test the actual /refunds/send-to-slack endpoint with the exact failing JSON"""
 
@@ -31,7 +31,7 @@ def test_actual_refunds_endpoint(mock_post):
     mock_response.text = '{"success": true, "message": "Order found and processed"}'
     mock_response.json.return_value = {
         "success": True,
-        "message": "Order found and processed"
+        "message": "Order found and processed",
     }
     mock_post.return_value = mock_response
 
@@ -68,16 +68,18 @@ def test_actual_refunds_endpoint(mock_post):
         # Verify the mock was called correctly
         mock_post.assert_called_once()
         call_args = mock_post.call_args
-        assert call_args[1]['json'] == test_data
+        assert call_args[1]["json"] == test_data
 
         # Assert successful HTTP response
-        assert response.status_code == 200, f"Expected HTTP 200, got {response.status_code}"
-        
+        assert (
+            response.status_code == 200
+        ), f"Expected HTTP 200, got {response.status_code}"
+
         response_json = response.json()
-        
+
         # Assert response has expected structure
         assert "success" in response_json, "Response should contain 'success' field"
-        
+
         if response_json.get("success"):
             print("✅ SUCCESS: API call completed successfully!")
             print("✅ Order was found and processed!")
@@ -85,13 +87,15 @@ def test_actual_refunds_endpoint(mock_post):
             print("⚠️  API call completed but with handled error (this is OK)")
             print(f"📝 Message: {response_json.get('message', 'No message')}")
             # Even failures should have a proper message structure
-            assert "message" in response_json, "Failed response should contain 'message' field"
+            assert (
+                "message" in response_json
+            ), "Failed response should contain 'message' field"
 
     except Exception as e:
         pytest.fail(f"Request failed: {e}")
 
 
-@patch('requests.post')
+@patch("requests.post")
 def test_shopify_direct_query(mock_post):
     """Test Shopify GraphQL API directly to confirm order exists"""
 
@@ -107,7 +111,7 @@ def test_shopify_direct_query(mock_post):
                         "node": {
                             "id": "gid://shopify/Order/123456789",
                             "name": "#42234",
-                            "customer": {"email": "jdazz87@gmail.com"}
+                            "customer": {"email": "jdazz87@gmail.com"},
                         }
                     }
                 ]
@@ -116,8 +120,9 @@ def test_shopify_direct_query(mock_post):
     }
     mock_post.return_value = mock_response
 
-    shopify_token = "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"
-    graphql_url = "https://09fe59-3.myshopify.com/admin/api/2025-07/graphql.json"
+    shopify_token = os.getenv("SHOPIFY_TOKEN", "test_token")
+    shopify_store = os.getenv("SHOPIFY_STORE", "test-store.myshopify.com")
+    graphql_url = f"https://{shopify_store}/admin/api/2025-07/graphql.json"
 
     query = {
         "query": """{
@@ -163,8 +168,10 @@ def test_shopify_direct_query(mock_post):
         )
 
         # Assert successful HTTP response
-        assert response.status_code == 200, f"Expected HTTP 200, got {response.status_code}"
-        
+        assert (
+            response.status_code == 200
+        ), f"Expected HTTP 200, got {response.status_code}"
+
         data = response.json()
         orders = data.get("data", {}).get("orders", {}).get("edges", [])
 
@@ -174,7 +181,7 @@ def test_shopify_direct_query(mock_post):
             print(f"📦 Order ID: {order['id']}")
             print(f"📋 Order Name: {order['name']}")
             print(f"👤 Customer Email: {order['customer']['email']}")
-            
+
             # Assert order has expected structure
             assert "id" in order, "Order should have 'id' field"
             assert "name" in order, "Order should have 'name' field"
