@@ -1,13 +1,21 @@
-# Python
+# Python cache files (still generated in lambda-functions for performance)
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pyc
+*.pyo
 .Python
 env/
 venv/
 ENV/
 .venv/
+.pytest_cache/
+
+# Backend-specific: Prevent cache files (cleaner development)
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
 
 # IDE
 .vscode
@@ -26,6 +34,10 @@ Thumbs.db
 htmlcov/
 .tox/
 coverage_html/
+
+# Linter caches
+.ruff_cache/
+**/.ruff_cache/
 
 # Local development
 .env
@@ -49,3 +61,9 @@ backend.bak/shrimp-rules.md
 shrimp-rules.md
 SECRETS_BACKUP.env
 *.env
+
+# Generated shared utilities (auto-deployed, don't commit)
+lambda-functions/*/shared_utilities/
+
+# Development symlinks to shared utilities (don't commit)
+lambda-functions/*/shared_utilities_dev
