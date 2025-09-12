@@ -4,6 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
+      - '.github/workflows/deploy-self-contained-lambdas.yml'
       - 'lambda-functions/shopifyProductUpdateHandler/**'
       - 'shared-utilities/**'
   workflow_dispatch:

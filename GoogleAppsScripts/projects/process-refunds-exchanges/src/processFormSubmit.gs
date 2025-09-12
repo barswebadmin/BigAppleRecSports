@@ -123,9 +123,17 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
       request_submitted_at: requestSubmittedAt
     };
 
+    // Configure Slack routing parameters
+    const slackChannelName = 'joetest';
+    const mentionStrategy = 'user|joe';
+
+    // Build URL with proper encoding for query parameters
+    const queryParams = `?slackChannelName=${encodeURIComponent(slackChannelName)}&mentionStrategy=${encodeURIComponent(mentionStrategy)}`;
+    const targetUrl = `${getApiUrl()}/refunds/send-to-slack${queryParams}`;
+
     // Enhanced request logging
     Logger.log(`🚀 === BACKEND API REQUEST ===`);
-    Logger.log(`🌐 Target URL: ${getApiUrl()}/refunds/send-to-slack`);
+    Logger.log(`🌐 Target URL: ${targetUrl}`);
     Logger.log(`📦 Request Payload:`);
     Logger.log(JSON.stringify(payload, null, 2));
 
@@ -144,7 +152,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
     Logger.log(`   Payload Size: ${options.payload.length} characters`);
 
     Logger.log(`📡 Sending request to backend...`);
-    const response = UrlFetchApp.fetch(`${getApiUrl()}/refunds/send-to-slack`, options);
+    const response = UrlFetchApp.fetch(targetUrl, options);
 
     // Enhanced response logging
     Logger.log(`📥 === BACKEND API RESPONSE ===`);
