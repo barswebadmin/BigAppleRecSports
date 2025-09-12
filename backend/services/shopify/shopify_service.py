@@ -64,6 +64,15 @@ class ShopifyService:
 
     def _make_shopify_request(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Make a GraphQL request to Shopify"""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        # DEBUG: Log the request details
+        logger.info(f"🔗 Making Shopify request to: {self.graphql_url}")
+        logger.info(f"🔑 Headers: {self.headers}")
+        logger.info(f"📤 Query: {query}")
+
         try:
             response = requests.post(
                 self.graphql_url,
@@ -72,12 +81,16 @@ class ShopifyService:
                 timeout=30,
                 verify=True,  # Explicitly enable SSL verification
             )
+            logger.info(f"📥 Response status: {response.status_code}")
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            logger.info(f"📋 Response data: {result}")
+            return result
         except requests.exceptions.SSLError as ssl_error:
-            print(f"SSL Error - trying without verification: {ssl_error}")
+            logger.error(f"🚨 SSL Error - trying without verification: {ssl_error}")
             # Fallback: try without SSL verification (for development)
             try:
+                logger.warning("⚠️ Retrying Shopify request without SSL verification")
                 response = requests.post(
                     self.graphql_url,
                     headers=self.headers,
@@ -85,13 +98,16 @@ class ShopifyService:
                     timeout=30,
                     verify=False,
                 )
+                logger.info(f"📥 Fallback response status: {response.status_code}")
                 response.raise_for_status()
-                return response.json()
+                result = response.json()
+                logger.info(f"📋 Fallback response data: {result}")
+                return result
             except requests.RequestException as fallback_error:
-                print(f"Fallback request also failed: {fallback_error}")
+                logger.error(f"🚨 Fallback request also failed: {fallback_error}")
                 return None
         except requests.RequestException as e:
-            print(f"Request failed: {e}")
+            logger.error(f"🚨 Request failed: {e}")
             return None
 
     # Forwarding from ShopifyCustomerUtils
