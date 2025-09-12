@@ -60,7 +60,7 @@ class Settings:
 
     @property
     def graphql_url(self):
-        return f"https://{self.shopify_store}/admin/api/2025-07/graphql.json"
+        return f"https://{self.shopify_store}/admin/api/2025-01/graphql.json"
 
     @property
     def is_debug_mode(self) -> bool:
