@@ -3,22 +3,25 @@ name: Backend Version Management
 on:
   push:
     branches: [ main ]  # Only trigger on main branch (merges/deploys)
-    paths: 
+    paths:
+      - '.github/workflows/backend-version-increment.yml'
       - 'backend/**'
       - '!backend/version.py'
       - '!backend/CHANGELOG.md'
   pull_request:
     branches: [ main ]
-    paths: 
+    paths:
+      - '.github/workflows/backend-version-increment.yml'
       - 'backend/**'
       - '!backend/version.py'
       - '!backend/CHANGELOG.md'
+  workflow_dispatch:
 
 jobs:
   update-version:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -51,7 +54,7 @@ jobs:
           echo "is_merge=true" >> $GITHUB_OUTPUT
           echo "📝 This is a merge commit - will update version"
         else
-          echo "is_merge=false" >> $GITHUB_OUTPUT  
+          echo "is_merge=false" >> $GITHUB_OUTPUT
           echo "ℹ️  This is a regular commit - skipping version update"
         fi
 
@@ -158,4 +161,4 @@ jobs:
       env:
         SHOPIFY_STORE: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
-        ENVIRONMENT: test 
+        ENVIRONMENT: test
