@@ -8,15 +8,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Handle imports for both direct execution and module import
 try:
-    from .shopify import ShopifyService
-    from .csv_service import CSVService
+    from ..shopify import ShopifyService
+    from ..csv import CSVService
 except ImportError:
     try:
-        from .shopify import ShopifyService
-        from services.csv_service import CSVService
+        from services.shopify import ShopifyService
+        from services.csv.csv_service import CSVService
     except ImportError:
-        from .shopify import ShopifyService
-        from csv_service import CSVService
+        from services.shopify import ShopifyService
+        from services.csv.csv_service import CSVService
 
 class LeadershipService:
     def __init__(self):

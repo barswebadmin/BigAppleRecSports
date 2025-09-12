@@ -7,7 +7,7 @@ Tests the core webhook processing logic with real Shopify webhook data.
 import json
 import pytest
 from unittest.mock import patch, Mock
-from services.webhooks_service import WebhooksService
+from services.webhooks import WebhooksService
 
 
 class TestWebhooksService:
@@ -33,17 +33,17 @@ class TestWebhooksService:
         
         self.sample_product_data = {
             "id": 7350462185566,
-            "title": "joe test product - dodgeball",
+            "title": "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025",
             "variants": [
                 {
                     "id": 41558875045982,
                     "title": "Veteran Registration",
-                    "inventory_quantity": 0
+                    "inventory_quantity": 10
                 },
                 {
                     "id": 41558875078750,
                     "title": "Early Registration",
-                    "inventory_quantity": 0
+                    "inventory_quantity": 11
                 },
                 {
                     "id": 41558875111518,
@@ -148,29 +148,29 @@ class TestWebhooksService:
         }
         assert result == expected
         
-        # Should handle complex title with cleanup
+        # Should handle complex title with cleanup (missing day and division -> other_identifier)
         product_data = {"id": 123, "title": "Big Apple Sports Classic - Kickball - 2025 - Teammate Sign Up"}
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
-        
+
         expected = {
             "product_url": "https://admin.shopify.com/store/09fe59-3/products/123",
-            "sport": "Kickball",
-                "day": None,
-                "division": None,
-            "other_identifier": "Sports Classic - Teammate Sign Up"
+            "sport": None,
+            "day": None,
+            "division": None,
+            "other_identifier": "Sports Classic - Kickball - Teammate Sign Up"
         }
         assert result == expected
-        
-        # Should handle multi-sport titles
+
+        # Should handle multi-sport titles (missing day and division -> other_identifier)
         product_data = {"id": 456, "title": "Big Apple Kickball and Dodgeball - September tournament"}
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
-        
+
         expected = {
             "product_url": "https://admin.shopify.com/store/09fe59-3/products/456",
-            "sport": "Kickball and Dodgeball", 
-                "day": None,
-                "division": None,
-            "other_identifier": "September tournament"
+            "sport": None,
+            "day": None,
+            "division": None,
+            "other_identifier": "Kickball and Dodgeball - September tournament"
         }
         assert result == expected
         
@@ -186,7 +186,7 @@ class TestWebhooksService:
                 }
             },
             {
-                "title": "Kickball Sunday WTNB Winter",
+                "title": "Kickball Sunday WTNB Winter",  # Has all three components
                 "expected": {
                     "sport": "Kickball",
                     "day": "Sunday",
@@ -197,10 +197,19 @@ class TestWebhooksService:
             {
                 "title": "Random Product Title",  # No sport
                 "expected": {
-                "sport": None,
-                "day": None,
-                "division": None,
+                    "sport": None,
+                    "day": None,
+                    "division": None,
                     "other_identifier": "Random Product Title"
+                }
+            },
+            {
+                "title": "Big Apple Kickball Classic - Fall 2025",  # Has sport but missing day and division
+                "expected": {
+                    "sport": None,
+                    "day": None,
+                    "division": None,
+                    "other_identifier": "Kickball Classic"
                 }
             }
         ]
@@ -228,20 +237,28 @@ class TestWebhooksService:
         with patch.dict('os.environ', {'GAS_WAITLIST_FORM_WEB_APP_URL': 'https://test-url.com'}):
             service = WebhooksService()
             product_data = {
+                "product_url": "https://admin.shopify.com/store/09fe59-3/products/123",
+                "sport": "dodgeball",
+                "day": "monday", 
+                "division": "open",
+                "other_identifier": "Fall 2025"
+            }
+            
+            expected_camel_case = {
                 "productUrl": "https://admin.shopify.com/store/09fe59-3/products/123",
                 "sport": "dodgeball",
                 "day": "monday",
                 "division": "open",
                 "otherIdentifier": "Fall 2025"
             }
-            
+
             result = service.send_to_waitlist_form_gas(product_data)
-            
+
             assert result["success"] is True
             assert result["response"] == "Success"
             mock_post.assert_called_with(
                 'https://test-url.com',
-                json=product_data,
+                json=expected_camel_case,
                 timeout=30
             )
         
@@ -273,7 +290,7 @@ class TestWebhooksService:
 # They test that the webhook handler correctly coordinates multiple services
 # and handles the complete end-to-end processing pipeline.
 
-    @patch.object(WebhooksService, 'send_to_waitlist_form_gas')
+    @patch('services.webhooks.integrations.gas_client.GASClient.send_to_waitlist_form')
     def test_handle_shopify_webhook(self, mock_send):
         """Test webhook handler integration - orchestration and end-to-end flow"""
         mock_send.return_value = {"success": True, "response": "GAS success"}

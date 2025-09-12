@@ -6,7 +6,7 @@ Handles incoming Shopify webhooks for product changes (especially inventory upda
 
 from fastapi import APIRouter, Request, HTTPException
 import logging
-from services.webhooks_service import WebhooksService
+from services.webhooks import WebhooksService
 
 logger = logging.getLogger(__name__)
 

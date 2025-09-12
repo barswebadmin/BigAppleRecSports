@@ -3,7 +3,7 @@
 Test script for Leadership service functionality
 """
 
-from leadership_service import LeadershipService
+from ..leadership_service import LeadershipService
 
 def test_display_text_generation():
     """Test the display text generation with mock data"""

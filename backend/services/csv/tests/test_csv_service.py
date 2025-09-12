@@ -3,7 +3,7 @@
 Test script for CSV service functionality
 """
 
-from csv_service import CSVService
+from ..csv_service import CSVService
 
 # Test data mimicking what Google Sheets would send (with 'Personal Email' column)
 TEST_CSV_DATA = [

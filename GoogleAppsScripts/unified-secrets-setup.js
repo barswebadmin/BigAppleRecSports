@@ -57,8 +57,9 @@ function setupSecrets() {
     'WAITLIST_RESPONSES_URL': 'https://docs.google.com/spreadsheets/d/1wFoayUoIx1PPOO0TtuS0Jnwb5hoIbgCd_kebMeYNzGQ/edit?resourcekey=&gid=744639660#gid=744639660',
     
     // === GOOGLE APPS SCRIPT ENDPOINTS ===
-    'GAS_WAITLIST_SCRIPT_URL': 'https://script.google.com/macros/s/AKfycby2GMTxZkXKg19k-su5Mp9hN0smyzdKRXfoXOOOVZ0MCoPFox8oIeEukxpWriPBF7nz/exec',
+    'GAS_WAITLIST_FORM_WEB_APP_URL': 'https://script.google.com/macros/s/AKfycby2GMTxZkXKg19k-su5Mp9hN0smyzdKRXfoXOOOVZ0MCoPFox8oIeEukxpWriPBF7nz/exec',
     'GAS_PAYMENT_APPROVAL_URL': 'https://script.google.com/a/macros/bigapplerecsports.com/s/AKfycbywEaTZ5tj5d-rfhalRysMGcon6Dv_blhqk2Dq8EKnf0lCIPy20e3oUFuSD7hK8Vuj64A/exec',
+    'GAS_REFUNDS_WEBHOOK_URL': 'https://script.google.com/macros/s/AKfycbxuqCjZXZ5cxiqZBukccOpKW4FznLaHHU6VLjkl8lymd-bbItJHrxYiT5TuLXPN7GiA/exec',
     
     // === BRANDING ASSETS ===
     'BARS_LOGO_URL': 'https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481',
