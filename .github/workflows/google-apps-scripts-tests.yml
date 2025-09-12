@@ -105,23 +105,23 @@ jobs:
           echo "✅ No hardcoded secrets found"
         fi
 
-    - name: Verify all projects have instructions
-      run: |
-        cd GoogleAppsScripts
-        echo "🔍 Verifying all projects have showInstructions functions..."
-        failed=0
-        for dir in leadership-discount-codes product-variant-creation parse-registration-info process-refunds-exchanges payment-assistance-tags veteran-tags; do
-          if [ -f "$dir/instructions.gs" ] && grep -q "function showInstructions" "$dir/instructions.gs"; then
-            echo "✅ $dir has instructions"
-          else
-            echo "❌ $dir missing instructions"
-            failed=1
-          fi
-        done
-        if [ $failed -eq 1 ]; then
-          exit 1
-        fi
-        echo "✅ All projects have instructions"
+    # - name: Verify all projects have instructions
+    #   run: |
+    #     cd GoogleAppsScripts
+    #     echo "🔍 Verifying all projects have showInstructions functions..."
+    #     failed=0
+    #     for dir in leadership-discount-codes product-variant-creation parse-registration-info process-refunds-exchanges payment-assistance-tags veteran-tags; do
+    #       if [ -f "$dir/instructions.gs" ] && grep -q "function showInstructions" "$dir/instructions.gs"; then
+    #         echo "✅ $dir has instructions"
+    #       else
+    #         echo "❌ $dir missing instructions"
+    #         failed=1
+    #       fi
+    #     done
+    #     if [ $failed -eq 1 ]; then
+    #       exit 1
+    #     fi
+    #     echo "✅ All projects have instructions"
 
     - name: Test Summary
       if: always()

@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [ main ]
     paths: [ 'lambda-functions/**' ]
+  push:
+    branches: [ main, 'fix-*', 'feature-*', 'dev*' ]
+    paths: [ 'lambda-functions/**' ]
 jobs:
   test:
     runs-on: ubuntu-latest
