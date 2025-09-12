@@ -62,7 +62,7 @@ cd "$TEST_DIR"
 
 # Run with detailed output
 echo -e "${BLUE}📋 Test output:${NC}"
-if node test-runner.js 2>&1; then
+if node test-runner.mjs 2>&1; then
     echo -e "${GREEN}✅ All automated tests passed!${NC}"
     TEST_EXIT_CODE=0
 else

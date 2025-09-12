@@ -10,7 +10,7 @@ repos:
           - |
             echo "🧪 Testing CI Deployment Logic..."
 
-            # Test 1: Lambda Layer Workflow Restrictions
+            Test 1: Lambda Layer Workflow Restrictions
             echo "📋 Testing lambda layer workflow restrictions..."
             if grep -q "push:" .github/workflows/deploy-lambda-layer.yml; then
               echo "❌ FAIL: Lambda layer workflow should NOT trigger on push"

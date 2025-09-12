@@ -52,7 +52,8 @@ lambda-functions/tests/bars_common_utils
 *.zip
 
 # Raw Google Apps Script projects (contain sensitive data)
-RawGsProjects/
+node_modules/
+*/node_modules/
 
 # Temporary files
 *.tmp

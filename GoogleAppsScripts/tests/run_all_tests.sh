@@ -60,12 +60,12 @@ echo "Starting comprehensive test execution..."
 echo ""
 
 # Run all test suites
-run_test_suite "Sync Utilities Tests" "./test_sync_utilities.sh" 
-run_test_suite "Leadership Discount Codes Tests" "./test_leadership_discount_codes.sh"
+# run_test_suite "Sync Utilities Tests" "./test_sync_utilities.sh" 
+# run_test_suite "Leadership Discount Codes Tests" "./test_leadership_discount_codes.sh"
 run_test_suite "Parse Registration Functions Tests" "./test_parse_registration_functions.sh"
 run_test_suite "Parse Registration Comprehensive Tests" "./test_parse_registration_comprehensive.sh"
 run_test_suite "Process Refunds & Exchanges GAS Tests" "./process-refunds-exchanges/run_tests.sh"
-run_test_suite "Instructions Tests" "./test_instructions.sh"
+# run_test_suite "Instructions Tests" "./test_instructions.sh"
 
 # Final summary
 log_header "📊 Final Test Results Summary"

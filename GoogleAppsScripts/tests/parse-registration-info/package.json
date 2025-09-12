@@ -2,13 +2,13 @@
   "name": "parse-registration-info-tests",
   "version": "1.0.0",
   "description": "Automated tests for parse-registration-info Google Apps Script functions",
-  "main": "test-runner.js",
+  "main": "test-runner.mjs",
   "scripts": {
-    "test": "node test-runner.js",
-    "test:unit": "node test-runner.js --type=unit",
-    "test:integration": "node test-runner.js --type=integration",
-    "test:watch": "nodemon test-runner.js",
-    "test:coverage": "nyc node test-runner.js"
+    "test": "node test-runner.mjs",
+    "test:unit": "node test-runner.mjs --type=unit",
+    "test:integration": "node test-runner.mjs --type=integration",
+    "test:watch": "nodemon test-runner.mjs",
+    "test:coverage": "nyc node test-runner.mjs"
   },
   "dependencies": {
     "chai": "^4.3.7",

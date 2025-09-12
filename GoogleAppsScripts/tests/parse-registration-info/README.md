@@ -27,7 +27,7 @@ npm install
 ```
 GoogleAppsScripts/tests/parse-registration-info/
 ├── package.json              # Node.js dependencies and scripts
-├── test-runner.js            # Main automated test runner
+├── test-runner.mjs            # Main automated test runner
 ├── README.md                 # This documentation
 └── node_modules/             # Installed dependencies (created by npm install)
 ```
@@ -95,7 +95,7 @@ const validationFails = parserOutput !== targetExpected; // ✅ Detected!
 1. **Shell script** (`test_parse_registration_comprehensive.sh`) is called
 2. **Node.js availability** is checked
 3. **Dependencies** are installed if needed
-4. **Test runner** (`test-runner.js`) executes all tests
+4. **Test runner** (`test-runner.mjs`) executes all tests
 5. **Results** are reported with pass/fail status
 6. **Exit code** indicates overall success/failure
 
@@ -103,13 +103,13 @@ const validationFails = parserOutput !== targetExpected; // ✅ Detected!
 
 ### **Run Specific Test Types**
 ```bash
-node test-runner.js --type=unit         # Unit tests only
-node test-runner.js --type=integration  # Integration tests only
+node test-runner.mjs --type=unit         # Unit tests only
+node test-runner.mjs --type=integration  # Integration tests only
 ```
 
 ### **Verbose Output**
 ```bash
-node test-runner.js --verbose
+node test-runner.mjs --verbose
 ```
 
 ### **Watch Mode** (during development)
@@ -121,7 +121,7 @@ npm run test:watch
 
 ### **1. Add Test Function**
 ```javascript
-// In test-runner.js
+// In test-runner.mjs
 function testNewFeature() {
   console.log(`\n${colors.blue}${colors.bold}🆕 New Feature Tests${colors.reset}`);
   
