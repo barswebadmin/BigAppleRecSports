@@ -40,10 +40,26 @@ jobs:
       run: |
         echo "🧪 Running backend tests before deployment..."
         cd backend
+
+        # Set test environment variables
+        export SHOPIFY_STORE="test-store.myshopify.com"
+        export SHOPIFY_TOKEN="test_token"
+        export ENVIRONMENT="test"
+        export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
+
+        echo "🧪 Test environment setup:"
+        echo "  ENVIRONMENT=$ENVIRONMENT"
+        echo "  SHOPIFY_STORE=$SHOPIFY_STORE"
+
         python -m pytest tests/unit/ -v
         python -m pytest services/*/tests/ -v || true
         python -m pytest routers/tests/ -v || true
         echo "✅ Tests completed"
+      env:
+        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_TOKEN: test_token
+        ENVIRONMENT: test
+        SLACK_REFUNDS_BOT_TOKEN: test_slack_token
 
     - name: Trigger Render Deployment
       run: |
