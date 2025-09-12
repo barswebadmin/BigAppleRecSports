@@ -5,6 +5,7 @@ Tests the core webhook processing logic with real Shopify webhook data.
 """
 
 import json
+import os
 from unittest.mock import patch, Mock
 from services.webhooks import WebhooksService
 
@@ -154,8 +155,12 @@ class TestWebhooksService:
         }
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
+        # Get the expected store name from environment (same as the service uses)
+        shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
+        store_name = shopify_store.split(".")[0]
+
         expected = {
-            "product_url": "https://admin.shopify.com/store/09fe59-3/products/7450381877342",
+            "product_url": f"https://admin.shopify.com/store/{store_name}/products/7450381877342",
             "sport": "Dodgeball",
             "day": "Tuesday",
             "division": "Open",
@@ -171,7 +176,7 @@ class TestWebhooksService:
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
         expected = {
-            "product_url": "https://admin.shopify.com/store/09fe59-3/products/123",
+            "product_url": f"https://admin.shopify.com/store/{store_name}/products/123",
             "sport": None,
             "day": None,
             "division": None,
@@ -187,7 +192,7 @@ class TestWebhooksService:
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
         expected = {
-            "product_url": "https://admin.shopify.com/store/09fe59-3/products/456",
+            "product_url": f"https://admin.shopify.com/store/{store_name}/products/456",
             "sport": None,
             "day": None,
             "division": None,
@@ -252,9 +257,12 @@ class TestWebhooksService:
             assert (
                 result["other_identifier"] == case["expected"]["other_identifier"]
             ), f"Other ID mismatch for '{case['title']}'"
+            # Get the expected store name from environment (same as the service uses)
+            shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
+            store_name = shopify_store.split(".")[0]
             assert (
                 result["product_url"]
-                == "https://admin.shopify.com/store/09fe59-3/products/789"
+                == f"https://admin.shopify.com/store/{store_name}/products/789"
             )
 
     @patch("requests.post")
@@ -270,8 +278,11 @@ class TestWebhooksService:
             "os.environ", {"GAS_WAITLIST_FORM_WEB_APP_URL": "https://test-url.com"}
         ):
             service = WebhooksService()
+            # Get the expected store name from environment (same as the service uses)
+            shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
+            store_name = shopify_store.split(".")[0]
             product_data = {
-                "product_url": "https://admin.shopify.com/store/09fe59-3/products/123",
+                "product_url": f"https://admin.shopify.com/store/{store_name}/products/123",
                 "sport": "dodgeball",
                 "day": "monday",
                 "division": "open",
@@ -279,7 +290,7 @@ class TestWebhooksService:
             }
 
             expected_camel_case = {
-                "productUrl": "https://admin.shopify.com/store/09fe59-3/products/123",
+                "productUrl": f"https://admin.shopify.com/store/{store_name}/products/123",
                 "sport": "dodgeball",
                 "day": "monday",
                 "division": "open",
@@ -352,11 +363,17 @@ class TestWebhooksService:
         assert "still has inventory" in result["message"]
         # Should include detailed product information
         assert "product_info" in result
-        assert result["product_info"]["title"] == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
+        assert (
+            result["product_info"]["title"]
+            == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
+        )
         assert result["product_info"]["total_inventory"] == 42  # 10 + 11 + 21 + 0
         assert result["product_info"]["sold_out"] is False
         assert "admin.shopify.com" in result["product_info"]["admin_url"]
-        assert "myshopify.com/products/big-apple-dodgeball" in result["product_info"]["store_url"]
+        assert (
+            "myshopify.com/products/big-apple-dodgeball"
+            in result["product_info"]["store_url"]
+        )
         mock_send.assert_not_called()
 
         # Should process complete pipeline when product is sold out (end-to-end flow)
@@ -370,14 +387,23 @@ class TestWebhooksService:
         result = self.service.handle_shopify_webhook(headers, body)
 
         assert result["success"] is True
-        assert "sold out" in result["message"] and "waitlist form updated" in result["message"]
+        assert (
+            "sold out" in result["message"]
+            and "waitlist form updated" in result["message"]
+        )
         # Should include detailed product information for sold out products
         assert "product_info" in result
-        assert result["product_info"]["title"] == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
+        assert (
+            result["product_info"]["title"]
+            == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
+        )
         assert result["product_info"]["total_inventory"] == 0
         assert result["product_info"]["sold_out"] is True
         assert "admin.shopify.com" in result["product_info"]["admin_url"]
-        assert "myshopify.com/products/big-apple-dodgeball" in result["product_info"]["store_url"]
+        assert (
+            "myshopify.com/products/big-apple-dodgeball"
+            in result["product_info"]["store_url"]
+        )
         # Should include parsed product data and waitlist result
         assert result["parsed_product"]["sport"] == "Dodgeball"  # Now Title case
         assert "waitlist_result" in result
