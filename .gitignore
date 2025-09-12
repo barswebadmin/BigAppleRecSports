@@ -68,3 +68,10 @@ lambda-functions/*/shared_utilities/
 
 # Development symlinks to shared utilities (don't commit)
 lambda-functions/*/shared_utilities_dev
+
+# Google Apps Script temp files (build artifacts, don't commit)
+**/test_clasp_temp/
+**/test_deploy_temp/
+**/.deploy_temp/
+*_temp.sh
+test_*_temp.*
