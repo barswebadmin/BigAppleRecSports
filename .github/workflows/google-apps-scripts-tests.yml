@@ -2,6 +2,7 @@ name: Google Apps Scripts Tests
 
 on:
   push:
+    branches: [ main ]
     paths:
       - 'GoogleAppsScripts/**'
   pull_request:
