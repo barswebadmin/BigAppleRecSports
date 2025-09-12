@@ -48,7 +48,23 @@ jobs:
 
     - name: Run all tests using pytest
       run: |
-        make test
+        # Run unit tests
+        echo "🧪 Running unit tests with mocked services (no external API calls)..."
+        python -m pytest tests/unit/ -v
+
+        echo "🧪 Running service-specific unit tests..."
+        python -m pytest services/*/tests/ -v
+
+        echo "🧪 Running router unit tests..."
+        python -m pytest routers/tests/ -v
+
+        echo "🧪 Running Slack webhook tests..."
+        python -m pytest routers/tests/test_slack_router.py -v
+
+        echo "🧪 Running integration tests..."
+        python -m pytest tests/integration/ -v
+
+        echo "✅ All tests completed successfully!"
       env:
         SHOPIFY_STORE: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
