@@ -5,7 +5,7 @@ Standardized response formatting for Lambda functions
 import json
 import os
 import sys
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 def format_response(status_code: int, body: Any, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """

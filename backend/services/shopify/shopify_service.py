@@ -51,6 +51,7 @@ mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
 }
 """
 
+
 class ShopifyService:
     def __init__(self):
         self.shopify_customer_utils = ShopifyCustomerUtils(self._make_shopify_request)
@@ -58,7 +59,7 @@ class ShopifyService:
         self.graphql_url = settings.graphql_url
         self.headers = {
             "Content-Type": "application/json",
-            "X-Shopify-Access-Token": settings.shopify_token
+            "X-Shopify-Access-Token": settings.shopify_token,
         }
 
     def _make_shopify_request(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -68,33 +69,60 @@ class ShopifyService:
                 self.graphql_url,
                 headers=self.headers,
                 json=query,
-                timeout=30
+                timeout=30,
+                verify=True,  # Explicitly enable SSL verification
             )
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.SSLError as ssl_error:
+            print(f"SSL Error - trying without verification: {ssl_error}")
+            # Fallback: try without SSL verification (for development)
+            try:
+                response = requests.post(
+                    self.graphql_url,
+                    headers=self.headers,
+                    json=query,
+                    timeout=30,
+                    verify=False,
+                )
+                response.raise_for_status()
+                return response.json()
+            except requests.RequestException as fallback_error:
+                print(f"Fallback request also failed: {fallback_error}")
+                return None
         except requests.RequestException as e:
             print(f"Request failed: {e}")
             return None
-
 
     # Forwarding from ShopifyCustomerUtils
     def get_customer_with_tags(self, email: str) -> Optional[Dict[str, Any]]:
         return self.shopify_customer_utils.get_customer_with_tags(email)
 
-    def get_customer_id(self, email: str) -> Optional[str]:
-        return self.shopify_customer_utils.get_customer_id(email)
-
     def get_customers_batch(self, emails: list) -> Dict[str, Optional[Dict[str, Any]]]:
         return self.shopify_customer_utils.get_customers_batch(emails)
 
-    def add_tag_to_customer(self, customer_id: str, tag: str, existing_tags: Optional[list] = None) -> bool:
-        return self.shopify_customer_utils.add_tag_to_customer(customer_id, tag, existing_tags)
+    def add_tag_to_customer(
+        self, customer_id: str, tag: str, existing_tags: Optional[list] = None
+    ) -> bool:
+        return self.shopify_customer_utils.add_tag_to_customer(
+            customer_id, tag, existing_tags
+        )
 
     def create_segment(self, name: str, query: str) -> Optional[str]:
         return self.shopify_customer_utils.create_segment(name, query)
 
-    def create_discount_code(self, code: str, usage_limit: int, season: str, year: int, segment_id: str, discount_amount: float) -> bool:
-        return self.shopify_customer_utils.create_discount_code(code, usage_limit, season, year, segment_id, discount_amount)
+    def create_discount_code(
+        self,
+        code: str,
+        usage_limit: int,
+        season: str,
+        year: int,
+        segment_id: str,
+        discount_amount: float,
+    ) -> bool:
+        return self.shopify_customer_utils.create_discount_code(
+            code, usage_limit, season, year, segment_id, discount_amount
+        )
 
     # Forwarding from ShopifyOrderUtils
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
@@ -103,51 +131,74 @@ class ShopifyService:
     def get_order_details(self, order_id: str) -> Dict[str, Any]:
         return self.shopify_order_utils.get_order_details(order_id)
 
-    def create_refund(self, order_id: str, refund_amount: float, refund_type: str = "refund") -> Dict[str, Any]:
-        return self.shopify_order_utils.create_refund(order_id, refund_amount, refund_type)
-    
+    def create_refund(
+        self, order_id: str, refund_amount: float, refund_type: str = "refund"
+    ) -> Dict[str, Any]:
+        return self.shopify_order_utils.create_refund(
+            order_id, refund_amount, refund_type
+        )
+
     # Inventory management methods
     def get_inventory_item_and_quantity(self, variant_gid: str) -> Dict[str, Any]:
         """Get inventory item ID and available quantity for a given variant GID"""
         try:
             query = {
                 "query": GET_INVENTORY_ITEM_AND_QUANTITY,
-                "variables": {"variantId": variant_gid}
+                "variables": {"variantId": variant_gid},
             }
-            
+
             data = self._make_shopify_request(query)
-            
-            if not data or not data.get("data") or not data["data"].get("productVariant"):
-                raise ValueError(f"Could not get inventory info for variant {variant_gid}")
-            
+
+            if (
+                not data
+                or not data.get("data")
+                or not data["data"].get("productVariant")
+            ):
+                raise ValueError(
+                    f"Could not get inventory info for variant {variant_gid}"
+                )
+
             variant = data["data"]["productVariant"]
             return {
                 "success": True,
                 "inventoryItemId": variant["inventoryItem"]["id"],
-                "inventoryQuantity": variant["inventoryQuantity"]
+                "inventoryQuantity": variant["inventoryQuantity"],
             }
-            
+
         except Exception as e:
-            logger.error(f"Error getting inventory item and quantity for {variant_gid}: {str(e)}")
+            logger.error(
+                f"Error getting inventory item and quantity for {variant_gid}: {str(e)}"
+            )
             return {
                 "success": False,
                 "message": str(e),
                 "inventoryItemId": None,
-                "inventoryQuantity": None
+                "inventoryQuantity": None,
             }
-    
-    def adjust_inventory(self, inventory_item_id: str, delta: int, location_id: Optional[str] = None) -> Dict[str, Any]:
+
+    def adjust_inventory(
+        self, inventory_item_id: str, delta: int, location_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Adjust inventory using inventoryAdjustQuantities mutation"""
         try:
             # Use default location if not provided
             if not location_id:
-                location_id = getattr(settings, 'shopify_location_id', None)
+                location_id = getattr(settings, "shopify_location_id", None)
                 if not location_id:
-                    raise ValueError("SHOPIFY_LOCATION_ID is required for inventory adjustments")
-            
+                    raise ValueError(
+                        "SHOPIFY_LOCATION_ID is required for inventory adjustments"
+                    )
+
+                # Ensure location_id is in proper global ID format
+                if not location_id.startswith("gid://shopify/Location/"):
+                    location_id = f"gid://shopify/Location/{location_id}"
+
             from datetime import datetime
-            reference_uri = f"logistics://slackrefundworkflow/{datetime.utcnow().isoformat()}"
-            
+
+            reference_uri = (
+                f"logistics://slackrefundworkflow/{datetime.utcnow().isoformat()}"
+            )
+
             variables = {
                 "input": {
                     "reason": "correction",
@@ -157,36 +208,117 @@ class ShopifyService:
                         {
                             "delta": delta,
                             "inventoryItemId": inventory_item_id,
-                            "locationId": location_id
+                            "locationId": location_id,
                         }
-                    ]
+                    ],
                 }
             }
-            
-            query = {
-                "query": ADJUST_INVENTORY,
-                "variables": variables
-            }
-            
+
+            query = {"query": ADJUST_INVENTORY, "variables": variables}
+
             data = self._make_shopify_request(query)
-            
-            if not data or not data.get("data"):
-                raise ValueError("Invalid response from Shopify")
-            
-            user_errors = data["data"].get("inventoryAdjustQuantities", {}).get("userErrors", [])
+
+            # Enhanced debugging for Shopify response
+            logger.info(
+                f"🔍 Shopify inventory adjustment response: {json.dumps(data, indent=2) if data else 'None'}"
+            )
+
+            if not data:
+                raise ValueError("No response received from Shopify")
+
+            if "errors" in data:
+                error_msg = json.dumps(data["errors"], indent=2)
+                raise ValueError(f"Shopify GraphQL errors: {error_msg}")
+
+            if not data.get("data"):
+                raise ValueError(
+                    f"Invalid response structure from Shopify: {json.dumps(data, indent=2)}"
+                )
+
+            user_errors = (
+                data["data"].get("inventoryAdjustQuantities", {}).get("userErrors", [])
+            )
             if user_errors:
                 error_messages = [f"{e['field']}: {e['message']}" for e in user_errors]
-                raise ValueError("Inventory adjustment failed: " + '; '.join(error_messages))
-            
+                raise ValueError(
+                    "Inventory adjustment failed: " + "; ".join(error_messages)
+                )
+
             return {
                 "success": True,
                 "message": f"Successfully adjusted inventory by {delta}",
-                "data": data["data"]["inventoryAdjustQuantities"]
+                "data": data["data"]["inventoryAdjustQuantities"],
             }
-            
+
         except Exception as e:
             logger.error(f"Error adjusting inventory for {inventory_item_id}: {str(e)}")
-            return {
-                "success": False,
-                "message": str(e)
-            }
+            return {"success": False, "message": str(e)}
+
+    def get_customer_by_email(self, email: str) -> Dict[str, Any]:
+        """
+        Fetch customer data by email address
+
+        Args:
+            email: Customer email address
+
+        Returns:
+            Dict containing customer data or error information
+        """
+        try:
+            logger.info(f"🔍 Fetching customer data for email: {email}")
+
+            query = f"""
+            query {{
+                customers(first: 1, query: "email:{email}") {{
+                    edges {{
+                        node {{
+                            id
+                            firstName
+                            lastName
+                            email
+                            displayName
+                        }}
+                    }}
+                }}
+            }}
+            """
+
+            data = self._make_shopify_request({"query": query})
+
+            if not data:
+                logger.error("❌ No response from Shopify API")
+                return {
+                    "success": False,
+                    "message": "No response from Shopify API",
+                    "customer": None,
+                }
+
+            if "errors" in data:
+                error_msg = json.dumps(data["errors"], indent=2)
+                logger.error(f"❌ Shopify GraphQL errors: {error_msg}")
+                return {
+                    "success": False,
+                    "message": f"GraphQL errors: {error_msg}",
+                    "customer": None,
+                }
+
+            customers = data.get("data", {}).get("customers", {}).get("edges", [])
+
+            if not customers:
+                logger.info(f"📭 No customer found with email: {email}")
+                return {
+                    "success": True,
+                    "message": "No customer found",
+                    "customer": None,
+                }
+
+            customer = customers[0]["node"]
+            logger.info(
+                f"✅ Found customer: {customer.get('firstName', '')} {customer.get('lastName', '')} ({customer.get('email', '')})"
+            )
+
+            return {"success": True, "message": "Customer found", "customer": customer}
+
+        except Exception as e:
+            logger.error(f"❌ Error fetching customer by email {email}: {str(e)}")
+            return {"success": False, "message": str(e), "customer": None}

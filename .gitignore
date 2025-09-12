@@ -1,17 +1,25 @@
-# Python
+# Python cache files (still generated in lambda-functions for performance)
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pyc
+*.pyo
 .Python
 env/
 venv/
 ENV/
 .venv/
+.pytest_cache/
+
+# Backend-specific: Prevent cache files (cleaner development)
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
 
 # IDE
-.vscode/launch.json
-.vscode/tasks.json
+.vscode
+.vscode/*
 .idea/
 *.swp
 *.swo
@@ -27,6 +35,10 @@ htmlcov/
 .tox/
 coverage_html/
 
+# Linter caches
+.ruff_cache/
+**/.ruff_cache/
+
 # Local development
 .env
 .env.local
@@ -40,9 +52,26 @@ lambda-functions/tests/bars_common_utils
 *.zip
 
 # Raw Google Apps Script projects (contain sensitive data)
-RawGsProjects/
+node_modules/
+*/node_modules/
 
 # Temporary files
 *.tmp
 *.temp
-backend.bak/
+backend.bak/shrimp-rules.md
+shrimp-rules.md
+SECRETS_BACKUP.env
+*.env
+
+# Generated shared utilities (auto-deployed, don't commit)
+lambda-functions/*/shared_utilities/
+
+# Development symlinks to shared utilities (don't commit)
+lambda-functions/*/shared_utilities_dev
+
+# Google Apps Script temp files (build artifacts, don't commit)
+**/test_clasp_temp/
+**/test_deploy_temp/
+**/.deploy_temp/
+*_temp.sh
+test_*_temp.*

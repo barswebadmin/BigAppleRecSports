@@ -126,7 +126,6 @@ def run_coverage_tests():
             sys.executable, '-m', 'pip', 'install', 'coverage[toml]'
         ])
         # Re-import after installation
-        import coverage  # type: ignore
 
     test_dir = Path(__file__).parent
 

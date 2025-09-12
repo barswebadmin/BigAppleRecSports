@@ -5,9 +5,7 @@ Pytest configuration and shared fixtures for lambda function tests.
 import pytest
 import os
 import sys
-from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime, timedelta
-from typing import Dict, Any
+from unittest.mock import MagicMock, patch
 
 # Add lambda-functions to Python path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -39,6 +37,11 @@ def mock_shopify_env():
 @pytest.fixture
 def mock_boto3_client(aws_credentials):
     """Mock boto3 clients for AWS services"""
+    try:
+        import boto3
+    except ImportError:
+        pytest.skip("boto3 not installed - skipping AWS integration tests")
+    
     with patch('boto3.client') as mock_client:
         # Create mock clients for different services
         mock_scheduler = MagicMock()
@@ -126,7 +129,7 @@ def mock_shopify_utils():
     for mock in mocks:
         try:
             mock.stop()
-        except:
+        except:  # noqa: E722
             pass
 
 @pytest.fixture

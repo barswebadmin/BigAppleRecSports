@@ -3,7 +3,7 @@ Event parsing and validation utilities for Lambda functions
 """
 
 import json
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 def parse_event_body(event: Dict[str, Any]) -> Dict[str, Any]:
     """

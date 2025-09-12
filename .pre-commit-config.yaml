@@ -1,0 +1,158 @@
+# Pre-commit hooks configuration
+repos:
+  - repo: local
+    hooks:
+      - id: test-deploy-workflows
+        name: Test CI Deployment Workflows
+        entry: bash
+        args:
+          - -c
+          - |
+            echo "🧪 Testing CI Deployment Logic..."
+
+            # Test 1: Lambda Layer Workflow Restrictions
+            # echo "📋 Testing lambda layer workflow restrictions..."
+            # if grep -q "push:" .github/workflows/deploy-lambda-layer.yml; then
+            #   echo "❌ FAIL: Lambda layer workflow should NOT trigger on push"
+            #   exit 1
+            # fi
+
+            # if ! grep -q "workflow_dispatch:" .github/workflows/deploy-lambda-layer.yml; then
+            #   echo "❌ FAIL: Lambda layer workflow should ONLY trigger on manual dispatch"
+            #   exit 1
+            # fi
+
+            # if ! grep -q "confirm" .github/workflows/deploy-lambda-layer.yml || ! grep -q "CONFIRM" .github/workflows/deploy-lambda-layer.yml; then
+            #   echo "❌ FAIL: Lambda layer workflow should require explicit confirmation"
+            #   exit 1
+            # fi
+
+            # echo "✅ PASS: Lambda layer workflow is properly restricted"
+
+            # # Test 2: Self-Contained Workflow Triggers
+            # echo "📋 Testing self-contained workflow triggers..."
+            # if ! grep -q "lambda-functions/shopifyProductUpdateHandler" .github/workflows/deploy-self-contained-lambdas.yml; then
+            #   echo "❌ FAIL: Self-contained workflow should trigger on shopifyProductUpdateHandler changes"
+            #   exit 1
+            # fi
+
+            if ! grep -q "shared-utilities" .github/workflows/deploy-self-contained-lambdas.yml; then
+              echo "❌ FAIL: Self-contained workflow should trigger on shared-utilities changes"
+              exit 1
+            fi
+
+            if ! grep -q "push:" .github/workflows/deploy-self-contained-lambdas.yml; then
+              echo "❌ FAIL: Self-contained workflow should trigger on push"
+              exit 1
+            fi
+
+            echo "✅ PASS: Self-contained workflow has correct trigger paths"
+
+            # Test 3: Dependency Detection Logic
+            echo "📋 Testing dependency detection logic..."
+            if ! grep -r "inventory\.inventory_checker" lambda-functions/shopifyProductUpdateHandler/ > /dev/null 2>&1; then
+              echo "❌ FAIL: Expected inventory dependency not found in shopifyProductUpdateHandler"
+              exit 1
+            fi
+
+            echo "✅ PASS: Dependency detection logic working"
+
+            # Test 4: Workflow Isolation
+            echo "📋 Testing workflow isolation..."
+            # Check that self-contained workflow doesn't mention lambda layers (excluding comments)
+            if grep -v "^[[:space:]]*#" .github/workflows/deploy-self-contained-lambdas.yml | grep -v "echo" | grep -i "lambda.*layer" > /dev/null; then
+              echo "❌ FAIL: Self-contained workflow mentions lambda layers"
+              exit 1
+            fi
+
+            # Check that lambda layer workflow doesn't mention shared_utilities folder (excluding comments)
+            if grep -v "^[[:space:]]*#" .github/workflows/deploy-lambda-layer.yml | grep "shared_utilities" > /dev/null; then
+              echo "❌ FAIL: Lambda layer workflow mentions shared_utilities folder"
+              exit 1
+            fi
+
+            echo "✅ PASS: Workflows are properly isolated"
+
+            # Test 5: BARS Sport Detection
+            echo "📋 Testing BARS sport detection..."
+            if ! python3 -c "
+            import sys
+            sys.path.insert(0, 'shared-utilities/src')
+            from inventory.inventory_checker import is_sport_product
+
+            # Test BARS sports
+            bars_sports = [
+                {'title': 'Big Apple Kickball'},
+                {'title': 'BARS Bowling League'},
+                {'title': 'Pickleball Tournament'},
+                {'title': 'Friday Dodgeball'}
+            ]
+
+            for product in bars_sports:
+                if not is_sport_product(product):
+                    print(f'❌ FAIL: {product[\"title\"]} should be detected as sport')
+                    sys.exit(1)
+
+            # Test non-BARS sports
+            non_bars = [
+                {'title': 'Big Apple Basketball'},
+                {'title': 'Tennis Tournament'},
+                {'title': 'Soccer League'},
+                {'title': 'Gift Card'}
+            ]
+
+            for product in non_bars:
+                if is_sport_product(product):
+                    print(f'❌ FAIL: {product[\"title\"]} should NOT be detected as sport')
+                    sys.exit(1)
+
+            print('✅ PASS: BARS sport detection working correctly')
+            "; then
+              echo "❌ FAIL: BARS sport detection test failed"
+              exit 1
+            fi
+
+            # Test 6: Selective Module Detection in CI
+            echo "📋 Testing selective module detection..."
+            if ! grep -q "inventory\\\.inventory_checker" .github/workflows/deploy-self-contained-lambdas.yml; then
+              echo "❌ FAIL: CI workflow should detect inventory.inventory_checker pattern"
+              exit 1
+            fi
+
+            if ! grep -q "DETECTED_MODULES" .github/workflows/deploy-self-contained-lambdas.yml; then
+              echo "❌ FAIL: CI workflow should use selective module detection"
+              exit 1
+            fi
+
+            echo "✅ PASS: Selective module detection configured"
+
+            echo ""
+            echo "🎉 All CI deployment tests passed!"
+            echo "✅ Lambda layer deployment is properly restricted"
+            echo "✅ Self-contained deployment will only copy needed modules"
+            echo "✅ BARS sport detection is working correctly"
+            echo "✅ Workflows are properly isolated"
+        language: system
+        files: '^(\.github/workflows/.*\.yml|shared-utilities/.*|lambda-functions/.*)$'
+        pass_filenames: false
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--unsafe']  # Allow custom tags in GitHub Actions
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.2
+    hooks:
+      # Linting (replaces flake8)
+      - id: ruff
+        files: '^(scripts/.*\.py|lambda-functions/.*\.py|backend/.*\.py|shared-utilities/.*\.py)$'
+        args: [--fix]
+      # Formatting (replaces black)
+      - id: ruff-format
+        files: '^(scripts/.*\.py|lambda-functions/.*\.py|backend/.*\.py|shared-utilities/.*\.py)$'

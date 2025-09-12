@@ -2,7 +2,6 @@ __version__ = "1.1.0"
 
 import json
 import traceback
-from datetime import datetime
 from typing import Dict, Any
 
 from bars_common_utils.response_utils import format_response, format_error
@@ -133,7 +132,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             })
 
         # ❌ Catch-all for unhandled types
-        else:raise ValueError(f"Unsupported source→destination move: {source_type} → {dest_type}")
+        else:
+            raise ValueError(f"Unsupported source→destination move: {source_type} → {dest_type}")
 
     except Exception as e:
         print("❌ Exception occurred:", traceback.format_exc())

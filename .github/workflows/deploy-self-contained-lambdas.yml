@@ -1,0 +1,151 @@
+name: Deploy Self-Contained Lambda Functions
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lambda-functions/shopifyProductUpdateHandler/**'
+      - 'shared-utilities/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-self-contained:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Prepare Self-Contained Lambda Functions
+      run: |
+        echo "🚀 Preparing self-contained lambda functions for deployment..."
+
+        # List of self-contained lambda functions
+        SELF_CONTAINED_FUNCTIONS="shopifyProductUpdateHandler"
+
+        for FUNCTION in $SELF_CONTAINED_FUNCTIONS; do
+          echo "📦 Processing $FUNCTION..."
+
+          FUNCTION_DIR="lambda-functions/$FUNCTION"
+          SHARED_UTILS_TARGET="$FUNCTION_DIR/shared_utilities"
+
+          if [ ! -d "$FUNCTION_DIR" ]; then
+            echo "⚠️ Function $FUNCTION not found, skipping"
+            continue
+          fi
+
+          # Detect which shared utilities are actually needed by this function
+          echo "  🔍 Detecting shared utility dependencies for $FUNCTION..."
+          DETECTED_MODULES=""
+
+          if grep -r "inventory\.inventory_checker" "$FUNCTION_DIR"/*.py > /dev/null 2>&1; then
+            DETECTED_MODULES="$DETECTED_MODULES inventory"
+            echo "    📦 Found inventory utilities dependency"
+          fi
+
+          # Add more detection patterns here as needed for other shared modules
+          # if grep -r "other_module" "$FUNCTION_DIR"/*.py > /dev/null 2>&1; then
+          #   DETECTED_MODULES="$DETECTED_MODULES other_module"
+          #   echo "    📦 Found other_module dependency"
+          # fi
+
+          if [ -z "$DETECTED_MODULES" ]; then
+            echo "ℹ️ $FUNCTION doesn't use shared utilities, skipping"
+            continue
+          fi
+
+          echo "  📂 Copying only needed shared utilities to $FUNCTION..."
+
+          # Create shared_utilities directory in lambda function
+          mkdir -p "$SHARED_UTILS_TARGET"
+
+          # Copy only the detected modules
+          for MODULE in $DETECTED_MODULES; do
+            if [ -d "shared-utilities/src/$MODULE" ]; then
+              echo "    📋 Copying $MODULE module..."
+              mkdir -p "$SHARED_UTILS_TARGET/$MODULE"
+              cp -r "shared-utilities/src/$MODULE"/* "$SHARED_UTILS_TARGET/$MODULE/"
+
+              # Ensure module has __init__.py
+              touch "$SHARED_UTILS_TARGET/$MODULE/__init__.py"
+            else
+              echo "    ⚠️ Module $MODULE not found in shared-utilities/src"
+            fi
+          done
+
+          # Ensure root __init__.py exists
+          touch "$SHARED_UTILS_TARGET/__init__.py"
+
+          echo "  ✅ Shared utilities copied to $FUNCTION"
+          echo "  📋 Files copied:"
+          find "$SHARED_UTILS_TARGET" -name "*.py" | sed 's/^/    /'
+        done
+
+        echo "✅ All self-contained lambda functions prepared"
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy Lambda Functions
+      run: |
+        echo "🚀 Deploying self-contained lambda functions to AWS..."
+
+        SELF_CONTAINED_FUNCTIONS="shopifyProductUpdateHandler"
+
+        for FUNCTION in $SELF_CONTAINED_FUNCTIONS; do
+          echo "📦 Deploying $FUNCTION..."
+
+          FUNCTION_DIR="lambda-functions/$FUNCTION"
+
+          if [ ! -d "$FUNCTION_DIR" ]; then
+            echo "⚠️ Function $FUNCTION not found, skipping"
+            continue
+          fi
+
+          # Create deployment package
+          cd "$FUNCTION_DIR"
+
+          # Install dependencies if requirements.txt exists
+          if [ -f "requirements.txt" ]; then
+            echo "  📋 Installing dependencies..."
+            pip install -r requirements.txt -t .
+          fi
+
+          # Create deployment zip
+          echo "  📦 Creating deployment package..."
+          zip -r "../${FUNCTION}-deployment.zip" . -x "*.git*" "*/__pycache__/*" "*.pyc"
+
+          # Deploy to AWS Lambda
+          echo "  🚀 Deploying to AWS..."
+          aws lambda update-function-code \
+            --function-name "$FUNCTION" \
+            --zip-file "fileb://../${FUNCTION}-deployment.zip" \
+            --output table
+
+          echo "  ✅ $FUNCTION deployed successfully"
+
+          # Clean up
+          rm -f "../${FUNCTION}-deployment.zip"
+
+          cd ../../
+        done
+
+        echo "🎉 All self-contained lambda functions deployed successfully!"
+
+    - name: Cleanup
+      run: |
+        echo "🧹 Cleaning up deployment artifacts..."
+
+        # Remove shared_utilities folders (they were only for deployment)
+        find lambda-functions -name "shared_utilities" -type d -exec rm -rf {} + 2>/dev/null || true
+
+        echo "✅ Cleanup completed"

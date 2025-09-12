@@ -5,6 +5,7 @@ Simple test script for the orders API
 
 import sys
 import os
+import pytest
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from services.orders import OrdersService
@@ -39,14 +40,13 @@ def test_orders_service():
             print(f"⚠️ Order not found (expected for test): {result['message']}")
         
         print("✅ All OrdersService tests completed")
-        return True
         
     except Exception as e:
         print(f"❌ OrdersService test failed: {str(e)}")
         print(f"Error details: {e.__class__.__name__}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"OrdersService test failed: {str(e)}")
 
 def test_date_utils():
     """Test the date utility functions"""
@@ -71,13 +71,12 @@ def test_date_utils():
             print(f"Refund calculation - Amount: {refund_amount}, Text: {refund_text}")
         
         print("✅ Date utilities test completed")
-        return True
         
     except Exception as e:
         print(f"❌ Date utilities test failed: {str(e)}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"Date utilities test failed: {str(e)}")
 
 if __name__ == "__main__":
     print("=== BARS Orders API Test ===")

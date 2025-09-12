@@ -7,7 +7,7 @@ Tests the lambda layer functionality that's shared across functions.
 import pytest
 import json
 from datetime import datetime, time
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 import os
 
@@ -237,7 +237,7 @@ class TestRequestUtils:
     @patch('bars_common_utils.request_utils.datetime')
     def test_wait_until_next_minute(self, mock_datetime, mock_sleep):
         """Test waiting until next minute"""
-        from datetime import datetime, timedelta
+        from datetime import datetime
         
         # Create a real datetime object for 10:30:45 (45 seconds past the minute)
         base_time = datetime(2023, 1, 1, 10, 30, 45)
@@ -253,7 +253,7 @@ class TestRequestUtils:
     def test_wait_until_next_minute_already_at_start(self, mock_datetime,
                                                      mock_sleep):
         """Test when already at start of minute"""
-        from datetime import datetime, timedelta
+        from datetime import datetime
         
         # Create a real datetime object for 10:30:00 (0 seconds)
         base_time = datetime(2023, 1, 1, 10, 30, 0)

@@ -5,7 +5,6 @@ Date handling utilities for Lambda functions
 from datetime import datetime, timedelta
 from datetime import time as dt_time
 from typing import List, Dict, Optional
-from zoneinfo import ZoneInfo
 
 def parse_date(date_str: str, default_century: int = 2000) -> datetime:
     """

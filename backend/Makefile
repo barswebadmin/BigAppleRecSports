@@ -42,7 +42,7 @@ help:
 # Start the backend server
 start:
 	@echo "🚀 Starting backend server..."
-	python3 -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+	./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
 # Start ngrok tunnel (kills existing first)
 tunnel:
@@ -51,17 +51,31 @@ tunnel:
 	@sleep 1
 	ngrok http 8000
 
-# Development mode - start both server and tunnel
+# Development mode - start server, then open new terminal for tunnel
 dev:
 	@echo "🔧 Starting development environment..."
 	@pkill -f ngrok || true
 	@pkill -f uvicorn || true
 	@sleep 1
-	@python3 -m uvicorn main:app --reload --host 127.0.0.1 --port 8000 &
+	@echo "🚀 Starting backend server in current terminal..."
+	@echo "🌐 Opening new terminal for ngrok tunnel..."
+	@if command -v cursor >/dev/null 2>&1 && pgrep -f "Cursor.app" >/dev/null 2>&1; then \
+		echo "📱 Detected Cursor - opening new Cursor terminal..."; \
+		osascript -e 'tell application "Cursor" to activate' \
+			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
+			-e 'delay 1' \
+			-e 'tell application "System Events" to keystroke "cd backend && make tunnel"' \
+			-e 'tell application "System Events" to key code 36' & \
+	elif command -v code >/dev/null 2>&1 && pgrep -x "Code" >/dev/null 2>&1; then \
+		echo "📱 Detected VS Code - opening system terminal..."; \
+		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)\" && make tunnel"' & \
+	else \
+		echo "🖥️  Opening system terminal..."; \
+		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)\" && make tunnel"' & \
+	fi
 	@sleep 3
-	@ngrok http 8000 &
-	@echo "✅ Server and tunnel starting in background..."
-	@echo "📝 Check processes with: make status"
+	@echo "✅ Starting server now (tunnel will start in new terminal)..."
+	@./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
 # Stop all processes
 stop:
@@ -103,69 +117,69 @@ test-all: test-unit test-integration test-integration-error-codes test-integrati
 # Run unit tests (pytest-based tests) - NO external API calls
 test-unit:
 	@echo "🧪 Running unit tests with mocked services (no external API calls)..."
-	@python3 -m pytest tests/unit/ -v
+	@./venv/bin/python -m pytest tests/unit/ -v
 	@echo ""
 	@echo "🧪 Running service-specific unit tests..."
-	@python3 -m pytest services/*/tests/ -v
+	@./venv/bin/python -m pytest services/*/tests/ -v
 	@echo ""
 	@echo "🧪 Running router unit tests..."
-	@python3 -m pytest routers/tests/ -v
+	@./venv/bin/python -m pytest routers/tests/ -v
 	@echo ""
 	@echo "🧪 Running Slack webhook tests..."
-	@python3 -m pytest routers/tests/test_slack_router.py -v
+	@./venv/bin/python -m pytest routers/tests/test_slack_router.py -v
 
 # Run integration tests (API tests that require server)
 test-integration:
 	@echo "🧪 Running integration tests..."
 	@echo "Note: Make sure the server is running (make start)"
-	@python3 -m pytest tests/integration/ -v
+	@./venv/bin/python -m pytest tests/integration/ -v
 
 # Run error code integration tests (HTTP endpoint tests)
 test-integration-error-codes:
 	@echo "🧪 Running error code integration tests (requires running server)..."
 	@echo "Note: These tests make actual HTTP requests and may send to Slack"
-	@python3 -m pytest tests/integration/test_error_codes.py -v
+	@./venv/bin/python -m pytest tests/integration/test_error_codes.py -v
 
 # Run exception handling integration tests (HTTP requests)
 test-integration-exceptions:
 	@echo "🧪 Running exception handling integration tests..."
 	@echo "⚠️  Note: These make real HTTP requests and may send Slack messages"
-	@python3 tests/integration/test_mute_exceptions.py
+	@./venv/bin/python tests/integration/test_mute_exceptions.py
 	@echo ""
 	@echo "🧪 Running sheet link tests..."
-	@python3 tests/integration/test_sheet_link.py
+	@./venv/bin/python tests/integration/test_sheet_link.py
 
 # Run service layer tests
 test-services:
 	@echo "🧪 Running service layer tests..."
-	@python3 -m pytest services/tests/ -v
+	@./venv/bin/python -m pytest services/tests/ -v
 
 # Run API endpoint tests
 test-api:
 	@echo "🧪 Running API endpoint tests..."
-	@cd routers && python3 test_leadership_router.py
+	@cd routers && ./venv/bin/python test_leadership_router.py
 	@echo ""
 	@echo "🧪 Testing live API endpoints..."
 	@echo "Testing root endpoint:"
-	@curl -s http://127.0.0.1:8000/ | python3 -c "import sys, json; print(json.dumps(json.load(sys.stdin), indent=2))" || echo "❌ Server not running"
+	@curl -s http://127.0.0.1:8000/ | ./venv/bin/python -c "import sys, json; print(json.dumps(json.load(sys.stdin), indent=2))" || echo "❌ Server not running"
 	@echo ""
 	@echo "Testing leadership health:"
-	@curl -s http://127.0.0.1:8000/leadership/health | python3 -c "import sys, json; print(json.dumps(json.load(sys.stdin), indent=2))" || echo "❌ Server not running"
+	@curl -s http://127.0.0.1:8000/leadership/health | ./venv/bin/python -c "import sys, json; print(json.dumps(json.load(sys.stdin), indent=2))" || echo "❌ Server not running"
 
 # Run Slack message formatting tests
 test-slack:
 	@echo "🧪 Running Slack message formatting tests..."
-	@python3 run_slack_tests.py
+	@./venv/bin/python run_slack_tests.py
 
 # Run Slack webhook router tests
 test-slack-webhook:
 	@echo "🧪 Running Slack webhook router tests..."
-	@python3 run_slack_webhook_tests.py
+	@./venv/bin/python run_slack_webhook_tests.py
 
 # Run ALL Slack tests (webhook + message formatting)
 test-slack-all:
 	@echo "🧪 Running ALL Slack tests..."
-	@python3 run_slack_webhook_tests.py --all
+	@./venv/bin/python run_slack_webhook_tests.py --all
 
 # Run specific test file or test case
 test-specific:
@@ -180,13 +194,13 @@ test-specific:
 	@echo "🧪 Running specific test: $(TEST)"
 	@if echo "$(TEST)" | grep -q "::"; then \
 		echo "Running pytest test case: $(TEST)"; \
-		python3 -m pytest "$(TEST)" -v; \
+		./venv/bin/python -m pytest "$(TEST)" -v; \
 	elif echo "$(TEST)" | grep -q "test_slack_message_formatting.py"; then \
 		echo "Running Slack formatting tests..."; \
-		python3 -m pytest "$(TEST)" -v; \
+		./venv/bin/python -m pytest "$(TEST)" -v; \
 	elif echo "$(TEST)" | grep -q "\.py$$"; then \
 		echo "Running Python test file: $(TEST)"; \
-		python3 "$(TEST)"; \
+		./venv/bin/python "$(TEST)"; \
 	else \
 		echo "❌ Invalid test format. Use .py file or pytest::test_name format"; \
 		exit 1; \
@@ -195,23 +209,23 @@ test-specific:
 # Quick test - just the most critical tests
 test-quick:
 	@echo "🧪 Running quick tests..."
-	@python3 -m pytest test_error_codes_unit.py -v
-	@python3 -m pytest test_slack_message_formatting.py::TestSlackMessageFormatting::test_sport_group_mentions -v
+	@./venv/bin/python -m pytest test_error_codes_unit.py -v
+	@./venv/bin/python -m pytest test_slack_message_formatting.py::TestSlackMessageFormatting::test_sport_group_mentions -v
 
 # Test with coverage (requires coverage package)
 test-coverage:
 	@echo "🧪 Running tests with coverage..."
-	@python3 -m pip install coverage 2>/dev/null || true
-	@python3 -m coverage run -m pytest test_slack_message_formatting.py
-	@python3 -m coverage report
-	@python3 -m coverage html
+	@./venv/bin/python -m pip install coverage 2>/dev/null || true
+	@./venv/bin/python -m coverage run -m pytest test_slack_message_formatting.py
+	@./venv/bin/python -m coverage report
+	@./venv/bin/python -m coverage html
 	@echo "📊 Coverage report generated in htmlcov/"
 
 # Watch mode for tests (requires pytest-watch)
 test-watch:
 	@echo "🧪 Running tests in watch mode..."
-	@python3 -m pip install pytest-watch 2>/dev/null || true
-	@python3 -m ptw test_slack_message_formatting.py
+	@./venv/bin/python -m pip install pytest-watch 2>/dev/null || true
+	@./venv/bin/python -m ptw test_slack_message_formatting.py
 
 # =============================================================================
 # EXISTING TARGETS (preserved for backward compatibility)
@@ -227,17 +241,17 @@ status:
 	@ps aux | grep ngrok | grep -v grep || echo "❌ Ngrok tunnel not running"
 	@echo ""
 	@echo "Ngrok URL (if running):"
-	@curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['tunnels'][0]['public_url'] if data.get('tunnels') else '❌ No tunnels')" 2>/dev/null || echo "❌ Ngrok not accessible"
+	@curl -s http://localhost:4040/api/tunnels | ./venv/bin/python -c "import sys, json; data=json.load(sys.stdin); print(data['tunnels'][0]['public_url'] if data.get('tunnels') else '❌ No tunnels')" 2>/dev/null || echo "❌ Ngrok not accessible"
 
 # Get ngrok URL
 url:
-	@curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; data=json.load(sys.stdin); print('🌐 Ngrok URL:', data['tunnels'][0]['public_url']) if data.get('tunnels') else print('❌ No ngrok tunnel running')" 2>/dev/null || echo "❌ Ngrok not accessible"
+	@curl -s http://localhost:4040/api/tunnels | ./venv/bin/python -c "import sys, json; data=json.load(sys.stdin); print('🌐 Ngrok URL:', data['tunnels'][0]['public_url']) if data.get('tunnels') else print('❌ No ngrok tunnel running')" 2>/dev/null || echo "❌ Ngrok not accessible"
 
 # Version Management Commands
 version:
 	@echo "📈 Backend Version Information:"
 	@echo "=============================="
-	@python3 -c "from version import get_version_info; info = get_version_info(); print(f'Version: {info[\"version\"]}'); print(f'Build: {info[\"build\"]}'); print(f'Full: {info[\"full_version\"]}'); print(f'Updated: {info[\"last_updated\"]}'); print(f'Codename: {info[\"codename\"]}')"
+	@./venv/bin/python -c "from version import get_version_info; info = get_version_info(); print(f'Version: {info[\"version\"]}'); print(f'Build: {info[\"build\"]}'); print(f'Full: {info[\"full_version\"]}'); print(f'Updated: {info[\"last_updated\"]}'); print(f'Codename: {info[\"codename\"]}')"
 
 changelog:
 	@echo "📝 Recent Changelog Entries:"
@@ -246,4 +260,4 @@ changelog:
 
 version-bump:
 	@echo "🔄 Manually triggering version management..."
-	@python3 ../scripts/backend_version_manager.py 
+	@./venv/bin/python ../scripts/backend_version_manager.py 

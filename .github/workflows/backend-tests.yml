@@ -7,26 +7,26 @@ on:
       - 'backend/**'
       - '.github/workflows/backend-tests.yml'
   push:
-    branches: [ main ]
+    branches: [ main, 'fix-*', 'feature-*', 'dev*' ]
     paths:
       - 'backend/**'
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     defaults:
       run:
         working-directory: ./backend
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -34,22 +34,38 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    
+
     - name: Set up test environment variables
       run: |
         echo "SHOPIFY_STORE=test-store.myshopify.com" >> $GITHUB_ENV
         echo "SHOPIFY_TOKEN=test_token" >> $GITHUB_ENV
         echo "ENVIRONMENT=test" >> $GITHUB_ENV
-    
+
     - name: Run all tests using pytest
       run: |
-        make test
+        # Run unit tests
+        echo "🧪 Running unit tests with mocked services (no external API calls)..."
+        python -m pytest tests/unit/ -v
+
+        echo "🧪 Running service-specific unit tests..."
+        python -m pytest services/*/tests/ -v
+
+        echo "🧪 Running router unit tests..."
+        python -m pytest routers/tests/ -v
+
+        echo "🧪 Running Slack webhook tests..."
+        python -m pytest routers/tests/test_slack_router.py -v
+
+        echo "🧪 Running integration tests..."
+        python -m pytest tests/integration/ -v
+
+        echo "✅ All tests completed successfully!"
       env:
         SHOPIFY_STORE: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
-        ENVIRONMENT: test 
+        ENVIRONMENT: test

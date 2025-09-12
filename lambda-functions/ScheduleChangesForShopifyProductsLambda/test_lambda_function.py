@@ -3,7 +3,7 @@ Unit tests for ScheduleChangesForShopifyProductsLambda
 """
 
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from lambda_function import lambda_handler
 
 class TestScheduleChangesForShopifyProductsLambda:

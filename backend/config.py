@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 if os.getenv("ENVIRONMENT") != "production":
     load_dotenv()
 
+
 class Settings:
     def __init__(self):
         self.shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
@@ -13,20 +14,44 @@ class Settings:
         self.slack_refunds_bot_token = os.getenv("SLACK_REFUNDS_BOT_TOKEN")
         self.slack_signing_secret = os.getenv("SLACK_SIGNING_SECRET")
         self.environment = os.getenv("ENVIRONMENT", "production")
-        
+
+        # Slack channels configuration
+        self.slack_channels = {
+            "refund-requests": {
+                "channelId": "C08J1EN7SFR",
+                "name": "#registration-refunds",
+            },
+            "joe-test": {"channelId": "C092RU7R6PL", "name": "#joe-test"},
+        }
+
+        # Slack subgroups configuration
+        self.slack_subgroups = {
+            "kickball": "<!subteam^S08L2521XAM>",
+            "bowling": "<!subteam^S08KJJ02738>",
+            "pickleball": "<!subteam^S08KTJ33Z9R>",
+            "dodgeball": "<!subteam^S08KJJ5CL4W>",
+        }
+
+        # Slack users configuration
+        self.slack_users = {"joe": "<@U0278M72535>", "here": "@here"}
+
         # CORS settings
-        self.allowed_origins = [
-            "https://docs.google.com",  # Google Apps Script
-            "https://script.google.com",  # Google Apps Script
-            "https://barsbackend.onrender.com",  # Production domain
-            "http://localhost:8000",  # Local development
-            "http://127.0.0.1:8000",  # Local development
-        ] if self.environment == "production" else ["*"]
-        
+        self.allowed_origins = (
+            [
+                "https://docs.google.com",  # Google Apps Script
+                "https://script.google.com",  # Google Apps Script
+                "https://barsbackend.onrender.com",  # Production domain
+                "http://localhost:8000",  # Local development
+                "http://127.0.0.1:8000",  # Local development
+            ]
+            if self.environment == "production"
+            else ["*"]
+        )
+
         # Only require token in production, allow test tokens for CI
         if not self.shopify_token and self.environment == "production":
             raise ValueError("SHOPIFY_TOKEN environment variable is required")
-    
+
     @property
     def graphql_url(self):
         return f"https://{self.shopify_store}/admin/api/2025-07/graphql.json"
@@ -39,7 +64,7 @@ class Settings:
         Production mode: makes real API calls
         """
         return self.environment.lower() in ["development", "debug", "test"]
-    
+
     @property
     def is_production_mode(self) -> bool:
         """
@@ -48,4 +73,5 @@ class Settings:
         """
         return self.environment.lower() == "production"
 
-settings = Settings() 
+
+settings = Settings()

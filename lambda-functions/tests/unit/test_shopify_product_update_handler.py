@@ -29,7 +29,7 @@ shopify_handler_path = os.path.join(os.path.dirname(__file__), '../../shopifyPro
 sys.path.insert(0, shopify_handler_path)
 
 # Dynamically import the correct lambda_function to avoid cached imports
-import importlib.util
+import importlib.util  # noqa: E402
 spec = importlib.util.spec_from_file_location("lambda_function", 
                                                os.path.join(shopify_handler_path, "lambda_function.py"))
 if spec is None or spec.loader is None:
@@ -39,9 +39,9 @@ spec.loader.exec_module(lambda_module)
 lambda_handler = lambda_module.lambda_handler
 
 # Import other modules normally
-from sport_detection import (detect_sport, get_sold_out_image_url,  # type: ignore
+from sport_detection import (detect_sport, get_sold_out_image_url,  # type: ignore  # noqa: E402
                              is_all_closed, get_supported_sports)
-from shopify_image_updater import ShopifyImageUpdater  # type: ignore
+from shopify_image_updater import ShopifyImageUpdater  # type: ignore  # noqa: E402
 
 # Safety check: verify we imported the correct lambda handler
 try:
