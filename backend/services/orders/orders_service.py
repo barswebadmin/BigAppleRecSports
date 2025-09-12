@@ -88,14 +88,37 @@ class OrdersService:
                 }}"""
             }
 
+            # DEBUG: Log the exact query being sent
+            logger.info("🔍 === SHOPIFY ORDER SEARCH DEBUG ===")
+            logger.info("📤 Query being sent to Shopify:")
+            logger.info(f"   Search type: {search_type}")
+            logger.info(f"   GraphQL query: {query_str}")
+            logger.info(f"   Full query: {query}")
+
             result = self.shopify_service._make_shopify_request(query)
 
+            # DEBUG: Log the raw response
+            logger.info("📥 Raw Shopify response:")
+            logger.info(f"   Response type: {type(result)}")
+            logger.info(f"   Response: {result}")
+
             if not result or not result.get("data"):
+                logger.error(f"❌ No data in Shopify response: {result}")
                 return {"success": False, "message": "No orders found."}
 
             orders_edges = result["data"]["orders"]["edges"]
 
+            # DEBUG: Log what orders were found
+            logger.info(f"📋 Orders found: {len(orders_edges)}")
+            if orders_edges:
+                for i, edge in enumerate(orders_edges):
+                    order = edge["node"]
+                    logger.info(
+                        f"   Order {i+1}: name='{order.get('name')}', id='{order.get('id')}', createdAt='{order.get('createdAt')}'"
+                    )
+
             if not orders_edges:
+                logger.error(f"❌ No orders found in edges: {orders_edges}")
                 return {"success": False, "message": "No orders found."}
 
             # Format the orders
