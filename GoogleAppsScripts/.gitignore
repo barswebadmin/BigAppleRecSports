@@ -1,0 +1,17 @@
+# Google Apps Script files that may contain secrets
+*.json.bak
+.clasprc.json
+
+# Temporary files
+*.tmp
+*.log
+test_clasp_temp/
+test_deploy_temp/
+.deploy_temp/
+
+# IDE files
+.vscode/
+.idea/
+
+# macOS
+.DS_Store

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 from models.requests import ProcessLeadershipCSVRequest
-from services.leadership_service import LeadershipService
+from services.leadership import LeadershipService
 
 router = APIRouter(prefix="/leadership", tags=["leadership"])
 

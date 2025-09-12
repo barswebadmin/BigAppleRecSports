@@ -1,0 +1,16 @@
+{
+  "name": "process-refunds-exchanges-tests",
+  "version": "1.0.0",
+  "description": "Tests for Google Apps Script process-refunds-exchanges project",
+  "main": "test_form_submission.js",
+  "scripts": {
+    "test": "node test_form_submission.js",
+    "test:verbose": "node test_form_submission.js --verbose"
+  },
+  "devDependencies": {
+    "assert": "^2.0.0"
+  },
+  "keywords": ["google-apps-script", "testing", "refunds", "forms"],
+  "author": "BARS Development Team",
+  "license": "ISC"
+}

@@ -9,8 +9,6 @@ import re
 import subprocess
 import sys
 from datetime import datetime
-from pathlib import Path
-import json
 
 def get_git_root():
     """Get the git repository root directory"""
@@ -283,7 +281,7 @@ def main():
         if os.path.exists(changelog_file):
             subprocess.run(['git', 'add', changelog_file], check=True)
         
-        print(f"📝 Staged version and changelog files")
+        print("📝 Staged version and changelog files")
     
     print("🎉 Backend version management complete!")
 

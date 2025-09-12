@@ -6,13 +6,28 @@ This simulates what the Google Apps Script should do now
 
 import requests
 import json
+from unittest.mock import Mock, patch
 
 # Test configuration
 BACKEND_URL = "http://127.0.0.1:8000"
 
-def test_error_handling_with_mute_exceptions():
+# TODO: Route through a test-specific backend configuration
+
+@patch('requests.post')
+def test_error_handling_with_mute_exceptions(mock_post):
     """Test that non-200 status codes don't throw exceptions when muteHttpExceptions is used"""
     print("🧪 Testing error handling with muteHttpExceptions simulation...")
+    
+    # TODO: Route through a test-specific backend configuration
+    # Mock 406 error response for order not found
+    mock_response = Mock()
+    mock_response.status_code = 406
+    mock_response.text = '{"success": false, "message": "Order #99999999 not found in Shopify"}'
+    mock_response.json.return_value = {
+        "success": False,
+        "message": "Order #99999999 not found in Shopify"
+    }
+    mock_post.return_value = mock_response
     
     # Test order not found (406)
     payload = {
@@ -23,6 +38,8 @@ def test_error_handling_with_mute_exceptions():
         "notes": "",
         "sheet_link": "https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1435845892&range=A72"
     }
+    
+    print("🔧 Using mocked 406 response (no live backend calls)")
     
     try:
         # This simulates what Google Apps Script does with muteHttpExceptions: true

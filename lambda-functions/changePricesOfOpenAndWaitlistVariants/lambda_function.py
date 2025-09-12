@@ -1,8 +1,6 @@
 __version__ = "1.0.0"
 
 import json
-import urllib.request
-import traceback
 
 from validate_season_dates import validate_season_dates
 from update_shopify_price import update_shopify_price
