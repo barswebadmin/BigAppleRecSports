@@ -102,13 +102,12 @@ jobs:
                       zip -r "../${func_dir}.zip" .
                       cd ..
 
-                      # Update function configuration with layer and version in description
+                      # Update function configuration with version in description
                       echo "Updating function configuration for $func_dir..."
                       DESCRIPTION="Version ${VERSION} - Updated $(date '+%Y-%m-%d %H:%M:%S')"
                       aws lambda update-function-configuration \
                         --function-name "$func_dir" \
-                        --description "$DESCRIPTION" \
-                        --layers "$LAYER_VERSION"
+                        --description "$DESCRIPTION"
 
                       # Wait for update to complete
                       echo "Waiting for function configuration update to complete..."
