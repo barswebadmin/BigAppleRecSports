@@ -157,7 +157,7 @@ class ShopifyOrderUtils:
                     }
                 }
             """
-            variables = {
+            {
                 "input": {
                     "notify": True,
                     "orderId": order_id,

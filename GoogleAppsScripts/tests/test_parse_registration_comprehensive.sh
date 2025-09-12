@@ -23,14 +23,14 @@ NC='\033[0m' # No Color
 if ! command -v node &> /dev/null; then
     echo -e "${RED}❌ Node.js not found. Please install Node.js to run automated tests.${NC}"
     echo "Falling back to basic validation checks..."
-    
+
     # Basic validation - check that key files exist
     PARSE_REG_DIR="../projects/parse-registration-info"
     if [ ! -d "$PARSE_REG_DIR" ]; then
         echo -e "${RED}❌ Parse registration info directory not found${NC}"
         exit 1
     fi
-    
+
     echo -e "${GREEN}✅ Parse registration info directory exists${NC}"
     echo -e "${YELLOW}⚠️  Install Node.js for comprehensive testing${NC}"
     exit 0
@@ -59,11 +59,15 @@ fi
 # Run the automated Node.js tests
 echo -e "${BLUE}🚀 Running automated Node.js tests...${NC}"
 cd "$TEST_DIR"
-if node test-runner.js; then
+
+# Run with detailed output
+echo -e "${BLUE}📋 Test output:${NC}"
+if node test-runner.js 2>&1; then
     echo -e "${GREEN}✅ All automated tests passed!${NC}"
     TEST_EXIT_CODE=0
 else
     echo -e "${RED}❌ Some automated tests failed!${NC}"
+    echo -e "${YELLOW}⚠️  Check the detailed output above for specific failures${NC}"
     TEST_EXIT_CODE=1
 fi
 cd ..

@@ -741,19 +741,6 @@ $95.00 *refund* issued by <@U67890>
 
     def test_block_order_consistency(self):
         """Test that message blocks always appear in the same order."""
-        expected_order = [
-            "📧 *Requested by:*",  # Always first in non-initial messages
-            "*Order Number*:",  # Order info
-            "*Product Title:*",  # Product info
-            "*Request Submitted At*:",  # Timing info
-            "*Order Created At:*:",  # Timing info
-            "*Season Start Date*:",  # Product timing
-            "*Total Paid:*:",  # Financial info
-            "🔗 *<https://docs.google.com",  # Google Sheets link
-            "✅",  # Status indicators
-            "$",  # Refund footer (if applicable)
-            "Current Inventory:",  # Inventory section (if applicable)
-        ]
 
         # This test would validate that these elements appear in the expected order
         # across all message formats - implementation would check relative positions

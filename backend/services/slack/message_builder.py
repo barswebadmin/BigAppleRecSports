@@ -19,13 +19,15 @@ class SlackMessageBuilder:
 
     def get_sport_group_mention(self, product_title: str) -> str:
         """Get the appropriate Slack group mention based on product title"""
-        title_lower = product_title.lower()
+        # TODO: Always return joe's user ID for all refund requests, regardless of environment
+        # Original logic commented out to prevent @here fallback:
+        # title_lower = product_title.lower()
+        # for sport, group_id in self.sport_groups.items():
+        #     if sport in title_lower:
+        #         return group_id
+        # return "@here"  # fallback
 
-        for sport, group_id in self.sport_groups.items():
-            if sport in title_lower:
-                return group_id
-
-        return "@here"  # fallback
+        return "<@U0278M72535>"  # Always tag joe for all refund requests
 
     def get_order_url(self, order_id: str, order_name: str) -> str:
         """Create Shopify admin order URL for Slack"""
@@ -466,8 +468,8 @@ class SlackMessageBuilder:
         original_timestamp: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create message for refund decision step (after cancel order or proceed without cancel)"""
-        first_name = requestor_name.get("first", "")
-        last_name = requestor_name.get("last", "")
+        requestor_name.get("first", "")
+        requestor_name.get("last", "")
 
         try:
             # Extract order information
@@ -665,7 +667,7 @@ class SlackMessageBuilder:
             # Safely get product info
             order = order_data.get("order", {})
             product = order.get("product", {})
-            product_id = product.get("productId", "")
+            product.get("productId", "")
 
             # Remove the duplicate season start date line as requested - keep only "Current Inventory:"
             text = "*Current Inventory:*\n"

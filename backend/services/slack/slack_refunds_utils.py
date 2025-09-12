@@ -233,7 +233,7 @@ class SlackRefundsUtils:
         product_link = None
         season_start_date = "Unknown"
 
-        # Try new combined patterns first (patterns 9-10)  
+        # Try new combined patterns first (patterns 9-10)
         for i, pattern in enumerate(patterns[9:], start=9):
             season_match = re.search(pattern, message_text)
             if season_match:
@@ -370,9 +370,7 @@ class SlackRefundsUtils:
                 )
             )
             if not order_result["success"]:
-                error_message = (
-                    f"❌ Failed to fetch order details: {order_result['message']}"
-                )
+                (f"❌ Failed to fetch order details: {order_result['message']}")
                 self.send_modal_error_to_user(
                     trigger_id=trigger_id,
                     error_message=f"Could not find order {raw_order_number}.\n\n**Error Details:**\n{order_result['message']}\n\nPlease verify the order number is correct.",
@@ -2102,12 +2100,12 @@ class SlackRefundsUtils:
                 .get("custom_message", {})
                 .get("value", "")
             )
-            include_staff_checkboxes = (
-                values.get("include_staff_info", {})
-                .get("include_staff_info", {})
-                .get("selected_options", [])
+            cc_bcc_option = (
+                values.get("cc_bcc_input", {})
+                .get("cc_bcc_option", {})
+                .get("selected_option", {})
+                .get("value", "no")
             )
-            include_staff_info = len(include_staff_checkboxes) > 0
 
             # Extract metadata
             private_metadata_str = payload.get("view", {}).get("private_metadata", "{}")
@@ -2126,7 +2124,7 @@ class SlackRefundsUtils:
             print(f"   Order: {raw_order_number}")
             print(f"   Requestor: {first_name} {last_name} ({requestor_email})")
             print(f"   Custom Message: {custom_message[:100]}...")
-            print(f"   Include Staff Info: {include_staff_info}")
+            print(f"   CC/BCC Option: {cc_bcc_option}")
             print(f"   Staff: {slack_user_name} ({slack_user_id})")
 
             # Send email via GAS doPost
@@ -2136,7 +2134,7 @@ class SlackRefundsUtils:
                 first_name=first_name,
                 last_name=last_name,
                 custom_message=custom_message,
-                include_staff_info=include_staff_info,
+                cc_bcc_option=cc_bcc_option,
                 slack_user_name=slack_user_name,
                 slack_user_id=slack_user_id,
             )
@@ -2150,7 +2148,7 @@ class SlackRefundsUtils:
                     last_name=last_name,
                     slack_user_name=slack_user_name,
                     custom_message_provided=bool(custom_message.strip()),
-                    include_staff_info=include_staff_info,
+                    cc_bcc_option=cc_bcc_option,
                 )
             )
 
@@ -2247,7 +2245,7 @@ class SlackRefundsUtils:
                 "callback_id": callback_id,
                 "title": {"type": "plain_text", "text": modal_title},
                 "blocks": modal_blocks,
-                "submit": {"type": "plain_text", "text": "Update & Re-validate"},
+                "submit": {"type": "plain_text", "text": "Deny & Send Email"},
                 "close": {"type": "plain_text", "text": "Cancel"},
             }
 
@@ -2514,18 +2512,18 @@ class SlackRefundsUtils:
 
         if is_email_mismatch:
             default_message = (
-                f"Hi {first_name},\\n\\n"
+                f"Hi {first_name},\n\n"
                 f"Your request for a {refund_type_text} has not been processed successfully. "
-                f"The email associated with the order number did not match the email you provided in the request. "
+                f"The email associated with the order number did not match the email you provided in the request, and we don't want to send your refund to the wrong person."
                 f"Please confirm you submitted your request using the same email address as is associated with your order - "
-                f"sign in to see your order history to find the correct order number - and try again.\\n\\n"
+                f"sign in to see your order history to find the correct order number - and try again.\n\n"
                 f"If you believe this is in error, please reach out to refunds@bigapplerecsports.com."
             )
         else:
             default_message = (
-                f"Hi {first_name},\\n\\n"
+                f"Hi {first_name},\n\n"
                 f"We're sorry, but we were not able to approve your refund request for Order {raw_order_number}. "
-                f"Please sign in to view your orders and try again if needed.\\n\\n"
+                f"Please sign in to view your orders and try again if needed.\n\n"
                 f"If you have any questions, please reach out to refunds@bigapplerecsports.com."
             )
 
@@ -2534,53 +2532,58 @@ class SlackRefundsUtils:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"🚫 *Deny Refund Request*\\n\\nYou are about to send a denial email to **{requestor_name}** ({requestor_email}) for order **{raw_order_number}** due to email mismatch.",
+                    "text": f"You are about to send a denial email to *{requestor_name}* ({requestor_email}) for order *{raw_order_number}*.",
                 },
             },
             {"type": "divider"},
             {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Subject Line:* \nBig Apple Rec Sports - Order {raw_order_number} - Refund Request Denied",
+                },
+            },
+            {
                 "type": "input",
                 "block_id": "custom_message_input",
-                "label": {"type": "plain_text", "text": "Custom Message (Optional)"},
+                "label": {
+                    "type": "plain_text",
+                    "text": "Email Body (edit to your liking)",
+                },
                 "element": {
                     "type": "plain_text_input",
                     "action_id": "custom_message",
                     "multiline": True,
                     "placeholder": {
                         "type": "plain_text",
-                        "text": "Enter a custom message to replace the default denial email...",
+                        "text": "Enter the email message content...",
                     },
                     "initial_value": default_message,
                 },
-                "optional": True,
+                "optional": False,
             },
             {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "*Staff Information*"},
-                "accessory": {
-                    "type": "checkboxes",
-                    "action_id": "include_staff_info",
+                "type": "input",
+                "block_id": "cc_bcc_input",
+                "label": {
+                    "type": "plain_text",
+                    "text": 'Do you want to be CC/BCC\'d on the email? (it will be sent from the web@ alias and signed "BARS Leadership")',
+                },
+                "element": {
+                    "type": "static_select",
+                    "action_id": "cc_bcc_option",
+                    "placeholder": {"type": "plain_text", "text": "Select an option"},
+                    "initial_option": {
+                        "text": {"type": "plain_text", "text": "No"},
+                        "value": "no",
+                    },
                     "options": [
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Include my name and email in the message",
-                            },
-                            "description": {
-                                "type": "plain_text",
-                                "text": "Email will be sent from web@bigapplerecsports.com but include your details",
-                            },
-                            "value": "include_staff_info",
-                        }
+                        {"text": {"type": "plain_text", "text": "No"}, "value": "no"},
+                        {"text": {"type": "plain_text", "text": "CC"}, "value": "cc"},
+                        {"text": {"type": "plain_text", "text": "BCC"}, "value": "bcc"},
                     ],
                 },
-            },
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"📧 *Email will be sent to:* {requestor_email}\\n📝 *Subject:* Big Apple Rec Sports - Order {raw_order_number} - Refund Request Denied",
-                },
+                "optional": False,
             },
         ]
 
@@ -2685,7 +2688,7 @@ class SlackRefundsUtils:
         first_name: str,
         last_name: str,
         custom_message: str,
-        include_staff_info: bool,
+        cc_bcc_option: str,
         slack_user_name: str,
         slack_user_id: str,
     ):
@@ -2710,7 +2713,7 @@ class SlackRefundsUtils:
                 "first_name": first_name,
                 "last_name": last_name,
                 "custom_message": custom_message,
-                "include_staff_info": include_staff_info,
+                "cc_bcc_option": cc_bcc_option,
                 "slack_user_name": slack_user_name,
                 "slack_user_id": slack_user_id,
             }
@@ -2791,7 +2794,7 @@ class SlackRefundsUtils:
         last_name: str,
         slack_user_name: str,
         custom_message_provided: bool,
-        include_staff_info: bool,
+        cc_bcc_option: str,
     ) -> str:
         """
         Build confirmation message for Slack after denial email is sent
@@ -2813,8 +2816,8 @@ class SlackRefundsUtils:
         if custom_message_provided:
             message += "📝 *Custom message included*\\n"
 
-        if include_staff_info:
-            message += "📧 *Staff contact information included*\\n"
+        if cc_bcc_option != "no":
+            message += f"📧 *Staff was {cc_bcc_option.upper()}'d on the email*\\n"
 
         message += (
             "\\n*The requestor has been notified that their refund request was denied.*"

@@ -26,12 +26,13 @@ const failedTests = [];
 
 // Mock Google Apps Script environment
 global.Logger = {
-  log: () => {} // Silent in tests
+  log: (message) => {
+    console.log(`[Logger]: ${message}`);
+  }
 };
 
-global.console = {
-  log: () => {} // Silent in tests  
-};
+// Don't silence console.log - logs are essential for debugging tests
+// global.console remains unchanged so we can see all output
 
 // Google Apps Script API mocks
 global.SpreadsheetApp = {
@@ -88,11 +89,11 @@ function assertFalse(value, message = '') {
 // Load Google Apps Script functions
 function loadGASFunctions() {
   const projectPath = path.join(__dirname, '../../projects/parse-registration-info');
-  
+
   // Load all .gs files and evaluate their JavaScript content
   const gasFiles = [
     'config/constants.gs',
-    'core/flagsParser.gs', 
+    'core/flagsParser.gs',
     'core/notesParser.gs',
     'core/rowParser.gs',
     'core/migration.gs',
@@ -101,27 +102,28 @@ function loadGASFunctions() {
   ];
 
   const loadedFunctions = {};
-  
+
   gasFiles.forEach(filePath => {
     const fullPath = path.join(projectPath, filePath);
     if (fs.existsSync(fullPath)) {
       const content = fs.readFileSync(fullPath, 'utf8');
-      
+
       // Remove Google Apps Script specific comments and execute
       const cleanContent = content
         .replace(/\/\/\/ <reference.*\/>/g, '') // Remove reference comments
         .replace(/\/\*\*[\s\S]*?\*\//g, '') // Remove JSDoc comments for now
         .replace(/Logger\.log\([^)]*\);?/g, ''); // Remove Logger.log calls
-      
+
       try {
         eval(cleanContent);
         console.log(`${colors.green}✓${colors.reset} Loaded ${filePath}`);
       } catch (error) {
         console.log(`${colors.red}✗${colors.reset} Failed to load ${filePath}: ${error.message}`);
+        throw error; // Re-throw to fail the test
       }
     }
   });
-  
+
   return loadedFunctions;
 }
 
@@ -142,22 +144,22 @@ function runTest(testName, testFunction) {
 // Date parsing tests
 function testDateParsing() {
   console.log(`\n${colors.blue}${colors.bold}📅 Date Parsing Tests${colors.reset}`);
-  
+
   runTest('Parse standard date MM/DD/YYYY', () => {
     const result = parseDateField_('01/15/2025');
     assertEquals(result, '2025-01-15');
   });
-  
+
   runTest('Parse single digit date M/D/YYYY', () => {
     const result = parseDateField_('1/5/2025');
     assertEquals(result, '2025-01-05');
   });
-  
+
   runTest('Parse invalid date returns empty', () => {
     const result = parseDateField_('invalid');
     assertEquals(result, '');
   });
-  
+
   runTest('Parse empty date returns empty', () => {
     const result = parseDateField_('');
     assertEquals(result, '');
@@ -167,27 +169,27 @@ function testDateParsing() {
 // Flags parsing tests (including your specific buddy signup case)
 function testFlagsParsing() {
   console.log(`\n${colors.blue}${colors.bold}🏷️ Flags Parsing Tests${colors.reset}`);
-  
+
   runTest('Detect "Buddy Sign Ups" (your specific case)', () => {
     const result = hasBuddySignup_('TUESDAY Open Social Small Ball Randomized - Buddy Sign Ups');
     assertTrue(result, 'Should detect "Buddy Sign Ups" in the text');
   });
-  
+
   runTest('Detect "Buddy Signup" (singular)', () => {
     const result = hasBuddySignup_('MONDAY League - Buddy Signup');
     assertTrue(result, 'Should detect "Buddy Signup" in the text');
   });
-  
+
   runTest('No buddy signup in regular text', () => {
     const result = hasBuddySignup_('TUESDAY Regular League');
     assertFalse(result, 'Should not detect buddy signup in regular text');
   });
-  
+
   runTest('Parse day from text', () => {
     const result = parseDay_('TUESDAY Open Social Small Ball');
     assertEquals(result, 'Tuesday');
   });
-  
+
   runTest('Parse buddy flag from text', () => {
     const result = parseFlags_('TUESDAY Open Social - Buddy Sign Ups');
     assertTrue(result.buddy, 'Should parse buddy flag as true');
@@ -197,12 +199,12 @@ function testFlagsParsing() {
 // Location normalization tests
 function testLocationNormalization() {
   console.log(`\n${colors.blue}${colors.bold}🏠 Location Normalization Tests${colors.reset}`);
-  
+
   runTest('Normalize John Jay College location', () => {
     const result = canonicalizeLocation_('John Jay College');
     assertEquals(result, 'John Jay College (59th and 10th)');
   });
-  
+
   runTest('Handle unknown location passthrough', () => {
     const result = canonicalizeLocation_('Unknown Gym');
     assertEquals(result, 'Unknown Gym');
@@ -212,17 +214,17 @@ function testLocationNormalization() {
 // Price parsing tests
 function testPriceParsing() {
   console.log(`\n${colors.blue}${colors.bold}💰 Price Parsing Tests${colors.reset}`);
-  
+
   runTest('Parse standard price format', () => {
     const result = parsePrice_('$45');
     assertEquals(result, '45');
   });
-  
+
   runTest('Parse price with decimals', () => {
     const result = parsePrice_('$45.50');
     assertEquals(result, '45.50');
   });
-  
+
   runTest('Parse price from descriptive text', () => {
     const result = parsePrice_('Registration fee is $45 per person');
     assertEquals(result, '45');
@@ -232,13 +234,13 @@ function testPriceParsing() {
 // Your specific buddy signup validation issue test
 function testBuddySignupValidationIssue() {
   console.log(`\n${colors.blue}${colors.bold}🚨 Buddy Signup Validation Issue Tests${colors.reset}`);
-  
+
   runTest('Buddy signup detection from your source text', () => {
     const sourceText = "TUESDAY Open Social Small Ball Randomized - Buddy Sign Ups";
     const detected = hasBuddySignup_(sourceText);
     assertTrue(detected, 'Should detect buddy signup from your specific text');
   });
-  
+
   runTest('Write validation catches "Buddy Signup" vs "Buddy Sign-up" mismatch', () => {
     // Simulate the validation mismatch you experienced
     const parserOutput = 'Buddy Signup';
@@ -248,27 +250,27 @@ function testBuddySignupValidationIssue() {
   });
 }
 
-// Write validation logic tests  
+// Write validation logic tests
 function testWriteValidationLogic() {
   console.log(`\n${colors.blue}${colors.bold}🔍 Write Validation Logic Tests${colors.reset}`);
-  
+
   runTest('Write validation detects data validation failures', () => {
     // Simulate write validation check
     const writeAttempts = [
       { header: 'Type', newValue: 'Buddy Signup', objectKey: 'type' },
       { header: 'Sport', newValue: 'Kickball', objectKey: 'sport' }
     ];
-    
+
     // Simulate what the sheet actually accepted (data validation changed "Buddy Signup")
     const actualWrittenValues = ['Kickball', 'Buddy Sign-up']; // Note the hyphen difference
-    
+
     const writeFailures = [];
-    
+
     for (let i = 0; i < writeAttempts.length; i++) {
       const attempt = writeAttempts[i];
       const actualValue = actualWrittenValues[i];
       const expectedValue = attempt.newValue;
-      
+
       if (actualValue !== expectedValue) {
         writeFailures.push({
           header: attempt.header,
@@ -278,7 +280,7 @@ function testWriteValidationLogic() {
         });
       }
     }
-    
+
     assertTrue(writeFailures.length > 0, 'Should detect write validation failures');
     assertEquals(writeFailures[0].header, 'Type', 'Should identify the Type field as failing');
   });
@@ -287,14 +289,14 @@ function testWriteValidationLogic() {
 // End-to-end integration tests
 function testEndToEndParsing() {
   console.log(`\n${colors.blue}${colors.bold}🧩 End-to-End Integration Tests${colors.reset}`);
-  
+
   runTest('Complete parsing pipeline with your data', () => {
     const sourceData = {
       A: 'Kickball',
       B: 'TUESDAY Open Social Small Ball Randomized - Buddy Sign Ups',
       C: 'League notes here',
       D: '01/15/2025',
-      E: '03/15/2025', 
+      E: '03/15/2025',
       F: '$45',
       G: '7:00 PM - 8:00 PM',
       H: 'John Jay College',
@@ -302,10 +304,10 @@ function testEndToEndParsing() {
       N: '01/12/2025',
       O: '01/14/2025'
     };
-    
+
     const unresolved = [];
     const parsed = parseSourceRowEnhanced_(sourceData, unresolved);
-    
+
     // Test key parsing results
     assertEquals(parsed.sport, 'Kickball', 'Sport should be parsed correctly');
     assertEquals(parsed.day, 'Tuesday', 'Day should be parsed correctly');
@@ -319,11 +321,11 @@ function testEndToEndParsing() {
 function main() {
   console.log(`${colors.blue}${colors.bold}🧪 Parse Registration Info - Automated Test Suite${colors.reset}`);
   console.log(`${colors.yellow}Running locally and CI/CD compatible tests${colors.reset}\n`);
-  
+
   // Load Google Apps Script functions
   console.log(`${colors.blue}📥 Loading Google Apps Script functions...${colors.reset}`);
   loadGASFunctions();
-  
+
   // Run all test suites
   testDateParsing();
   testFlagsParsing();
@@ -332,13 +334,13 @@ function main() {
   testBuddySignupValidationIssue();
   testWriteValidationLogic();
   testEndToEndParsing();
-  
+
   // Final summary
   console.log(`\n${colors.blue}${colors.bold}📊 Test Results Summary${colors.reset}`);
   console.log(`Total tests: ${testsRun}`);
   console.log(`${colors.green}Passed: ${testsPassed}${colors.reset}`);
   console.log(`${colors.red}Failed: ${testsFailed}${colors.reset}`);
-  
+
   if (testsFailed > 0) {
     console.log(`\n${colors.red}${colors.bold}❌ Failed Tests:${colors.reset}`);
     failedTests.forEach(test => {

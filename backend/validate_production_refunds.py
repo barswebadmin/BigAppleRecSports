@@ -83,7 +83,7 @@ def validate_services():
     print_header("SERVICE INITIALIZATION")
 
     try:
-        orders_service = OrdersService()
+        OrdersService()
         print_check("Orders Service", True, "Initialized successfully")
     except Exception as e:
         print_check("Orders Service", False, f"Failed: {e}")
@@ -118,7 +118,7 @@ def validate_shopify_connectivity():
         return False
 
     try:
-        orders_service = OrdersService()
+        OrdersService()
 
         # Test GraphQL endpoint accessibility
         import requests

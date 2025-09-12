@@ -82,7 +82,6 @@ class ShopifyCustomerUtils:
 
             # Build query for batch
             query_parts = []
-            variables = {}
 
             for j, email in enumerate(batch_emails):
                 alias = f"customer_{j}"

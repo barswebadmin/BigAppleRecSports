@@ -164,7 +164,7 @@ class SlackModalHandlers:
             )
 
             # Update the original Slack message
-            update_result = await self._update_slack_message(
+            await self._update_slack_message(
                 channel_id=original_channel_id,
                 message_ts=original_thread_ts,
                 message_text=denial_confirmation_message,

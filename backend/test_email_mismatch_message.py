@@ -5,7 +5,7 @@ Test script to show the new email mismatch message format with buttons
 
 import json
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 sys.path.append(".")
 
@@ -33,12 +33,19 @@ def test_email_mismatch_message():
     print("=" * 60)
 
     # Use proper context manager mocking instead of global sys.modules pollution
-    with patch("utils.date_utils.format_date_and_time", side_effect=mock_format_date_and_time), \
-         patch("utils.date_utils.parse_shopify_datetime", side_effect=mock_parse_shopify_datetime):
-        
+    with (
+        patch(
+            "utils.date_utils.format_date_and_time",
+            side_effect=mock_format_date_and_time,
+        ),
+        patch(
+            "utils.date_utils.parse_shopify_datetime",
+            side_effect=mock_parse_shopify_datetime,
+        ),
+    ):
         # Import inside the context manager to ensure proper mocking
         from services.slack.message_builder import SlackMessageBuilder
-        
+
         # Create a SlackMessageBuilder instance
         sport_groups = {
             "@bowling": ["bowling"],
@@ -93,8 +100,12 @@ def test_email_mismatch_message():
         # Assert the test generated valid results
         assert result is not None, "Result should not be None"
         assert "text" in result, "Result should contain 'text' field"
-        assert "action_buttons" in result, "Result should contain 'action_buttons' field"
-        assert len(result["action_buttons"]) == 2, "Should have exactly 2 action buttons"
+        assert (
+            "action_buttons" in result
+        ), "Result should contain 'action_buttons' field"
+        assert (
+            len(result["action_buttons"]) == 2
+        ), "Should have exactly 2 action buttons"
 
 
 def show_old_vs_new():
@@ -119,7 +130,7 @@ Notes provided by requestor: valid test
 
     print("✅ NEW MESSAGE (what you should see now):")
     print("━" * 40)
-    result = test_email_mismatch_message()
+    test_email_mismatch_message()
 
     print("\n📈 IMPROVEMENT SUMMARY:")
     print("-" * 40)

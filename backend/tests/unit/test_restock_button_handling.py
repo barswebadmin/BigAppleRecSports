@@ -343,7 +343,7 @@ Current Inventory:
         }
 
         # This should not raise any validation errors
-        result = await self.slack_refunds_utils.handle_restock_inventory(
+        await self.slack_refunds_utils.handle_restock_inventory(
             request_data=valid_request_data,
             action_id="restock_open",
             channel_id="C092RU7R6PL",
@@ -391,7 +391,7 @@ Current Inventory:
         }
 
         # Call the method
-        result = await self.slack_refunds_utils.handle_restock_inventory(
+        await self.slack_refunds_utils.handle_restock_inventory(
             request_data=self.sample_restock_request_data,
             action_id="restock_open",
             channel_id="C092RU7R6PL",

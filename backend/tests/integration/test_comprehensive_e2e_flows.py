@@ -1037,7 +1037,7 @@ class TestComprehensiveE2EFlows:
 
     def _validate_error_handling(self, message_state, error_step):
         """Validate error handling behavior."""
-        message = message_state["current_message"]
+        message_state["current_message"]
 
         # Error should be logged/handled without breaking the flow
         # The exact error handling depends on implementation
@@ -1110,24 +1110,10 @@ class TestComprehensiveE2EFlows:
 
         # Core message blocks that should appear in order (except initial message)
         if step_name != "initial":
-            expected_blocks = [
-                "📧 *Requested by:*",
-                "📦 *Order Number*:",
-                "🏷️ *Product Title*:",
-            ]
+            pass
         else:
             # Initial message has different order with header
-            expected_blocks = [
-                "📌 *New Refund Request!*",
-                "*Request Type*:",
-                "📧 *Requested by:*",
-                "*Request Submitted At*:",
-                "*Order Number*:",
-                "*Order Created At:*:",
-                "*Product Title:*",
-                "*Season Start Date*:",
-                "*Total Paid:*",
-            ]
+            pass
 
         # Validate essential blocks are present (order validation relaxed for comprehensive E2E)
         # Note: Complex E2E tests may have different formatting due to multiple transformations

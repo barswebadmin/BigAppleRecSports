@@ -3,7 +3,7 @@
 /**
  * Test suite for Google Apps Script form submission to backend API
  * Tests the form data extraction and backend API call flow
- * 
+ *
  * Run with: node test_form_submission.js
  */
 
@@ -70,9 +70,9 @@ function processFormSubmitViaDoPost(e) {
     const refundAnswer = getFieldValueByKeyword("do you want a refund");
     const refundOrCredit = refundAnswer.toLowerCase().includes("refund") ? "refund" : "credit";
     const requestNotes = getFieldValueByKeyword("note");
-    
+
     Logger.log(`📋 Form submission data extracted for order: ${rawOrderNumber}`);
-    
+
     // Call the existing backend processing function
     processWithBackendAPI(
       normalizeOrderNumber(rawOrderNumber),
@@ -83,9 +83,9 @@ function processFormSubmitViaDoPost(e) {
       requestNotes,
       MODE === 'debugApi'
     );
-    
+
     return ContentService.createTextOutput("Form submitted successfully").setMimeType(ContentService.MimeType.TEXT);
-    
+
   } catch (error) {
     Logger.log(`❌ Error processing form submission: ${error.toString()}`);
     throw error;
@@ -95,7 +95,7 @@ function processFormSubmitViaDoPost(e) {
 function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundOrCredit, requestNotes, isDebug) {
   try {
     const sheetLink = getRowLink(formattedOrderNumber, SHEET_ID, SHEET_GID);
-    
+
     const payload = {
       order_number: rawOrderNumber,
       requestor_name: requestorName,
@@ -104,12 +104,12 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
       notes: requestNotes,
       sheet_link: sheetLink
     };
-    
+
     Logger.log(`🚀 === BACKEND API REQUEST ===`);
     Logger.log(`🌐 Target URL: ${API_URL}/refunds/send-to-slack`);
     Logger.log(`📦 Request Payload:`);
     Logger.log(JSON.stringify(payload, null, 2));
-    
+
     const options = {
       method: 'POST',
       headers: {
@@ -118,15 +118,17 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
       payload: JSON.stringify(payload),
       muteHttpExceptions: true
     };
-    
+
     Logger.log(`📡 Sending request to backend...`);
+    // TODO: Route through a test-specific backend configuration
+    // TODO: Mock UrlFetchApp.fetch to avoid live API calls during testing
     const response = UrlFetchApp.fetch(`${API_URL}/refunds/send-to-slack`, options);
-    
+
     const responseText = response.getContentText();
     Logger.log(`📄 Response: ${responseText}`);
-    
+
     return response;
-    
+
   } catch (error) {
     Logger.log(`❌ Backend API Error: ${error.toString()}`);
     throw error;
@@ -135,22 +137,22 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
 
 // Test Suite
 class FormSubmissionTests {
-  
+
   runAllTests() {
     console.log('🧪 Running Google Apps Script Form Submission Tests...\n');
-    
+
     this.testFormDataExtraction();
     this.testBackendPayloadConstruction();
     this.testSuccessfulBackendCall();
     this.testBackendErrorHandling();
     this.testFormFieldVariations();
-    
+
     console.log('\n✅ All tests passed!');
   }
-  
+
   testFormDataExtraction() {
     console.log('🔍 Test: Form Data Extraction');
-    
+
     const mockFormEvent = {
       namedValues: {
         'Your First Name': ['John'],
@@ -161,7 +163,7 @@ class FormSubmissionTests {
         'Additional Notes': ['Schedule conflict']
       }
     };
-    
+
     // Mock UrlFetchApp to capture the payload
     let capturedPayload = null;
     UrlFetchApp.fetch = (url, options) => {
@@ -172,9 +174,9 @@ class FormSubmissionTests {
         getHeaders: () => ({})
       };
     };
-    
+
     processFormSubmitViaDoPost(mockFormEvent);
-    
+
     // Verify extracted data
     assert.strictEqual(capturedPayload.order_number, '12345');
     assert.deepStrictEqual(capturedPayload.requestor_name, { first: 'John', last: 'Doe' });
@@ -182,17 +184,17 @@ class FormSubmissionTests {
     assert.strictEqual(capturedPayload.refund_type, 'refund');
     assert.strictEqual(capturedPayload.notes, 'Schedule conflict');
     assert(capturedPayload.sheet_link.includes('test-sheet-id'));
-    
+
     console.log('  ✅ Form data extracted correctly');
   }
-  
+
   testBackendPayloadConstruction() {
     console.log('🔍 Test: Backend Payload Construction');
-    
+
     let capturedPayload = null;
     let capturedUrl = null;
     let capturedOptions = null;
-    
+
     UrlFetchApp.fetch = (url, options) => {
       capturedUrl = url;
       capturedOptions = options;
@@ -203,7 +205,7 @@ class FormSubmissionTests {
         getHeaders: () => ({})
       };
     };
-    
+
     processWithBackendAPI(
       '#12345',
       '12345',
@@ -213,31 +215,31 @@ class FormSubmissionTests {
       'Customer prefers store credit',
       false
     );
-    
+
     // Verify API call details
     assert.strictEqual(capturedUrl, 'https://test-api.example.com/refunds/send-to-slack');
     assert.strictEqual(capturedOptions.method, 'POST');
     assert.strictEqual(capturedOptions.headers['Content-Type'], 'application/json');
     assert.strictEqual(capturedOptions.muteHttpExceptions, true);
-    
+
     // Verify payload structure matches backend expectations
     const expectedKeys = ['order_number', 'requestor_name', 'requestor_email', 'refund_type', 'notes', 'sheet_link'];
     expectedKeys.forEach(key => {
       assert(key in capturedPayload, `Missing key: ${key}`);
     });
-    
+
     assert.strictEqual(capturedPayload.order_number, '12345');
     assert.deepStrictEqual(capturedPayload.requestor_name, { first: 'Jane', last: 'Smith' });
     assert.strictEqual(capturedPayload.requestor_email, 'jane.smith@example.com');
     assert.strictEqual(capturedPayload.refund_type, 'credit');
     assert.strictEqual(capturedPayload.notes, 'Customer prefers store credit');
-    
+
     console.log('  ✅ Backend payload constructed correctly');
   }
-  
+
   testSuccessfulBackendCall() {
     console.log('🔍 Test: Successful Backend Response');
-    
+
     UrlFetchApp.fetch = (url, options) => {
       return {
         getResponseCode: () => 200,
@@ -248,7 +250,7 @@ class FormSubmissionTests {
         getHeaders: () => ({ 'content-type': 'application/json' })
       };
     };
-    
+
     const mockFormEvent = {
       namedValues: {
         'First Name': ['Test'],
@@ -259,17 +261,17 @@ class FormSubmissionTests {
         'Notes': ['Test notes']
       }
     };
-    
+
     // Should not throw any errors
     const result = processFormSubmitViaDoPost(mockFormEvent);
     assert.strictEqual(result.text, 'Form submitted successfully');
-    
+
     console.log('  ✅ Successful backend call handled correctly');
   }
-  
+
   testBackendErrorHandling() {
     console.log('🔍 Test: Backend Error Handling');
-    
+
     // Test 406 (Order Not Found)
     UrlFetchApp.fetch = (url, options) => {
       return {
@@ -280,7 +282,7 @@ class FormSubmissionTests {
         getHeaders: () => ({ 'content-type': 'application/json' })
       };
     };
-    
+
     const mockFormEvent = {
       namedValues: {
         'First Name': ['Test'],
@@ -291,17 +293,17 @@ class FormSubmissionTests {
         'Notes': ['Invalid order']
       }
     };
-    
+
     // Should handle gracefully (not throw in our simplified version)
     const result = processFormSubmitViaDoPost(mockFormEvent);
     assert.strictEqual(result.text, 'Form submitted successfully');
-    
+
     console.log('  ✅ Backend error responses handled correctly');
   }
-  
+
   testFormFieldVariations() {
     console.log('🔍 Test: Form Field Variations');
-    
+
     // Test different field name variations
     const fieldVariations = [
       {
@@ -327,7 +329,7 @@ class FormSubmissionTests {
         }
       }
     ];
-    
+
     let capturedPayloads = [];
     UrlFetchApp.fetch = (url, options) => {
       capturedPayloads.push(JSON.parse(options.payload));
@@ -337,12 +339,12 @@ class FormSubmissionTests {
         getHeaders: () => ({})
       };
     };
-    
+
     fieldVariations.forEach((variation, index) => {
       processFormSubmitViaDoPost({ namedValues: variation.namedValues });
-      
+
       const payload = capturedPayloads[index];
-      
+
       // Should always have the required fields (even if empty)
       assert('order_number' in payload, 'order_number field missing');
       assert('requestor_name' in payload && 'first' in payload.requestor_name, 'requestor_name.first missing');
@@ -350,7 +352,7 @@ class FormSubmissionTests {
       assert('refund_type' in payload, 'refund_type field missing');
       // Notes can be empty string
       assert('notes' in payload, 'notes field missing');
-      
+
       // Verify the specific test case data
       if (variation.description === 'Different field formats') {
         assert.strictEqual(payload.order_number, '22222');
@@ -361,7 +363,7 @@ class FormSubmissionTests {
         assert.strictEqual(payload.notes, ''); // Should be empty since no notes field
       }
     });
-    
+
     console.log('  ✅ Form field variations handled correctly');
   }
 }

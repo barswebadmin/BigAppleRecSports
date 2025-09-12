@@ -88,7 +88,10 @@ class TestSlackMessageFormatting:
                 in message_text
             )
             assert "*Requested by:* joe test (jdazz87@gmail.com)" in message_text
-            assert "*Product Title*: <https://admin.shopify.com/store/09fe59-3/products/67890|joe test product>" in message_text
+            assert (
+                "*Product Title*: <https://admin.shopify.com/store/09fe59-3/products/67890|joe test product>"
+                in message_text
+            )
             assert "*Total Paid:* $2.00" in message_text
             assert (
                 "⚠️ *Could not parse 'Season Dates' from this order's description"
@@ -98,7 +101,7 @@ class TestSlackMessageFormatting:
                 "Please verify the product and either contact the requestor or process anyway"
                 in message_text
             )
-            assert "*Attn*: @here" in message_text
+            assert "*Attn*: <@U0278M72535>" in message_text
             assert (
                 "🔗 *<https://docs.google.com/spreadsheets/test|View Request in Google Sheets>*"
                 in message_text
@@ -149,24 +152,28 @@ class TestSlackMessageFormatting:
             message_text = call_args[1]["message_text"]
 
             # Validate key components of the email mismatch error
-            assert (
-                "⚠️ *Email Mismatch - Action Required*"
-                in message_text
-            )
+            assert "⚠️ *Email Mismatch - Action Required*" in message_text
             assert (
                 "*Request Type*: 🎟️ Store Credit to use toward a future order"
                 in message_text
             )
-            assert "📧 *Requested by:* joe test (<mailto:jdazz87@gmail.com|jdazz87@gmail.com>)" in message_text
             assert (
-                "*Email Associated with Order:* <mailto:lilaanchors@gmail.com|lilaanchors@gmail.com>" in message_text
+                "📧 *Requested by:* joe test (<mailto:jdazz87@gmail.com|jdazz87@gmail.com>)"
+                in message_text
+            )
+            assert (
+                "*Email Associated with Order:* <mailto:lilaanchors@gmail.com|lilaanchors@gmail.com>"
+                in message_text
             )
             assert (
                 "*Order Number:* <https://admin.shopify.com/store/09fe59-3/orders/54321|#39611>"
                 in message_text
             )
             # Check that the message contains the email mismatch warning
-            assert "⚠️ *The email provided does not match the order's customer email.*" in message_text
+            assert (
+                "⚠️ *The email provided does not match the order's customer email.*"
+                in message_text
+            )
             # Email mismatch messages don't include team mentions
             assert (
                 "🔗 *<https://docs.google.com/spreadsheets/test|View Request in Google Sheets>*"
@@ -286,7 +293,8 @@ class TestSlackMessageFormatting:
                 in message_text
             )
             assert (
-                "📧 *Requested by:* Amy Dougherty (lilaanchors@gmail.com)" in message_text
+                "📧 *Requested by:* Amy Dougherty (lilaanchors@gmail.com)"
+                in message_text
             )
             assert (
                 "*Order Number*: <https://admin.shopify.com/store/09fe59-3/orders/54321|#39611>"
@@ -306,18 +314,17 @@ class TestSlackMessageFormatting:
             assert (
                 "*Notes provided by requestor*: Duplicate registration" in message_text
             )
-            assert (
-                "*Attn*: <@U0278M72535>" in message_text
-            )  # dodgeball team mention
+            assert "*Attn*: <@U0278M72535>" in message_text  # dodgeball team mention
 
     def test_sport_group_mentions(self, slack_service):
         """Test that sport group mentions are correctly applied"""
+        # TODO: Method now always returns joe's user ID regardless of sport/environment
         test_cases = [
             ("Big Apple Kickball - Monday", "<@U0278M72535>"),
             ("Big Apple Bowling - Tuesday", "<@U0278M72535>"),
             ("Big Apple Pickleball - Wednesday", "<@U0278M72535>"),
             ("Big Apple Dodgeball - Thursday", "<@U0278M72535>"),
-            ("Some Other Sport", "@here"),  # fallback
+            ("Some Other Sport", "<@U0278M72535>"),  # no more @here fallback
         ]
 
         for product_title, expected_mention in test_cases:
@@ -460,18 +467,22 @@ class TestSlackMessageFormatting:
                 # Verify that send_message was called with proper parameters
                 call_args = mock_send.call_args
                 assert call_args is not None, "send_message should have been called"
-                
+
                 # Check the parameters passed to send_message
                 assert "message_text" in call_args[1], "message_text should be passed"
-                assert "action_buttons" in call_args[1], "action_buttons should be passed"
-                
+                assert (
+                    "action_buttons" in call_args[1]
+                ), "action_buttons should be passed"
+
                 message_text = call_args[1]["message_text"]
                 action_buttons = call_args[1]["action_buttons"]
-                
+
                 # Verify message content
                 assert len(message_text) > 0, "Message text should not be empty"
-                assert "Refund Request" in message_text or "Error" in message_text, "Message should contain refund/error content"
-                
+                assert (
+                    "Refund Request" in message_text or "Error" in message_text
+                ), "Message should contain refund/error content"
+
                 # Verify action buttons structure
                 if action_buttons:
                     for button in action_buttons:

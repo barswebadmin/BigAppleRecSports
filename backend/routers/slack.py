@@ -28,7 +28,7 @@ async def handle_slack_interactions(request: Request):
         # Get headers for verification
         timestamp = request.headers.get("X-Slack-Request-Timestamp")
         signature = request.headers.get("X-Slack-Signature")
-        content_type = request.headers.get("Content-Type")
+        request.headers.get("Content-Type")
 
         print("\n🔍 === SLACK INTERACTIONS ROUTER ===")
         # print(f"📋 Headers:")
@@ -127,9 +127,9 @@ async def handle_slack_interactions(request: Request):
 
                 # Extract values from the modal input
                 values = payload["view"]["state"]["values"]
-                refund_amount = values["refund_input_block"][
-                    "custom_refund_amount"
-                ]["value"]
+                refund_amount = values["refund_input_block"]["custom_refund_amount"][
+                    "value"
+                ]
 
                 # Extract metadata
                 private_metadata = payload["view"].get("private_metadata")
@@ -145,7 +145,7 @@ async def handle_slack_interactions(request: Request):
                 slack_user_name = metadata.get("slack_user_name", "Unknown User")
                 requestor_name = {
                     "first": metadata.get("requestor_first_name", ""),
-                    "last": metadata.get("requestor_last_name", "")
+                    "last": metadata.get("requestor_last_name", ""),
                 }
                 requestor_email = metadata.get("requestor_email", "")
 
@@ -360,7 +360,6 @@ async def handle_slack_interactions(request: Request):
                         current_message_full_text,
                         trigger_id,
                     )
-
 
                 # === EMAIL MISMATCH HANDLERS ===
                 elif action_id == "edit_request_details":

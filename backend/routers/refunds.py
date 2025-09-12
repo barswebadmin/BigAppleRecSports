@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from typing import Dict, Any
 import logging
 from datetime import datetime, timezone
@@ -17,6 +17,12 @@ slack_service = SlackService()
 @router.post("/send-to-slack")
 async def send_refund_to_slack(
     request: RefundSlackNotificationRequest,
+    slackChannelName: str = Query(
+        None, description="Optional slack channel name to override default"
+    ),
+    mentionStrategy: str = Query(
+        None, description="Optional mention strategy: 'sportAliases' or 'user|{name}'"
+    ),
 ) -> Dict[str, Any]:
     """
     Validate order and email, then send refund request to Slack
@@ -109,6 +115,8 @@ async def send_refund_to_slack(
                     error_type="order_not_found",
                     raw_order_number=request.order_number,
                     request_initiated_at=request_initiated_at,
+                    slack_channel_name=slackChannelName,
+                    mention_strategy=mentionStrategy,
                 )
                 logger.info(
                     f"✅ Slack notification sent successfully: {slack_result.get('success', 'Unknown status')}"
@@ -156,6 +164,8 @@ async def send_refund_to_slack(
                 error_type="email_mismatch",
                 raw_order_number=request.order_number,
                 order_customer_email=order_customer_email,
+                slack_channel_name=slackChannelName,
+                mention_strategy=mentionStrategy,
             )
 
             raise HTTPException(
@@ -203,6 +213,8 @@ async def send_refund_to_slack(
                     error_type="duplicate_refund",
                     raw_order_number=request.order_number,
                     existing_refunds_data=existing_refunds_result,
+                    slack_channel_name=slackChannelName,
+                    mention_strategy=mentionStrategy,
                 )
                 logger.info(
                     f"✅ Slack duplicate refund notification sent successfully: {slack_result.get('success', 'Unknown status')}"
@@ -257,6 +269,8 @@ async def send_refund_to_slack(
             requestor_info=requestor_info,
             sheet_link=request.sheet_link or "",
             request_initiated_at=request_initiated_at,
+            slack_channel_name=slackChannelName,
+            mention_strategy=mentionStrategy,
         )
 
         if not slack_result["success"]:
@@ -337,6 +351,29 @@ async def send_refund_to_slack(
 
         logger.error("🚫 Raising 500 HTTPException for unexpected error")
         raise HTTPException(status_code=500, detail=error_details)
+
+
+@router.post("/test/validate-deny-action")
+async def validate_deny_action(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Test endpoint to validate deny action payload structure.
+    Used for testing to ensure correct data is being sent to GAS.
+    """
+    try:
+        from services.slack.tests.deny_action_validator import DenyActionValidator
+
+        validation_result = DenyActionValidator.validate_payload(payload)
+
+        return {
+            "success": True,
+            "message": "Payload validation completed",
+            "validation": validation_result,
+            "received_payload": payload,
+        }
+
+    except Exception as e:
+        logger.error(f"Error validating deny action payload: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
 
 
 @router.get("/health")

@@ -524,7 +524,7 @@ class TestRefundVsCreditProcessing:
         )
 
         # Test refund calculation logging
-        with patch("services.orders.orders_service.logger") as mock_logger:
+        with patch("services.orders.orders_service.logger"):
             refund_calc = self.mock_orders_service.calculate_refund_due(
                 self.sample_order_data, "refund", datetime.now(timezone.utc)
             )
@@ -533,7 +533,7 @@ class TestRefundVsCreditProcessing:
             assert refund_calc["refund_type"] == "refund"
 
         # Test credit calculation logging
-        with patch("services.orders.orders_service.logger") as mock_logger:
+        with patch("services.orders.orders_service.logger"):
             credit_calc = self.mock_orders_service.calculate_refund_due(
                 self.sample_order_data, "credit", datetime.now(timezone.utc)
             )

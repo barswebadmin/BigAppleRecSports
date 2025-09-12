@@ -768,7 +768,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_cancel_order(
+        await slack_service.handle_cancel_order(
             request_data=request_data,
             channel_id="C1234567890",
             requestor_name={"first": "John", "last": "Doe"},
@@ -814,7 +814,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_proceed_without_cancel(
+        await slack_service.handle_proceed_without_cancel(
             request_data=request_data,
             channel_id="C1234567890",
             requestor_name={"first": "John", "last": "Doe"},
@@ -865,7 +865,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_process_refund(
+        await slack_service.handle_process_refund(
             request_data=request_data,
             channel_id="C1234567890",
             requestor_name={"first": "John", "last": "Doe"},
@@ -915,7 +915,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_no_refund(
+        await slack_service.handle_no_refund(
             request_data=request_data,
             channel_id="C1234567890",
             requestor_name={"first": "John", "last": "Doe"},
@@ -962,7 +962,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_restock_inventory(
+        await slack_service.handle_restock_inventory(
             request_data=request_data,
             action_id="restock_variant_0",
             channel_id="C1234567890",
@@ -996,7 +996,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_restock_inventory(
+        await slack_service.handle_restock_inventory(
             request_data=request_data,
             action_id="do_not_restock",
             channel_id="C1234567890",
@@ -1071,7 +1071,7 @@ class TestEndToEndRefundFlows:
         mock_update.return_value = self.mock_slack_responses["message_updated"]
 
         # Simulate modal submission payload
-        modal_payload = {
+        {
             "view": {
                 "state": {
                     "values": {
@@ -1101,7 +1101,7 @@ class TestEndToEndRefundFlows:
             "user": {"id": "U1234567890", "name": "admin.user"},
         }
 
-        slack_service = SlackService()
+        SlackService()
 
         # Act
         # Note: In test mode, the modal submission may not be fully async
@@ -1135,7 +1135,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_cancel_order(
+        await slack_service.handle_cancel_order(
             request_data=request_data,
             channel_id="C1234567890",
             requestor_name={"first": "John", "last": "Doe"},
@@ -1175,7 +1175,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_process_refund(
+        await slack_service.handle_process_refund(
             request_data=request_data,
             channel_id="C1234567890",
             requestor_name={"first": "John", "last": "Doe"},
@@ -1211,7 +1211,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_edit_request_details(
+        await slack_service.handle_edit_request_details(
             request_data=request_data,
             channel_id="C1234567890",
             thread_ts="1726418400.123456",
@@ -1274,9 +1274,7 @@ class TestEndToEndRefundFlows:
         slack_service = SlackService()
 
         # Act
-        result = await slack_service.handle_edit_request_details_submission(
-            modal_payload
-        )
+        await slack_service.handle_edit_request_details_submission(modal_payload)
 
         # Assert
         # Note: Edit request details submission delegates to refunds utils

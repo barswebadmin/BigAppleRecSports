@@ -408,7 +408,7 @@ class TestModalBlockBuilding:
         ]
 
         # Execute
-        result = self.handler._show_modal_to_user(
+        self.handler._show_modal_to_user(
             trigger_id="trigger123",
             modal_title="Test Modal",
             modal_blocks=modal_blocks,

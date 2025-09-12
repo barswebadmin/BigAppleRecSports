@@ -345,7 +345,7 @@ $50.00 **refund** issued by <@U67890>"""
         order_status_lines = [
             line for line in final_message.split("\n") if "Order Not Canceled" in line
         ]
-        refund_status_lines = [
+        [
             line
             for line in final_message.split("\n")
             if "Refund processing completed" in line or "refund** issued by" in line
