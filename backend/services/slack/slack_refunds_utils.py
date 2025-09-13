@@ -2787,6 +2787,14 @@ class SlackRefundsUtils:
 
             # Send HTTP request to GAS doPost endpoint
             import requests
+            import os
+
+            # Use explicit SSL certificate bundle for production
+            cert_bundle = (
+                "/etc/ssl/certs/ca-certificates.crt"
+                if os.getenv("ENVIRONMENT") == "production"
+                else True
+            )
 
             try:
                 response = requests.post(
@@ -2796,7 +2804,7 @@ class SlackRefundsUtils:
                     },
                     json=payload,
                     timeout=30,
-                    verify=False,  # For development - SSL issues with local testing
+                    verify=cert_bundle,  # Use proper SSL certificate verification
                 )
 
                 print(f"📥 GAS Response Status: {response.status_code}")
@@ -2817,9 +2825,9 @@ class SlackRefundsUtils:
 
             except requests.exceptions.SSLError as ssl_error:
                 logger.warning(
-                    f"SSL Error with GAS - trying without verification: {ssl_error}"
+                    f"SSL Error with GAS - trying with system default: {ssl_error}"
                 )
-                # Retry without SSL verification
+                # Fallback: try with system default SSL verification
                 response = requests.post(
                     gas_webhook_url,
                     headers={
@@ -2827,7 +2835,7 @@ class SlackRefundsUtils:
                     },
                     json=payload,
                     timeout=30,
-                    verify=False,
+                    verify=True,
                 )
 
                 print(f"📥 GAS Response Status (no SSL): {response.status_code}")
