@@ -1986,6 +1986,7 @@ class SlackRefundsUtils:
                 modal_blocks=modal_blocks,
                 callback_id="edit_request_details_submission",
                 private_metadata=private_metadata,
+                submit_text="Update Request",
             )
 
             if modal_result.get("success"):
@@ -2062,6 +2063,7 @@ class SlackRefundsUtils:
                 modal_blocks=modal_blocks,
                 callback_id="deny_refund_request_modal_submission",
                 private_metadata=json.dumps(private_metadata),
+                submit_text="Deny & Send Email",
             )
 
             if modal_result.get("success"):
@@ -2235,6 +2237,7 @@ class SlackRefundsUtils:
         modal_blocks: List[Dict[str, Any]],
         callback_id: str,
         private_metadata: str = "",
+        submit_text: str = "Submit",
     ) -> Dict[str, Any]:
         """
         Show a modal dialog to the user
@@ -2245,7 +2248,7 @@ class SlackRefundsUtils:
                 "callback_id": callback_id,
                 "title": {"type": "plain_text", "text": modal_title},
                 "blocks": modal_blocks,
-                "submit": {"type": "plain_text", "text": "Deny & Send Email"},
+                "submit": {"type": "plain_text", "text": submit_text},
                 "close": {"type": "plain_text", "text": "Cancel"},
             }
 
