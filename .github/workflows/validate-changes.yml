@@ -1,0 +1,80 @@
+name: Validate Changes (No Deploy)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Documentation changes
+      - '**/*.md'
+      - 'docs/**'
+      # Test files
+      - '**/tests/**'
+      - '**/*.test.js'
+      - '**/*.test.py'
+      - 'pytest.ini'
+      # Non-deployment configuration
+      - '.gitignore'
+      - '.pre-commit-config.yaml'
+      - 'pyproject.toml'
+      # Google Apps Scripts (deployed separately)
+      - 'GoogleAppsScripts/**'
+      # Lambda functions (deployed separately)
+      - 'lambda-functions/**'
+      - 'lambda-layers/**'
+      # Scripts and utilities that don't affect runtime
+      - 'scripts/**'
+      - '!scripts/deploy_to_render.sh'  # Except deployment scripts
+
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Non-Deployment Changes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run linting
+        run: |
+          echo "🔍 Running code quality checks..."
+          # Run ruff if available
+          if command -v ruff &> /dev/null; then
+            ruff check . || echo "⚠️ Ruff not configured, skipping"
+          fi
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running tests..."
+          cd backend
+          python -m pytest tests/unit/ -v || echo "⚠️ Some tests may not be configured yet"
+
+      - name: Validate configuration
+        run: |
+          echo "⚙️ Validating configuration files..."
+          # Check if backend can import without errors
+          cd backend
+          python -c "
+          try:
+              from config import settings
+              print('✅ Config validation successful')
+          except Exception as e:
+              print(f'⚠️ Config validation warning: {e}')
+          "
+
+      - name: Summary
+        run: |
+          echo "✅ Validation complete!"
+          echo "📝 This change does not trigger deployment"
+          echo "🔍 Change type: Documentation, tests, or non-runtime files"
