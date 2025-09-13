@@ -95,12 +95,19 @@ class ShopifyService:
         logger.info(f"🔒 REQUESTS_CA_BUNDLE: {os.getenv('REQUESTS_CA_BUNDLE')}")
 
         try:
+            # Use explicit SSL certificate bundle for production
+            cert_bundle = (
+                "/etc/ssl/certs/ca-certificates.crt"
+                if os.getenv("ENVIRONMENT") == "production"
+                else True
+            )
+
             response = requests.post(
                 self.graphql_url,
                 headers=self.headers,
                 json=query,
                 timeout=30,
-                verify=True,  # Explicitly enable SSL verification
+                verify=cert_bundle,  # Use explicit certificate bundle
             )
             logger.info(f"📥 Response status: {response.status_code}")
 

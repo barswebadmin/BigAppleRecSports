@@ -1,3 +1,16 @@
+# CRITICAL: Configure SSL certificates BEFORE any other imports
+import os
+
+if os.getenv("ENVIRONMENT") == "production":
+    # Force SSL certificate paths for Render (Ubuntu) deployment
+    os.environ["SSL_CERT_FILE"] = "/etc/ssl/certs/ca-certificates.crt"
+    os.environ["REQUESTS_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
+    os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
+    # Clear any existing SSL environment variables that might point to wrong paths
+    for env_var in ["SSL_CERT_DIR", "OPENSSL_CONF"]:
+        if env_var in os.environ:
+            del os.environ[env_var]
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routers import leadership, orders, refunds, slack, webhooks

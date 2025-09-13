@@ -245,19 +245,25 @@ class SlackApiClient:
             logger.info(f"Sending Slack message to channel {self.channel_id}")
             logger.debug(f"Message content: {message_text[:100]}...")
 
-            # Send the request
+            # Send the request with explicit SSL certificate bundle
+            cert_bundle = (
+                "/etc/ssl/certs/ca-certificates.crt"
+                if os.getenv("ENVIRONMENT") == "production"
+                else True
+            )
+
             try:
                 response = requests.post(
-                    url, headers=headers, data=json.dumps(payload), verify=True
+                    url, headers=headers, data=json.dumps(payload), verify=cert_bundle
                 )
                 response_data = response.json()
             except requests.exceptions.SSLError as ssl_error:
                 logger.warning(
-                    f"SSL Error with Slack API - trying without verification: {ssl_error}"
+                    f"SSL Error with Slack API - trying with system default: {ssl_error}"
                 )
-                # Fallback: try without SSL verification (for development)
+                # Fallback: try with system default SSL verification
                 response = requests.post(
-                    url, headers=headers, data=json.dumps(payload), verify=False
+                    url, headers=headers, data=json.dumps(payload), verify=True
                 )
                 response_data = response.json()
 
@@ -342,18 +348,25 @@ class SlackApiClient:
             # Log message update attempt
             print(f"📤 Sending message update to Slack channel {self.channel_id}")
 
+            # Use explicit SSL certificate bundle
+            cert_bundle = (
+                "/etc/ssl/certs/ca-certificates.crt"
+                if os.getenv("ENVIRONMENT") == "production"
+                else True
+            )
+
             try:
                 response = requests.post(
-                    url, headers=headers, data=json.dumps(payload), verify=True
+                    url, headers=headers, data=json.dumps(payload), verify=cert_bundle
                 )
                 response_data = response.json()
             except requests.exceptions.SSLError as ssl_error:
                 logger.warning(
-                    f"SSL Error with Slack API update - trying without verification: {ssl_error}"
+                    f"SSL Error with Slack API update - trying with system default: {ssl_error}"
                 )
-                # Fallback: try without SSL verification (for development)
+                # Fallback: try with system default SSL verification
                 response = requests.post(
-                    url, headers=headers, data=json.dumps(payload), verify=False
+                    url, headers=headers, data=json.dumps(payload), verify=True
                 )
                 response_data = response.json()
 
@@ -413,8 +426,18 @@ class SlackApiClient:
                 f"Ephemeral message content: {request_payload['text'][:100]}..."
             )
 
+            # Use explicit SSL certificate bundle
+            cert_bundle = (
+                "/etc/ssl/certs/ca-certificates.crt"
+                if os.getenv("ENVIRONMENT") == "production"
+                else True
+            )
+
             response = requests.post(
-                url, headers=headers, data=json.dumps(request_payload)
+                url,
+                headers=headers,
+                data=json.dumps(request_payload),
+                verify=cert_bundle,
             )
             response_data = response.json()
 
@@ -470,19 +493,25 @@ class SlackApiClient:
                 f"Modal content: {modal_view.get('title', {}).get('text', 'Unknown title')}"
             )
 
-            # Send the request with SSL verification fallback
+            # Send the request with explicit SSL certificate bundle
+            cert_bundle = (
+                "/etc/ssl/certs/ca-certificates.crt"
+                if os.getenv("ENVIRONMENT") == "production"
+                else True
+            )
+
             try:
                 response = requests.post(
-                    url, headers=headers, data=json.dumps(payload), verify=True
+                    url, headers=headers, data=json.dumps(payload), verify=cert_bundle
                 )
                 response_data = response.json()
             except requests.exceptions.SSLError as ssl_error:
                 logger.warning(
-                    f"SSL Error with Slack API - trying without verification: {ssl_error}"
+                    f"SSL Error with Slack API - trying with system default: {ssl_error}"
                 )
-                # Fallback: try without SSL verification (for development)
+                # Fallback: try with system default SSL verification
                 response = requests.post(
-                    url, headers=headers, data=json.dumps(payload), verify=False
+                    url, headers=headers, data=json.dumps(payload), verify=True
                 )
                 response_data = response.json()
 
