@@ -171,7 +171,7 @@ class TestOrderFetching:
             )
 
             assert result["success"] is False
-            assert "No orders found" in result["message"]
+            assert "Unable to connect to Shopify" in result["message"]
 
     def test_orders_service_handles_malformed_shopify_response(self):
         """Test OrdersService handles malformed Shopify responses"""

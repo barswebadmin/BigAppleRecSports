@@ -65,15 +65,6 @@ class Settings:
         return f"https://{self.shopify_store}/admin/api/2025-07/graphql.json"
 
     @property
-    def is_debug_mode(self) -> bool:
-        """
-        Determine if we're in debug mode based on ENVIRONMENT.
-        Debug mode: mocks API calls, includes debug prefixes in messages
-        Production mode: makes real API calls
-        """
-        return self.environment.lower() in ["development", "debug", "test"]
-
-    @property
     def is_production_mode(self) -> bool:
         """
         Determine if we're in production mode based on ENVIRONMENT.
@@ -89,10 +80,10 @@ class Settings:
         - Non-production: uses SLACK_DEV_BOT_TOKEN if available, otherwise falls back to production token
         """
         if self.is_production_mode:
-            return self.slack_refunds_bot_token
+            return self.slack_refunds_bot_token or ""
         else:
             # Use dev token if available, otherwise fallback to production token
-            return self.slack_dev_bot_token or self.slack_refunds_bot_token
+            return self.slack_dev_bot_token or self.slack_refunds_bot_token or ""
 
     @property
     def active_slack_signing_secret(self) -> str:
@@ -102,10 +93,10 @@ class Settings:
         - Non-production: uses SLACK_DEV_SIGNING_SECRET if available, otherwise falls back to production secret
         """
         if self.is_production_mode:
-            return self.slack_signing_secret
+            return self.slack_signing_secret or ""
         else:
             # Use dev signing secret if available, otherwise fallback to production secret
-            return self.slack_dev_signing_secret or self.slack_signing_secret
+            return self.slack_dev_signing_secret or self.slack_signing_secret or ""
 
 
 settings = Settings()

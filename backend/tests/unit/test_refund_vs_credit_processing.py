@@ -114,7 +114,7 @@ class TestRefundVsCreditProcessing:
         }
 
         # Mock settings
-        self.mock_settings.is_debug_mode = False
+        self.mock_settings.environment = "production"
 
         # Call the method
         result = await self.slack_refunds_utils.handle_process_refund(
@@ -181,7 +181,7 @@ class TestRefundVsCreditProcessing:
         }
 
         # Mock settings
-        self.mock_settings.is_debug_mode = False
+        self.mock_settings.environment = "production"
 
         # Call the method
         result = await self.slack_refunds_utils.handle_process_refund(
@@ -286,7 +286,7 @@ class TestRefundVsCreditProcessing:
         }
 
         # Mock settings
-        self.mock_settings.is_debug_mode = False
+        self.mock_settings.environment = "production"
 
         # Call the method
         result = await self.slack_refunds_utils.handle_process_refund(
@@ -326,7 +326,7 @@ class TestRefundVsCreditProcessing:
         }
 
         # Mock settings
-        self.mock_settings.is_debug_mode = False
+        self.mock_settings.environment = "production"
 
         # Call the method
         result = await self.slack_refunds_utils.handle_process_refund(
@@ -489,7 +489,7 @@ class TestRefundVsCreditProcessing:
         }
 
         # Mock settings
-        self.mock_settings.is_debug_mode = False
+        self.mock_settings.environment = "production"
 
         # Call the method
         result = await self.slack_refunds_utils.handle_process_refund(
