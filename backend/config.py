@@ -80,10 +80,10 @@ class Settings:
         - Non-production: uses SLACK_DEV_BOT_TOKEN if available, otherwise falls back to production token
         """
         if self.is_production_mode:
-            return self.slack_refunds_bot_token
+            return self.slack_refunds_bot_token or ""
         else:
             # Use dev token if available, otherwise fallback to production token
-            return self.slack_dev_bot_token or self.slack_refunds_bot_token
+            return self.slack_dev_bot_token or self.slack_refunds_bot_token or ""
 
     @property
     def active_slack_signing_secret(self) -> str:
@@ -93,10 +93,10 @@ class Settings:
         - Non-production: uses SLACK_DEV_SIGNING_SECRET if available, otherwise falls back to production secret
         """
         if self.is_production_mode:
-            return self.slack_signing_secret
+            return self.slack_signing_secret or ""
         else:
             # Use dev signing secret if available, otherwise fallback to production secret
-            return self.slack_dev_signing_secret or self.slack_signing_secret
+            return self.slack_dev_signing_secret or self.slack_signing_secret or ""
 
 
 settings = Settings()
