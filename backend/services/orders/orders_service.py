@@ -146,7 +146,7 @@ class OrdersService:
                         "error_type": "api_error",
                     }
 
-            # Check for empty/invalid response data
+            # Check for basic response structure - if missing, it's an API error
             if not result.get("data"):
                 logger.error(f"❌ Invalid or empty data in Shopify response: {result}")
                 return {
@@ -155,20 +155,52 @@ class OrdersService:
                     "error_type": "api_error",
                 }
 
-            orders_edges = result["data"]["orders"]["edges"]
+            # Try to extract orders - any successful response where we can't get to order.id is "order not found"
+            try:
+                orders_edges = result["data"]["orders"]["edges"]
 
-            # DEBUG: Log what orders were found
-            logger.info(f"📋 Orders found: {len(orders_edges)}")
-            if orders_edges:
-                for i, edge in enumerate(orders_edges):
-                    order = edge["node"]
+                # DEBUG: Log what orders were found
+                logger.info(f"📋 Orders found: {len(orders_edges)}")
+                if orders_edges:
+                    for i, edge in enumerate(orders_edges):
+                        order = edge["node"]
+                        logger.info(
+                            f"   Order {i+1}: name='{order.get('name')}', id='{order.get('id')}', createdAt='{order.get('createdAt')}'"
+                        )
+
+                # If no orders found in successful response, it's "order not found"
+                if not orders_edges:
                     logger.info(
-                        f"   Order {i+1}: name='{order.get('name')}', id='{order.get('id')}', createdAt='{order.get('createdAt')}'"
+                        "✅ Shopify returned successful response but no orders found for query"
                     )
+                    return {
+                        "success": False,
+                        "message": "No orders found.",
+                        "error_type": "order_not_found",
+                    }
 
-            if not orders_edges:
-                logger.error(f"❌ No orders found in edges: {orders_edges}")
-                return {"success": False, "message": "No orders found."}
+                # Check if we can access order.id from the first order
+                first_order = orders_edges[0]["node"]
+                if not first_order.get("id"):
+                    logger.info(
+                        "✅ Shopify returned orders but no valid order.id found"
+                    )
+                    return {
+                        "success": False,
+                        "message": "No orders found.",
+                        "error_type": "order_not_found",
+                    }
+
+            except (KeyError, TypeError, IndexError) as e:
+                # Any structure issues with successful response = "order not found"
+                logger.info(
+                    f"✅ Shopify response structure indicates no orders found: {e}"
+                )
+                return {
+                    "success": False,
+                    "message": "No orders found.",
+                    "error_type": "order_not_found",
+                }
 
             # Format the orders
             formatted_orders = []

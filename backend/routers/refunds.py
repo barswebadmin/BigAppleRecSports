@@ -134,9 +134,11 @@ async def send_refund_to_slack(
                         "user_message": "There is a system configuration issue. Please contact support or try again later.",
                     },
                 )
-            else:
-                # Legitimate "order not found" - send notification to Slack (which emails customer)
-                logger.info("📤 Sending 'order not found' notification to Slack")
+            elif error_type == "order_not_found":
+                # Legitimate "order not found" from successful Shopify 200 response - send notification to Slack (which emails customer)
+                logger.info(
+                    "📤 Sending 'order not found' notification to Slack (successful Shopify response, no matching orders)"
+                )
                 requestor_info = {
                     "name": request.requestor_name,
                     "email": request.requestor_email,
@@ -167,6 +169,19 @@ async def send_refund_to_slack(
                 raise HTTPException(
                     status_code=406,
                     detail=f"Order {request.order_number} not found in Shopify",
+                )
+            else:
+                # Unexpected error type - treat as API error
+                logger.error(
+                    f"🚨 Unexpected error type: {error_type} - treating as API error"
+                )
+                raise HTTPException(
+                    status_code=503,  # Service Unavailable
+                    detail={
+                        "error": "shopify_api_error",
+                        "message": error_message,
+                        "user_message": "There was a technical issue. Please try submitting your refund request again in a few minutes.",
+                    },
                 )
 
         # Step 2: Extract order data
