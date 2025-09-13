@@ -1,37 +1,56 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start tunnel dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
 
 # Default target
 help:
 	@echo "🚀 BARS Repository Commands"
 	@echo "=========================="
 	@echo ""
-	@echo "Compilation Commands:"
+	@echo "🔧 Backend Development:"
+	@echo "  make start               - Start backend server (uvicorn)"
+	@echo "  make tunnel              - Start ngrok tunnel"
+	@echo "  make dev                 - Start server + tunnel (opens new terminal)"
+	@echo "  make stop                - Stop all processes"
+	@echo "  make install             - Install backend dependencies"
+	@echo "  make clean               - Clean up processes and cache files"
+	@echo "  make status              - Show running processes"
+	@echo "  make url                 - Show ngrok URL"
+	@echo "  make version             - Show backend version info"
+	@echo ""
+	@echo "🔍 Compilation Commands:"
 	@echo "  make compile [path]      - Compile directory and subdirectories (default: current dir)"
 	@echo "  make compile .           - Compile entire repository from root"
 	@echo "  make compile backend     - Compile backend directory"
 	@echo "  make compile gas         - Compile GoogleAppsScripts (JavaScript)"
 	@echo "  make compile lambda      - Compile lambda-functions (Python)"
 	@echo ""
-	@echo "Testing Commands:"
+	@echo "🧪 Testing Commands:"
 	@echo "  make test [path]         - Run tests in directory and subdirectories (default: current dir)"
+	@echo "  make ready [path]        - Compile + test directory (fails fast on compilation errors)"
 	@echo "  make test .              - Run all tests in repository"
 	@echo "  make test backend        - Run backend tests"
 	@echo "  make test gas            - Run GoogleAppsScripts tests"
 	@echo "  make test lambda         - Run lambda-functions tests"
 	@echo ""
-	@echo "Examples:"
+	@echo "🧪 Backend-Specific Tests:"
+	@echo "  make test-backend-unit   - Run unit tests (mocked, safe)"
+	@echo "  make test-backend-integration - Run integration tests (requires server)"
+	@echo "  make test-backend-slack  - Run Slack message formatting tests"
+	@echo "  make test-backend-all    - Run all backend tests"
+	@echo "  make test-specific TEST=<path> - Run specific test file or case"
+	@echo ""
+	@echo "📋 Examples:"
 	@echo "  make compile backend/services"
 	@echo "  make test lambda-functions/shopifyProductUpdateHandler"
-	@echo "  make compile ."
-	@echo "  make test backend"
+	@echo "  make test-specific TEST=backend/test_slack_message_formatting.py"
+	@echo "  make test-specific TEST=backend/test_orders_api.py::test_fetch_order"
 	@echo ""
-	@echo "Legacy Commands (still supported):"
-	@echo "  make compile-backend, make test-gas, etc."
-	@echo ""
-	@echo "Directory-specific help:"
-	@echo "  cd backend && make help  - Backend-specific commands"
+	@echo "🔧 Quick Start:"
+	@echo "  1. make install          - Install dependencies"
+	@echo "  2. make start            - Start server (terminal 1)"
+	@echo "  3. make tunnel           - Start tunnel (terminal 2)"
+	@echo "  4. make test-backend-unit - Run tests"
 
 # Handle arguments for compile and test commands
 # This allows 'make compile backend' instead of 'make compile DIR=backend'
@@ -222,6 +241,94 @@ _compile_js_files:
 	@echo "✅ JavaScript files compiled successfully in $(DIR)"
 
 # =============================================================================
+# BACKEND DEVELOPMENT COMMANDS
+# =============================================================================
+
+# Backend server management
+start:
+	@echo "🚀 Starting backend server..."
+	@cd backend && ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+tunnel:
+	@echo "🌐 Starting ngrok tunnel..."
+	@pkill -f ngrok || true
+	@sleep 1
+	@ngrok http 8000
+
+dev:
+	@echo "🔧 Starting development environment..."
+	@pkill -f ngrok || true
+	@pkill -f uvicorn || true
+	@sleep 1
+	@echo "🚀 Starting backend server in current terminal..."
+	@echo "🌐 Opening new terminal for ngrok tunnel..."
+	@if command -v cursor >/dev/null 2>&1 && pgrep -f "Cursor.app" >/dev/null 2>&1; then \
+		echo "📱 Detected Cursor - opening new Cursor terminal..."; \
+		osascript -e 'tell application "Cursor" to activate' \
+			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
+			-e 'delay 1' \
+			-e 'tell application "System Events" to keystroke "cd backend && make tunnel"' \
+			-e 'tell application "System Events" to key code 36' & \
+	elif command -v code >/dev/null 2>&1 && pgrep -x "Code" >/dev/null 2>&1; then \
+		echo "📱 Detected VS Code - opening system terminal..."; \
+		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)/backend\" && make tunnel"' & \
+	else \
+		echo "🖥️  Opening system terminal..."; \
+		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)/backend\" && make tunnel"' & \
+	fi
+	@sleep 3
+	@echo "✅ Starting server now (tunnel will start in new terminal)..."
+	@cd backend && ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+stop:
+	@echo "🛑 Stopping all processes..."
+	@pkill -f ngrok || true
+	@pkill -f uvicorn || true
+	@echo "✅ All processes stopped"
+
+install:
+	@echo "📦 Installing backend dependencies..."
+	@cd backend && pip3 install -r requirements.txt
+	@echo "📦 Installing test dependencies..."
+	@cd backend && pip3 install pytest pytest-asyncio pytest-mock
+
+clean: stop
+	@echo "🧹 Cleaning up..."
+	@rm -f ngrok.log
+	@find . -name "*.pyc" -delete
+	@find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+	@find . -name ".pytest_cache" -type d -exec rm -rf {} + 2>/dev/null || true
+	@echo "✅ Cleanup complete"
+
+status:
+	@echo "📊 Process Status:"
+	@echo "Backend Server:"
+	@ps aux | grep uvicorn | grep -v grep || echo "❌ Backend server not running"
+	@echo ""
+	@echo "Ngrok Tunnel:"
+	@ps aux | grep ngrok | grep -v grep || echo "❌ Ngrok tunnel not running"
+	@echo ""
+	@echo "Ngrok URL (if running):"
+	@curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['tunnels'][0]['public_url'] if data.get('tunnels') else '❌ No tunnels')" 2>/dev/null || echo "❌ Ngrok not accessible"
+
+url:
+	@curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; data=json.load(sys.stdin); print('🌐 Ngrok URL:', data['tunnels'][0]['public_url']) if data.get('tunnels') else print('❌ No ngrok tunnel running')" 2>/dev/null || echo "❌ Ngrok not accessible"
+
+version:
+	@echo "📈 Backend Version Information:"
+	@echo "=============================="
+	@cd backend && ./venv/bin/python -c "from version import get_version_info; info = get_version_info(); print(f'Version: {info[\"version\"]}'); print(f'Build: {info[\"build\"]}'); print(f'Full: {info[\"full_version\"]}'); print(f'Updated: {info[\"last_updated\"]}'); print(f'Codename: {info[\"codename\"]}')"
+
+changelog:
+	@echo "📝 Recent Changelog Entries:"
+	@echo "============================="
+	@head -50 backend/CHANGELOG.md
+
+version-bump:
+	@echo "🔄 Manually triggering version management..."
+	@cd backend && ./venv/bin/python ../scripts/backend_version_manager.py
+
+# =============================================================================
 # TESTING COMMANDS
 # =============================================================================
 
@@ -229,13 +336,75 @@ test:
 	@echo "🧪 Running tests in directory: $(DIR)"
 	@$(MAKE) _test_directory DIR=$(DIR)
 
+ready:
+	@echo "🚀 Running compile + test for directory: $(DIR)"
+	@echo "🔍 Step 1: Compilation..."
+	@$(MAKE) compile DIR=$(DIR)
+	@echo "✅ Compilation successful!"
+	@echo "🧪 Step 2: Testing..."
+	@$(MAKE) _test_directory DIR=$(DIR)
+	@echo "✅ Ready! All checks passed for $(DIR)"
+
 # Note: backend, gas, lambda, etc. aliases are already defined above for compile
 # They will also work for test commands due to the argument parsing logic
 
-# Legacy commands (still supported)
+# Backend-specific test commands
 test-backend:
 	@$(MAKE) _test_directory DIR=backend
 
+test-backend-unit:
+	@echo "🧪 Running backend unit tests with mocked services (no external API calls)..."
+	@echo "🔍 Checking backend compilation first..."
+	@$(MAKE) compile backend
+	@echo "✅ Backend compilation successful, proceeding with unit tests..."
+	@cd backend && ./venv/bin/python -m pytest tests/unit/ -v
+	@echo ""
+	@echo "🧪 Running service-specific unit tests..."
+	@cd backend && ./venv/bin/python -m pytest services/*/tests/ -v
+	@echo ""
+	@echo "🧪 Running router unit tests..."
+	@cd backend && ./venv/bin/python -m pytest routers/tests/ -v
+
+test-backend-integration:
+	@echo "🧪 Running backend integration tests..."
+	@echo "Note: Make sure the server is running (make start)"
+	@cd backend && ./venv/bin/python -m pytest tests/integration/ -v
+
+test-backend-slack:
+	@echo "🧪 Running backend Slack message formatting tests..."
+	@cd backend && ./venv/bin/python run_slack_tests.py
+
+test-backend-all:
+	@echo "🧪 Running all backend tests..."
+	@$(MAKE) test-backend-unit
+	@$(MAKE) test-backend-slack
+
+test-specific:
+	@if [ -z "$(TEST)" ]; then \
+		echo "❌ Please specify a test to run: make test-specific TEST=<test_name>"; \
+		echo "Examples:"; \
+		echo "  make test-specific TEST=backend/test_slack_message_formatting.py"; \
+		echo "  make test-specific TEST=backend/test_orders_api.py::test_fetch_order"; \
+		echo "  make test-specific TEST=backend/services/tests/test_csv_service.py"; \
+		exit 1; \
+	fi
+	@echo "🧪 Running specific test: $(TEST)"
+	@if echo "$(TEST)" | grep -q "::"; then \
+		echo "Running pytest test case: $(TEST)"; \
+		cd backend && ./venv/bin/python -m pytest "../$(TEST)" -v; \
+	elif echo "$(TEST)" | grep -q "\.py$$"; then \
+		echo "Running Python test file: $(TEST)"; \
+		if echo "$(TEST)" | grep -q "^backend/"; then \
+			cd backend && ./venv/bin/python -m pytest "../$(TEST)" -v; \
+		else \
+			cd backend && ./venv/bin/python "../$(TEST)"; \
+		fi; \
+	else \
+		echo "❌ Invalid test format. Use .py file or pytest::test_name format"; \
+		exit 1; \
+	fi
+
+# Legacy commands (still supported)
 test-gas:
 	@$(MAKE) _test_directory DIR=GoogleAppsScripts
 

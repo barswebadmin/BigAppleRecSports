@@ -458,21 +458,20 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
       Logger.log(`✅ Refund amount: $${responseData.data.refund_amount || 0}`);
       Logger.log(`✅ Refund calculation success: ${responseData.data.refund_calculation_success || 'Unknown'}`);
     }
-    }
+  } catch (apiError) {
+    Logger.log(`❌ Error in processWithBackendAPI: ${apiError.message}`);
+    Logger.log(`❌ Stack trace: ${apiError.stack}`);
 
-  } catch (error) {
-    const errorMessage = `Error in backend API processing: ${error.toString()}`;
-    Logger.log(`❌ ${errorMessage}`);
-
+    // Send error notification
     MailApp.sendEmail({
       to: DEBUG_EMAIL,
-      subject: `❌ BARS Refund Form - API Processing Error`,
+      subject: "🚨 BARS Refund Form - API Processing Error",
       htmlBody: `
-        <h3>❌ Backend API Processing Error</h3>
-        <p><strong>Error:</strong> ${errorMessage}</p>
+        <h3>🚨 Error in Backend API Processing</h3>
+        <p><strong>Error:</strong> ${apiError.message}</p>
         <p><strong>Order:</strong> ${rawOrderNumber}</p>
-        <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
-        <p><strong>⚠️ Action Required:</strong> Check backend API connection and process manually</p>
+        <p><strong>Stack:</strong> <pre>${apiError.stack}</pre></p>
+        <p><strong>⚠️ Action Required:</strong> Check API processing function</p>
       `
     });
   }
