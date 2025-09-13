@@ -62,6 +62,15 @@ class SlackRefundsUtils:
 
     # === UTILITY FUNCTIONS ===
 
+    def _create_dynamic_api_client(self, channel_id: str, bot_token: str):
+        """Create a dynamic API client for the specified channel and token"""
+        from .api_client import SlackApiClient, MockSlackApiClient, _is_test_mode
+
+        if _is_test_mode():
+            return MockSlackApiClient("test_token", "test_channel")
+        else:
+            return SlackApiClient(bot_token, channel_id)
+
     def verify_slack_signature(
         self, body: bytes, timestamp: str, signature: str
     ) -> bool:
@@ -1976,6 +1985,7 @@ class SlackRefundsUtils:
                     "request_submitted_at": request_submitted_at,
                     "original_thread_ts": thread_ts,  # Store original message timestamp
                     "original_channel_id": channel_id,  # Store channel ID
+                    "original_bot_token": self.api_client.bearer_token,  # Store bot token used for original message
                 }
             )
 
@@ -2052,6 +2062,7 @@ class SlackRefundsUtils:
                 "request_submitted_at": request_submitted_at,
                 "original_thread_ts": thread_ts,
                 "original_channel_id": channel_id,
+                "original_bot_token": self.api_client.bearer_token,  # Store bot token used for original message
                 "slack_user_name": slack_user_name,
                 "slack_user_id": slack_user_id,
             }
@@ -2114,7 +2125,8 @@ class SlackRefundsUtils:
             private_metadata = json.loads(private_metadata_str)
 
             original_thread_ts = private_metadata.get("original_thread_ts")
-            original_channel_id = private_metadata.get("original_channel_id")  # noqa: F841
+            original_channel_id = private_metadata.get("original_channel_id")
+            original_bot_token = private_metadata.get("original_bot_token")
             slack_user_name = private_metadata.get("slack_user_name", "Unknown")
             slack_user_id = private_metadata.get("slack_user_id", "Unknown")
             raw_order_number = private_metadata.get("raw_order_number", "")
@@ -2154,20 +2166,41 @@ class SlackRefundsUtils:
                 )
             )
 
-            # Update the original Slack message
+            # Update the original Slack message using the same channel/token as the original message
             print(
                 f"🔍 DEBUG: Attempting to update message with timestamp: {original_thread_ts}"
             )
-            print(f"🔍 DEBUG: Channel ID: {self.api_client.channel_id}")
+            print(f"🔍 DEBUG: Original Channel ID: {original_channel_id}")
+            print(
+                f"🔍 DEBUG: Original Bot Token: {original_bot_token[:20]}..."
+                if original_bot_token
+                else "None"
+            )
             print(f"🔍 DEBUG: Message length: {len(denial_confirmation_message)}")
 
-            update_result = self.update_slack_on_shopify_success(
-                message_ts=original_thread_ts,
-                success_message=denial_confirmation_message,
-                action_buttons=[],  # No buttons for final denial
-            )
+            # Create dynamic API client using the same channel/token as the original message
+            if original_channel_id and original_bot_token:
+                dynamic_api_client = self._create_dynamic_api_client(
+                    original_channel_id, original_bot_token
+                )
 
-            print(f"🔍 DEBUG: Update result: {update_result}")
+                # Update message using the dynamic client
+                update_result = dynamic_api_client.update_message(
+                    message_ts=original_thread_ts,
+                    message_text=denial_confirmation_message,
+                    action_buttons=[],  # No buttons for final denial
+                )
+                print(f"🔍 DEBUG: Dynamic client update result: {update_result}")
+            else:
+                print(
+                    "⚠️ WARNING: Missing original channel ID or bot token, falling back to default client"
+                )
+                update_result = self.update_slack_on_shopify_success(
+                    message_ts=original_thread_ts,
+                    success_message=denial_confirmation_message,
+                    action_buttons=[],  # No buttons for final denial
+                )
+                print(f"🔍 DEBUG: Fallback update result: {update_result}")
 
             return {"response_action": "clear"}
 
@@ -2336,6 +2369,7 @@ class SlackRefundsUtils:
             # Extract original message context for updating
             original_thread_ts = original_request_data.get("original_thread_ts")
             original_channel_id = original_request_data.get("original_channel_id")
+            original_bot_token = original_request_data.get("original_bot_token")
 
             # Reconstruct request data with updated values
             updated_request_data = {
@@ -2464,17 +2498,39 @@ class SlackRefundsUtils:
                 f"📊 Refund calculation: ${refund_calculation.get('refund_amount', 'unknown')}"
             )
 
-            # Update the original message with success details
+            # Update the original message with success details using the same channel/token as the original message
             if original_thread_ts and original_channel_id:
                 print(
                     f"📍 Updating message {original_thread_ts} in channel {original_channel_id}"
                 )
-
-                update_result = self.update_slack_on_shopify_success(
-                    message_ts=original_thread_ts,
-                    success_message=success_message_data["text"],
-                    action_buttons=success_message_data["action_buttons"],
+                print(
+                    f"🔍 DEBUG: Original Bot Token: {original_bot_token[:20]}..."
+                    if original_bot_token
+                    else "None"
                 )
+
+                # Create dynamic API client using the same channel/token as the original message
+                if original_bot_token:
+                    dynamic_api_client = self._create_dynamic_api_client(
+                        original_channel_id, original_bot_token
+                    )
+
+                    # Update message using the dynamic client
+                    update_result = dynamic_api_client.update_message(
+                        message_ts=original_thread_ts,
+                        message_text=success_message_data["text"],
+                        action_buttons=success_message_data["action_buttons"],
+                    )
+                    print(f"🔍 DEBUG: Dynamic client update result: {update_result}")
+                else:
+                    print(
+                        "⚠️ WARNING: Missing original bot token, falling back to default client"
+                    )
+                    update_result = self.update_slack_on_shopify_success(
+                        message_ts=original_thread_ts,
+                        success_message=success_message_data["text"],
+                        action_buttons=success_message_data["action_buttons"],
+                    )
 
                 if update_result.get("success"):
                     print(

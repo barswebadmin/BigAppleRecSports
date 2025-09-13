@@ -336,6 +336,13 @@ class SlackApiClient:
                 "blocks": blocks,
             }
 
+            # DEBUG: Log the exact payload being sent to Slack
+            print("🔍 SLACK UPDATE DEBUG:")
+            print(f"   Channel ID: {self.channel_id}")
+            print(f"   Message TS: {message_ts}")
+            print(f"   URL: {url}")
+            print(f"   Payload keys: {list(payload.keys())}")
+
             try:
                 response = requests.post(
                     url, headers=headers, data=json.dumps(payload), verify=True
