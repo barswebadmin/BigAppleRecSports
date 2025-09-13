@@ -40,7 +40,7 @@ class TestProgressiveStatusReplacement:
     def mock_settings(self):
         """Mock settings"""
         mock = Mock()
-        mock.is_debug_mode = False
+        mock.environment = "production"
         return mock
 
     @pytest.fixture

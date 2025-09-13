@@ -43,7 +43,7 @@ def validate_environment():
     )
 
     # Check debug vs production mode
-    is_debug = settings.is_debug_mode
+    is_debug = settings.environment.lower() in ["development", "debug", "test"]
     is_prod = settings.is_production_mode
     print_check(
         f"Debug Mode: {is_debug}",

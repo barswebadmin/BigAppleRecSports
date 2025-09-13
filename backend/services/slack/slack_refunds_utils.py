@@ -630,7 +630,11 @@ class SlackRefundsUtils:
             )
 
             # Check ENVIRONMENT configuration for debug vs production behavior
-            is_debug_mode = settings.is_debug_mode
+            is_debug_mode = settings.environment.lower() in [
+                "development",
+                "debug",
+                "test",
+            ]
 
             # Print JSON post body for debug purposes in debug mode
             if is_debug_mode:
@@ -673,7 +677,6 @@ class SlackRefundsUtils:
                         processor_user=slack_user_id,
                         current_message_text=current_message_full_text,
                         order_id=order_id,
-                        is_debug_mode=is_debug_mode,
                     )
 
                     # ✅ Update Slack message ONLY on Shopify success
@@ -878,7 +881,11 @@ class SlackRefundsUtils:
             )
 
             # Check ENVIRONMENT configuration for debug vs production behavior
-            is_debug_mode = settings.is_debug_mode
+            is_debug_mode = settings.environment.lower() in [
+                "development",
+                "debug",
+                "test",
+            ]
 
             if is_debug_mode:
                 print(
@@ -1001,7 +1008,6 @@ class SlackRefundsUtils:
         processor_user: str,
         current_message_text: str,
         order_id: str = "",
-        is_debug_mode: bool = False,
     ) -> Dict[str, Any]:
         """Build comprehensive success message with customer info, inventory, and restock buttons"""
 

@@ -65,15 +65,6 @@ class Settings:
         return f"https://{self.shopify_store}/admin/api/2025-07/graphql.json"
 
     @property
-    def is_debug_mode(self) -> bool:
-        """
-        Determine if we're in debug mode based on ENVIRONMENT.
-        Debug mode: mocks API calls, includes debug prefixes in messages
-        Production mode: makes real API calls
-        """
-        return self.environment.lower() in ["development", "debug", "test"]
-
-    @property
     def is_production_mode(self) -> bool:
         """
         Determine if we're in production mode based on ENVIRONMENT.
