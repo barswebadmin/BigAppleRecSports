@@ -12,6 +12,8 @@ class Settings:
         self.shopify_token = os.getenv("SHOPIFY_TOKEN")
         self.shopify_location_id = os.getenv("SHOPIFY_LOCATION_ID")
         self.slack_refunds_bot_token = os.getenv("SLACK_REFUNDS_BOT_TOKEN")
+        self.slack_dev_bot_token = os.getenv("SLACK_DEV_BOT_TOKEN")
+        self.slack_dev_signing_secret = os.getenv("SLACK_DEV_SIGNING_SECRET")
         self.slack_signing_secret = os.getenv("SLACK_SIGNING_SECRET")
         self.environment = os.getenv("ENVIRONMENT", "production")
 
@@ -78,6 +80,32 @@ class Settings:
         Production mode: makes real API calls, no debug prefixes
         """
         return self.environment.lower() == "production"
+
+    @property
+    def active_slack_bot_token(self) -> str:
+        """
+        Return the appropriate Slack bot token based on environment.
+        - Production: uses SLACK_REFUNDS_BOT_TOKEN
+        - Non-production: uses SLACK_DEV_BOT_TOKEN if available, otherwise falls back to production token
+        """
+        if self.is_production_mode:
+            return self.slack_refunds_bot_token
+        else:
+            # Use dev token if available, otherwise fallback to production token
+            return self.slack_dev_bot_token or self.slack_refunds_bot_token
+
+    @property
+    def active_slack_signing_secret(self) -> str:
+        """
+        Return the appropriate Slack signing secret based on environment.
+        - Production: uses SLACK_SIGNING_SECRET
+        - Non-production: uses SLACK_DEV_SIGNING_SECRET if available, otherwise falls back to production secret
+        """
+        if self.is_production_mode:
+            return self.slack_signing_secret
+        else:
+            # Use dev signing secret if available, otherwise fallback to production secret
+            return self.slack_dev_signing_secret or self.slack_signing_secret
 
 
 settings = Settings()

@@ -51,7 +51,7 @@ class SlackRefundsUtils:
             refunds_channel = {
                 "name": "#registration-refunds" if is_production else "#joe-test",
                 "channel_id": "C08J1EN7SFR" if is_production else "C092RU7R6PL",
-                "bearer_token": settings.slack_refunds_bot_token or "",
+                "bearer_token": settings.active_slack_bot_token or "",
             }
             logger.info(
                 "🚀 Production mode - using real SlackApiClient for refunds utils"
