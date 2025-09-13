@@ -53,21 +53,6 @@ class MockSlackApiClient:
     ) -> Dict[str, Any]:
         """Mock send_message that logs but doesn't make real requests"""
         logger.info(f"🧪 MOCK: Would send Slack message to {self.channel_id}")
-        logger.debug(f"🧪 MOCK: Message content: {message_text[:100]}...")
-
-        # 🐛 DEBUG: Print blocks for testing even in mock mode
-        blocks = self._create_standard_blocks(message_text, action_buttons)
-        print("\n🔍 === MOCK SLACK BLOCKS DEBUG (SEND) ===")
-        print(f"📝 Message text length: {len(message_text)}")
-        print(
-            f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}"
-        )
-        print(f"📦 Number of blocks: {len(blocks)}")
-        print("🧱 Raw blocks JSON for Block Kit Builder:")
-        import json
-
-        print(json.dumps(blocks, indent=2))
-        print("=== END MOCK SLACK BLOCKS DEBUG (SEND) ===\n")
 
         return {
             "success": True,
@@ -88,20 +73,6 @@ class MockSlackApiClient:
         logger.info(
             f"🧪 MOCK: Would update Slack message {message_ts} in {self.channel_id}"
         )
-
-        # 🐛 DEBUG: Print blocks for testing even in mock mode
-        blocks = self._create_standard_blocks(message_text, action_buttons)
-        print("\n🔍 === MOCK SLACK BLOCKS DEBUG (UPDATE) ===")
-        print(f"📝 Message text length: {len(message_text)}")
-        print(
-            f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}"
-        )
-        print(f"📦 Number of blocks: {len(blocks)}")
-        print("🧱 Raw blocks JSON for Block Kit Builder:")
-        import json
-
-        print(json.dumps(blocks, indent=2))
-        print("=== END MOCK SLACK BLOCKS DEBUG (UPDATE) ===\n")
 
         return {
             "success": True,
@@ -208,9 +179,6 @@ class SlackApiClient:
             return {"success": False, "error": "No Slack bearer token configured"}
 
         try:
-            # Log message send attempt
-            print(f"📤 Sending message to Slack channel {self.channel_id}")
-
             # Prepare the request
             url = f"{self.base_url}/chat.postMessage"
             headers = {
@@ -221,19 +189,6 @@ class SlackApiClient:
             # Create blocks structure for rich formatting
             blocks = self._create_standard_blocks(message_text, action_buttons)
 
-            # 🐛 DEBUG: Print blocks for Slack Block Kit Builder testing
-            print("\n🔍 === SLACK BLOCKS DEBUG (SEND) ===")
-            print(f"📝 Message text length: {len(message_text)}")
-            print(
-                f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}"
-            )
-            print(f"📦 Number of blocks: {len(blocks)}")
-            print("🧱 Raw blocks JSON for Block Kit Builder:")
-            import json
-
-            print(json.dumps(blocks, indent=2))
-            print("=== END SLACK BLOCKS DEBUG (SEND) ===\n")
-
             payload = {
                 "channel": self.channel_id,
                 "text": slack_text or message_text,  # Fallback text for notifications
@@ -243,7 +198,6 @@ class SlackApiClient:
             }
 
             logger.info(f"Sending Slack message to channel {self.channel_id}")
-            logger.debug(f"Message content: {message_text[:100]}...")
 
             # Send the request with explicit SSL certificate bundle
             cert_bundle = (
@@ -346,7 +300,9 @@ class SlackApiClient:
             }
 
             # Log message update attempt
-            print(f"📤 Sending message update to Slack channel {self.channel_id}")
+            logger.info(
+                f"Updating Slack message {message_ts} in channel {self.channel_id}"
+            )
 
             # Use explicit SSL certificate bundle
             cert_bundle = (
