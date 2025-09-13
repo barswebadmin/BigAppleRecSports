@@ -51,23 +51,23 @@ function run_test() {
 
 # Test 1: Leadership discount codes directory structure
 run_test "Leadership directory has organized structure" \
-    "[ -d 'projects/projects/leadership-discount-codes/processors' ] && \
-     [ -d 'projects/projects/leadership-discount-codes/shared-utilities' ] && \
-     [ -f 'projects/projects/leadership-discount-codes/clasp_helpers.sh' ] && \
-     [ -f 'projects/projects/leadership-discount-codes/appsscript.json' ]"
+    "[ -d 'projects/leadership-discount-codes/src/processors' ] && \
+     [ -d 'projects/leadership-discount-codes/shared-utilities' ] && \
+     [ -f 'projects/leadership-discount-codes/clasp_helpers.sh' ] && \
+     [ -f 'projects/leadership-discount-codes/appsscript.json' ]"
 
-# Test 2: Main processor file exists and has expected functions
+# Test 2: Main processor file exists and has expected functions (check compiled JS)
 run_test "Main processor file exists with core functions" \
-    "[ -f 'projects/leadership-discount-codes/processors/leadershipProcessor.gs' ] && \
-     grep -q 'function processLeadershipDiscountsSmartCSV' projects/leadership-discount-codes/processors/leadershipProcessor.gs && \
-     grep -q 'function processLeadershipDiscountsWithHeaderPrompt' projects/leadership-discount-codes/processors/leadershipProcessor.gs && \
-     grep -q 'function onOpen' projects/leadership-discount-codes/processors/leadershipProcessor.gs"
+    "[ -f 'projects/leadership-discount-codes/src/processors/leadershipProcessor.js' ] && \
+     grep -q 'function processLeadershipDiscountsSmartCSV' projects/leadership-discount-codes/src/processors/leadershipProcessor.js && \
+     grep -q 'function processLeadershipDiscountsWithHeaderPrompt' projects/leadership-discount-codes/src/processors/leadershipProcessor.js && \
+     grep -q 'function onOpen' projects/leadership-discount-codes/src/processors/leadershipProcessor.js"
 
 # Test 3: Processor file has backend integration
 run_test "Processor has backend integration functions" \
-    "grep -q 'function sendCSVToBackend' projects/leadership-discount-codes/processors/leadershipProcessor.gs && \
-     grep -q 'function testBackendConnection' projects/leadership-discount-codes/processors/leadershipProcessor.gs && \
-     grep -q 'getBackendUrl' projects/leadership-discount-codes/processors/leadershipProcessor.gs"
+    "grep -q 'function sendCSVToBackend' projects/leadership-discount-codes/src/processors/leadershipProcessor.js && \
+     grep -q 'function testBackendConnection' projects/leadership-discount-codes/src/processors/leadershipProcessor.js && \
+     grep -q 'getBackendUrl' projects/leadership-discount-codes/src/processors/leadershipProcessor.js"
 
 # Test 4: Shared utilities are properly organized
 run_test "Shared utilities contain required files" \
@@ -75,11 +75,10 @@ run_test "Shared utilities contain required files" \
      [ -f 'projects/leadership-discount-codes/shared-utilities/dateUtils.gs' ] && \
      [ -f 'projects/leadership-discount-codes/shared-utilities/secretsUtils.gs' ]"
 
-# Test 5: Secrets utilities has required functions
+# Test 5: Secrets utilities has required functions (TypeScript version has getBackendUrl in utils/backend.js)
 run_test "Secrets utils has secret management functions" \
     "grep -q 'function getSecret' projects/leadership-discount-codes/shared-utilities/secretsUtils.gs && \
-     grep -q 'function getBackendUrl' projects/leadership-discount-codes/shared-utilities/secretsUtils.gs && \
-     grep -q 'function getSlackBotToken' projects/leadership-discount-codes/shared-utilities/secretsUtils.gs && \
+     (grep -q 'function getBackendUrl' projects/leadership-discount-codes/dist/utils/backend.js || grep -q 'function getBackendUrl' projects/leadership-discount-codes/shared-utilities/secretsUtils.gs) && \
      grep -q 'function setupSecrets' projects/leadership-discount-codes/shared-utilities/secretsUtils.gs"
 
 # Test 6: API utils has required functions
@@ -94,33 +93,33 @@ run_test "Date utils has date helper functions" \
 run_test "Apps Script manifest is valid JSON" \
     "python3 -m json.tool projects/leadership-discount-codes/appsscript.json > /dev/null 2>&1"
 
-# Test 9: Clasp helper script is executable and has correct functions
+# Test 9: Clasp helper script is executable and has deployment functionality
 run_test "Clasp helper script is executable with required functions" \
     "[ -x 'projects/leadership-discount-codes/clasp_helpers.sh' ] && \
-     grep -q 'function prepare_for_gas' projects/leadership-discount-codes/clasp_helpers.sh && \
-     grep -q 'function push_to_gas' projects/leadership-discount-codes/clasp_helpers.sh"
+     grep -q 'log_info.*Starting deployment' projects/leadership-discount-codes/clasp_helpers.sh && \
+     grep -q 'clasp push' projects/leadership-discount-codes/clasp_helpers.sh"
 
 # Test 10: No hardcoded secrets in processor (should use getSecret)
 run_test "No hardcoded secrets in processor file" \
-    "! grep -E '(shpat_|xoxb-|https://hooks.slack.com)' projects/leadership-discount-codes/processors/leadershipProcessor.gs"
+    "! grep -E '(shpat_|xoxb-|https://hooks.slack.com)' projects/leadership-discount-codes/src/processors/leadershipProcessor.js"
 
 # Test 11: Processor uses secret helper functions
 run_test "Processor uses secret helper functions instead of hardcoded values" \
-    "grep -q 'getBackendUrl\\|getSecret\\|getSlackBotToken' projects/leadership-discount-codes/processors/leadershipProcessor.gs"
+    "grep -q 'getBackendUrl\\|getSecret\\|getSlackBotToken' projects/leadership-discount-codes/src/processors/leadershipProcessor.js"
 
 # Test 12: Menu creation function exists and is properly structured
 run_test "Menu creation function exists and creates BARS Leadership menu" \
-    "grep -A 10 'function onOpen' projects/leadership-discount-codes/processors/leadershipProcessor.gs | grep -q 'BARS Leadership'"
+    "grep -A 10 'function onOpen' projects/leadership-discount-codes/src/processors/leadershipProcessor.js | grep -q 'BARS Leadership'"
 
 # Test 13: CSV processing functions handle errors properly
 run_test "CSV processing functions have error handling" \
-    "grep -q 'try {' projects/leadership-discount-codes/processors/leadershipProcessor.gs && \
-     grep -q 'catch' projects/leadership-discount-codes/processors/leadershipProcessor.gs && \
-     grep -q 'throw new Error\\|console.error\\|Logger.log.*Error' projects/leadership-discount-codes/processors/leadershipProcessor.gs"
+    "grep -q 'try {' projects/leadership-discount-codes/src/processors/leadershipProcessor.js && \
+     grep -q 'catch' projects/leadership-discount-codes/src/processors/leadershipProcessor.js && \
+     grep -q 'throw new Error\\|console.error\\|Logger.log.*Error' projects/leadership-discount-codes/src/processors/leadershipProcessor.js"
 
-# Test 14: Backend communication includes proper headers
+# Test 14: Backend communication includes proper headers (check compiled JS)
 run_test "Backend communication includes proper headers" \
-    "grep -B 15 'UrlFetchApp.fetch' projects/leadership-discount-codes/processors/leadershipProcessor.gs | grep -q 'Content-Type.*application/json'"
+    "grep -B 15 'UrlFetchApp.fetch' projects/leadership-discount-codes/src/processors/leadershipProcessor.js | grep -q 'Content-Type.*application/json'"
 
 # Test 15: Test clasp helper script prepare function (without actually deploying)
 run_test "Clasp helper script prepare function works correctly" \

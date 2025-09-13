@@ -6,8 +6,9 @@
   "extends": [
     "eslint:recommended"
   ],
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "ecmaVersion": 5,
+    "ecmaVersion": 2015,
     "sourceType": "script"
   },
   "rules": {
