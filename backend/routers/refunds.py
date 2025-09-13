@@ -103,19 +103,32 @@ async def send_refund_to_slack(
             )
 
             # Handle different error types
-            if error_type in ["connection_error", "api_error"]:
-                # Connection/API errors - log and return error to GAS, don't email customer
-                logger.error(
-                    "🚨 Shopify connection/API error - not sending customer email"
-                )
-                print(f"🚨 Shopify connection error: {error_message}")
+            if error_type in ["connection_error", "api_error", "server_error"]:
+                # Connection/API/server errors - log and return error to GAS, don't email customer
+                logger.error(f"🚨 Shopify {error_type} - not sending customer email")
+                print(f"🚨 Shopify {error_type}: {error_message}")
 
                 raise HTTPException(
                     status_code=503,  # Service Unavailable
                     detail={
                         "error": "shopify_connection_error",
-                        "message": "Unable to connect to Shopify. Please try again later.",
+                        "message": error_message,
                         "user_message": "There was a technical issue connecting to our system. Please try submitting your refund request again in a few minutes.",
+                    },
+                )
+            elif error_type == "config_error":
+                # Configuration errors (401, 404) - log and return error to GAS, don't email customer
+                logger.error(
+                    "🚨 Shopify configuration error - not sending customer email"
+                )
+                print(f"🚨 Shopify configuration error: {error_message}")
+
+                raise HTTPException(
+                    status_code=503,  # Service Unavailable
+                    detail={
+                        "error": "shopify_config_error",
+                        "message": error_message,
+                        "user_message": "There is a system configuration issue. Please contact support or try again later.",
                     },
                 )
             else:

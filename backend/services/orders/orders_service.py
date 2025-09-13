@@ -102,16 +102,46 @@ class OrdersService:
             logger.info(f"   Response type: {type(result)}")
             logger.info(f"   Response: {result}")
 
-            # Check for connection/API errors (result is None)
+            # Check for connection/network errors (result is None)
             if result is None:
-                logger.error(
-                    "🚨 Failed to connect to Shopify API - connection or authentication error"
-                )
+                logger.error("🚨 Network connection to Shopify failed")
                 return {
                     "success": False,
                     "message": "Unable to connect to Shopify. Please try again later.",
                     "error_type": "connection_error",
                 }
+
+            # Check for Shopify API errors (error dict returned)
+            if isinstance(result, dict) and "error" in result:
+                error_type = result["error"]
+                status_code = result.get("status_code", "unknown")
+
+                logger.error(f"🚨 Shopify API error ({status_code}): {error_type}")
+
+                if error_type == "authentication_error":
+                    return {
+                        "success": False,
+                        "message": "Shopify authentication failed. Please contact support.",
+                        "error_type": "config_error",
+                    }
+                elif error_type == "store_not_found":
+                    return {
+                        "success": False,
+                        "message": "Shopify store configuration error. Please contact support.",
+                        "error_type": "config_error",
+                    }
+                elif error_type == "server_error":
+                    return {
+                        "success": False,
+                        "message": "Shopify is temporarily unavailable. Please try again later.",
+                        "error_type": "server_error",
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Unable to connect to Shopify. Please try again later.",
+                        "error_type": "api_error",
+                    }
 
             # Check for empty/invalid response data
             if not result.get("data"):

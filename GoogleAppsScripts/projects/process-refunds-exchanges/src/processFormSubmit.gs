@@ -253,7 +253,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           Logger.log(`❌ [debugApi] Order customer email: ${errorDetail.order_customer_email || 'Unknown'}`);
         }
 
-      } else if (statusCode === 503 || errorType === 'shopify_connection_error') {
+      } else if (statusCode === 503 || errorType === 'shopify_connection_error' || errorType === 'shopify_config_error') {
         // 503: Service Unavailable - Shopify connection error, don't email customer, just log and show user message
         shouldSendToRequestor = false;
         const userMessage = errorDetail.user_message || 'There was a technical issue connecting to our system. Please try submitting your refund request again in a few minutes.';
@@ -270,15 +270,17 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         }
 
         // Send admin notification only
-        emailSubject = `🚨 BARS Refund Form - Shopify Connection Error [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        const errorTypeDisplay = errorType === 'shopify_config_error' ? 'Configuration Error' : 'Connection Error';
+        emailSubject = `🚨 BARS Refund Form - Shopify ${errorTypeDisplay} [${isDebug ? 'debugApi' : 'prodApi'}]`;
         emailBody = `
-          <h3>🚨 Shopify Connection Error</h3>
+          <h3>🚨 Shopify ${errorTypeDisplay}</h3>
           <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
+          <p><strong>Error Type:</strong> ${errorType}</p>
           <p><strong>Error Message:</strong> ${errorMessage}</p>
           <p><strong>Order:</strong> ${rawOrderNumber}</p>
           <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
-          <p><strong>⚠️ Action Required:</strong> Check Shopify API connectivity and backend logs</p>
+          <p><strong>⚠️ Action Required:</strong> ${errorType === 'shopify_config_error' ? 'Check Shopify API credentials and store configuration' : 'Check Shopify API connectivity and backend logs'}</p>
           <p><strong>📧 Customer Status:</strong> No email sent to customer (technical error)</p>
           <p><strong>💬 User Message Shown:</strong> ${userMessage}</p>
         `;
