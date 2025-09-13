@@ -208,6 +208,9 @@ class SlackApiClient:
             return {"success": False, "error": "No Slack bearer token configured"}
 
         try:
+            # Log message send attempt
+            print(f"📤 Sending message to Slack channel {self.channel_id}")
+
             # Prepare the request
             url = f"{self.base_url}/chat.postMessage"
             headers = {
@@ -336,12 +339,8 @@ class SlackApiClient:
                 "blocks": blocks,
             }
 
-            # DEBUG: Log the exact payload being sent to Slack
-            print("🔍 SLACK UPDATE DEBUG:")
-            print(f"   Channel ID: {self.channel_id}")
-            print(f"   Message TS: {message_ts}")
-            print(f"   URL: {url}")
-            print(f"   Payload keys: {list(payload.keys())}")
+            # Log message update attempt
+            print(f"📤 Sending message update to Slack channel {self.channel_id}")
 
             try:
                 response = requests.post(

@@ -102,9 +102,25 @@ class OrdersService:
             logger.info(f"   Response type: {type(result)}")
             logger.info(f"   Response: {result}")
 
-            if not result or not result.get("data"):
-                logger.error(f"❌ No data in Shopify response: {result}")
-                return {"success": False, "message": "No orders found."}
+            # Check for connection/API errors (result is None)
+            if result is None:
+                logger.error(
+                    "🚨 Failed to connect to Shopify API - connection or authentication error"
+                )
+                return {
+                    "success": False,
+                    "message": "Unable to connect to Shopify. Please try again later.",
+                    "error_type": "connection_error",
+                }
+
+            # Check for empty/invalid response data
+            if not result.get("data"):
+                logger.error(f"❌ Invalid or empty data in Shopify response: {result}")
+                return {
+                    "success": False,
+                    "message": "Unable to connect to Shopify. Please try again later.",
+                    "error_type": "api_error",
+                }
 
             orders_edges = result["data"]["orders"]["edges"]
 

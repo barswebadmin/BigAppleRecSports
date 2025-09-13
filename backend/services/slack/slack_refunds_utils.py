@@ -2167,19 +2167,10 @@ class SlackRefundsUtils:
             )
 
             # Update the original Slack message using the same channel/token as the original message
-            print(
-                f"🔍 DEBUG: Attempting to update message with timestamp: {original_thread_ts}"
-            )
-            print(f"🔍 DEBUG: Original Channel ID: {original_channel_id}")
-            print(
-                f"🔍 DEBUG: Original Bot Token: {original_bot_token[:20]}..."
-                if original_bot_token
-                else "None"
-            )
-            print(f"🔍 DEBUG: Message length: {len(denial_confirmation_message)}")
-
-            # Create dynamic API client using the same channel/token as the original message
             if original_channel_id and original_bot_token:
+                print(
+                    f"📤 Updating Slack message {original_thread_ts} in channel {original_channel_id}"
+                )
                 dynamic_api_client = self._create_dynamic_api_client(
                     original_channel_id, original_bot_token
                 )
@@ -2190,17 +2181,27 @@ class SlackRefundsUtils:
                     message_text=denial_confirmation_message,
                     action_buttons=[],  # No buttons for final denial
                 )
-                print(f"🔍 DEBUG: Dynamic client update result: {update_result}")
+
+                if update_result.get("success"):
+                    print("✅ Slack message updated successfully")
+                else:
+                    print(
+                        f"❌ Failed to update Slack message: {update_result.get('error', 'Unknown error')}"
+                    )
             else:
-                print(
-                    "⚠️ WARNING: Missing original channel ID or bot token, falling back to default client"
-                )
+                print("⚠️ Missing channel/token info, using fallback client")
                 update_result = self.update_slack_on_shopify_success(
                     message_ts=original_thread_ts,
                     success_message=denial_confirmation_message,
                     action_buttons=[],  # No buttons for final denial
                 )
-                print(f"🔍 DEBUG: Fallback update result: {update_result}")
+
+                if update_result.get("success"):
+                    print("✅ Slack message updated successfully (fallback)")
+                else:
+                    print(
+                        f"❌ Failed to update Slack message (fallback): {update_result.get('error', 'Unknown error')}"
+                    )
 
             return {"response_action": "clear"}
 
@@ -2501,12 +2502,7 @@ class SlackRefundsUtils:
             # Update the original message with success details using the same channel/token as the original message
             if original_thread_ts and original_channel_id:
                 print(
-                    f"📍 Updating message {original_thread_ts} in channel {original_channel_id}"
-                )
-                print(
-                    f"🔍 DEBUG: Original Bot Token: {original_bot_token[:20]}..."
-                    if original_bot_token
-                    else "None"
+                    f"📤 Updating Slack message {original_thread_ts} in channel {original_channel_id}"
                 )
 
                 # Create dynamic API client using the same channel/token as the original message
@@ -2521,11 +2517,8 @@ class SlackRefundsUtils:
                         message_text=success_message_data["text"],
                         action_buttons=success_message_data["action_buttons"],
                     )
-                    print(f"🔍 DEBUG: Dynamic client update result: {update_result}")
                 else:
-                    print(
-                        "⚠️ WARNING: Missing original bot token, falling back to default client"
-                    )
+                    print("⚠️ Missing bot token, using fallback client")
                     update_result = self.update_slack_on_shopify_success(
                         message_ts=original_thread_ts,
                         success_message=success_message_data["text"],
@@ -2533,12 +2526,10 @@ class SlackRefundsUtils:
                     )
 
                 if update_result.get("success"):
-                    print(
-                        "✅ Original message updated successfully with order details and refund buttons"
-                    )
+                    print("✅ Slack message updated successfully")
                 else:
                     print(
-                        f"⚠️ Failed to update original message: {update_result.get('error', 'Unknown error')}"
+                        f"❌ Failed to update Slack message: {update_result.get('error', 'Unknown error')}"
                     )
             else:
                 print(

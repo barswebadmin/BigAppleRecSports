@@ -95,43 +95,63 @@ async def send_refund_to_slack(
             )
 
         if not order_result["success"]:
+            error_type = order_result.get("error_type", "order_not_found")
+            error_message = order_result.get("message", "Unknown error")
+
             logger.error(
-                f"❌ Order {request.order_number} not found: {order_result['message']}"
+                f"❌ Order lookup failed for {request.order_number}: {error_message} (type: {error_type})"
             )
 
-            # Send order not found error to Slack
-            logger.info("📤 Sending 'order not found' notification to Slack")
-            requestor_info = {
-                "name": request.requestor_name,
-                "email": request.requestor_email,
-                "refund_type": request.refund_type,
-                "notes": request.notes,
-            }
-
-            try:
-                slack_result = slack_service.send_refund_request_notification(
-                    requestor_info=requestor_info,
-                    sheet_link=request.sheet_link or "",
-                    error_type="order_not_found",
-                    raw_order_number=request.order_number,
-                    request_initiated_at=request_initiated_at,
-                    slack_channel_name=slackChannelName,
-                    mention_strategy=mentionStrategy,
-                )
-                logger.info(
-                    f"✅ Slack notification sent successfully: {slack_result.get('success', 'Unknown status')}"
-                )
-            except Exception as slack_error:
+            # Handle different error types
+            if error_type in ["connection_error", "api_error"]:
+                # Connection/API errors - log and return error to GAS, don't email customer
                 logger.error(
-                    f"❌ Failed to send Slack notification: {str(slack_error)}"
+                    "🚨 Shopify connection/API error - not sending customer email"
                 )
-                logger.error(f"❌ Slack error type: {type(slack_error).__name__}")
+                print(f"🚨 Shopify connection error: {error_message}")
 
-            logger.info("🚫 Raising 406 HTTPException for order not found")
-            raise HTTPException(
-                status_code=406,
-                detail=f"Order {request.order_number} not found in Shopify",
-            )
+                raise HTTPException(
+                    status_code=503,  # Service Unavailable
+                    detail={
+                        "error": "shopify_connection_error",
+                        "message": "Unable to connect to Shopify. Please try again later.",
+                        "user_message": "There was a technical issue connecting to our system. Please try submitting your refund request again in a few minutes.",
+                    },
+                )
+            else:
+                # Legitimate "order not found" - send notification to Slack (which emails customer)
+                logger.info("📤 Sending 'order not found' notification to Slack")
+                requestor_info = {
+                    "name": request.requestor_name,
+                    "email": request.requestor_email,
+                    "refund_type": request.refund_type,
+                    "notes": request.notes,
+                }
+
+                try:
+                    slack_result = slack_service.send_refund_request_notification(
+                        requestor_info=requestor_info,
+                        sheet_link=request.sheet_link or "",
+                        error_type="order_not_found",
+                        raw_order_number=request.order_number,
+                        request_initiated_at=request_initiated_at,
+                        slack_channel_name=slackChannelName,
+                        mention_strategy=mentionStrategy,
+                    )
+                    logger.info(
+                        f"✅ Slack notification sent successfully: {slack_result.get('success', 'Unknown status')}"
+                    )
+                except Exception as slack_error:
+                    logger.error(
+                        f"❌ Failed to send Slack notification: {str(slack_error)}"
+                    )
+                    logger.error(f"❌ Slack error type: {type(slack_error).__name__}")
+
+                logger.info("🚫 Raising 406 HTTPException for order not found")
+                raise HTTPException(
+                    status_code=406,
+                    detail=f"Order {request.order_number} not found in Shopify",
+                )
 
         # Step 2: Extract order data
         logger.info("🏁 FLOW: Step 2 - Extracting order data and validating email")

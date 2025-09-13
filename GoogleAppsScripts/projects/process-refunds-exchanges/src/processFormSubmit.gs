@@ -253,6 +253,41 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           Logger.log(`❌ [debugApi] Order customer email: ${errorDetail.order_customer_email || 'Unknown'}`);
         }
 
+      } else if (statusCode === 503 || errorType === 'shopify_connection_error') {
+        // 503: Service Unavailable - Shopify connection error, don't email customer, just log and show user message
+        shouldSendToRequestor = false;
+        const userMessage = errorDetail.user_message || 'There was a technical issue connecting to our system. Please try submitting your refund request again in a few minutes.';
+
+        Logger.log(`🚨 [${isDebug ? 'debugApi' : 'prodApi'}] Shopify connection error (503): ${errorMessage}`);
+        Logger.log(`📋 User message: ${userMessage}`);
+
+        // Update spreadsheet with technical error note
+        try {
+          updateOrderNotesColumn(rawOrderNumber, requestorEmail, "Technical Error - Shopify connection failed. No email sent to customer.");
+          Logger.log(`✅ Updated Notes column for order ${rawOrderNumber} with technical error`);
+        } catch (updateError) {
+          Logger.log(`❌ Failed to update Notes column: ${updateError.message}`);
+        }
+
+        // Send admin notification only
+        emailSubject = `🚨 BARS Refund Form - Shopify Connection Error [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailBody = `
+          <h3>🚨 Shopify Connection Error</h3>
+          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Status Code:</strong> ${statusCode}</p>
+          <p><strong>Error Message:</strong> ${errorMessage}</p>
+          <p><strong>Order:</strong> ${rawOrderNumber}</p>
+          <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
+          <p><strong>⚠️ Action Required:</strong> Check Shopify API connectivity and backend logs</p>
+          <p><strong>📧 Customer Status:</strong> No email sent to customer (technical error)</p>
+          <p><strong>💬 User Message Shown:</strong> ${userMessage}</p>
+        `;
+
+        // Log the user-friendly message that would be shown
+        Logger.log(`💬 === USER MESSAGE FOR FORM ===`);
+        Logger.log(`💬 ${userMessage}`);
+        Logger.log(`💬 === END USER MESSAGE ===`);
+
       } else {
         // Other errors - Send debug email to admin
         emailSubject = `❌ BARS Refund Form - API Error [${isDebug ? 'debugApi' : 'prodApi'}]`;
