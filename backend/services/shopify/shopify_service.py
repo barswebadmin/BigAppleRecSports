@@ -87,6 +87,9 @@ class ShopifyService:
             ):
                 os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
 
+
+        logger = logging.getLogger(__name__)
+
         # DEBUG: Log the request details
         logger.info(f"🔗 Making Shopify request to: {self.graphql_url}")
         logger.info(f"🔑 Headers: {self.headers}")
