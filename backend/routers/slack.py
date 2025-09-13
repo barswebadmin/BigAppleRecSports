@@ -213,6 +213,23 @@ async def handle_slack_interactions(request: Request):
                 thread_ts = payload.get("message", {}).get("ts")
                 channel_id = payload.get("channel", {}).get("id")
 
+                # Extract metadata from the original message
+                message_metadata = payload.get("message", {}).get("metadata", {})
+                original_channel = None
+                original_mention = None
+
+                if (
+                    message_metadata
+                    and message_metadata.get("event_type") == "refund_request"
+                ):
+                    event_payload = message_metadata.get("event_payload", {})
+                    original_channel = event_payload.get("originalChannel")
+                    original_mention = event_payload.get("originalMention")
+
+                print(
+                    f"📍 Extracted metadata - Channel: {original_channel}, Mention: {original_mention}"
+                )
+
                 # Note: Button values now contain all necessary preserved data
 
                 logger.info(f"Button clicked: {action_id} with data: {request_data}")
@@ -287,6 +304,8 @@ async def handle_slack_interactions(request: Request):
                         slack_user_name,
                         current_message_full_text,
                         trigger_id,
+                        original_channel,
+                        original_mention,
                     )
 
                     print("\n🚀 === PROCEED WITHOUT CANCEL RESULT ===")

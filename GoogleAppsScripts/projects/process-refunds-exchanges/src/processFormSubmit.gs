@@ -324,6 +324,21 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           <p><strong>💬 Note:</strong> Backend sent Slack notification which will email customer to check order number</p>
         `;
 
+      } else if (statusCode === 409 && errorType === 'duplicate_refund') {
+        // 409: Duplicate Refund - Already processed, don't email customer, just log
+        shouldSendToRequestor = false;
+        const totalRefunds = errorDetail.total_refunds || 1;
+        emailSubject = `🚨 BARS Refund Form - Duplicate Refund Detected`;
+        emailBody = `
+          <h3>⚠️ Duplicate Refund Detected</h3>
+          <p><strong>Status Code:</strong> ${statusCode}</p>
+          <p><strong>Order:</strong> ${rawOrderNumber}</p>
+          <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
+          <p><strong>⚠️ Issue:</strong> Order already has ${totalRefunds} refund(s) processed</p>
+          <p><strong>📧 Customer Status:</strong> No email sent to customer (duplicate refund)</p>
+          <p><strong>💬 Note:</strong> Backend sent Slack notification for manual review</p>
+        `;
+
       } else if (statusCode === 409 || errorType === 'email_mismatch') {
         // 409: Email Mismatch - Send email to requestor using template from getSlackMessageText
         shouldSendToRequestor = true;
