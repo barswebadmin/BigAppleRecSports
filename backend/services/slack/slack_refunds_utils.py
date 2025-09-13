@@ -435,6 +435,7 @@ class SlackRefundsUtils:
                     message_ts=thread_ts,
                     success_message=refund_message["text"],
                     action_buttons=refund_message["action_buttons"],
+                    channel_id=channel_id,  # Pass through the correct channel ID
                 )
 
                 logger.info(f"Order {raw_order_number} cancelled successfully")
@@ -634,6 +635,7 @@ class SlackRefundsUtils:
                             message_ts=thread_ts,
                             success_message=refund_message["text"],
                             action_buttons=refund_message["action_buttons"],
+                            channel_id=channel_id,  # Pass through the correct channel ID
                         )
                 else:
                     # Use default update method
@@ -641,6 +643,7 @@ class SlackRefundsUtils:
                         message_ts=thread_ts,
                         success_message=refund_message["text"],
                         action_buttons=refund_message["action_buttons"],
+                        channel_id=channel_id,  # Pass through the correct channel ID
                     )
             else:
                 # Use default update method
@@ -648,6 +651,7 @@ class SlackRefundsUtils:
                     message_ts=thread_ts,
                     success_message=refund_message["text"],
                     action_buttons=refund_message["action_buttons"],
+                    channel_id=channel_id,  # Pass through the correct channel ID
                 )
 
             logger.info(
@@ -755,6 +759,7 @@ class SlackRefundsUtils:
                         message_ts=thread_ts,
                         success_message=success_message_data["text"],
                         action_buttons=success_message_data["action_buttons"],
+                        channel_id=channel_id,  # Pass through the correct channel ID
                     )
                 else:
                     # Fallback if order fetch fails - build message similar to comprehensive format
@@ -786,7 +791,10 @@ class SlackRefundsUtils:
 
                     # ✅ Update Slack with fallback success message
                     self.update_slack_on_shopify_success(
-                        message_ts=thread_ts, success_message=message, action_buttons=[]
+                        message_ts=thread_ts,
+                        success_message=message,
+                        action_buttons=[],
+                        channel_id=channel_id,  # Pass through the correct channel ID
                     )
             else:
                 # 🚨 Handle Shopify refund failure with detailed error logging
@@ -996,10 +1004,12 @@ class SlackRefundsUtils:
                         f"🔘 Built {len(no_refund_message_data['action_buttons'])} action buttons"
                     )
 
+                    # Use the correct channel ID from the button interaction
                     self.update_slack_on_shopify_success(
                         message_ts=thread_ts,
                         success_message=no_refund_message_data["text"],
                         action_buttons=no_refund_message_data["action_buttons"],
+                        channel_id=channel_id,  # Pass through the correct channel ID
                     )
 
                 except Exception as build_error:
@@ -1028,6 +1038,7 @@ class SlackRefundsUtils:
                         message_ts=thread_ts,
                         success_message=simple_message,
                         action_buttons=[],
+                        channel_id=channel_id,  # Pass through the correct channel ID
                     )
             else:
                 # Fallback if order fetch fails - use replacement logic
@@ -1047,7 +1058,10 @@ class SlackRefundsUtils:
 
                 try:
                     self.update_slack_on_shopify_success(
-                        message_ts=thread_ts, success_message=message, action_buttons=[]
+                        message_ts=thread_ts,
+                        success_message=message,
+                        action_buttons=[],
+                        channel_id=channel_id,  # Pass through the correct channel ID
                     )
                 except Exception as e:
                     print(f"❌ No refund message update failed: {str(e)}")
@@ -1587,15 +1601,39 @@ class SlackRefundsUtils:
     # === MESSAGE MANAGEMENT HELPERS ===
 
     def update_slack_on_shopify_success(
-        self, message_ts: str, success_message: str, action_buttons: list
+        self,
+        message_ts: str,
+        success_message: str,
+        action_buttons: list,
+        channel_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Update Slack message on Shopify success"""
         try:
-            result = self.api_client.update_message(
-                message_ts=message_ts,
-                message_text=success_message,
-                action_buttons=action_buttons,
-            )
+            # Use dynamic channel ID if provided, otherwise fall back to default api_client
+            if channel_id:
+                print(f"🎯 Using dynamic channel ID for update: {channel_id}")
+                # Create a temporary API client with the correct channel ID
+                from config import settings
+
+                bot_token = settings.active_slack_bot_token or ""
+                dynamic_api_client = self._create_dynamic_api_client(
+                    channel_id, bot_token
+                )
+
+                result = dynamic_api_client.update_message(
+                    message_ts=message_ts,
+                    message_text=success_message,
+                    action_buttons=action_buttons,
+                )
+            else:
+                print(
+                    f"⚠️ Using default api_client channel: {self.api_client.channel_id}"
+                )
+                result = self.api_client.update_message(
+                    message_ts=message_ts,
+                    message_text=success_message,
+                    action_buttons=action_buttons,
+                )
             return {"success": True, "result": result}
         except Exception as e:
             logger.error(f"Failed to update Slack message on success: {e}")
@@ -1888,6 +1926,7 @@ class SlackRefundsUtils:
                     message_ts=thread_ts,
                     success_message=completion_message,
                     action_buttons=[],
+                    channel_id=channel_id,  # Pass through the correct channel ID
                 )
                 return {"success": True, "message": "Inventory restock declined"}
 
@@ -1973,6 +2012,7 @@ class SlackRefundsUtils:
                 message_ts=thread_ts,
                 success_message=completion_message,
                 action_buttons=[],
+                channel_id=channel_id,  # Pass through the correct channel ID
             )
 
             return {
