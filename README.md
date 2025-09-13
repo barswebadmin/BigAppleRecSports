@@ -107,22 +107,65 @@ The system supports multiple Slack channels with different mention strategies:
 
 ## 📡 API Endpoints
 
+### Orders API
+Complete order management with refunds, cancellations, and inventory:
+
+```bash
+# Get order details with refund calculations
+GET /orders/{order_number}?email={optional_email}
+
+# Cancel order and process refund/credit
+DELETE /orders/{order_number}?refund_type=refund&refund_amount=142.50&restock_inventory=true
+
+# Create refund without canceling order
+POST /orders/{order_number}/refund?refund_type=credit&refund_amount=150.00
+
+# Restock inventory for order variants
+POST /orders/{order_number}/restock?variant_name=open
+```
+
+**Response Format:**
+```json
+{
+  "success": true,
+  "data": {
+    "order": {
+      "orderId": "gid://shopify/Order/...",
+      "orderName": "#1001",
+      "totalAmountPaid": 150.00,
+      "customer": {"email": "customer@example.com"},
+      "product": {"title": "Big Apple Dodgeball - Summer 2025"}
+    },
+    "refund_calculation": {
+      "refund_amount": 142.50,
+      "refund_text": "Estimated Refund Due: $142.50..."
+    },
+    "inventory_summary": {
+      "inventory_list": {"veteran": {...}, "open": {...}}
+    }
+  }
+}
+```
+
 ### Refunds API
 ```bash
 POST /refunds/send-to-slack
 # Process refund requests and send to Slack
-
-GET /orders/{order_number}
-# Fetch order details from Shopify
 ```
 
 ### Webhooks
 ```bash
 POST /webhooks/shopify/product/update
 # Handle Shopify product update webhooks
+
+POST /slack/webhook
+# Handle Slack button interactions
 ```
 
-See `docs/api/` for detailed API documentation.
+**Business Logic:**
+- **Refund Calculation**: Based on season start dates and timing (95%, 90%, 80%, 70%, 60%, 50%)
+- **Inventory Management**: Handles veteran, early, open, and waitlist registration types
+- **Slack Integration**: Automatic notifications to #refunds channel with sport-specific mentions
 
 ## 🤖 Google Apps Scripts
 
@@ -256,10 +299,10 @@ This README provides a complete overview of the BARS system. For detailed inform
 
 | Document | Description | Quick Link |
 |----------|-------------|------------|
-| **[Contributing Guide](README_EXT/CONTRIBUTING.md)** | Development setup, workflow, testing standards | 🚀 [Start Here](README_EXT/CONTRIBUTING.md#development-setup) |
-| **[Deployment Guide](README_EXT/DEPLOYMENT.md)** | Complete deployment procedures for all components | 🚀 [Deploy Now](README_EXT/DEPLOYMENT.md#deployment-overview) |
-| **[Security Policy](README_EXT/SECURITY.md)** | Security guidelines and vulnerability reporting | 🔒 [Security](README_EXT/SECURITY.md) |
-| **[Pre-Commit Guide](README_EXT/PRE_COMMIT_GUIDE.md)** | Pre-commit hooks setup and usage | 🔧 [Setup Hooks](README_EXT/PRE_COMMIT_GUIDE.md#quick-setup) |
+| **[Contributing Guide](README_EXT/1_CONTRIBUTING.md)** | Development setup, workflow, testing standards | 🚀 [Start Here](README_EXT/1_CONTRIBUTING.md#development-setup) |
+| **[Deployment Guide](README_EXT/2_DEPLOYMENT.md)** | Complete deployment procedures for all components | 🚀 [Deploy Now](README_EXT/2_DEPLOYMENT.md#deployment-overview) |
+| **[Security Policy](README_EXT/3_SECURITY.md)** | Security guidelines and vulnerability reporting | 🔒 [Security](README_EXT/3_SECURITY.md) |
+| **[Pre-Commit Guide](README_EXT/4_PRE_COMMIT_GUIDE.md)** | Pre-commit hooks setup and usage | 🔧 [Setup Hooks](README_EXT/4_PRE_COMMIT_GUIDE.md#quick-setup) |
 
 ### 📖 Documentation Organization
 

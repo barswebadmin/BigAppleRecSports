@@ -6,10 +6,10 @@ This folder contains detailed documentation for the BARS project. All files are 
 
 | File | Purpose | When to Use |
 |------|---------|-------------|
-| **[CONTRIBUTING.md](CONTRIBUTING.md)** | Development setup, workflow, standards | Setting up dev environment, contributing code |
-| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Complete deployment procedures | Deploying to production, CI/CD setup |
-| **[SECURITY.md](SECURITY.md)** | Security policies and reporting | Security guidelines, vulnerability reporting |
-| **[PRE_COMMIT_GUIDE.md](PRE_COMMIT_GUIDE.md)** | Pre-commit hooks usage | Understanding pre-commit behavior |
+| **[1_CONTRIBUTING.md](1_CONTRIBUTING.md)** | Development setup, workflow, standards | Setting up dev environment, contributing code |
+| **[2_DEPLOYMENT.md](2_DEPLOYMENT.md)** | Complete deployment procedures | Deploying to production, CI/CD setup |
+| **[3_SECURITY.md](3_SECURITY.md)** | Security policies and reporting | Security guidelines, vulnerability reporting |
+| **[4_PRE_COMMIT_GUIDE.md](4_PRE_COMMIT_GUIDE.md)** | Pre-commit hooks usage | Understanding pre-commit behavior |
 
 ## 🔗 Navigation
 

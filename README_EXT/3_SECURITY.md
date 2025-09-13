@@ -1,6 +1,6 @@
 # 🔒 Security Policy
 
-> 📖 **Navigation**: [← Back to README](../README.md) | [Contributing Guide](CONTRIBUTING.md) | [Deployment Guide](DEPLOYMENT.md) | [Pre-Commit Guide](PRE_COMMIT_GUIDE.md)
+> 📖 **Navigation**: [← Back to README](../README.md) | [Contributing Guide](1_CONTRIBUTING.md) | [Deployment Guide](2_DEPLOYMENT.md) | [Pre-Commit Guide](4_PRE_COMMIT_GUIDE.md)
 
 This document outlines security policies and procedures for the BARS project.
 

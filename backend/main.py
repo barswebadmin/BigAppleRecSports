@@ -2,9 +2,9 @@
 BARS Backend API - Main FastAPI Application
 
 📚 Documentation: See README.md#api-endpoints for API documentation
-🚀 Development: See README_EXT/CONTRIBUTING.md#backend-development for setup
+🚀 Development: See README_EXT/1_CONTRIBUTING.md#backend-development for setup
 🔧 Configuration: See README.md#configuration for environment variables
-🚀 Deployment: See README_EXT/DEPLOYMENT.md#backend-deployment-render for deployment
+🚀 Deployment: See README_EXT/2_DEPLOYMENT.md#backend-deployment-render for deployment
 """
 
 # CRITICAL: Configure SSL certificates BEFORE any other imports

@@ -1,6 +1,6 @@
 # 🚀 Deployment Guide
 
-> 📖 **Navigation**: [← Back to README](../README.md) | [Contributing Guide](CONTRIBUTING.md) | [Security Policy](SECURITY.md) | [Pre-Commit Guide](PRE_COMMIT_GUIDE.md)
+> 📖 **Navigation**: [← Back to README](../README.md) | [Contributing Guide](1_CONTRIBUTING.md) | [Security Policy](3_SECURITY.md) | [Pre-Commit Guide](4_PRE_COMMIT_GUIDE.md)
 
 Complete deployment procedures for all BARS components.
 
@@ -54,10 +54,39 @@ RENDER_API_KEY=rnd_xxxxxxxxxxxxx
 RENDER_SERVICE_ID=srv-xxxxxxxxxxxxx
 ```
 
+### Production Readiness Validation
+
+Run the validation script to ensure production readiness:
+
+```bash
+python3 validate_production_refunds.py
+```
+
+#### Expected Production Validation Results
+
+```
+🎉 ALL VALIDATIONS PASSED! 🎉
+✅ Environment Configuration - ENVIRONMENT=production
+✅ Service Initialization - All services loaded
+✅ Shopify Connectivity - API accessible
+✅ Workflow Components - Production API calls enabled
+✅ Security Configuration - CORS restricted, docs disabled
+```
+
+#### Environment Configuration Values
+
+| Value | API Calls | Slack Channel | Debug Messages | CORS | Docs |
+|-------|-----------|---------------|----------------|------|------|
+| `production` | **Real Shopify API** | `#refunds` | None | Restricted | Disabled |
+| `development` | Mock calls | `#joe-test` | `[DEBUG]` prefix | Open | Enabled |
+| `debug` | Mock calls | `#joe-test` | `[DEBUG]` prefix | Open | Enabled |
+| `test` | Mock calls | `#joe-test` | `[DEBUG]` prefix | Open | Enabled |
+
 ### Environment Variables
 Set in Render dashboard:
 ```bash
-# Required
+# Required for Production
+ENVIRONMENT=production
 SHOPIFY_STORE=your-store.myshopify.com
 SHOPIFY_TOKEN=shpat_xxxxxxxxxxxxx
 SLACK_REFUNDS_BOT_TOKEN=xoxb-xxxxxxxxxxxxx
@@ -279,6 +308,62 @@ clasp version [version_number]  # Restore version
 - **Execution Transcript**: In GAS editor
 - **Trigger History**: Failed executions
 - **Email Notifications**: On script failures
+
+## 🏭 Production Workflow Behavior
+
+### Order Cancellation (`ENVIRONMENT=production`)
+- ✅ **Makes real Shopify API calls** to cancel orders
+- ✅ **Calculates actual refund amounts** from order data
+- ✅ **Updates Slack with production messages** (no debug prefix)
+- ✅ **Uses #refunds channel** for notifications
+
+### Refund Processing (`ENVIRONMENT=production`)
+- ✅ **Creates real refunds** in Shopify via API
+- ✅ **Processes actual payment refunds**
+- ✅ **Updates order status** in Shopify
+- ✅ **Sends completion notifications** to #refunds
+
+### Inventory Restocking (`ENVIRONMENT=production`)
+- ✅ **Makes real GraphQL mutations** to adjust inventory
+- ✅ **Updates actual Shopify variant quantities**
+- ✅ **Handles API errors gracefully**
+- ✅ **Logs all inventory changes**
+
+## 📊 Production Monitoring & Logs
+
+Monitor these log patterns in production:
+
+```
+🚀 PRODUCTION MODE: Making real API calls
+🏭 PRODUCTION MODE: Making real refund API call
+🏭 PRODUCTION MODE: Making real inventory adjustment
+✅ Successfully adjusted inventory for variant X by 1
+```
+
+### Error Handling
+Production errors are logged with full context:
+
+```
+❌ Failed to adjust Shopify inventory: HTTP 422: User errors
+❌ Failed to create refund: Insufficient refund amount
+❌ Order cancellation failed: Order already cancelled
+```
+
+## 🔒 Production Security Features
+- ✅ **CORS restricted** to approved domains only
+- ✅ **API docs disabled** (`/docs` returns 404)
+- ✅ **Slack signature validation** on all webhooks
+- ✅ **Environment variables** for all secrets
+- ✅ **HTTPS only** for all API endpoints
+
+## 🆘 Rollback Plan
+
+If issues occur in production:
+
+1. **Quick rollback:** Revert to previous git commit
+2. **Disable webhook:** Remove webhook URL from Slack temporarily
+3. **Debug mode:** Set `ENVIRONMENT=debug` temporarily for testing
+4. **Manual processing:** Process refunds manually while investigating
 
 ## 🔧 Troubleshooting
 

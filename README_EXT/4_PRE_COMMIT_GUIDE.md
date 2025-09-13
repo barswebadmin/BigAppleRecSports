@@ -1,6 +1,6 @@
 # 🔧 Pre-Commit Hook Guide
 
-> 📖 **Navigation**: [← Back to README](../README.md) | [Contributing Guide](CONTRIBUTING.md) | [Deployment Guide](DEPLOYMENT.md) | [Security Policy](SECURITY.md)
+> 📖 **Navigation**: [← Back to README](../README.md) | [Contributing Guide](1_CONTRIBUTING.md) | [Deployment Guide](2_DEPLOYMENT.md) | [Security Policy](3_SECURITY.md)
 
 This guide explains how to use and configure pre-commit hooks for the BARS project.
 
