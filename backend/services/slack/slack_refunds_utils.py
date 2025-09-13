@@ -2155,11 +2155,19 @@ class SlackRefundsUtils:
             )
 
             # Update the original Slack message
-            self.update_slack_on_shopify_success(
+            print(
+                f"🔍 DEBUG: Attempting to update message with timestamp: {original_thread_ts}"
+            )
+            print(f"🔍 DEBUG: Channel ID: {self.api_client.channel_id}")
+            print(f"🔍 DEBUG: Message length: {len(denial_confirmation_message)}")
+
+            update_result = self.update_slack_on_shopify_success(
                 message_ts=original_thread_ts,
                 success_message=denial_confirmation_message,
                 action_buttons=[],  # No buttons for final denial
             )
+
+            print(f"🔍 DEBUG: Update result: {update_result}")
 
             return {"response_action": "clear"}
 
