@@ -7,9 +7,9 @@ on:
     branches: [ main ]
     types: [opened, synchronize, reopened]
 
-# Prevent duplicate runs: use PR number for PRs, run_id for pushes
+# Prevent duplicate runs: use branch name for consistency across push/PR events
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
