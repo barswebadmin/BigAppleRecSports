@@ -311,21 +311,8 @@ class SlackService:
                 )
 
                 # Create dynamic API client for the resolved channel
-                from .api_client import (
-                    SlackApiClient,
-                    MockSlackApiClient,
-                    _is_test_mode,
-                )
 
-                if _is_test_mode():
-                    dynamic_api_client = MockSlackApiClient(
-                        "test_token", "test_channel"
-                    )
-                else:
-                    bot_token = self.settings.active_slack_bot_token or ""
-                    dynamic_api_client = SlackApiClient(
-                        bot_token, channel_config["channelId"]
-                    )
+                # Note: Now using unified Slack client instead of dynamic API client creation
 
                 # Create a dynamic message builder with resolved mention strategy
                 from .message_builder import SlackMessageBuilder
@@ -347,7 +334,6 @@ class SlackService:
                 )
             else:
                 # Use default configuration for backward compatibility
-                dynamic_api_client = self.api_client
                 dynamic_message_builder = self.message_builder
                 channel_config = self.refunds_channel
                 logger.info(f"Using default config - Channel: {channel_config['name']}")
@@ -439,7 +425,14 @@ class SlackService:
             if mention_strategy:
                 metadata["originalMention"] = mention_strategy
 
-            result = dynamic_api_client.send_message(
+            # Use unified Slack client instead of dynamic client
+            from .unified_slack_client import slack_client
+
+            result = slack_client.send_message(
+                channel_id=channel_config["channelId"],
+                bearer_token=channel_config.get(
+                    "botToken", settings.active_slack_bot_token or ""
+                ),
                 message_text=message_data["text"],
                 action_buttons=message_data.get("action_buttons", []),
                 slack_text=slack_text,

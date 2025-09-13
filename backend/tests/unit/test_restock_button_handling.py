@@ -415,6 +415,7 @@ Current Inventory:
             message_ts="1757491928.415319",
             success_message=expected_completion_message,
             action_buttons=[],
+            channel_id="C092RU7R6PL",  # Now includes channel_id parameter
         )
 
     @pytest.mark.asyncio
