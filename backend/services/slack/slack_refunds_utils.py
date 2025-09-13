@@ -501,6 +501,8 @@ class SlackRefundsUtils:
         slack_user_name: str,
         current_message_full_text: str,
         trigger_id: Optional[str] = None,
+        original_channel: Optional[str] = None,
+        original_mention: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Handle proceed without cancel button click (Step 1)
@@ -510,6 +512,8 @@ class SlackRefundsUtils:
         print(f"👤 User: {slack_user_name}")
         print(f"📋 Request Data: {request_data}")
         print(f"📍 Channel: {channel_id}, Thread: {thread_ts}")
+        print(f"📍 Original Channel: {original_channel}")
+        print(f"👥 Original Mention: {original_mention}")
         print("=== END PROCEED WITHOUT CANCEL ===\n")
 
         try:
@@ -561,26 +565,90 @@ class SlackRefundsUtils:
             print(f"🔗 Extracted sheet link for proceed_without_cancel: {sheet_link}")
 
             # 5. Create refund decision message (order remains active)
+            # Use original mention strategy if available
+            if original_mention:
+                # Create a temporary SlackService instance to resolve the mention
+                from . import SlackService
+
+                temp_service = SlackService()
+                product_title = order_data["order"]["line_items"][0]["title"]
+                sport_mention = temp_service._resolve_mention(
+                    product_title, original_mention
+                )
+                print(f"👥 Using original mention strategy: {sport_mention}")
+            else:
+                sport_mention = self.message_builder.get_sport_group_mention(
+                    order_data["order"]["line_items"][0]["title"]
+                )
+                print(f"👥 Using default mention strategy: {sport_mention}")
+
             refund_message = self.message_builder.create_refund_decision_message(
                 order_data=order_data,
                 requestor_name=requestor_name,
                 requestor_email=requestor_email,
                 refund_type=refund_type,
-                sport_mention=self.message_builder.get_sport_group_mention(
-                    order_data["order"]["line_items"][0]["title"]
-                ),
+                sport_mention=sport_mention,
                 sheet_link=sheet_link,
                 order_cancelled=False,
                 slack_user_id=slack_user_id,
                 original_timestamp=request_submitted_at,
             )
 
-            # 4. Update Slack message using controlled mechanism
-            self.update_slack_on_shopify_success(
-                message_ts=thread_ts,
-                success_message=refund_message["text"],
-                action_buttons=refund_message["action_buttons"],
-            )
+            # 4. Update Slack message using controlled mechanism with original channel
+            if original_channel or original_mention:
+                # Use original channel and mention strategy for consistency
+                print("🔄 Using original channel config for message update")
+
+                # Create dynamic API client with original channel
+                if original_channel:
+                    # Resolve the original channel configuration
+                    from config import settings
+
+                    channel_config = settings.slack_channels.get(original_channel)
+                    if channel_config:
+                        bot_token = settings.active_slack_bot_token or ""
+                        dynamic_api_client = self._create_dynamic_api_client(
+                            channel_config["channelId"], bot_token
+                        )
+
+                        # Update message using the dynamic client
+                        update_result = dynamic_api_client.update_message(
+                            message_ts=thread_ts,
+                            message_text=refund_message["text"],
+                            action_buttons=refund_message["action_buttons"],
+                        )
+
+                        if update_result.get("success"):
+                            print(
+                                "✅ Slack message updated with original channel config"
+                            )
+                        else:
+                            print(
+                                f"❌ Failed to update with original channel: {update_result.get('error')}"
+                            )
+                    else:
+                        print(
+                            f"⚠️ Original channel '{original_channel}' not found in config, using default"
+                        )
+                        self.update_slack_on_shopify_success(
+                            message_ts=thread_ts,
+                            success_message=refund_message["text"],
+                            action_buttons=refund_message["action_buttons"],
+                        )
+                else:
+                    # Use default update method
+                    self.update_slack_on_shopify_success(
+                        message_ts=thread_ts,
+                        success_message=refund_message["text"],
+                        action_buttons=refund_message["action_buttons"],
+                    )
+            else:
+                # Use default update method
+                self.update_slack_on_shopify_success(
+                    message_ts=thread_ts,
+                    success_message=refund_message["text"],
+                    action_buttons=refund_message["action_buttons"],
+                )
 
             logger.info(
                 f"Proceeding to refund options for order {raw_order_number} (order not cancelled)"

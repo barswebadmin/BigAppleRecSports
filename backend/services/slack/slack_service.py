@@ -373,6 +373,8 @@ class SlackService:
                     requestor_info=requestor_info,
                     sheet_link=sheet_link,
                     request_initiated_at=request_initiated_at,
+                    slack_channel_name=slack_channel_name,
+                    mention_strategy=mention_strategy,
                 )
 
             elif error_type:
@@ -421,12 +423,27 @@ class SlackService:
 
             # Send the message using the dynamic API client with blocks and action buttons
             logger.info(f"Sending refund notification to {channel_config['name']}")
+
+            # Log message details for debugging
+            slack_text = message_data.get(
+                "slack_text", "New refund request notification"
+            )
+            print("📤 === SLACK MESSAGE SEND ===")
+            print(f"📋 Message Type: {slack_text}")
+            print(f"📍 Channel: {channel_config.get('channelId', 'unknown')}")
+
+            # Add metadata to preserve channel and mention strategy for interactions
+            metadata = {}
+            if slack_channel_name:
+                metadata["originalChannel"] = slack_channel_name
+            if mention_strategy:
+                metadata["originalMention"] = mention_strategy
+
             result = dynamic_api_client.send_message(
                 message_text=message_data["text"],
                 action_buttons=message_data.get("action_buttons", []),
-                slack_text=message_data.get(
-                    "slack_text", "New refund request notification"
-                ),
+                slack_text=slack_text,
+                metadata=metadata,
             )
 
             if result["success"]:
@@ -839,6 +856,8 @@ class SlackService:
         slack_user_name: str,
         current_message_full_text: str,
         trigger_id: Optional[str] = None,
+        original_channel: Optional[str] = None,
+        original_mention: Optional[str] = None,
     ) -> Dict[str, Any]:
         return await self.refunds_utils.handle_proceed_without_cancel(
             request_data,
@@ -850,6 +869,8 @@ class SlackService:
             slack_user_name,
             current_message_full_text,
             trigger_id,
+            original_channel,
+            original_mention,
         )
 
     async def handle_deny_refund_request_show_modal(

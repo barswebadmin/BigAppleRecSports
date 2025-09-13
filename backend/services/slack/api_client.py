@@ -77,6 +77,7 @@ class MockSlackApiClient:
         message_text: str,
         action_buttons: Optional[List[Dict[str, Any]]] = None,
         slack_text: Optional[str] = None,
+        metadata: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Mock send_message that logs but doesn't make real requests"""
         message_type = self._determine_message_type(action_buttons)
@@ -211,6 +212,7 @@ class SlackApiClient:
         message_text: str,
         action_buttons: Optional[List[Dict[str, Any]]] = None,
         slack_text: Optional[str] = None,
+        metadata: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Send a message to the configured Slack channel with optional action buttons
@@ -265,6 +267,13 @@ class SlackApiClient:
                 "unfurl_links": False,
                 "unfurl_media": False,
             }
+
+            # Add metadata if provided (Slack stores this in the message)
+            if metadata:
+                payload["metadata"] = {
+                    "event_type": "refund_request",
+                    "event_payload": metadata,
+                }
 
             # Determine message type based on action buttons
             message_type = self._determine_message_type(action_buttons)

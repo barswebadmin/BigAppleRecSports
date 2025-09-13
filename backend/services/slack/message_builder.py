@@ -700,6 +700,8 @@ class SlackMessageBuilder:
         requestor_info: Dict[str, Any],
         sheet_link: str,
         request_initiated_at: Optional[str] = None,
+        slack_channel_name: Optional[str] = None,
+        mention_strategy: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Build a successful refund request message with action buttons"""
         try:
@@ -1329,7 +1331,7 @@ class SlackMessageBuilder:
                     refunds_list.append(f"• {amount_text}, issued on {formatted_date}")
 
             # Build message text
-            message_text = "⚠️ *Refund request – Refund Already Processed*\n\n"
+            message_text = "❌ *Refund request – Refund Already Processed*\n\n"
             message_text += (
                 f"*Request Type*: {self._get_request_type_text(refund_type)}\n\n"
             )
@@ -1379,7 +1381,7 @@ class SlackMessageBuilder:
             return {
                 "text": message_text,
                 "action_buttons": action_buttons,
-                "slack_text": "⚠️ Duplicate Refund Detected - Action Required",
+                "slack_text": "❌ ERROR: Refund Already Processed (Update Details/Deny)",
             }
 
         except Exception as e:
