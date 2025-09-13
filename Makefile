@@ -12,7 +12,8 @@ help:
 	@echo "  make tunnel              - Start ngrok tunnel"
 	@echo "  make dev                 - Start server + tunnel (opens new terminal)"
 	@echo "  make stop                - Stop all processes"
-	@echo "  make install             - Install backend dependencies"
+	@echo "  make install             - Install all dependencies from unified requirements.txt"
+	@echo "  make install-prod        - Install production dependencies only"
 	@echo "  make clean               - Clean up processes and cache files"
 	@echo "  make status              - Show running processes"
 	@echo "  make url                 - Show ngrok URL"
@@ -287,7 +288,17 @@ stop:
 	@echo "✅ All processes stopped"
 
 install:
-	@echo "📦 Installing backend dependencies..."
+	@echo "📦 Installing all dependencies from unified requirements.txt..."
+	@pip3 install -r requirements.txt
+	@echo "✅ All dependencies installed!"
+
+install-prod:
+	@echo "📦 Installing production dependencies only..."
+	@pip3 install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil typing-extensions
+	@echo "✅ Production dependencies installed!"
+
+install-backend-legacy:
+	@echo "📦 Installing backend dependencies (legacy method)..."
 	@cd backend && pip3 install -r requirements.txt
 	@echo "📦 Installing test dependencies..."
 	@cd backend && pip3 install pytest pytest-asyncio pytest-mock
