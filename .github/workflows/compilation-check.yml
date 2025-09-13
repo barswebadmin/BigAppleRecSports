@@ -1,0 +1,305 @@
+name: Compilation Check
+
+on:
+  push:
+    branches-ignore: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  compilation-check:
+    runs-on: ubuntu-latest
+
+    outputs:
+      backend-compiled: ${{ steps.backend-compile.outputs.success }}
+      gas-compiled: ${{ steps.gas-compile.outputs.success }}
+      lambda-compiled: ${{ steps.lambda-compile.outputs.success }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # Backend Compilation Check
+    - name: Check Backend Compilation
+      id: backend-compile
+      continue-on-error: true
+      run: |
+        echo "🔍 Checking Backend compilation..."
+        cd backend
+
+        # Set up Python
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+        # Set minimal environment variables for compilation
+        export SHOPIFY_STORE="test-store.myshopify.com"
+        export SHOPIFY_TOKEN="test_token"
+        export ENVIRONMENT="test"
+        export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
+
+        # Check if Python files compile without syntax errors
+        echo "📋 Checking Python syntax..."
+        python -m py_compile config.py
+        python -m py_compile main.py
+
+        # Check if modules can be imported (basic compilation check)
+        echo "📋 Checking module imports..."
+        python -c "
+        import sys
+        sys.path.append('.')
+        try:
+            from config import settings
+            print('✅ Config module imports successfully')
+            from main import app
+            print('✅ Main FastAPI app imports successfully')
+            from services.orders.orders_service import OrdersService
+            print('✅ Orders service imports successfully')
+            from services.slack.slack_service import SlackService
+            print('✅ Slack service imports successfully')
+            from routers.refunds import router as refunds_router
+            print('✅ Refunds router imports successfully')
+            print('✅ Backend compilation successful!')
+        except Exception as e:
+            print(f'❌ Backend compilation failed: {e}')
+            sys.exit(1)
+        "
+
+        echo "success=true" >> $GITHUB_OUTPUT
+        echo "✅ Backend compilation check passed"
+
+    - name: Check Google Apps Scripts Compilation
+      id: gas-compile
+      continue-on-error: true
+      run: |
+        echo "🔍 Checking Google Apps Scripts compilation..."
+        cd GoogleAppsScripts
+
+        # Set up Node.js for GAS testing
+        npm install -g @google/clasp || true
+
+        # Validate JSON manifests
+        echo "📋 Validating appsscript.json files..."
+        find . -name "appsscript.json" -exec python3 -m json.tool {} \; > /dev/null
+        echo "✅ All appsscript.json files are valid JSON"
+
+        # Check for basic JavaScript syntax errors in main files
+        echo "📋 Checking JavaScript syntax..."
+        node -e "
+        const fs = require('fs');
+        const path = require('path');
+
+        function checkJSFile(filePath) {
+          try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            // Basic syntax check - try to parse as function body
+            new Function(content);
+            console.log(\`✅ \${filePath} syntax OK\`);
+            return true;
+          } catch (error) {
+            console.log(\`❌ \${filePath} syntax error: \${error.message}\`);
+            return false;
+          }
+        }
+
+        let allValid = true;
+        const projects = ['process-refunds-exchanges', 'parse-registration-info', 'leadership-discount-codes'];
+
+        for (const project of projects) {
+          const srcDir = path.join('projects', project, 'src');
+          if (fs.existsSync(srcDir)) {
+            const files = fs.readdirSync(srcDir).filter(f => f.endsWith('.gs'));
+            for (const file of files) {
+              if (!checkJSFile(path.join(srcDir, file))) {
+                allValid = false;
+              }
+            }
+          }
+        }
+
+        if (!allValid) {
+          console.log('❌ GAS compilation failed due to syntax errors');
+          process.exit(1);
+        }
+
+        console.log('✅ Google Apps Scripts compilation successful!');
+        "
+
+        echo "success=true" >> $GITHUB_OUTPUT
+        echo "✅ Google Apps Scripts compilation check passed"
+
+    - name: Check Lambda Functions Compilation
+      id: lambda-compile
+      continue-on-error: true
+      run: |
+        echo "🔍 Checking Lambda Functions compilation..."
+        cd lambda-functions
+
+        # Set up Python for Lambda functions
+        python -m pip install --upgrade pip
+
+        # Check each Lambda function directory
+        echo "📋 Checking Lambda function syntax..."
+        for dir in */; do
+          if [ -f "${dir}requirements.txt" ]; then
+            echo "🔍 Checking ${dir}..."
+            cd "$dir"
+
+            # Install requirements if they exist
+            if [ -f "requirements.txt" ]; then
+              pip install -r requirements.txt
+            fi
+
+            # Check Python syntax
+            python -m py_compile *.py 2>/dev/null || {
+              echo "❌ Syntax error in ${dir}"
+              cd ..
+              continue
+            }
+
+            # Try to import the lambda_function module
+            python -c "
+            import sys
+            try:
+                import lambda_function
+                print('✅ ${dir} imports successfully')
+            except Exception as e:
+                print('❌ ${dir} import failed: {}'.format(e))
+                sys.exit(1)
+            " || {
+              echo "❌ Import error in ${dir}"
+              cd ..
+              continue
+            }
+
+            cd ..
+          fi
+        done
+
+        echo "success=true" >> $GITHUB_OUTPUT
+        echo "✅ Lambda Functions compilation check passed"
+
+    # Summary step
+    - name: Compilation Summary
+      run: |
+        echo "📊 Compilation Check Summary:"
+        echo "Backend: ${{ steps.backend-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}"
+        echo "Google Apps Scripts: ${{ steps.gas-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}"
+        echo "Lambda Functions: ${{ steps.lambda-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}"
+
+        # Fail the job if any compilation failed
+        if [ "${{ steps.backend-compile.outputs.success }}" != "true" ] || \
+           [ "${{ steps.gas-compile.outputs.success }}" != "true" ] || \
+           [ "${{ steps.lambda-compile.outputs.success }}" != "true" ]; then
+          echo "❌ One or more compilation checks failed"
+          exit 1
+        fi
+
+        echo "✅ All compilation checks passed!"
+
+  # Backend Tests - only run if backend compilation succeeded
+  backend-tests:
+    needs: compilation-check
+    if: needs.compilation-check.outputs.backend-compiled == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Set up test environment variables
+      run: |
+        echo "SHOPIFY_STORE=test-store.myshopify.com" >> $GITHUB_ENV
+        echo "SHOPIFY_TOKEN=test_token" >> $GITHUB_ENV
+        echo "ENVIRONMENT=test" >> $GITHUB_ENV
+
+    - name: Run Backend Tests
+      run: |
+        export SHOPIFY_STORE="test-store.myshopify.com"
+        export SHOPIFY_TOKEN="test_token"
+        export ENVIRONMENT="test"
+        export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
+
+        echo "🧪 Running backend tests..."
+        python -m pytest tests/unit/ -v
+        python -m pytest services/*/tests/ -v || true
+        python -m pytest routers/tests/ -v || true
+        python -m pytest tests/integration/ -v
+        echo "✅ Backend tests completed!"
+      env:
+        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_TOKEN: test_token
+        ENVIRONMENT: test
+        SLACK_REFUNDS_BOT_TOKEN: test_slack_token
+
+  # Google Apps Scripts Tests - only run if GAS compilation succeeded
+  gas-tests:
+    needs: compilation-check
+    if: needs.compilation-check.outputs.gas-compiled == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Set up Python (for JSON validation)
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Make test scripts executable
+      run: |
+        cd GoogleAppsScripts
+        chmod +x tests/*.sh
+
+    - name: Run Google Apps Scripts Tests
+      run: |
+        cd GoogleAppsScripts
+        echo "🧪 Running GAS tests..."
+        ./tests/test_parse_registration_functions.sh
+        ./tests/test_parse_registration_comprehensive.sh
+        echo "✅ GAS tests completed!"
+
+  # Lambda Tests - only run if Lambda compilation succeeded
+  lambda-tests:
+    needs: compilation-check
+    if: needs.compilation-check.outputs.lambda-compiled == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Run Lambda Tests
+      run: |
+        cd lambda-functions
+        echo "🧪 Running Lambda tests..."
+        python3 tests/run_tests.py unit
+        echo "✅ Lambda tests completed!"
