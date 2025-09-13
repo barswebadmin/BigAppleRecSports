@@ -181,9 +181,22 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
       const errorMessage = errorDetail.message || 'Unknown error occurred';
       const statusCode = response.getResponseCode();
 
+      Logger.log(`❌ === BACKEND API ERROR HANDLING ===`);
+      Logger.log(`❌ Status Code: ${statusCode}`);
       Logger.log(`❌ Error Detail: ${JSON.stringify(errorDetail)}`);
       Logger.log(`❌ Error Type: ${errorType}`);
       Logger.log(`❌ Error Message: ${errorMessage}`);
+
+      // Log specific error fields for debugging
+      if (errorDetail.errors) {
+        Logger.log(`❌ Shopify Errors Field: ${errorDetail.errors}`);
+      }
+      if (errorDetail.user_message) {
+        Logger.log(`❌ User Message Field: ${errorDetail.user_message}`);
+      }
+      if (errorDetail.error) {
+        Logger.log(`❌ Error Field: ${errorDetail.error}`);
+      }
 
       // Get BARS logo for email
       const barsLogoUrl = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
@@ -196,9 +209,82 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
       let emailBody = '';
       let shouldSendToRequestor = false;
 
-      if (statusCode === 406 || errorType === 'order_not_found') {
-        // 406: Order Not Found - Send email to requestor using template from getSlackMessageText
-        shouldSendToRequestor = true;
+      if (statusCode === 401) {
+        // 401: Shopify Authentication Error - Don't email customer, admin notification only
+        shouldSendToRequestor = false;
+        const shopifyErrors = errorDetail.errors || errorMessage;
+        const userMessage = errorDetail.user_message || 'There is a system configuration issue. Please contact support or try again later.';
+
+        Logger.log(`🚨 [${isDebug ? 'debugApi' : 'prodApi'}] Shopify authentication error (401): ${shopifyErrors}`);
+
+        // Update spreadsheet with config error note
+        try {
+          updateOrderNotesColumn(rawOrderNumber, requestorEmail, `⚙️ Auth Error (401): ${shopifyErrors}. No email sent to customer.`);
+          Logger.log(`✅ Updated Notes column for order ${rawOrderNumber} with auth error`);
+        } catch (updateError) {
+          Logger.log(`❌ Failed to update Notes column: ${updateError.message}`);
+        }
+
+        // Send admin notification only
+        emailSubject = `🚨 BARS Refund Form - Shopify Auth Error (401) [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailBody = `
+          <h3>🚨 Shopify Authentication Error (401)</h3>
+          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Status Code:</strong> ${statusCode}</p>
+          <p><strong>Shopify Errors:</strong> ${shopifyErrors}</p>
+          <p><strong>Order:</strong> ${rawOrderNumber}</p>
+          <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
+          <p><strong>⚠️ Action Required:</strong> Check Shopify API token/credentials</p>
+          <p><strong>📧 Customer Status:</strong> No email sent to customer (configuration error)</p>
+          <p><strong>💬 User Message Shown:</strong> ${userMessage}</p>
+        `;
+
+        Logger.log(`💬 === USER MESSAGE FOR FORM ===`);
+        Logger.log(`💬 ${userMessage}`);
+        Logger.log(`💬 === END USER MESSAGE ===`);
+
+      } else if (statusCode === 404) {
+        // 404: Shopify Store Not Found - Don't email customer, admin notification only
+        shouldSendToRequestor = false;
+        const shopifyErrors = errorDetail.errors || errorMessage;
+        const userMessage = errorDetail.user_message || 'There is a system configuration issue. Please contact support or try again later.';
+
+        Logger.log(`🚨 [${isDebug ? 'debugApi' : 'prodApi'}] Shopify store error (404): ${shopifyErrors}`);
+
+        // Update spreadsheet with config error note
+        try {
+          updateOrderNotesColumn(rawOrderNumber, requestorEmail, `⚙️ Store Error (404): ${shopifyErrors}. No email sent to customer.`);
+          Logger.log(`✅ Updated Notes column for order ${rawOrderNumber} with store error`);
+        } catch (updateError) {
+          Logger.log(`❌ Failed to update Notes column: ${updateError.message}`);
+        }
+
+        // Send admin notification only
+        emailSubject = `🚨 BARS Refund Form - Shopify Store Error (404) [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailBody = `
+          <h3>🚨 Shopify Store Not Found (404)</h3>
+          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Status Code:</strong> ${statusCode}</p>
+          <p><strong>Shopify Errors:</strong> ${shopifyErrors}</p>
+          <p><strong>Order:</strong> ${rawOrderNumber}</p>
+          <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
+          <p><strong>⚠️ Action Required:</strong> Check Shopify store URL configuration</p>
+          <p><strong>📧 Customer Status:</strong> No email sent to customer (configuration error)</p>
+          <p><strong>💬 User Message Shown:</strong> ${userMessage}</p>
+        `;
+
+        Logger.log(`💬 === USER MESSAGE FOR FORM ===`);
+        Logger.log(`💬 ${userMessage}`);
+        Logger.log(`💬 === END USER MESSAGE ===`);
+
+      } else if (statusCode === 406 || errorType === 'order_not_found') {
+        // 406: Order Not Found - COMMENTED OUT: Don't send email to requestor per new requirements
+        shouldSendToRequestor = false; // Changed from true to false
+
+        Logger.log(`🔍 [${isDebug ? 'debugApi' : 'prodApi'}] Order not found (406): ${errorMessage}`);
+        Logger.log(`📧 CUSTOMER EMAIL DISABLED: Not sending email to customer for order not found`);
+
+        /* COMMENTED OUT: Customer email for order not found
         emailSubject = `Big Apple Rec Sports - Error with Refund Request for Order ${rawOrderNumber}`;
         emailBody = `<p>Hi ${requestorName.first},</p>
           <p>Your request for a ${refundOrCredit} has <b>not</b> been processed successfully. Your provided order number could not be found in our system - remember to please enter only <i>one</i> order number (submit each request separately) and ensure there are only digits. Please confirm you submitted your request using the same email address as is associated with your order - <a href="${SHOPIFY_LOGIN_URL}">Sign In to see your order history</a> to find the correct order number if necessary - and try again.
@@ -211,10 +297,11 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
             <b>BARS Leadership</b>
           </p>
           <img src="cid:barsLogo" style="width:225px; height:auto;">`;
+        */
 
         // Update spreadsheet with cancellation note (step 3)
         try {
-          updateOrderNotesColumn(rawOrderNumber, requestorEmail, "Canceled - Order Not Found. Requestor has been emailed.");
+          updateOrderNotesColumn(rawOrderNumber, requestorEmail, "Order Not Found - Slack notification sent, no customer email per new policy.");
           Logger.log(`✅ Updated Notes column for order ${rawOrderNumber}`);
         } catch (updateError) {
           Logger.log(`❌ Failed to update Notes column: ${updateError.message}`);
@@ -224,6 +311,18 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
             htmlBody: `Failed to update Notes column for order ${rawOrderNumber}: ${updateError.message}`
           });
         }
+
+        // Send admin notification about order not found
+        emailSubject = `🔍 BARS Refund Form - Order Not Found (406) [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailBody = `
+          <h3>🔍 Order Not Found (406)</h3>
+          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Status Code:</strong> ${statusCode}</p>
+          <p><strong>Order:</strong> ${rawOrderNumber}</p>
+          <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
+          <p><strong>📧 Customer Status:</strong> No email sent to customer (new policy - Slack handles notification)</p>
+          <p><strong>💬 Note:</strong> Backend sent Slack notification which will email customer to check order number</p>
+        `;
 
       } else if (statusCode === 409 || errorType === 'email_mismatch') {
         // 409: Email Mismatch - Send email to requestor using template from getSlackMessageText
@@ -324,10 +423,6 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
           <p><strong>⚠️ Action Required:</strong> Check backend API logs and process manually</p>
         `;
-
-        if (isDebug) {
-          Logger.log(`❌ [debugApi] Backend API error (${statusCode}): ${errorMessage}`);
-        }
       }
 
       // Send email to appropriate recipient
@@ -340,9 +435,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           inlineImages: { barsLogo: barsLogoBlob }
         });
 
-        if (isDebug) {
-          Logger.log(`📧 [debugApi] Sent error email to requestor: ${requestorEmail}`);
-        }
+
       } else {
         MailApp.sendEmail({
           to: DEBUG_EMAIL,
@@ -350,9 +443,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           htmlBody: emailBody
         });
 
-        if (isDebug) {
-          Logger.log(`📧 [debugApi] Sent error email to admin: ${isDebug ? DEBUG_EMAIL_2 : DEBUG_EMAIL_2}`);
-        }
+
       }
 
       return;
@@ -367,26 +458,6 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
       Logger.log(`✅ Refund amount: $${responseData.data.refund_amount || 0}`);
       Logger.log(`✅ Refund calculation success: ${responseData.data.refund_calculation_success || 'Unknown'}`);
     }
-
-    if (isDebug) {
-      Logger.log(`✅ [debugApi] Successfully sent to Slack via backend API`);
-
-      MailApp.sendEmail({
-        to: DEBUG_EMAIL,
-        subject: `✅ BARS Refund Form - API Processing Complete [debugApi]`,
-        htmlBody: `
-          <h3>✅ Debug Processing Complete - Backend API Mode</h3>
-          <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last}</p>
-          <p><strong>Email:</strong> ${requestorEmail}</p>
-          <p><strong>Order:</strong> ${rawOrderNumber}</p>
-          <p><strong>Refund Type:</strong> ${refundOrCredit}</p>
-          <p><strong>Notes:</strong> ${requestNotes}</p>
-          <p><strong>✅ Status:</strong> Successfully validated and sent to Slack via backend API</p>
-          <p><strong>💰 Refund Amount:</strong> $${responseData.data.refund_amount || 0}</p>
-          <p><strong>📝 Note:</strong> No automatic refund processing - awaiting Slack button interaction</p>
-          <p><strong>🤖 Approach:</strong> Full backend API processing</p>
-        `
-      });
     }
 
   } catch (error) {
@@ -395,10 +466,9 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
 
     MailApp.sendEmail({
       to: DEBUG_EMAIL,
-      subject: `❌ BARS Refund Form - API Processing Error [${isDebug ? 'debugApi' : 'prodApi'}]`,
+      subject: `❌ BARS Refund Form - API Processing Error`,
       htmlBody: `
         <h3>❌ Backend API Processing Error</h3>
-        <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
         <p><strong>Error:</strong> ${errorMessage}</p>
         <p><strong>Order:</strong> ${rawOrderNumber}</p>
         <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>

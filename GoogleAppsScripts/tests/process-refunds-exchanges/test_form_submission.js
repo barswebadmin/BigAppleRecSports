@@ -272,17 +272,6 @@ class FormSubmissionTests {
   testBackendErrorHandling() {
     console.log('🔍 Test: Backend Error Handling');
 
-    // Test 406 (Order Not Found)
-    UrlFetchApp.fetch = (url, options) => {
-      return {
-        getResponseCode: () => 406,
-        getContentText: () => JSON.stringify({
-          detail: "Order not found in Shopify"
-        }),
-        getHeaders: () => ({ 'content-type': 'application/json' })
-      };
-    };
-
     const mockFormEvent = {
       namedValues: {
         'First Name': ['Test'],
@@ -290,15 +279,87 @@ class FormSubmissionTests {
         'Email': ['test@example.com'],
         'Order Number': ['99999'],
         'Refund Question': ['refund please'],
-        'Notes': ['Invalid order']
+        'Notes': ['Test error handling']
       }
     };
 
-    // Should handle gracefully (not throw in our simplified version)
-    const result = processFormSubmitViaDoPost(mockFormEvent);
-    assert.strictEqual(result.text, 'Form submitted successfully');
+    // Test 401 (Shopify Authentication Error)
+    console.log('  🔍 Testing 401 Authentication Error');
+    UrlFetchApp.fetch = (url, options) => {
+      return {
+        getResponseCode: () => 401,
+        getContentText: () => JSON.stringify({
+          detail: {
+            error: "shopify_config_error",
+            errors: "[API] Invalid API key or access token (unrecognized login or wrong password)",
+            user_message: "There is a system configuration issue. Please contact support or try again later."
+          }
+        }),
+        getHeaders: () => ({ 'content-type': 'application/json' })
+      };
+    };
 
-    console.log('  ✅ Backend error responses handled correctly');
+    let result = processFormSubmitViaDoPost(mockFormEvent);
+    assert.strictEqual(result.text, 'Form submitted successfully');
+    console.log('  ✅ 401 Authentication Error test passed');
+
+    // Test 404 (Shopify Store Not Found)
+    console.log('  🔍 Testing 404 Store Not Found Error');
+    UrlFetchApp.fetch = (url, options) => {
+      return {
+        getResponseCode: () => 404,
+        getContentText: () => JSON.stringify({
+          detail: {
+            error: "shopify_config_error",
+            errors: "Not Found",
+            user_message: "There is a system configuration issue. Please contact support or try again later."
+          }
+        }),
+        getHeaders: () => ({ 'content-type': 'application/json' })
+      };
+    };
+
+    result = processFormSubmitViaDoPost(mockFormEvent);
+    assert.strictEqual(result.text, 'Form submitted successfully');
+    console.log('  ✅ 404 Store Not Found Error test passed');
+
+    // Test 406 (Order Not Found) - Updated to reflect no customer email
+    console.log('  🔍 Testing 406 Order Not Found (no customer email)');
+    UrlFetchApp.fetch = (url, options) => {
+      return {
+        getResponseCode: () => 406,
+        getContentText: () => JSON.stringify({
+          detail: "Order 99999 not found in Shopify"
+        }),
+        getHeaders: () => ({ 'content-type': 'application/json' })
+      };
+    };
+
+    result = processFormSubmitViaDoPost(mockFormEvent);
+    assert.strictEqual(result.text, 'Form submitted successfully');
+    console.log('  ✅ 406 Order Not Found (no customer email) test passed');
+
+    // Test 503 (Service Unavailable)
+    console.log('  🔍 Testing 503 Service Unavailable');
+    UrlFetchApp.fetch = (url, options) => {
+      return {
+        getResponseCode: () => 503,
+        getContentText: () => JSON.stringify({
+          detail: {
+            error: "shopify_connection_error",
+            message: "Unable to connect to Shopify. Please try again later.",
+            user_message: "There was a technical issue connecting to our system. Please try submitting your refund request again in a few minutes."
+          }
+        }),
+        getHeaders: () => ({ 'content-type': 'application/json' })
+      };
+    };
+
+    result = processFormSubmitViaDoPost(mockFormEvent);
+    assert.strictEqual(result.text, 'Form submitted successfully');
+    console.log('  ✅ 503 Service Unavailable test passed');
+
+    console.log('  ✅ All backend error responses handled correctly');
   }
 
   testFormFieldVariations() {
