@@ -279,7 +279,12 @@ async def send_refund_to_slack(
             logger.info("🚫 Raising 409 HTTPException for duplicate refund")
             raise HTTPException(
                 status_code=409,
-                detail=f"Order {request.order_number} already has {existing_refunds_result.get('total_refunds', 0)} refund(s) processed",
+                detail={
+                    "error": "duplicate_refund",
+                    "message": f"Order {request.order_number} already has {existing_refunds_result.get('total_refunds', 0)} refund(s) processed",
+                    "order_number": request.order_number,
+                    "total_refunds": existing_refunds_result.get("total_refunds", 0),
+                },
             )
 
         # Step 4: Calculate refund information (this caches the calculation)
