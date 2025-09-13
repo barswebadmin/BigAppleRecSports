@@ -1,12 +1,11 @@
 # .github/workflows/lambda-tests.yml
 name: Lambda Tests
 on:
-  pull_request:
-    branches: [ main ]
-    paths: [ 'lambda-functions/**' ]
   push:
-    branches: [ main, 'fix-*', 'feature-*', 'dev*' ]
-    paths: [ 'lambda-functions/**' ]
+    branches: [ main ]
+    paths:
+      - 'lambda-functions/**'
+      - '.github/workflows/lambda-test.yml'
 jobs:
   test:
     runs-on: ubuntu-latest

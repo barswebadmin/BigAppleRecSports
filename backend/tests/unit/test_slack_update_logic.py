@@ -14,6 +14,9 @@ class TestSlackUpdateLogic:
     def setup_method(self):
         """Set up test fixtures"""
         self.mock_api_client = Mock()
+        self.mock_api_client.bearer_token = (
+            "test_bearer_token"  # Mock the bearer_token as a string
+        )
         self.mock_message_builder = Mock()
         self.mock_orders_service = Mock()
         self.mock_settings = Mock()

@@ -95,7 +95,7 @@ class TestSlackWebhook:
                 )
 
                 # In debug mode, don't actually call cancel_order
-                if not getattr(settings, "is_debug_mode", False):
+                if settings.environment.lower() not in ["development", "debug", "test"]:
                     orders_service.cancel_order("mocked_order_id")
 
                 # Simulate updating the Slack message as the real implementation would
@@ -326,7 +326,7 @@ class TestSlackWebhook:
 
         # Mock the settings object to enable debug mode (settings object is instantiated at import time)
         with patch("config.settings") as mock_settings:
-            mock_settings.is_debug_mode = True
+            mock_settings.environment = "debug"
             mock_settings.is_production_mode = False
             mock_settings.environment = "debug"
 
@@ -389,7 +389,7 @@ class TestSlackWebhook:
 
         # Mock the settings object to enable debug mode
         with patch("config.settings") as mock_settings:
-            mock_settings.is_debug_mode = True
+            mock_settings.environment = "debug"
             mock_settings.is_production_mode = False
             mock_settings.environment = "debug"
 
@@ -428,15 +428,14 @@ class TestSlackWebhook:
         self, client, mock_orders_service, mock_slack_service, mock_slack_signature
     ):
         """Test successful custom refund modal submission"""
-        
+
         # Import AsyncMock for async method mocking
         from unittest.mock import AsyncMock
-        
+
         # Replace the existing function with an AsyncMock for this test
-        mock_slack_service.handle_process_refund = AsyncMock(return_value={
-            "success": True,
-            "message": "Refund processed successfully"
-        })
+        mock_slack_service.handle_process_refund = AsyncMock(
+            return_value={"success": True, "message": "Refund processed successfully"}
+        )
 
         # Create the modal submission payload
         payload = {
@@ -450,24 +449,26 @@ class TestSlackWebhook:
                         "refund_input_block": {
                             "custom_refund_amount": {
                                 "type": "plain_text_input",
-                                "value": "25.50"
+                                "value": "25.50",
                             }
                         }
                     }
                 },
-                "private_metadata": json.dumps({
-                    "orderId": "gid://shopify/Order/5877381955678",
-                    "rawOrderNumber": "#42366",
-                    "refundType": "credit",
-                    "channel_id": "C092RU7R6PL",
-                    "thread_ts": "1757674001.149799",
-                    "slack_user_name": "joe randazzo (he/him)",
-                    "current_message_full_text": "Test message content",
-                    "requestor_first_name": "John",
-                    "requestor_last_name": "Doe",
-                    "requestor_email": "test@example.com"
-                })
-            }
+                "private_metadata": json.dumps(
+                    {
+                        "orderId": "gid://shopify/Order/5877381955678",
+                        "rawOrderNumber": "#42366",
+                        "refundType": "credit",
+                        "channel_id": "C092RU7R6PL",
+                        "thread_ts": "1757674001.149799",
+                        "slack_user_name": "joe randazzo (he/him)",
+                        "current_message_full_text": "Test message content",
+                        "requestor_first_name": "John",
+                        "requestor_last_name": "Doe",
+                        "requestor_email": "test@example.com",
+                    }
+                ),
+            },
         }
 
         response = client.post("/slack/webhook", data={"payload": json.dumps(payload)})
@@ -476,7 +477,7 @@ class TestSlackWebhook:
         # Verify that handle_process_refund was called with correct parameters
         mock_slack_service.handle_process_refund.assert_called_once()
         call_args = mock_slack_service.handle_process_refund.call_args
-        
+
         # Check the request_data parameter
         request_data = call_args[1]["request_data"]
         assert request_data["orderId"] == "gid://shopify/Order/5877381955678"
@@ -484,7 +485,7 @@ class TestSlackWebhook:
         assert request_data["refundAmount"] == "25.50"
         assert request_data["refundType"] == "credit"
         assert request_data["orderCancelled"] == "false"
-        
+
         # Check other parameters
         assert call_args[1]["channel_id"] == "C092RU7R6PL"
         assert call_args[1]["thread_ts"] == "1757674001.149799"
@@ -498,7 +499,7 @@ class TestSlackWebhook:
         self, client, mock_orders_service, mock_slack_service, mock_slack_signature
     ):
         """Test custom refund modal submission with missing private_metadata"""
-        
+
         payload = {
             "type": "view_submission",
             "user": {"id": "U123456", "name": "joe randazzo (he/him)"},
@@ -510,13 +511,13 @@ class TestSlackWebhook:
                         "refund_input_block": {
                             "custom_refund_amount": {
                                 "type": "plain_text_input",
-                                "value": "25.50"
+                                "value": "25.50",
                             }
                         }
                     }
                 },
                 # Missing private_metadata
-            }
+            },
         }
 
         response = client.post("/slack/webhook", data={"payload": json.dumps(payload)})
@@ -527,7 +528,7 @@ class TestSlackWebhook:
         self, client, mock_orders_service, mock_slack_service, mock_slack_signature
     ):
         """Test custom refund modal submission with invalid JSON in private_metadata"""
-        
+
         payload = {
             "type": "view_submission",
             "user": {"id": "U123456", "name": "joe randazzo (he/him)"},
@@ -539,31 +540,32 @@ class TestSlackWebhook:
                         "refund_input_block": {
                             "custom_refund_amount": {
                                 "type": "plain_text_input",
-                                "value": "25.50"
+                                "value": "25.50",
                             }
                         }
                     }
                 },
-                "private_metadata": "invalid-json-content"
-            }
+                "private_metadata": "invalid-json-content",
+            },
         }
 
         response = client.post("/slack/webhook", data={"payload": json.dumps(payload)})
-        assert response.status_code == 400  # JSON decode error is handled and returns 400
+        assert (
+            response.status_code == 400
+        )  # JSON decode error is handled and returns 400
 
     def test_custom_refund_modal_submission_with_refund_type(
         self, client, mock_orders_service, mock_slack_service, mock_slack_signature
     ):
         """Test custom refund modal submission for refund type (not credit)"""
-        
+
         # Import AsyncMock for async method mocking
         from unittest.mock import AsyncMock
-        
+
         # Replace the existing function with an AsyncMock for this test
-        mock_slack_service.handle_process_refund = AsyncMock(return_value={
-            "success": True,
-            "message": "Refund processed successfully"
-        })
+        mock_slack_service.handle_process_refund = AsyncMock(
+            return_value={"success": True, "message": "Refund processed successfully"}
+        )
 
         payload = {
             "type": "view_submission",
@@ -576,24 +578,26 @@ class TestSlackWebhook:
                         "refund_input_block": {
                             "custom_refund_amount": {
                                 "type": "plain_text_input",
-                                "value": "15.00"
+                                "value": "15.00",
                             }
                         }
                     }
                 },
-                "private_metadata": json.dumps({
-                    "orderId": "gid://shopify/Order/1234567890",
-                    "rawOrderNumber": "#12345",
-                    "refundType": "refund",  # Actual refund, not credit
-                    "channel_id": "C092RU7R6PL",
-                    "thread_ts": "1757674001.149799",
-                    "slack_user_name": "staff member",
-                    "current_message_full_text": "Test message content",
-                    "requestor_first_name": "Jane",
-                    "requestor_last_name": "Smith",
-                    "requestor_email": "jane@example.com"
-                })
-            }
+                "private_metadata": json.dumps(
+                    {
+                        "orderId": "gid://shopify/Order/1234567890",
+                        "rawOrderNumber": "#12345",
+                        "refundType": "refund",  # Actual refund, not credit
+                        "channel_id": "C092RU7R6PL",
+                        "thread_ts": "1757674001.149799",
+                        "slack_user_name": "staff member",
+                        "current_message_full_text": "Test message content",
+                        "requestor_first_name": "Jane",
+                        "requestor_last_name": "Smith",
+                        "requestor_email": "jane@example.com",
+                    }
+                ),
+            },
         }
 
         response = client.post("/slack/webhook", data={"payload": json.dumps(payload)})
@@ -610,19 +614,18 @@ class TestSlackWebhook:
         self, client, mock_orders_service, mock_slack_service, mock_slack_signature
     ):
         """Test custom refund modal submission with decimal amounts"""
-        
+
         # Import AsyncMock for async method mocking
         from unittest.mock import AsyncMock
-        
+
         # Replace the existing function with an AsyncMock for this test
-        mock_slack_service.handle_process_refund = AsyncMock(return_value={
-            "success": True,
-            "message": "Refund processed successfully"
-        })
+        mock_slack_service.handle_process_refund = AsyncMock(
+            return_value={"success": True, "message": "Refund processed successfully"}
+        )
 
         # Test with various decimal formats
         test_amounts = ["1.99", "100", "0.50", "1234.56"]
-        
+
         for amount in test_amounts:
             payload = {
                 "type": "view_submission",
@@ -635,29 +638,33 @@ class TestSlackWebhook:
                             "refund_input_block": {
                                 "custom_refund_amount": {
                                     "type": "plain_text_input",
-                                    "value": amount
+                                    "value": amount,
                                 }
                             }
                         }
                     },
-                    "private_metadata": json.dumps({
-                        "orderId": "gid://shopify/Order/1234567890",
-                        "rawOrderNumber": "#12345",
-                        "refundType": "credit",
-                        "channel_id": "C092RU7R6PL",
-                        "thread_ts": "1757674001.149799",
-                        "slack_user_name": "test user",
-                        "current_message_full_text": "Test message content",
-                        "requestor_first_name": "Test",
-                        "requestor_last_name": "User",
-                        "requestor_email": "test@example.com"
-                    })
-                }
+                    "private_metadata": json.dumps(
+                        {
+                            "orderId": "gid://shopify/Order/1234567890",
+                            "rawOrderNumber": "#12345",
+                            "refundType": "credit",
+                            "channel_id": "C092RU7R6PL",
+                            "thread_ts": "1757674001.149799",
+                            "slack_user_name": "test user",
+                            "current_message_full_text": "Test message content",
+                            "requestor_first_name": "Test",
+                            "requestor_last_name": "User",
+                            "requestor_email": "test@example.com",
+                        }
+                    ),
+                },
             }
 
-            response = client.post("/slack/webhook", data={"payload": json.dumps(payload)})
+            response = client.post(
+                "/slack/webhook", data={"payload": json.dumps(payload)}
+            )
             assert response.status_code == 200
-            
+
             # Verify the amount was passed correctly
             call_args = mock_slack_service.handle_process_refund.call_args
             request_data = call_args[1]["request_data"]
@@ -687,7 +694,7 @@ class TestSlackWebhook:
 
         # Mock the settings object to enable debug mode
         with patch("config.settings") as mock_settings:
-            mock_settings.is_debug_mode = True
+            mock_settings.environment = "debug"
             mock_settings.is_production_mode = False
             mock_settings.environment = "debug"
 
@@ -708,7 +715,7 @@ class TestSlackWebhook:
 
         # Mock the settings object to enable debug mode
         with patch("config.settings") as mock_settings:
-            mock_settings.is_debug_mode = True
+            mock_settings.environment = "debug"
             mock_settings.is_production_mode = False
             mock_settings.environment = "debug"
 
@@ -724,7 +731,7 @@ class TestSlackWebhook:
 
         # Mock the settings object to enable debug mode
         with patch("config.settings") as mock_settings:
-            mock_settings.is_debug_mode = True
+            mock_settings.environment = "debug"
             mock_settings.is_production_mode = False
             mock_settings.environment = "debug"
 
@@ -819,7 +826,6 @@ class TestSlackMessageFormatting:
             requestor_name={"first": "Joe", "last": "Randazzo"},
             requestor_email="joe@bigapplerecsports.com",
             processor_user="joe randazzo (he/him)",
-            is_debug_mode=True,
             current_message_text=sample_message,
             order_id="gid://shopify/Order/5759498846302",
         )
@@ -835,30 +841,48 @@ class TestSlackMessageFormatting:
         assert "Joe Randazzo" in result["text"], "Requestor name should be preserved"
         assert "$97.75" in result["text"], "Refund amount should be displayed"
         assert "credit" in result["text"], "Refund type should be specified"
-        assert "joe randazzo (he/him)" in result["text"], "Processor should be identified"
+        assert (
+            "joe randazzo (he/him)" in result["text"]
+        ), "Processor should be identified"
 
         # 3. Hyperlink Functionality (Core Business Feature)
-        assert "admin.shopify.com" in result["text"], "Order should link to Shopify admin"
+        assert (
+            "admin.shopify.com" in result["text"]
+        ), "Order should link to Shopify admin"
         assert "#40192" in result["text"], "Order number should be displayed"
-        assert "docs.google.com/spreadsheets" in result["text"], "Should link to Google Sheets"
-        
+        assert (
+            "docs.google.com/spreadsheets" in result["text"]
+        ), "Should link to Google Sheets"
+
         # 4. Product Information Handling - This is critical business logic
         # TODO: This currently shows "Unknown Product" when it should show "joe test product"
         # This indicates a bug in product title extraction that needs fixing
         if "Unknown Product" in result["text"]:
-            print("⚠️  WARNING: Product title extraction may have a bug - showing 'Unknown Product' instead of real title")
-        
+            print(
+                "⚠️  WARNING: Product title extraction may have a bug - showing 'Unknown Product' instead of real title"
+            )
+
         # 5. Inventory Data Accuracy
-        assert "Current Inventory:" in result["text"], "Inventory section should be present"
-        assert "Veteran Registration: 0 spots available" in result["text"], "Veteran inventory should be accurate"
-        assert "Open Registration: 0 spots available" in result["text"], "Open inventory should be accurate"
+        assert (
+            "Current Inventory:" in result["text"]
+        ), "Inventory section should be present"
+        assert (
+            "Veteran Registration: 0 spots available" in result["text"]
+        ), "Veteran inventory should be accurate"
+        assert (
+            "Open Registration: 0 spots available" in result["text"]
+        ), "Open inventory should be accurate"
 
         # 6. Action Button Functionality (Critical for User Workflow)
-        assert len(result["action_buttons"]) == 3, "Should have exactly 3 action buttons"
-        
+        assert (
+            len(result["action_buttons"]) == 3
+        ), "Should have exactly 3 action buttons"
+
         button_texts = [btn["text"]["text"] for btn in result["action_buttons"]]
-        assert "Restock Veteran" in button_texts, "Veteran restock button should be available"
-        assert "Restock Open" in button_texts, "Open restock button should be available" 
+        assert (
+            "Restock Veteran" in button_texts
+        ), "Veteran restock button should be available"
+        assert "Restock Open" in button_texts, "Open restock button should be available"
         assert "Do Not Restock" in button_texts, "No restock option should be available"
 
         # 7. Slack API Compliance (Technical Requirement)
@@ -869,7 +893,9 @@ class TestSlackMessageFormatting:
             assert "value" in btn, "Buttons must have values for data passing"
 
         # 8. Season Information Extraction (Business Logic)
-        assert "Season Start Date" in result["text"], "Season start date should be extracted from original message"
+        assert (
+            "Season Start Date" in result["text"]
+        ), "Season start date should be extracted from original message"
         assert "7/9/25" in result["text"], "Specific season date should be preserved"
 
     def test_production_vs_debug_message_differences(self, mock_message_builder):
@@ -906,7 +932,6 @@ class TestSlackMessageFormatting:
         # Debug mode
         debug_result = build_comprehensive_success_message(
             **base_params,
-            is_debug_mode=True,
             requestor_name={"first": "Joe", "last": "Randazzo"},
             requestor_email="joe@bigapplerecsports.com",
             order_id="123",
@@ -915,7 +940,6 @@ class TestSlackMessageFormatting:
         # Production mode
         prod_result = build_comprehensive_success_message(
             **base_params,
-            is_debug_mode=False,
             requestor_name={"first": "Joe", "last": "Randazzo"},
             requestor_email="joe@bigapplerecsports.com",
             order_id="123",
@@ -929,34 +953,62 @@ class TestSlackMessageFormatting:
         assert "action_buttons" in debug_result and "action_buttons" in prod_result
 
         # 2. Critical Business Data - Should be preserved in both modes
-        assert "Joe Randazzo" in debug_result["text"], "Debug mode should preserve requestor name"
-        assert "Joe Randazzo" in prod_result["text"], "Prod mode should preserve requestor name"
+        assert (
+            "Joe Randazzo" in debug_result["text"]
+        ), "Debug mode should preserve requestor name"
+        assert (
+            "Joe Randazzo" in prod_result["text"]
+        ), "Prod mode should preserve requestor name"
         assert "$1.80" in debug_result["text"], "Debug mode should show correct amount"
         assert "$1.80" in prod_result["text"], "Prod mode should show correct amount"
         assert "refund" in debug_result["text"], "Debug mode should show refund type"
         assert "refund" in prod_result["text"], "Prod mode should show refund type"
 
         # 3. Hyperlink Functionality - Critical for both modes
-        assert "docs.google.com/spreadsheets" in debug_result["text"], "Debug mode should have working links"
-        assert "docs.google.com/spreadsheets" in prod_result["text"], "Prod mode should have working links"
+        assert (
+            "docs.google.com/spreadsheets" in debug_result["text"]
+        ), "Debug mode should have working links"
+        assert (
+            "docs.google.com/spreadsheets" in prod_result["text"]
+        ), "Prod mode should have working links"
 
         # 4. Inventory Information - Core business feature
-        assert "Current Inventory:" in debug_result["text"], "Debug mode should show inventory"
-        assert "Current Inventory:" in prod_result["text"], "Prod mode should show inventory"
-        assert "Veteran Registration: 5 spots available" in debug_result["text"], "Debug inventory should be accurate"
-        assert "Veteran Registration: 5 spots available" in prod_result["text"], "Prod inventory should be accurate"
+        assert (
+            "Current Inventory:" in debug_result["text"]
+        ), "Debug mode should show inventory"
+        assert (
+            "Current Inventory:" in prod_result["text"]
+        ), "Prod mode should show inventory"
+        assert (
+            "Veteran Registration: 5 spots available" in debug_result["text"]
+        ), "Debug inventory should be accurate"
+        assert (
+            "Veteran Registration: 5 spots available" in prod_result["text"]
+        ), "Prod inventory should be accurate"
 
         # 5. Action Button Functionality - Must work in both modes
-        assert len(debug_result["action_buttons"]) > 0, "Debug mode should have action buttons"
-        assert len(prod_result["action_buttons"]) > 0, "Prod mode should have action buttons"
-        
+        assert (
+            len(debug_result["action_buttons"]) > 0
+        ), "Debug mode should have action buttons"
+        assert (
+            len(prod_result["action_buttons"]) > 0
+        ), "Prod mode should have action buttons"
+
         # Validate button structure for both modes
         for mode_name, result in [("debug", debug_result), ("production", prod_result)]:
             for btn in result["action_buttons"]:
-                assert "action_id" in btn, f"{mode_name} mode buttons must have action IDs"
+                assert (
+                    "action_id" in btn
+                ), f"{mode_name} mode buttons must have action IDs"
                 assert "value" in btn, f"{mode_name} mode buttons must have values"
-                assert btn["type"] == "button", f"{mode_name} mode buttons must be valid Slack buttons"
+                assert (
+                    btn["type"] == "button"
+                ), f"{mode_name} mode buttons must be valid Slack buttons"
 
-        # 6. Content Completeness - Both modes should have complete messages  
-        assert len(debug_result["text"]) > 100, "Debug message should have substantial content"
-        assert len(prod_result["text"]) > 100, "Production message should have substantial content"
+        # 6. Content Completeness - Both modes should have complete messages
+        assert (
+            len(debug_result["text"]) > 100
+        ), "Debug message should have substantial content"
+        assert (
+            len(prod_result["text"]) > 100
+        ), "Production message should have substantial content"

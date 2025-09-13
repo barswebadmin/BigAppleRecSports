@@ -103,10 +103,56 @@ class ShopifyService:
                 verify=True,  # Explicitly enable SSL verification
             )
             logger.info(f"📥 Response status: {response.status_code}")
-            response.raise_for_status()
+
+            # Handle different HTTP status codes
+            if response.status_code == 401:
+                logger.error("🚨 Shopify authentication error (401): Invalid API token")
+                try:
+                    error_data = response.json()
+                    shopify_error = error_data.get("errors", response.text)
+                except (ValueError, KeyError):
+                    shopify_error = response.text
+                return {
+                    "error": "authentication_error",
+                    "status_code": 401,
+                    "shopify_errors": shopify_error,
+                }
+            elif response.status_code == 404:
+                logger.error("🚨 Shopify store not found (404): Invalid store URL")
+                try:
+                    error_data = response.json()
+                    shopify_error = error_data.get("errors", response.text)
+                except (ValueError, KeyError):
+                    shopify_error = response.text
+                return {
+                    "error": "store_not_found",
+                    "status_code": 404,
+                    "shopify_errors": shopify_error,
+                }
+            elif response.status_code >= 500:
+                logger.error(
+                    f"🚨 Shopify server error ({response.status_code}): {response.text}"
+                )
+                return {
+                    "error": "server_error",
+                    "status_code": response.status_code,
+                    "message": response.text,
+                }
+            elif response.status_code != 200:
+                logger.error(
+                    f"🚨 Shopify API error ({response.status_code}): {response.text}"
+                )
+                return {
+                    "error": "api_error",
+                    "status_code": response.status_code,
+                    "message": response.text,
+                }
+
+            # Success - parse JSON response
             result = response.json()
             logger.info(f"📋 Response data: {result}")
             return result
+
         except requests.exceptions.SSLError as ssl_error:
             logger.error(f"🚨 SSL Error - trying without verification: {ssl_error}")
             # Fallback: try without SSL verification (for development)
@@ -120,16 +166,75 @@ class ShopifyService:
                     verify=False,
                 )
                 logger.info(f"📥 Fallback response status: {response.status_code}")
-                response.raise_for_status()
+
+                # Handle status codes in fallback too
+                if response.status_code == 401:
+                    logger.error(
+                        "🚨 Shopify authentication error (401): Invalid API token"
+                    )
+                    try:
+                        error_data = response.json()
+                        shopify_error = error_data.get("errors", response.text)
+                    except (ValueError, KeyError):
+                        shopify_error = response.text
+                    return {
+                        "error": "authentication_error",
+                        "status_code": 401,
+                        "shopify_errors": shopify_error,
+                    }
+                elif response.status_code == 404:
+                    logger.error("🚨 Shopify store not found (404): Invalid store URL")
+                    try:
+                        error_data = response.json()
+                        shopify_error = error_data.get("errors", response.text)
+                    except (ValueError, KeyError):
+                        shopify_error = response.text
+                    return {
+                        "error": "store_not_found",
+                        "status_code": 404,
+                        "shopify_errors": shopify_error,
+                    }
+                elif response.status_code >= 500:
+                    logger.error(
+                        f"🚨 Shopify server error ({response.status_code}): {response.text}"
+                    )
+                    return {
+                        "error": "server_error",
+                        "status_code": response.status_code,
+                        "message": response.text,
+                    }
+                elif response.status_code != 200:
+                    logger.error(
+                        f"🚨 Shopify API error ({response.status_code}): {response.text}"
+                    )
+                    return {
+                        "error": "api_error",
+                        "status_code": response.status_code,
+                        "message": response.text,
+                    }
+
                 result = response.json()
                 logger.info(f"📋 Fallback response data: {result}")
                 return result
+            except requests.exceptions.ConnectionError as fallback_conn_error:
+                logger.error(f"🚨 Network connection failed: {fallback_conn_error}")
+                return None  # True connection error
+            except requests.exceptions.Timeout as fallback_timeout_error:
+                logger.error(f"🚨 Request timeout: {fallback_timeout_error}")
+                return None  # True connection error
             except requests.RequestException as fallback_error:
-                logger.error(f"🚨 Fallback request also failed: {fallback_error}")
-                return None
+                logger.error(f"🚨 Fallback request failed: {fallback_error}")
+                return None  # True connection error
+
+        except requests.exceptions.ConnectionError as conn_error:
+            logger.error(f"🚨 Network connection failed: {conn_error}")
+            return None  # True connection error
+        except requests.exceptions.Timeout as timeout_error:
+            logger.error(f"🚨 Request timeout: {timeout_error}")
+            return None  # True connection error
         except requests.RequestException as e:
             logger.error(f"🚨 Request failed: {e}")
-            return None
+            return None  # True connection error
 
     # Forwarding from ShopifyCustomerUtils
     def get_customer_with_tags(self, email: str) -> Optional[Dict[str, Any]]:

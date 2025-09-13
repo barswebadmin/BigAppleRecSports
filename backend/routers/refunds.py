@@ -95,43 +95,94 @@ async def send_refund_to_slack(
             )
 
         if not order_result["success"]:
+            error_type = order_result.get("error_type", "order_not_found")
+            error_message = order_result.get("message", "Unknown error")
+
             logger.error(
-                f"❌ Order {request.order_number} not found: {order_result['message']}"
+                f"❌ Order lookup failed for {request.order_number}: {error_message} (type: {error_type})"
             )
 
-            # Send order not found error to Slack
-            logger.info("📤 Sending 'order not found' notification to Slack")
-            requestor_info = {
-                "name": request.requestor_name,
-                "email": request.requestor_email,
-                "refund_type": request.refund_type,
-                "notes": request.notes,
-            }
+            # Handle different error types
+            if error_type in ["connection_error", "api_error", "server_error"]:
+                # Connection/API/server errors - log and return error to GAS, don't email customer
+                logger.error(f"🚨 Shopify {error_type} - not sending customer email")
+                print(f"🚨 Shopify {error_type}: {error_message}")
 
-            try:
-                slack_result = slack_service.send_refund_request_notification(
-                    requestor_info=requestor_info,
-                    sheet_link=request.sheet_link or "",
-                    error_type="order_not_found",
-                    raw_order_number=request.order_number,
-                    request_initiated_at=request_initiated_at,
-                    slack_channel_name=slackChannelName,
-                    mention_strategy=mentionStrategy,
+                raise HTTPException(
+                    status_code=503,  # Service Unavailable
+                    detail={
+                        "error": "shopify_connection_error",
+                        "message": error_message,
+                        "user_message": "There was a technical issue connecting to our system. Please try submitting your refund request again in a few minutes.",
+                    },
                 )
-                logger.info(
-                    f"✅ Slack notification sent successfully: {slack_result.get('success', 'Unknown status')}"
-                )
-            except Exception as slack_error:
+            elif error_type == "config_error":
+                # Configuration errors (401, 404) - return actual Shopify status codes
+                actual_status_code = order_result.get("status_code", 400)
                 logger.error(
-                    f"❌ Failed to send Slack notification: {str(slack_error)}"
+                    f"🚨 Shopify configuration error ({actual_status_code}) - not sending customer email"
                 )
-                logger.error(f"❌ Slack error type: {type(slack_error).__name__}")
+                print(
+                    f"🚨 Shopify configuration error ({actual_status_code}): {error_message}"
+                )
 
-            logger.info("🚫 Raising 406 HTTPException for order not found")
-            raise HTTPException(
-                status_code=406,
-                detail=f"Order {request.order_number} not found in Shopify",
-            )
+                raise HTTPException(
+                    status_code=actual_status_code,  # Use actual Shopify status code (401/404)
+                    detail={
+                        "error": "shopify_config_error",
+                        "errors": error_message,  # Use "errors" key to match Shopify format
+                        "user_message": "There is a system configuration issue. Please contact support or try again later.",
+                    },
+                )
+            elif error_type == "order_not_found":
+                # Legitimate "order not found" from successful Shopify 200 response - send notification to Slack (which emails customer)
+                logger.info(
+                    "📤 Sending 'order not found' notification to Slack (successful Shopify response, no matching orders)"
+                )
+                requestor_info = {
+                    "name": request.requestor_name,
+                    "email": request.requestor_email,
+                    "refund_type": request.refund_type,
+                    "notes": request.notes,
+                }
+
+                try:
+                    slack_result = slack_service.send_refund_request_notification(
+                        requestor_info=requestor_info,
+                        sheet_link=request.sheet_link or "",
+                        error_type="order_not_found",
+                        raw_order_number=request.order_number,
+                        request_initiated_at=request_initiated_at,
+                        slack_channel_name=slackChannelName,
+                        mention_strategy=mentionStrategy,
+                    )
+                    logger.info(
+                        f"✅ Slack notification sent successfully: {slack_result.get('success', 'Unknown status')}"
+                    )
+                except Exception as slack_error:
+                    logger.error(
+                        f"❌ Failed to send Slack notification: {str(slack_error)}"
+                    )
+                    logger.error(f"❌ Slack error type: {type(slack_error).__name__}")
+
+                logger.info("🚫 Raising 406 HTTPException for order not found")
+                raise HTTPException(
+                    status_code=406,
+                    detail=f"Order {request.order_number} not found in Shopify",
+                )
+            else:
+                # Unexpected error type - treat as API error
+                logger.error(
+                    f"🚨 Unexpected error type: {error_type} - treating as API error"
+                )
+                raise HTTPException(
+                    status_code=503,  # Service Unavailable
+                    detail={
+                        "error": "shopify_api_error",
+                        "message": error_message,
+                        "user_message": "There was a technical issue. Please try submitting your refund request again in a few minutes.",
+                    },
+                )
 
         # Step 2: Extract order data
         logger.info("🏁 FLOW: Step 2 - Extracting order data and validating email")

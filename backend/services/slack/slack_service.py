@@ -68,10 +68,14 @@ class SlackService:
 
         # Use mock API client during tests and development to prevent real Slack requests
         logger.info(
-            f"🔍 BACKEND DEBUG: env='{settings.environment}', test_mode={is_test_mode}, debug_mode={settings.is_debug_mode}"
+            f"🔍 BACKEND DEBUG: env='{settings.environment}', test_mode={is_test_mode}, debug_mode={settings.environment.lower() in ['development', 'debug', 'test']}"
         )
 
-        if is_test_mode or settings.is_debug_mode:
+        if is_test_mode or settings.environment.lower() in [
+            "development",
+            "debug",
+            "test",
+        ]:
             logger.info("🧪 Test/Debug mode detected - using MockSlackApiClient")
             self.api_client = MockSlackApiClient(
                 self.refunds_channel["bearer_token"], self.refunds_channel["channel_id"]
@@ -1007,7 +1011,6 @@ class SlackService:
         processor_user: str,
         current_message_text: str,
         order_id: str = "",
-        is_debug_mode: bool = False,
     ) -> Dict[str, Any]:
         return self.refunds_utils.build_comprehensive_success_message(
             order_data,
@@ -1020,7 +1023,6 @@ class SlackService:
             processor_user,
             current_message_text,
             order_id,
-            is_debug_mode,
         )
 
     def build_completion_message_after_restocking(

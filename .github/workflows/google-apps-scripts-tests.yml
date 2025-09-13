@@ -2,13 +2,10 @@ name: Google Apps Scripts Tests
 
 on:
   push:
-    branches: [ 'fix-*', 'feature-*', 'dev*' ]
+    branches: [ main ]
     paths:
       - 'GoogleAppsScripts/**'
-  pull_request:
-    branches: [ main, master ]
-    paths:
-      - 'GoogleAppsScripts/**'
+      - '.github/workflows/google-apps-scripts-tests.yml'
   workflow_dispatch:
 
 jobs:

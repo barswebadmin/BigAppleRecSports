@@ -17,6 +17,11 @@ on:
       - '!backend/CHANGELOG.md'
   workflow_dispatch:
 
+# Prevent duplicate runs: cancel in-progress runs when new commits are pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   update-version:
     runs-on: ubuntu-latest
