@@ -79,11 +79,10 @@ jobs:
           exit 1
         }
 
-    # - name: Run Instructions Tests TODO fix this later
-    #   continue-on-error: true
-    #   run: |
-    #     cd GoogleAppsScripts
-    #     ./tests/test_instructions.sh
+    - name: Run Instructions Tests
+      run: |
+        cd GoogleAppsScripts
+        ./tests/test_instructions.sh
 
     # - name: Run All Tests (Integration)
     #   run: |
