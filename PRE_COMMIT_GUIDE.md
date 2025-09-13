@@ -61,12 +61,22 @@ If you want pre-commit to auto-fix and continue without failing:
       # Formatting always continues
 ```
 
-## 🎯 Current Configuration
+## 🎯 Current Configuration (Conservative & Safe)
 
 Your pre-commit hooks:
-- ✅ **Auto-fix**: trailing whitespace, missing newlines, ruff formatting
-- ❌ **Still fail on**: unfixable linting errors, large files, invalid YAML
+- ✅ **Auto-fix**: trailing whitespace, missing newlines, ruff formatting (safe)
+- ❌ **Check only**: ruff linting (no auto-fix to prevent breaking changes)
+- ❌ **Still fail on**: linting errors, large files, invalid YAML
 - 🔄 **Require review**: when files are modified (safety feature)
+
+**Why no ruff auto-fix?** Ruff auto-fixes can sometimes break working code, so we only use it for formatting (safer) and manual linting fixes.
+
+### 🔍 What Each Hook Does
+
+- **ruff-format**: Safe formatting (indentation, line length, quotes) - rarely breaks code
+- **ruff linting**: Code analysis (unused imports, undefined vars) - auto-fixes can break logic
+- **trailing-whitespace**: Removes spaces at end of lines - always safe
+- **end-of-file-fixer**: Adds missing newline at end - always safe
 
 ## 💡 Recommendation
 

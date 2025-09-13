@@ -151,10 +151,10 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.2
     hooks:
-      # Linting (replaces flake8) - auto-fix issues, only fail on unfixable errors
+      # Linting (replaces flake8) - check only, no auto-fix to prevent breaking changes
       - id: ruff
         files: '^(scripts/.*\.py|lambda-functions/.*\.py|backend/.*\.py|shared-utilities/.*\.py)$'
-        args: [--fix, --exit-zero]  # Auto-fix and don't fail commit on fixable issues
+        # No --fix argument = check only, manual fixes required
       # Formatting (replaces black) - auto-format, don't fail the commit
       - id: ruff-format
         files: '^(scripts/.*\.py|lambda-functions/.*\.py|backend/.*\.py|shared-utilities/.*\.py)$'
