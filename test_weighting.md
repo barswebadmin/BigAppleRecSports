@@ -1,1 +1,0 @@
-# Test weighted session capture
