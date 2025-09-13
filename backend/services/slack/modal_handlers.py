@@ -251,22 +251,32 @@ class SlackModalHandlers:
             print(f"📡 Sending POST request to GAS: {self.gas_webhook_url}")
             print(f"📦 Payload: {json.dumps(payload, indent=2)}")
 
-            # Try with SSL verification first
+            # Use explicit SSL certificate bundle for production
+            import os
+
+            cert_bundle = (
+                "/etc/ssl/certs/ca-certificates.crt"
+                if os.getenv("ENVIRONMENT") == "production"
+                else True
+            )
+
             try:
+                response = requests.post(
+                    self.gas_webhook_url, json=payload, timeout=30, verify=cert_bundle
+                )
+                response.raise_for_status()
+                print("✅ Denial email request sent to GAS successfully")
+                print(f"📥 GAS Response: {response.status_code} - {response.text}")
+            except requests.exceptions.SSLError as ssl_error:
+                print(f"🔒 SSL Error: {ssl_error}, retrying with system default...")
+                # Fallback: try with system default SSL verification
                 response = requests.post(
                     self.gas_webhook_url, json=payload, timeout=30, verify=True
                 )
                 response.raise_for_status()
-                print("✅ Denial email request sent to GAS successfully (with SSL)")
-                print(f"📥 GAS Response: {response.status_code} - {response.text}")
-            except requests.exceptions.SSLError as ssl_error:
-                print(f"🔒 SSL Error: {ssl_error}, retrying without verification...")
-                # Retry without SSL verification for development
-                response = requests.post(
-                    self.gas_webhook_url, json=payload, timeout=30, verify=False
+                print(
+                    "✅ Denial email request sent to GAS successfully (system default SSL)"
                 )
-                response.raise_for_status()
-                print("✅ Denial email request sent to GAS successfully (without SSL)")
                 print(f"📥 GAS Response: {response.status_code} - {response.text}")
 
         except Exception as e:
