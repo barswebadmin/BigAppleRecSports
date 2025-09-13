@@ -253,7 +253,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           Logger.log(`❌ [debugApi] Order customer email: ${errorDetail.order_customer_email || 'Unknown'}`);
         }
 
-      } else if (statusCode === 503 || errorType === 'shopify_connection_error' || errorType === 'shopify_config_error') {
+      } else if (statusCode === 503 || errorType === 'shopify_connection_error') {
         // 503: Service Unavailable - Shopify connection error, don't email customer, just log and show user message
         shouldSendToRequestor = false;
         const userMessage = errorDetail.user_message || 'There was a technical issue connecting to our system. Please try submitting your refund request again in a few minutes.';
@@ -282,6 +282,43 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
           <p><strong>⚠️ Action Required:</strong> ${errorType === 'shopify_config_error' ? 'Check Shopify API credentials and store configuration' : 'Check Shopify API connectivity and backend logs'}</p>
           <p><strong>📧 Customer Status:</strong> No email sent to customer (technical error)</p>
+          <p><strong>💬 User Message Shown:</strong> ${userMessage}</p>
+        `;
+
+        // Log the user-friendly message that would be shown
+        Logger.log(`💬 === USER MESSAGE FOR FORM ===`);
+        Logger.log(`💬 ${userMessage}`);
+        Logger.log(`💬 === END USER MESSAGE ===`);
+
+      } else if (statusCode === 401 || statusCode === 404 || errorType === 'shopify_config_error') {
+        // 401/404: Shopify configuration errors - don't email customer, just log and show user message
+        shouldSendToRequestor = false;
+        const shopifyErrors = errorDetail.errors || errorMessage;
+        const userMessage = errorDetail.user_message || 'There is a system configuration issue. Please contact support or try again later.';
+
+        Logger.log(`🚨 [${isDebug ? 'debugApi' : 'prodApi'}] Shopify config error (${statusCode}): ${shopifyErrors}`);
+
+        // Update spreadsheet with technical error note
+        try {
+          const notesMessage = `⚙️ Config Error (${statusCode}): ${shopifyErrors}`;
+          updateNotesColumn(rawOrderNumber, notesMessage);
+          Logger.log(`✅ Updated Notes column for order ${rawOrderNumber} with config error`);
+        } catch (updateError) {
+          Logger.log(`❌ Failed to update Notes column: ${updateError.message}`);
+        }
+
+        // Send admin notification only
+        emailSubject = `⚙️ BARS Refund Form - Shopify Config Error (${statusCode}) [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailBody = `
+          <h3>⚙️ Shopify Configuration Error (${statusCode})</h3>
+          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Status Code:</strong> ${statusCode}</p>
+          <p><strong>Error Type:</strong> ${errorType}</p>
+          <p><strong>Shopify Errors:</strong> ${shopifyErrors}</p>
+          <p><strong>Order:</strong> ${rawOrderNumber}</p>
+          <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
+          <p><strong>⚠️ Action Required:</strong> ${statusCode === 401 ? 'Check Shopify API token/credentials' : 'Check Shopify store URL configuration'}</p>
+          <p><strong>📧 Customer Status:</strong> No email sent to customer (configuration error)</p>
           <p><strong>💬 User Message Shown:</strong> ${userMessage}</p>
         `;
 

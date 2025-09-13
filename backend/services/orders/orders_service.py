@@ -115,20 +115,23 @@ class OrdersService:
             if isinstance(result, dict) and "error" in result:
                 error_type = result["error"]
                 status_code = result.get("status_code", "unknown")
+                shopify_errors = result.get("shopify_errors", "Unknown error")
 
                 logger.error(f"🚨 Shopify API error ({status_code}): {error_type}")
 
                 if error_type == "authentication_error":
                     return {
                         "success": False,
-                        "message": "Shopify authentication failed. Please contact support.",
+                        "message": shopify_errors,
                         "error_type": "config_error",
+                        "status_code": 401,
                     }
                 elif error_type == "store_not_found":
                     return {
                         "success": False,
-                        "message": "Shopify store configuration error. Please contact support.",
+                        "message": shopify_errors,
                         "error_type": "config_error",
+                        "status_code": 404,
                     }
                 elif error_type == "server_error":
                     return {

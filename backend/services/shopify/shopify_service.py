@@ -107,17 +107,27 @@ class ShopifyService:
             # Handle different HTTP status codes
             if response.status_code == 401:
                 logger.error("🚨 Shopify authentication error (401): Invalid API token")
+                try:
+                    error_data = response.json()
+                    shopify_error = error_data.get("errors", response.text)
+                except (ValueError, KeyError):
+                    shopify_error = response.text
                 return {
                     "error": "authentication_error",
                     "status_code": 401,
-                    "message": response.text,
+                    "shopify_errors": shopify_error,
                 }
             elif response.status_code == 404:
                 logger.error("🚨 Shopify store not found (404): Invalid store URL")
+                try:
+                    error_data = response.json()
+                    shopify_error = error_data.get("errors", response.text)
+                except (ValueError, KeyError):
+                    shopify_error = response.text
                 return {
                     "error": "store_not_found",
                     "status_code": 404,
-                    "message": response.text,
+                    "shopify_errors": shopify_error,
                 }
             elif response.status_code >= 500:
                 logger.error(
@@ -162,17 +172,27 @@ class ShopifyService:
                     logger.error(
                         "🚨 Shopify authentication error (401): Invalid API token"
                     )
+                    try:
+                        error_data = response.json()
+                        shopify_error = error_data.get("errors", response.text)
+                    except (ValueError, KeyError):
+                        shopify_error = response.text
                     return {
                         "error": "authentication_error",
                         "status_code": 401,
-                        "message": response.text,
+                        "shopify_errors": shopify_error,
                     }
                 elif response.status_code == 404:
                     logger.error("🚨 Shopify store not found (404): Invalid store URL")
+                    try:
+                        error_data = response.json()
+                        shopify_error = error_data.get("errors", response.text)
+                    except (ValueError, KeyError):
+                        shopify_error = response.text
                     return {
                         "error": "store_not_found",
                         "status_code": 404,
-                        "message": response.text,
+                        "shopify_errors": shopify_error,
                     }
                 elif response.status_code >= 500:
                     logger.error(

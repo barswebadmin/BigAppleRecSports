@@ -117,17 +117,20 @@ async def send_refund_to_slack(
                     },
                 )
             elif error_type == "config_error":
-                # Configuration errors (401, 404) - log and return error to GAS, don't email customer
+                # Configuration errors (401, 404) - return actual Shopify status codes
+                actual_status_code = order_result.get("status_code", 400)
                 logger.error(
-                    "🚨 Shopify configuration error - not sending customer email"
+                    f"🚨 Shopify configuration error ({actual_status_code}) - not sending customer email"
                 )
-                print(f"🚨 Shopify configuration error: {error_message}")
+                print(
+                    f"🚨 Shopify configuration error ({actual_status_code}): {error_message}"
+                )
 
                 raise HTTPException(
-                    status_code=503,  # Service Unavailable
+                    status_code=actual_status_code,  # Use actual Shopify status code (401/404)
                     detail={
                         "error": "shopify_config_error",
-                        "message": error_message,
+                        "errors": error_message,  # Use "errors" key to match Shopify format
                         "user_message": "There is a system configuration issue. Please contact support or try again later.",
                     },
                 )
