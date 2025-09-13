@@ -151,11 +151,19 @@ _compile_backend_internal:
 		fi; \
 		if [ -f "$$TARGET_DIR/config.py" ]; then \
 			echo "⚙️  Testing config import..."; \
-			cd "$$TARGET_DIR" && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
+			if [ -f ".venv/bin/activate" ]; then \
+				cd "$$TARGET_DIR" && source ../.venv/bin/activate && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
+			else \
+				cd "$$TARGET_DIR" && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
+			fi; \
 		fi; \
 		if [ -f "$$TARGET_DIR/main.py" ]; then \
 			echo "🚀 Testing FastAPI app import..."; \
-			cd "$$TARGET_DIR" && python3 -c "from main import app; print('✅ FastAPI app loads successfully')" || exit 1; \
+			if [ -f ".venv/bin/activate" ]; then \
+				cd "$$TARGET_DIR" && source ../.venv/bin/activate && python3 -c "from main import app; print('✅ FastAPI app loads successfully')" || exit 1; \
+			else \
+				cd "$$TARGET_DIR" && python3 -c "from main import app; print('✅ FastAPI app loads successfully')" || exit 1; \
+			fi; \
 		fi; \
 		echo "✅ Python compilation successful for $$TARGET_DIR"; \
 	else \
