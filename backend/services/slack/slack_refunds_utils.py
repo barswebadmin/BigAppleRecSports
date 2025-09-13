@@ -1607,33 +1607,29 @@ class SlackRefundsUtils:
         action_buttons: list,
         channel_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Update Slack message on Shopify success"""
+        """Update Slack message on Shopify success using unified client"""
         try:
-            # Use dynamic channel ID if provided, otherwise fall back to default api_client
-            if channel_id:
-                print(f"🎯 Using dynamic channel ID for update: {channel_id}")
-                # Create a temporary API client with the correct channel ID
-                from config import settings
+            # Import the unified client
+            from .unified_slack_client import slack_client
+            from config import settings
 
-                bot_token = settings.active_slack_bot_token or ""
-                dynamic_api_client = self._create_dynamic_api_client(
-                    channel_id, bot_token
-                )
+            # Use provided channel_id or fall back to default (for backward compatibility)
+            target_channel_id = channel_id or self.api_client.channel_id
+            bot_token = settings.active_slack_bot_token or ""
 
-                result = dynamic_api_client.update_message(
-                    message_ts=message_ts,
-                    message_text=success_message,
-                    action_buttons=action_buttons,
-                )
-            else:
-                print(
-                    f"⚠️ Using default api_client channel: {self.api_client.channel_id}"
-                )
-                result = self.api_client.update_message(
-                    message_ts=message_ts,
-                    message_text=success_message,
-                    action_buttons=action_buttons,
-                )
+            print(
+                f"🎯 Using unified Slack client for update: channel={target_channel_id}"
+            )
+
+            # Use the unified client - always explicit parameters
+            result = slack_client.update_message(
+                channel_id=target_channel_id,
+                bearer_token=bot_token,
+                message_ts=message_ts,
+                message_text=success_message,
+                action_buttons=action_buttons,
+            )
+
             return {"success": True, "result": result}
         except Exception as e:
             logger.error(f"Failed to update Slack message on success: {e}")
