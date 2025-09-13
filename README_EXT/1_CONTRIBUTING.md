@@ -10,6 +10,39 @@ This guide covers development setup, workflow, and standards for contributing to
 - Python 3.11+
 - Node.js 18+ (for GAS development)
 - Git with pre-commit hooks
+- AWS CLI (for Lambda functions)
+
+### Backend Architecture
+
+The BARS backend is a FastAPI application with modular services:
+
+```
+backend/
+├── main.py                 # FastAPI application entry point
+├── config.py               # Configuration and environment settings
+├── services/               # Business logic services
+│   ├── orders/            # Order management
+│   ├── slack/             # Slack integration
+│   ├── leadership/        # Leadership processing
+│   └── webhooks/          # Webhook handlers
+├── routers/               # API route handlers
+│   ├── orders.py          # Order endpoints
+│   ├── refunds.py         # Refund endpoints
+│   ├── slack.py           # Slack webhook endpoints
+│   └── leadership.py      # Leadership endpoints
+├── models/                # Pydantic request/response models
+└── utils/                 # Utility functions
+```
+
+### Key Backend Features
+- **CSV Processing** - Convert Google Sheets data to leadership tags and discount codes
+- **Smart Email Detection** - Automatically detects email columns in CSV data
+- **Batch Processing** - Efficient processing of large customer lists
+- **Shopify Integration** - GraphQL/REST API integration with customer management
+- **Leadership Segmentation** - Automatic customer tagging and segment creation
+- **Seasonal Discounts** - Winter, Spring, Summer, Fall discount code generation
+- **Refund Management** - Complete order lifecycle (fetch, cancel, refund, restock)
+- **Multi-channel Slack** - Sport-specific mentions and dynamic channel routing
 
 ### Initial Setup
 ```bash

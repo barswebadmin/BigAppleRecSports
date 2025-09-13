@@ -169,31 +169,98 @@ POST /slack/webhook
 
 ## 🤖 Google Apps Scripts
 
+7 Google Apps Scripts with proper version control and deployment capabilities.
+
 ### Projects
-- **process-refunds-exchanges** - Refund form processing
-- **parse-registration-info** - Registration data parsing
-- **leadership-discount-codes** - Discount code management
-- **product-variant-creation** - Product creation automation
+- **process-refunds-exchanges** (`1JQ9qnEIji4E6t2sBnzZ1CErcWZjfj36Qp-rqqJEZxNa0sXIFtRYo54CS`) - Handles refund and exchange workflows
+- **parse-registration-info** (`17FMYl1kMlOTpZ3jseg5nmoMmREK7IN1CXHKgKW5A-z8Q__nb8VhBWei-`) - Parses and processes registration data
+- **leadership-discount-codes** (`1V46lPoFAUe5gGb1RL5f3TQJxoYnM29Wt1zcGN4hhgbsxCY578mAi-fzP`) - Manages leadership discount code processing
+- **product-variant-creation** (`1ag91SToLXcAFBIbGY_WSze5gdVlBr9qqaJNwO6e9ie7qOXRAcBo607qK`) - Creates products and variants in Shopify
+- **waitlist-script** (`1yL5crj6zjclY7HJPBi6A5owO5mBWoT6kfIHv-MoBHC82h9jmn1Pp9v-4`) - Manages waitlist functionality
+- **payment-assistance-tags** (`1Y3JSpgtgxwF7tfBlCAKgbGmc6qjxfsWA_leE56FUT20mOafY12nqFLb7`) - Processes payment assistance requests and manages customer tags
+- **add-sold-out-product-to-waitlist** - Manages waitlist form options when products sell out
+
+### Key Features
+- **Refactored Structure** - Clean, organized code with proper separation of concerns
+- **Form Management** - Google Forms API interactions and form management
+- **Validation Logic** - Input validation and duplicate checking
+- **Sorting Algorithms** - Complex sorting for waitlist options (sports → day → division)
+- **Backend Integration** - Seamless integration with BARS backend API
+- **Webhook Processing** - HTTP endpoint handling for incoming requests
+
+### Architecture
+Each script follows consistent patterns:
+- **Core Files** - Main orchestrator and endpoint handlers
+- **Helper Modules** - Validation, form helpers, label formatting, sorting logic
+- **Testing** - Comprehensive test functions for all modules
+- **Shared Utilities** - Common functions across all scripts
 
 ### Deployment
 ```bash
+# Setup authentication
+clasp login
+
+# Deploy specific project
+cd GoogleAppsScripts/projects/[script-directory]
+clasp push && clasp deploy
+
+# Sync shared utilities (when updated)
 cd GoogleAppsScripts
-./deploy.sh project-name
+./sync-utilities.sh
+```
+
+### Secret Management
+All secrets stored in Google Apps Script's PropertiesService:
+```javascript
+// Setting secrets (run once)
+PropertiesService.getScriptProperties().setProperties({
+  'SHOPIFY_TOKEN': 'your_shopify_token_here',
+  'SLACK_TOKEN': 'your_slack_token_here',
+  'API_ENDPOINT': 'your_api_endpoint_here'
+});
+
+// Using secrets in code
+const SHOPIFY_TOKEN = PropertiesService.getScriptProperties().getProperty('SHOPIFY_TOKEN');
 ```
 
 ## ⚡ Lambda Functions
 
+6 Python Lambda functions automatically deployed to AWS via GitHub Actions.
+
 ### Functions
-- **shopifyProductUpdateHandler** - Process Shopify webhooks
-- **changePricesOfOpenAndWaitlistVariants** - Price management
-- **MoveInventoryLambda** - Inventory transfers
-- **setProductLiveByAddingInventory** - Product activation
+- **shopifyProductUpdateHandler** - Automatically updates product images to "sold out" versions when all relevant variants are out of stock
+- **changePricesOfOpenAndWaitlistVariants** - Price management for open and waitlist variants
+- **MoveInventoryLambda** - Inventory transfers between variants
+- **setProductLiveByAddingInventory** - Product activation by adding inventory
+- **createScheduledPriceChanges** - Schedule price changes for products
+- **ScheduleChangesForShopifyProductsLambda** - Process scheduled product changes
+
+### Architecture
+Each function has its own directory containing:
+- `lambda_function.py` - Main handler function
+- `requirements.txt` - Python dependencies
+- Modular structure following BARS Lambda patterns
+
+### Key Features
+- **Automatic Deployment** - GitHub Actions detect changed functions and deploy
+- **Shared Layer Integration** - Uses `bars-common-utils` lambda layer for consistency
+- **Sport Detection** - Identifies sports from product titles/tags for appropriate sold-out images
+- **Error Handling** - Graceful degradation and rollback capabilities
+- **Type Safety** - Full type annotations throughout
+
+### Supported Sports (shopifyProductUpdateHandler)
+- **Bowling**: Bowling_ClosedWaitList.png
+- **Dodgeball**: Dodgeball_Closed.png
+- **Kickball**: Kickball_WaitlistOnly.png
+- **Pickleball**: Pickleball_WaitList.png
 
 ### Local Development
 ```bash
-# Setup lambda development environment
+# Setup lambda development environment (creates symbolic links for imports)
 python3 scripts/setup_local_development.py
 ```
+
+**Important**: Run setup script before working with lambda functions locally to enable `bars_common_utils` imports.
 
 ## 🚀 Deployment
 

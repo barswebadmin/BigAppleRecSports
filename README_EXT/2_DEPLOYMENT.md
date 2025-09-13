@@ -117,7 +117,25 @@ Auto-deploys on changes to:
 - `shared-utilities/**`
 
 Functions deployed:
-- **shopifyProductUpdateHandler** - Shopify webhook processing
+- **shopifyProductUpdateHandler** - Automatically updates product images to "sold out" versions when all relevant variants are out of stock
+- **changePricesOfOpenAndWaitlistVariants** - Price management for open and waitlist variants
+- **MoveInventoryLambda** - Inventory transfers between variants
+- **setProductLiveByAddingInventory** - Product activation by adding inventory
+- **createScheduledPriceChanges** - Schedule price changes for products
+- **ScheduleChangesForShopifyProductsLambda** - Process scheduled product changes
+
+### Function Architecture
+Each function follows BARS patterns:
+- **Modular structure** - Separate modules for different responsibilities
+- **Shared layer integration** - Uses `bars-common-utils` lambda layer
+- **Type safety** - Full type annotations throughout
+- **Error handling** - Graceful degradation and rollback capabilities
+
+### Key Features
+- **Sport Detection** - Identifies sports from product titles/tags for appropriate sold-out images
+- **Automatic Deployment** - GitHub Actions detect changed functions and deploy
+- **Webhook Processing** - Responds to Shopify product update webhooks
+- **Image Management** - Updates to sport-specific "sold out" images (Bowling, Dodgeball, Kickball, Pickleball)
 
 ### Manual Deployment (Layer-Based)
 For safety, lambda layers require manual deployment:
@@ -169,11 +187,29 @@ cd GoogleAppsScripts
 cd GoogleAppsScripts
 
 # Deploy specific project
-./deploy.sh process-refunds-exchanges
-./deploy.sh parse-registration-info
-./deploy.sh leadership-discount-codes
-./deploy.sh product-variant-creation
+./deploy.sh process-refunds-exchanges      # Refund and exchange workflows
+./deploy.sh parse-registration-info        # Registration data parsing
+./deploy.sh leadership-discount-codes      # Leadership discount management
+./deploy.sh product-variant-creation       # Shopify product creation
+./deploy.sh add-sold-out-product-to-waitlist  # Waitlist form management
+./deploy.sh payment-assistance-tags        # Payment assistance processing
+./deploy.sh waitlist-script               # Waitlist functionality
 ```
+
+### Script Architecture
+Each of the 7 scripts follows consistent patterns:
+- **Core Files** - Main orchestrator (`handleIncomingPostRequest.js`) and endpoint handlers (`doPost.js`)
+- **Helper Modules** - Validation, form helpers, label formatting, sorting logic
+- **Testing** - Comprehensive test functions (`test_parsing.js`) for all modules
+- **Shared Utilities** - Common functions synced across all scripts
+
+### Key Features
+- **Refactored Structure** - Clean, organized code with proper separation of concerns
+- **Form Management** - Google Forms API interactions and form management
+- **Validation Logic** - Input validation and duplicate checking
+- **Sorting Algorithms** - Complex sorting for waitlist options (sports → day → division)
+- **Backend Integration** - Seamless integration with BARS backend API
+- **Webhook Processing** - HTTP endpoint handling for incoming requests
 
 ### Deploy All Projects
 ```bash
@@ -364,6 +400,38 @@ If issues occur in production:
 2. **Disable webhook:** Remove webhook URL from Slack temporarily
 3. **Debug mode:** Set `ENVIRONMENT=debug` temporarily for testing
 4. **Manual processing:** Process refunds manually while investigating
+
+## 📋 Version History
+
+### Recent Changes (v2.0.0 - 2025-07-15)
+
+#### 🔧 Major Updates
+- Fixed Slack webhook invalid_blocks error and added comprehensive test suite
+- Enhanced Makefile for CI checks
+- Resolved double parentheses in refund calculation messages
+- Updated backend production readiness with comprehensive validation
+
+#### ✨ Features (v1.0.2 - 2025-06-26)
+- Production-ready deployment configuration with Render
+- Enhanced CORS policy for Google Apps Script integration
+- Conditional API documentation (disabled in production)
+- Environment-aware configuration management
+
+#### 🐛 Bug Fixes (v1.0.3 - 2025-06-26)
+- Resolved double prefix issue in leadership router
+- Demonstrated automatic version increment system
+
+#### 📁 Files Changed
+- `backend/main.py`, `backend/config.py`, `render.yaml`
+- Enhanced security measures and monitoring endpoints
+- Improved development experience with hot reload
+
+### Version Management
+The backend follows [Semantic Versioning (SemVer)](https://semver.org/spec/v2.0.0.html):
+- **MAJOR** (`2.0.0`): Breaking changes, API changes
+- **MINOR** (`1.1.0`): New features, backwards compatible
+- **PATCH** (`1.0.1`): Bug fixes, backwards compatible
+- **BUILD** (`1.0.0.4`): Auto-incremented build number
 
 ## 🔧 Troubleshooting
 

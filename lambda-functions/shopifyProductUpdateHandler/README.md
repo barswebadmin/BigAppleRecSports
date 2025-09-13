@@ -1,5 +1,7 @@
 # Shopify Product Update Handler
 
+> 📚 **Documentation**: See [README.md](../../README.md#lambda-functions) for Lambda overview and [README_EXT/2_DEPLOYMENT.md#lambda-functions-deployment](../../README_EXT/2_DEPLOYMENT.md#lambda-functions-deployment) for deployment
+
 Automatically updates product images to "sold out" versions when all relevant variants are out of stock.
 
 ## Overview
@@ -16,7 +18,7 @@ The function has been refactored from a monolithic 215-line file into a modular 
 shopifyProductUpdateHandler/
 ├── lambda_function.py          # Main handler (clean, focused)
 ├── sport_detection.py          # Sport detection & configuration
-├── shopify_image_updater.py    # Shopify API operations  
+├── shopify_image_updater.py    # Shopify API operations
 ├── version.py                  # Version management
 ├── requirements.txt            # Dependencies
 └── README.md                   # Documentation
@@ -54,7 +56,7 @@ Configure Shopify webhook to send `product/update` events to this Lambda functio
 ### Supported Sports
 
 - **Bowling**: Bowling_ClosedWaitList.png
-- **Dodgeball**: Dodgeball_Closed.png  
+- **Dodgeball**: Dodgeball_Closed.png
 - **Kickball**: Kickball_WaitlistOnly.png
 - **Pickleball**: Pickleball_WaitList.png
 
@@ -70,7 +72,7 @@ Configure Shopify webhook to send `product/update` events to this Lambda functio
 ### ✅ Code Organization
 
 - **Single responsibility**: Each module has a clear purpose
-- **Testability**: Modules can be unit tested independently  
+- **Testability**: Modules can be unit tested independently
 - **Maintainability**: Changes isolated to specific modules
 - **Readability**: Main handler is now ~100 lines vs 215
 
@@ -128,4 +130,4 @@ With fallback implementations for local development.
 | **Testability** | Hard to test individual parts | Modular, testable components |
 | **Consistency** | Custom patterns | Follows BARS Lambda standards |
 | **Type safety** | No type hints | Full type annotations |
-| **Documentation** | Minimal comments | Comprehensive docstrings | 
+| **Documentation** | Minimal comments | Comprehensive docstrings |

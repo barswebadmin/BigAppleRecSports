@@ -1,5 +1,7 @@
 # Big Apple Rec Sports Backend API
 
+> 📚 **Documentation**: See [README.md](../README.md#api-endpoints) for API documentation and [README_EXT/1_CONTRIBUTING.md#backend-development](../README_EXT/1_CONTRIBUTING.md#backend-development) for development setup
+
 A Python FastAPI backend service for managing Big Apple Rec Sports operations, including leadership discount processing.
 
 ## 🚀 **Production URL**
@@ -56,7 +58,7 @@ backend/
    make start        # Start the server
    make tunnel       # Start ngrok tunnel (for development with Google Apps Script)
    make dev          # Start both server and tunnel
-   
+
    # Option 2: Using uvicorn directly
    uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
@@ -127,7 +129,7 @@ This app is configured for deployment on [Render](https://render.com) using the 
 
 ### Deploy Steps:
 1. **Connect Repository**: Link your GitHub repository to Render
-2. **Environment Variables**: Set `SHOPIFY_TOKEN` in Render dashboard  
+2. **Environment Variables**: Set `SHOPIFY_TOKEN` in Render dashboard
 3. **Deploy**: Deploy from `main` branch
 4. **Access**: App will be available at `https://barsbackend.onrender.com`
 
@@ -164,14 +166,14 @@ The script will automatically:
 make test-services
 
 # Test API endpoints (integration tests)
-make test-api  
+make test-api
 
 # Test basic health endpoints
 make test
 ```
 
 The modular structure makes it easy to test individual components:
-- **Service Tests**: Located next to service files (`services/test_*.py`)  
+- **Service Tests**: Located next to service files (`services/test_*.py`)
 - **API Tests**: Integration tests in `routers/test_*.py`
 - **Mock-Free**: Tests work with real Shopify API (ensure valid token)
 
@@ -180,4 +182,4 @@ The modular structure makes it easy to test individual components:
 - Store sensitive data (Shopify tokens) in environment variables
 - Configure CORS appropriately for production
 - Use HTTPS in production
-- Consider rate limiting for API endpoints 
+- Consider rate limiting for API endpoints
