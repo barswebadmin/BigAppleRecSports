@@ -29,11 +29,12 @@ jobs:
       continue-on-error: true
       run: |
         echo "🔍 Checking Backend compilation..."
-        cd backend
 
-        # Set up Python
+        # Set up Python and install from root requirements.txt
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+
+        cd backend
 
         # Set minimal environment variables for compilation
         export SHOPIFY_STORE="test-store.myshopify.com"
@@ -141,42 +142,38 @@ jobs:
         # Set up Python for Lambda functions
         python -m pip install --upgrade pip
 
+        # Install root requirements for lambda functions
+        pip install -r ../requirements.txt
+
         # Check each Lambda function directory
         echo "📋 Checking Lambda function syntax..."
         for dir in */; do
-          if [ -f "${dir}requirements.txt" ]; then
-            echo "🔍 Checking ${dir}..."
-            cd "$dir"
+          echo "🔍 Checking ${dir}..."
+          cd "$dir"
 
-            # Install requirements if they exist
-            if [ -f "requirements.txt" ]; then
-              pip install -r requirements.txt
-            fi
-
-            # Check Python syntax
-            python -m py_compile *.py 2>/dev/null || {
-              echo "❌ Syntax error in ${dir}"
-              cd ..
-              continue
-            }
-
-            # Try to import the lambda_function module
-            python -c "
-            import sys
-            try:
-                import lambda_function
-                print('✅ ${dir} imports successfully')
-            except Exception as e:
-                print('❌ ${dir} import failed: {}'.format(e))
-                sys.exit(1)
-            " || {
-              echo "❌ Import error in ${dir}"
-              cd ..
-              continue
-            }
-
+          # Check Python syntax
+          python -m py_compile *.py 2>/dev/null || {
+            echo "❌ Syntax error in ${dir}"
             cd ..
-          fi
+            continue
+          }
+
+          # Try to import the lambda_function module
+          python -c "
+          import sys
+          try:
+              import lambda_function
+              print('✅ ${dir} imports successfully')
+          except Exception as e:
+              print('❌ ${dir} import failed: {}'.format(e))
+              sys.exit(1)
+          " || {
+            echo "❌ Import error in ${dir}"
+            cd ..
+            continue
+          }
+
+          cd ..
         done
 
         echo "success=true" >> $GITHUB_OUTPUT
@@ -229,7 +226,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r ../requirements.txt
 
     - name: Set up test environment variables
       run: |
