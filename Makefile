@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test compile-backend compile-gas compile-lambda test-backend test-gas test-lambda
+.PHONY: help compile test backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda
 
 # Default target
 help:
@@ -8,30 +8,58 @@ help:
 	@echo "=========================="
 	@echo ""
 	@echo "Compilation Commands:"
-	@echo "  make compile [DIR=path]  - Compile directory and subdirectories (default: current dir)"
-	@echo "  make compile DIR=.       - Compile entire repository from root"
-	@echo "  make compile DIR=backend - Compile backend directory"
-	@echo "  make compile-backend     - Compile backend (Python)"
-	@echo "  make compile-gas         - Compile GoogleAppsScripts (JavaScript)"
-	@echo "  make compile-lambda      - Compile lambda-functions (Python)"
+	@echo "  make compile [path]      - Compile directory and subdirectories (default: current dir)"
+	@echo "  make compile .           - Compile entire repository from root"
+	@echo "  make compile backend     - Compile backend directory"
+	@echo "  make compile gas         - Compile GoogleAppsScripts (JavaScript)"
+	@echo "  make compile lambda      - Compile lambda-functions (Python)"
 	@echo ""
 	@echo "Testing Commands:"
-	@echo "  make test [DIR=path]     - Run tests in directory and subdirectories (default: current dir)"
-	@echo "  make test DIR=.          - Run all tests in repository"
-	@echo "  make test DIR=backend    - Run backend tests"
-	@echo "  make test-backend        - Run backend tests"
-	@echo "  make test-gas            - Run GoogleAppsScripts tests"
-	@echo "  make test-lambda         - Run lambda-functions tests"
+	@echo "  make test [path]         - Run tests in directory and subdirectories (default: current dir)"
+	@echo "  make test .              - Run all tests in repository"
+	@echo "  make test backend        - Run backend tests"
+	@echo "  make test gas            - Run GoogleAppsScripts tests"
+	@echo "  make test lambda         - Run lambda-functions tests"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make compile DIR=backend/services"
-	@echo "  make test DIR=lambda-functions/shopifyProductUpdateHandler"
-	@echo "  make compile DIR=."
+	@echo "  make compile backend/services"
+	@echo "  make test lambda-functions/shopifyProductUpdateHandler"
+	@echo "  make compile ."
+	@echo "  make test backend"
+	@echo ""
+	@echo "Legacy Commands (still supported):"
+	@echo "  make compile-backend, make test-gas, etc."
 	@echo ""
 	@echo "Directory-specific help:"
 	@echo "  cd backend && make help  - Backend-specific commands"
 
-# Detect current directory if not specified
+# Handle arguments for compile and test commands
+# This allows 'make compile backend' instead of 'make compile DIR=backend'
+ifneq ($(filter compile,$(MAKECMDGOALS)),)
+  # Get the argument after 'compile'
+  COMPILE_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(COMPILE_ARGS),)
+    DIR := $(COMPILE_ARGS)
+    # Prevent make from trying to build these as targets
+    $(eval $(COMPILE_ARGS):;@:)
+  else
+    DIR := .
+  endif
+endif
+
+ifneq ($(filter test,$(MAKECMDGOALS)),)
+  # Get the argument after 'test'
+  TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(TEST_ARGS),)
+    DIR := $(TEST_ARGS)
+    # Prevent make from trying to build these as targets
+    $(eval $(TEST_ARGS):;@:)
+  else
+    DIR := .
+  endif
+endif
+
+# Default DIR if not set by arguments
 DIR ?= .
 
 # =============================================================================
@@ -42,6 +70,10 @@ compile:
 	@echo "🔍 Compiling directory: $(DIR)"
 	@$(MAKE) _compile_directory DIR=$(DIR)
 
+# Convenient aliases for common directories - these work with both compile and test
+# Due to the argument parsing logic above, these will be handled automatically
+
+# Legacy commands (still supported)
 compile-backend:
 	@$(MAKE) _compile_directory DIR=backend
 
@@ -197,6 +229,10 @@ test:
 	@echo "🧪 Running tests in directory: $(DIR)"
 	@$(MAKE) _test_directory DIR=$(DIR)
 
+# Note: backend, gas, lambda, etc. aliases are already defined above for compile
+# They will also work for test commands due to the argument parsing logic
+
+# Legacy commands (still supported)
 test-backend:
 	@$(MAKE) _test_directory DIR=backend
 
