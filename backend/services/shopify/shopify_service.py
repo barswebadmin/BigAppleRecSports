@@ -65,13 +65,24 @@ class ShopifyService:
     def _make_shopify_request(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Make a GraphQL request to Shopify"""
         import logging
+        import os
 
         logger = logging.getLogger(__name__)
+
+        # FIX: Ensure SSL certificates are properly configured for Render
+        if not os.getenv("SSL_CERT_FILE"):
+            os.environ["SSL_CERT_FILE"] = "/etc/ssl/certs/ca-certificates.crt"
+        if not os.getenv("REQUESTS_CA_BUNDLE"):
+            os.environ["REQUESTS_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
+        if not os.getenv("CURL_CA_BUNDLE"):
+            os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
 
         # DEBUG: Log the request details
         logger.info(f"🔗 Making Shopify request to: {self.graphql_url}")
         logger.info(f"🔑 Headers: {self.headers}")
         logger.info(f"📤 Query: {query}")
+        logger.info(f"🔒 SSL_CERT_FILE: {os.getenv('SSL_CERT_FILE')}")
+        logger.info(f"🔒 REQUESTS_CA_BUNDLE: {os.getenv('REQUESTS_CA_BUNDLE')}")
 
         try:
             response = requests.post(

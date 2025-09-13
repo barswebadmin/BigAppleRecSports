@@ -183,6 +183,16 @@ class SlackApiClient:
         Returns:
             Dict containing success status and details
         """
+        # FIX: Ensure SSL certificates are properly configured for Render
+        import os
+
+        if not os.getenv("SSL_CERT_FILE"):
+            os.environ["SSL_CERT_FILE"] = "/etc/ssl/certs/ca-certificates.crt"
+        if not os.getenv("REQUESTS_CA_BUNDLE"):
+            os.environ["REQUESTS_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
+        if not os.getenv("CURL_CA_BUNDLE"):
+            os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
+
         if not self.bearer_token:
             logger.error("No Slack bearer token configured")
             return {"success": False, "error": "No Slack bearer token configured"}
