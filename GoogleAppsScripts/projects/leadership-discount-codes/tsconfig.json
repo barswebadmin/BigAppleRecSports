@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES5",                          // GAS-compatible target
+    "module": "none",                         // GAS doesn't support modules
+    "lib": ["ES5", "ES2015.Promise"],        // Basic features + Promises
+    "outDir": "./dist",                       // Compiled JS output
+    "rootDir": "./src-ts",                    // TypeScript source files
+    "strict": true,                           // Enable all strict checks
+    "noImplicitAny": true,                    // Require explicit types
+    "noImplicitReturns": true,                // All code paths must return
+    "noUnusedLocals": true,                   // No unused variables
+    "noUnusedParameters": true,               // No unused parameters
+    "removeComments": true,                   // Clean output
+    "preserveConstEnums": true,               // Keep const enums
+    "skipLibCheck": true,                     // Skip lib validation
+    "forceConsistentCasingInFileNames": true, // Consistent file names
+    "declaration": false,                     // No .d.ts files needed
+    "sourceMap": false,                       // No source maps for GAS
+    "experimentalDecorators": false,          // No decorators in GAS
+    "emitDecoratorMetadata": false            // No decorator metadata
+  },
+  "include": [
+    "src-ts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src",
+    "shared-utilities",
+    "tests"
+  ],
+  "compileOnSave": false
+}

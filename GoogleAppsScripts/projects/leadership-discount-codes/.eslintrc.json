@@ -1,0 +1,30 @@
+{
+  "env": {
+    "es6": true,
+    "node": false
+  },
+  "extends": [
+    "eslint:recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 5,
+    "sourceType": "script"
+  },
+  "rules": {
+    "no-var": "warn",
+    "prefer-const": "warn",
+    "no-unused-vars": "warn",
+    "no-console": "off",
+    "no-undef": "off"
+  },
+  "globals": {
+    "Logger": "readonly",
+    "SpreadsheetApp": "readonly",
+    "UrlFetchApp": "readonly",
+    "Utilities": "readonly",
+    "PropertiesService": "readonly",
+    "HtmlService": "readonly",
+    "ScriptApp": "readonly",
+    "console": "readonly"
+  }
+}
