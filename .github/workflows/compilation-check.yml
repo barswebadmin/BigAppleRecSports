@@ -5,10 +5,11 @@ on:
     branches-ignore: [ main ]
   pull_request:
     branches: [ main ]
+    types: [opened, synchronize, reopened]
 
-# Prevent duplicate runs: cancel in-progress runs when new commits are pushed
+# Prevent duplicate runs: use PR number for PRs, run_id for pushes
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -276,13 +277,21 @@ jobs:
       run: |
         cd GoogleAppsScripts
         chmod +x tests/*.sh
+        chmod +x projects/*/tests/*.sh
 
     - name: Run Google Apps Scripts Tests
       run: |
         cd GoogleAppsScripts
         echo "🧪 Running GAS tests..."
-        ./tests/test_parse_registration_functions.sh
-        ./tests/test_parse_registration_comprehensive.sh
+        # Run general tests
+        ./tests/test_instructions.sh
+        ./tests/test_sync_utilities.sh
+        ./tests/test_clasp_helpers.sh
+        # Run project-specific tests from their new locations
+        ./projects/parse-registration-info/tests/test_parse_registration_functions.sh
+        ./projects/parse-registration-info/tests/test_parse_registration_comprehensive.sh
+        ./projects/leadership-discount-codes/tests/test_leadership_discount_codes.sh
+        ./projects/process-refunds-exchanges/tests/run_tests.sh
         echo "✅ GAS tests completed!"
 
   # Lambda Tests - only run if Lambda compilation succeeded
