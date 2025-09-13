@@ -1,5 +1,9 @@
 # 🤝 Contributing to BARS
 
+> 📖 **Navigation**: [← Back to README](../README.md) | [Deployment Guide](DEPLOYMENT.md) | [Security Policy](SECURITY.md) | [Pre-Commit Guide](PRE_COMMIT_GUIDE.md)
+
+This guide covers development setup, workflow, and standards for contributing to the BARS project.
+
 ## 🚀 Development Setup
 
 ### Prerequisites

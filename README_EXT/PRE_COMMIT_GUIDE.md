@@ -1,5 +1,9 @@
 # 🔧 Pre-Commit Hook Guide
 
+> 📖 **Navigation**: [← Back to README](../README.md) | [Contributing Guide](CONTRIBUTING.md) | [Deployment Guide](DEPLOYMENT.md) | [Security Policy](SECURITY.md)
+
+This guide explains how to use and configure pre-commit hooks for the BARS project.
+
 ## 🤔 Why Pre-Commit "Fails" After Auto-Fixing
 
 When you see this:

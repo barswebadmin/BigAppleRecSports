@@ -250,12 +250,22 @@ python3 scripts/setup_local_development.py
 cd lambda-functions && python3 tests/run_tests.py unit
 ```
 
-## 📚 Additional Documentation
+## 📚 Documentation
 
-- **CONTRIBUTING.md** - Development guidelines and setup
-- **DEPLOYMENT.md** - Detailed deployment procedures
-- **SECURITY.md** - Security policies and reporting
-- **PRE_COMMIT_GUIDE.md** - Pre-commit hooks usage
+This README provides a complete overview of the BARS system. For detailed information on specific topics, see the extended documentation:
+
+| Document | Description | Quick Link |
+|----------|-------------|------------|
+| **[Contributing Guide](README_EXT/CONTRIBUTING.md)** | Development setup, workflow, testing standards | 🚀 [Start Here](README_EXT/CONTRIBUTING.md#development-setup) |
+| **[Deployment Guide](README_EXT/DEPLOYMENT.md)** | Complete deployment procedures for all components | 🚀 [Deploy Now](README_EXT/DEPLOYMENT.md#deployment-overview) |
+| **[Security Policy](README_EXT/SECURITY.md)** | Security guidelines and vulnerability reporting | 🔒 [Security](README_EXT/SECURITY.md) |
+| **[Pre-Commit Guide](README_EXT/PRE_COMMIT_GUIDE.md)** | Pre-commit hooks setup and usage | 🔧 [Setup Hooks](README_EXT/PRE_COMMIT_GUIDE.md#quick-setup) |
+
+### 📖 Documentation Organization
+
+- **README.md** (this file) - Complete project overview and quick reference
+- **README_EXT/** - Extended documentation for detailed topics
+- **Inline comments** - Code files link back to relevant documentation sections
 
 ## 🔗 Quick Links
 

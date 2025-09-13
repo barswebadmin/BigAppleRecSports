@@ -1,4 +1,8 @@
-# Security Policy
+# 🔒 Security Policy
+
+> 📖 **Navigation**: [← Back to README](../README.md) | [Contributing Guide](CONTRIBUTING.md) | [Deployment Guide](DEPLOYMENT.md) | [Pre-Commit Guide](PRE_COMMIT_GUIDE.md)
+
+This document outlines security policies and procedures for the BARS project.
 
 ## Environment Variables
 
@@ -40,4 +44,4 @@ Tests use mock/test tokens that don't access real Shopify data:
 
 ## Reporting Security Issues
 
-If you find security vulnerabilities, please report them privately to the maintainers. 
+If you find security vulnerabilities, please report them privately to the maintainers.
