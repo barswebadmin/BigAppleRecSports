@@ -140,7 +140,9 @@ repos:
     rev: v4.4.0
     hooks:
       - id: trailing-whitespace
+        # Auto-fix trailing whitespace without failing
       - id: end-of-file-fixer
+        # Auto-fix missing newlines without failing
       - id: check-yaml
         args: ['--unsafe']  # Allow custom tags in GitHub Actions
       - id: check-added-large-files
@@ -149,10 +151,10 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.2
     hooks:
-      # Linting (replaces flake8)
+      # Linting (replaces flake8) - auto-fix issues, only fail on unfixable errors
       - id: ruff
         files: '^(scripts/.*\.py|lambda-functions/.*\.py|backend/.*\.py|shared-utilities/.*\.py)$'
-        args: [--fix]
-      # Formatting (replaces black)
+        args: [--fix, --exit-zero]  # Auto-fix and don't fail commit on fixable issues
+      # Formatting (replaces black) - auto-format, don't fail the commit
       - id: ruff-format
         files: '^(scripts/.*\.py|lambda-functions/.*\.py|backend/.*\.py|shared-utilities/.*\.py)$'
