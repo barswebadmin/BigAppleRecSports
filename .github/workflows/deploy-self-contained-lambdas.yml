@@ -4,13 +4,11 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '.github/workflows/deploy-self-contained-lambdas.yml'
       - 'lambda-functions/shopifyProductUpdateHandler/**'
       - 'shared-utilities/**'
   pull_request:
     branches: [ main ]
     paths:
-      - '.github/workflows/deploy-self-contained-lambdas.yml'
       - 'lambda-functions/shopifyProductUpdateHandler/**'
       - 'shared-utilities/**'
   workflow_dispatch:
@@ -95,14 +93,26 @@ jobs:
 
         echo "✅ All self-contained lambda functions prepared"
 
+    - name: Check AWS credentials
+      run: |
+        if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+          echo "❌ AWS credentials not configured in repository secrets"
+          echo "Please add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to repository secrets"
+          echo "Skipping deployment..."
+          exit 0
+        fi
+        echo "✅ AWS credentials found"
+
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
+      if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
     - name: Deploy Lambda Functions
+      if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
       run: |
         echo "🚀 Deploying self-contained lambda functions to AWS..."
 
