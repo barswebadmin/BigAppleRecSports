@@ -266,7 +266,18 @@ async def handle_slack_interactions(request: Request):
                     )
 
                 elif action_id == "proceed_without_cancel":
-                    return await slack_service.handle_proceed_without_cancel(
+                    print("\n🚀 === PROCEED WITHOUT CANCEL BUTTON CLICKED ===")
+                    print("📦 Full JSON Request Data:")
+                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"   Action ID: {action_id}")
+                    print(f"   Channel ID: {channel_id}")
+                    print(f"   Thread TS: {thread_ts}")
+                    print(f"   Slack User: {slack_user_name}")
+                    print(f"   User ID: {slack_user_id}")
+                    print(f"   Trigger ID: {trigger_id}")
+                    print("🚀 === END PROCEED WITHOUT CANCEL DEBUG ===\n")
+
+                    result = await slack_service.handle_proceed_without_cancel(
                         request_data,
                         channel_id,
                         requestor_name,
@@ -277,6 +288,13 @@ async def handle_slack_interactions(request: Request):
                         current_message_full_text,
                         trigger_id,
                     )
+
+                    print("\n🚀 === PROCEED WITHOUT CANCEL RESULT ===")
+                    print(f"✅ Action: {action_id}")
+                    print(f"📊 Result: {json.dumps(result, indent=2)}")
+                    print("🚀 === END PROCEED RESULT ===\n")
+
+                    return result
 
                 elif action_id == "deny_refund_request_show_modal":
                     print("\n🚫 === DENY REQUEST MODAL ===")
@@ -324,7 +342,18 @@ async def handle_slack_interactions(request: Request):
                     )
 
                 elif action_id == "custom_refund_amount":
-                    return await slack_service.handle_custom_refund_amount(
+                    print("\n💰 === CUSTOM REFUND AMOUNT BUTTON CLICKED ===")
+                    print("📦 Full JSON Request Data:")
+                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"   Action ID: {action_id}")
+                    print(f"   Channel ID: {channel_id}")
+                    print(f"   Thread TS: {thread_ts}")
+                    print(f"   Slack User: {slack_user_name}")
+                    print(f"   User ID: {slack_user_id}")
+                    print(f"   Trigger ID: {trigger_id}")
+                    print("💰 === END CUSTOM REFUND DEBUG ===\n")
+
+                    result = await slack_service.handle_custom_refund_amount(
                         request_data=request_data,
                         channel_id=channel_id,
                         thread_ts=thread_ts,
@@ -335,6 +364,13 @@ async def handle_slack_interactions(request: Request):
                         slack_user_id=slack_user_id,
                         trigger_id=trigger_id,
                     )
+
+                    print("\n💰 === CUSTOM REFUND AMOUNT RESULT ===")
+                    print(f"✅ Action: {action_id}")
+                    print(f"📊 Result: {json.dumps(result, indent=2)}")
+                    print("💰 === END CUSTOM REFUND RESULT ===\n")
+
+                    return result
 
                 elif action_id == "no_refund":
                     print("\n🚫 === DENY REFUND BUTTON CLICKED (Step 5) ===")
@@ -388,6 +424,17 @@ async def handle_slack_interactions(request: Request):
                     action_id.startswith("confirm_restock")
                     or action_id == "confirm_do_not_restock"
                 ):
+                    print("\n📦 === RESTOCK CONFIRMATION BUTTON CLICKED ===")
+                    print("📦 Full JSON Request Data:")
+                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"   Action ID: {action_id}")
+                    print(f"   Channel ID: {channel_id}")
+                    print(f"   Thread TS: {thread_ts}")
+                    print(f"   Slack User: {slack_user_name}")
+                    print(f"   User ID: {slack_user_id}")
+                    print(f"   Trigger ID: {trigger_id}")
+                    print("📦 === END RESTOCK CONFIRMATION DEBUG ===\n")
+
                     # Show confirmation modal for restock actions
                     return await slack_service.handle_restock_confirmation_request(
                         request_data,
@@ -400,8 +447,19 @@ async def handle_slack_interactions(request: Request):
                 elif action_id and (
                     action_id.startswith("restock") or action_id == "do_not_restock"
                 ):
+                    print("\n📦 === RESTOCK ACTION BUTTON CLICKED ===")
+                    print("📦 Full JSON Request Data:")
+                    print(f"   Request Data: {json.dumps(request_data, indent=2)}")
+                    print(f"   Action ID: {action_id}")
+                    print(f"   Channel ID: {channel_id}")
+                    print(f"   Thread TS: {thread_ts}")
+                    print(f"   Slack User: {slack_user_name}")
+                    print(f"   User ID: {slack_user_id}")
+                    print(f"   Trigger ID: {trigger_id}")
+                    print("📦 === END RESTOCK ACTION DEBUG ===\n")
+
                     # Handle confirmed restock actions (called from modal submission)
-                    return await slack_service.handle_restock_inventory(
+                    result = await slack_service.handle_restock_inventory(
                         request_data,
                         action_id,
                         channel_id,
@@ -410,6 +468,13 @@ async def handle_slack_interactions(request: Request):
                         current_message_full_text,
                         trigger_id,
                     )
+
+                    print("\n📦 === RESTOCK ACTION RESULT ===")
+                    print(f"✅ Action: {action_id}")
+                    print(f"📊 Result: {json.dumps(result, indent=2)}")
+                    print("📦 === END RESTOCK RESULT ===\n")
+
+                    return result
                 else:
                     if not action_id:
                         raise HTTPException(

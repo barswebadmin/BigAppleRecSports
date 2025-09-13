@@ -45,6 +45,33 @@ class MockSlackApiClient:
         self.channel_id = channel_id
         logger.info("🧪 Using MockSlackApiClient - no real Slack requests will be made")
 
+    def _determine_message_type(
+        self, action_buttons: Optional[List[Dict[str, Any]]]
+    ) -> str:
+        """Determine the message type and workflow step based on action buttons"""
+        if not action_buttons:
+            return "STEP 4: Final Completion Message (No Buttons)"
+
+        # Extract action IDs from buttons
+        action_ids = []
+        for button in action_buttons:
+            if isinstance(button, dict) and "action_id" in button:
+                action_ids.append(button["action_id"])
+
+        # Determine workflow step based on button combinations
+        if "cancel_order" in action_ids and "proceed_without_cancel" in action_ids:
+            return "STEP 1: Initial Refund Request (Cancel/Proceed/Deny)"
+        elif "process_refund" in action_ids and "custom_refund_amount" in action_ids:
+            return "STEP 2: Refund Decision (Process/Custom/No Refund)"
+        elif any("restock" in action_id for action_id in action_ids):
+            return "STEP 3: Inventory Decision (Restock/Don't Restock)"
+        elif "edit_request_details" in action_ids:
+            return "ERROR: Email Mismatch (Edit Details/Deny)"
+        elif "deny_duplicate_refund_request" in action_ids:
+            return "ERROR: Duplicate Refund Request (Update/Deny)"
+        else:
+            return f"UNKNOWN: Action IDs {action_ids}"
+
     def send_message(
         self,
         message_text: str,
@@ -52,22 +79,15 @@ class MockSlackApiClient:
         slack_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Mock send_message that logs but doesn't make real requests"""
-        logger.info(f"🧪 MOCK: Would send Slack message to {self.channel_id}")
-        logger.debug(f"🧪 MOCK: Message content: {message_text[:100]}...")
-
-        # 🐛 DEBUG: Print blocks for testing even in mock mode
-        blocks = self._create_standard_blocks(message_text, action_buttons)
-        print("\n🔍 === MOCK SLACK BLOCKS DEBUG (SEND) ===")
-        print(f"📝 Message text length: {len(message_text)}")
-        print(
-            f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}"
+        message_type = self._determine_message_type(action_buttons)
+        logger.info(
+            f"🧪 MOCK SENDING SLACK MESSAGE: {message_type} to {self.channel_id}"
         )
-        print(f"📦 Number of blocks: {len(blocks)}")
-        print("🧱 Raw blocks JSON for Block Kit Builder:")
-        import json
-
-        print(json.dumps(blocks, indent=2))
-        print("=== END MOCK SLACK BLOCKS DEBUG (SEND) ===\n")
+        print("\n🧪 === MOCK SLACK MESSAGE SEND ===")
+        print(f"📋 Message Type: {message_type}")
+        print(f"📍 Channel: {self.channel_id}")
+        print(f"🔘 Action Buttons: {len(action_buttons) if action_buttons else 0}")
+        print("🧪 === END MOCK SLACK MESSAGE SEND ===\n")
 
         return {
             "success": True,
@@ -85,23 +105,16 @@ class MockSlackApiClient:
         slack_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Mock update_message that logs but doesn't make real requests"""
+        message_type = self._determine_message_type(action_buttons)
         logger.info(
-            f"🧪 MOCK: Would update Slack message {message_ts} in {self.channel_id}"
+            f"🧪 MOCK UPDATING SLACK MESSAGE: {message_type} (ts: {message_ts}) in {self.channel_id}"
         )
-
-        # 🐛 DEBUG: Print blocks for testing even in mock mode
-        blocks = self._create_standard_blocks(message_text, action_buttons)
-        print("\n🔍 === MOCK SLACK BLOCKS DEBUG (UPDATE) ===")
-        print(f"📝 Message text length: {len(message_text)}")
-        print(
-            f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}"
-        )
-        print(f"📦 Number of blocks: {len(blocks)}")
-        print("🧱 Raw blocks JSON for Block Kit Builder:")
-        import json
-
-        print(json.dumps(blocks, indent=2))
-        print("=== END MOCK SLACK BLOCKS DEBUG (UPDATE) ===\n")
+        print("\n🧪 === MOCK SLACK MESSAGE UPDATE ===")
+        print(f"📋 Message Type: {message_type}")
+        print(f"📍 Channel: {self.channel_id}")
+        print(f"🆔 Message TS: {message_ts}")
+        print(f"🔘 Action Buttons: {len(action_buttons) if action_buttons else 0}")
+        print("🧪 === END MOCK SLACK MESSAGE UPDATE ===\n")
 
         return {
             "success": True,
@@ -166,6 +179,33 @@ class SlackApiClient:
         self.channel_id = channel_id
         self.base_url = "https://slack.com/api"
 
+    def _determine_message_type(
+        self, action_buttons: Optional[List[Dict[str, Any]]]
+    ) -> str:
+        """Determine the message type and workflow step based on action buttons"""
+        if not action_buttons:
+            return "STEP 4: Final Completion Message (No Buttons)"
+
+        # Extract action IDs from buttons
+        action_ids = []
+        for button in action_buttons:
+            if isinstance(button, dict) and "action_id" in button:
+                action_ids.append(button["action_id"])
+
+        # Determine workflow step based on button combinations
+        if "cancel_order" in action_ids and "proceed_without_cancel" in action_ids:
+            return "STEP 1: Initial Refund Request (Cancel/Proceed/Deny)"
+        elif "process_refund" in action_ids and "custom_refund_amount" in action_ids:
+            return "STEP 2: Refund Decision (Process/Custom/No Refund)"
+        elif any("restock" in action_id for action_id in action_ids):
+            return "STEP 3: Inventory Decision (Restock/Don't Restock)"
+        elif "edit_request_details" in action_ids:
+            return "ERROR: Email Mismatch (Edit Details/Deny)"
+        elif "deny_duplicate_refund_request" in action_ids:
+            return "ERROR: Duplicate Refund Request (Update/Deny)"
+        else:
+            return f"UNKNOWN: Action IDs {action_ids}"
+
     def send_message(
         self,
         message_text: str,
@@ -208,9 +248,6 @@ class SlackApiClient:
             return {"success": False, "error": "No Slack bearer token configured"}
 
         try:
-            # Log message send attempt
-            print(f"📤 Sending message to Slack channel {self.channel_id}")
-
             # Prepare the request
             url = f"{self.base_url}/chat.postMessage"
             headers = {
@@ -221,19 +258,6 @@ class SlackApiClient:
             # Create blocks structure for rich formatting
             blocks = self._create_standard_blocks(message_text, action_buttons)
 
-            # 🐛 DEBUG: Print blocks for Slack Block Kit Builder testing
-            print("\n🔍 === SLACK BLOCKS DEBUG (SEND) ===")
-            print(f"📝 Message text length: {len(message_text)}")
-            print(
-                f"🔘 Number of action buttons: {len(action_buttons) if action_buttons else 0}"
-            )
-            print(f"📦 Number of blocks: {len(blocks)}")
-            print("🧱 Raw blocks JSON for Block Kit Builder:")
-            import json
-
-            print(json.dumps(blocks, indent=2))
-            print("=== END SLACK BLOCKS DEBUG (SEND) ===\n")
-
             payload = {
                 "channel": self.channel_id,
                 "text": slack_text or message_text,  # Fallback text for notifications
@@ -242,8 +266,16 @@ class SlackApiClient:
                 "unfurl_media": False,
             }
 
-            logger.info(f"Sending Slack message to channel {self.channel_id}")
-            logger.debug(f"Message content: {message_text[:100]}...")
+            # Determine message type based on action buttons
+            message_type = self._determine_message_type(action_buttons)
+            logger.info(
+                f"📤 SENDING SLACK MESSAGE: {message_type} to channel {self.channel_id}"
+            )
+            print("\n📤 === SLACK MESSAGE SEND ===")
+            print(f"📋 Message Type: {message_type}")
+            print(f"📍 Channel: {self.channel_id}")
+            print(f"🔘 Action Buttons: {len(action_buttons) if action_buttons else 0}")
+            print("📤 === END SLACK MESSAGE SEND ===\n")
 
             # Send the request with explicit SSL certificate bundle
             cert_bundle = (
@@ -345,8 +377,17 @@ class SlackApiClient:
                 "blocks": blocks,
             }
 
-            # Log message update attempt
-            print(f"📤 Sending message update to Slack channel {self.channel_id}")
+            # Determine message type based on action buttons
+            message_type = self._determine_message_type(action_buttons)
+            logger.info(
+                f"🔄 UPDATING SLACK MESSAGE: {message_type} (ts: {message_ts}) in channel {self.channel_id}"
+            )
+            print("\n🔄 === SLACK MESSAGE UPDATE ===")
+            print(f"📋 Message Type: {message_type}")
+            print(f"📍 Channel: {self.channel_id}")
+            print(f"🆔 Message TS: {message_ts}")
+            print(f"🔘 Action Buttons: {len(action_buttons) if action_buttons else 0}")
+            print("🔄 === END SLACK MESSAGE UPDATE ===\n")
 
             # Use explicit SSL certificate bundle
             cert_bundle = (
