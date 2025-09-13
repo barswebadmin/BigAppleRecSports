@@ -92,7 +92,7 @@ function processFormSubmitViaDoPost(e) {
   }
 }
 
-function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundOrCredit, requestNotes, isDebug) {
+function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundOrCredit, requestNotes) {
   try {
     const sheetLink = getRowLink(formattedOrderNumber, SHEET_ID, SHEET_GID);
 

@@ -6,7 +6,7 @@ on:
     paths:
       - 'GoogleAppsScripts/**'
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
     paths:
       - 'GoogleAppsScripts/**'
   workflow_dispatch:

@@ -147,8 +147,8 @@ class OrdersService:
                     }
 
             # Check for basic response structure - if missing, it's an API error
-            if not result.get("data"):
-                logger.error(f"❌ Invalid or empty data in Shopify response: {result}")
+            if "data" not in result:
+                logger.error(f"❌ Missing 'data' field in Shopify response: {result}")
                 return {
                     "success": False,
                     "message": "Unable to connect to Shopify. Please try again later.",

@@ -105,13 +105,10 @@ function  processFormSubmit(e) {
 // BACKEND API PROCESSING
 // ========================================================================
 
-function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundOrCredit, requestNotes, requestSubmittedAt, isDebug) {
+function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundOrCredit, requestNotes, requestSubmittedAt) {
   try {
 
     const sheetLink = getRowLink(formattedOrderNumber, SHEET_ID, SHEET_GID);
-    if (isDebug && sheetLink) {
-      Logger.log(`🔗 [debugApi] Generated sheet link: ${sheetLink}`);
-    }
 
     const payload = {
       order_number: rawOrderNumber,
@@ -215,10 +212,6 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           </p>
           <img src="cid:barsLogo" style="width:225px; height:auto;">`;
 
-        if (isDebug) {
-          Logger.log(`❌ [debugApi] Order not found (406): ${errorMessage}`);
-        }
-
         // Update spreadsheet with cancellation note (step 3)
         try {
           updateOrderNotesColumn(rawOrderNumber, requestorEmail, "Canceled - Order Not Found. Requestor has been emailed.");
@@ -248,17 +241,11 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
           </p>
           <img src="cid:barsLogo" style="width:225px; height:auto;">`;
 
-        if (isDebug) {
-          Logger.log(`❌ [debugApi] Email mismatch (409): ${errorMessage}`);
-          Logger.log(`❌ [debugApi] Order customer email: ${errorDetail.order_customer_email || 'Unknown'}`);
-        }
-
       } else if (statusCode === 503 || errorType === 'shopify_connection_error') {
         // 503: Service Unavailable - Shopify connection error, don't email customer, just log and show user message
         shouldSendToRequestor = false;
         const userMessage = errorDetail.user_message || 'There was a technical issue connecting to our system. Please try submitting your refund request again in a few minutes.';
 
-        Logger.log(`🚨 [${isDebug ? 'debugApi' : 'prodApi'}] Shopify connection error (503): ${errorMessage}`);
         Logger.log(`📋 User message: ${userMessage}`);
 
         // Update spreadsheet with technical error note
@@ -271,10 +258,9 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
 
         // Send admin notification only
         const errorTypeDisplay = errorType === 'shopify_config_error' ? 'Configuration Error' : 'Connection Error';
-        emailSubject = `🚨 BARS Refund Form - Shopify ${errorTypeDisplay} [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailSubject = `🚨 BARS Refund Form - Shopify ${errorTypeDisplay}`;
         emailBody = `
           <h3>🚨 Shopify ${errorTypeDisplay}</h3>
-          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
           <p><strong>Error Type:</strong> ${errorType}</p>
           <p><strong>Error Message:</strong> ${errorMessage}</p>
@@ -296,7 +282,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         const shopifyErrors = errorDetail.errors || errorMessage;
         const userMessage = errorDetail.user_message || 'There is a system configuration issue. Please contact support or try again later.';
 
-        Logger.log(`🚨 [${isDebug ? 'debugApi' : 'prodApi'}] Shopify config error (${statusCode}): ${shopifyErrors}`);
+        Logger.log(`🚨 Shopify config error (${statusCode}): ${shopifyErrors}`);
 
         // Update spreadsheet with technical error note
         try {
@@ -308,10 +294,9 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         }
 
         // Send admin notification only
-        emailSubject = `⚙️ BARS Refund Form - Shopify Config Error (${statusCode}) [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailSubject = `⚙️ BARS Refund Form - Shopify Config Error (${statusCode})`;
         emailBody = `
           <h3>⚙️ Shopify Configuration Error (${statusCode})</h3>
-          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
           <p><strong>Error Type:</strong> ${errorType}</p>
           <p><strong>Shopify Errors:</strong> ${shopifyErrors}</p>
@@ -329,10 +314,9 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
 
       } else {
         // Other errors - Send debug email to admin
-        emailSubject = `❌ BARS Refund Form - API Error [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailSubject = `❌ BARS Refund Form - API Error`;
         emailBody = `
           <h3>❌ Backend API Error</h3>
-          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
           <p><strong>Error Type:</strong> ${errorType}</p>
           <p><strong>Error Message:</strong> ${errorMessage}</p>
