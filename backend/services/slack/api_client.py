@@ -183,15 +183,25 @@ class SlackApiClient:
         Returns:
             Dict containing success status and details
         """
-        # FIX: Ensure SSL certificates are properly configured for Render
+        # FIX: Ensure SSL certificates are properly configured for Render (Ubuntu)
+        # Only set Ubuntu SSL paths if we're in a production/cloud environment
         import os
 
-        if not os.getenv("SSL_CERT_FILE"):
-            os.environ["SSL_CERT_FILE"] = "/etc/ssl/certs/ca-certificates.crt"
-        if not os.getenv("REQUESTS_CA_BUNDLE"):
-            os.environ["REQUESTS_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
-        if not os.getenv("CURL_CA_BUNDLE"):
-            os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
+        if os.getenv("ENVIRONMENT") == "production" and not os.path.exists(
+            "/opt/homebrew"
+        ):
+            if not os.getenv("SSL_CERT_FILE") or not os.path.exists(
+                os.getenv("SSL_CERT_FILE", "")
+            ):
+                os.environ["SSL_CERT_FILE"] = "/etc/ssl/certs/ca-certificates.crt"
+            if not os.getenv("REQUESTS_CA_BUNDLE") or not os.path.exists(
+                os.getenv("REQUESTS_CA_BUNDLE", "")
+            ):
+                os.environ["REQUESTS_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
+            if not os.getenv("CURL_CA_BUNDLE") or not os.path.exists(
+                os.getenv("CURL_CA_BUNDLE", "")
+            ):
+                os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
 
         if not self.bearer_token:
             logger.error("No Slack bearer token configured")
