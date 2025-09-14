@@ -1,5 +1,7 @@
 # Google Apps Scripts for BARS
 
+> 📚 **Documentation**: See [README.md](../README.md#google-apps-scripts) for overview and [README_EXT/2_DEPLOYMENT.md#google-apps-scripts-deployment](../README_EXT/2_DEPLOYMENT.md#google-apps-scripts-deployment) for deployment
+
 This directory contains all Google Apps Scripts used by Big Apple Rec Sports, with proper version control and deployment capabilities.
 
 ## Scripts

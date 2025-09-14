@@ -1,0 +1,32 @@
+{
+  "env": {
+    "es6": true,
+    "node": false
+  },
+  "extends": [
+    "eslint:recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2015,
+    "sourceType": "script",
+    "project": "./tsconfig.json"
+  },
+  "rules": {
+    "no-var": "warn",
+    "prefer-const": "warn",
+    "no-unused-vars": "warn",
+    "no-console": "off",
+    "no-undef": "off"
+  },
+  "globals": {
+    "Logger": "readonly",
+    "SpreadsheetApp": "readonly",
+    "UrlFetchApp": "readonly",
+    "Utilities": "readonly",
+    "PropertiesService": "readonly",
+    "HtmlService": "readonly",
+    "ScriptApp": "readonly",
+    "console": "readonly"
+  }
+}

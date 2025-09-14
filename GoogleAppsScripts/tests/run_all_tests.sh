@@ -38,11 +38,11 @@ FAILED_SUITES=()
 function run_test_suite() {
     local suite_name="$1"
     local script_path="$2"
-    
+
     ((TOTAL_SUITES++))
-    
+
     log_header "Running $suite_name"
-    
+
     if $script_path; then
         log_pass "$suite_name completed successfully"
         ((PASSED_SUITES++))
@@ -60,12 +60,17 @@ echo "Starting comprehensive test execution..."
 echo ""
 
 # Run all test suites
-# run_test_suite "Sync Utilities Tests" "./test_sync_utilities.sh" 
-# run_test_suite "Leadership Discount Codes Tests" "./test_leadership_discount_codes.sh"
-run_test_suite "Parse Registration Functions Tests" "./test_parse_registration_functions.sh"
-run_test_suite "Parse Registration Comprehensive Tests" "./test_parse_registration_comprehensive.sh"
-run_test_suite "Process Refunds & Exchanges GAS Tests" "./process-refunds-exchanges/run_tests.sh"
-# run_test_suite "Instructions Tests" "./test_instructions.sh"
+
+# General tests (cross-project)
+run_test_suite "Sync Utilities Tests" "./test_sync_utilities.sh"
+run_test_suite "Instructions Tests" "./test_instructions.sh"
+run_test_suite "Clasp Helpers Tests" "./test_clasp_helpers.sh"
+
+# Project-specific tests (now in their respective project directories)
+run_test_suite "Leadership Discount Codes Tests" "../projects/leadership-discount-codes/tests/test_leadership_discount_codes.sh"
+run_test_suite "Parse Registration Functions Tests" "../projects/parse-registration-info/tests/test_parse_registration_functions.sh"
+run_test_suite "Parse Registration Comprehensive Tests" "../projects/parse-registration-info/tests/test_parse_registration_comprehensive.sh"
+run_test_suite "Process Refunds & Exchanges GAS Tests" "../projects/process-refunds-exchanges/tests/run_tests.sh"
 
 # Final summary
 log_header "📊 Final Test Results Summary"

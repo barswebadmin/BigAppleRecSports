@@ -1,0 +1,92 @@
+name: Deploy to Render
+
+# Prevent duplicate runs: use branch name for consistency across push/PR events
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Backend code changes
+      - 'backend/**'
+      - 'requirements.txt'
+      - 'render.yaml'
+      # Shared utilities that affect backend
+      - 'shared-utilities/**'
+      # Configuration and deployment files
+      - '.github/workflows/**'
+      - 'Makefile'
+      # Exclude documentation and non-deployment files
+      - '!**/*.md'
+      - '!**/tests/**'
+      - '!**/*.test.js'
+      - '!**/*.test.py'
+
+  # Allow manual deployment
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deployment'
+        required: false
+        default: 'Manual deployment'
+
+jobs:
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Validate requirements.txt
+        run: |
+          echo "🔍 Validating requirements.txt..."
+          pip install --dry-run -r requirements.txt
+          echo "✅ Requirements validation successful"
+
+      - name: Deploy to Render
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID }}
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          wait-for-success: true
+
+      - name: Deployment notification
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment to Render successful!"
+          else
+            echo "❌ Deployment to Render failed!"
+            exit 1
+          fi
+
+  notify:
+    name: Notify deployment status
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+
+    steps:
+      - name: Notify success
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "🚀 BARS Backend deployed successfully to Render!"
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Notify failure
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "❌ BARS Backend deployment failed!"
+          echo "Check the deployment logs for details."
+          exit 1

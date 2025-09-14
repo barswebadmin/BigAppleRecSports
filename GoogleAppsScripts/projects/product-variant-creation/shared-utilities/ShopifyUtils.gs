@@ -3,6 +3,7 @@
 // =============================================================================
 
 // Constants - Replace with actual values in setupSecrets
+// Note: SHOPIFY_ACCESS_TOKEN is now retrieved via getSecret('SHOPIFY_TOKEN')
 const SHOPIFY_API_URL = 'https://09fe59-3.myshopify.com/admin/api/2023-10/graphql.json';
 const SHOPIFY_GRAPHQL_URL = "https://09fe59-3.myshopify.com/admin/api/2025-07/graphql.json";
 
@@ -48,15 +49,15 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
       headers: { "X-Shopify-Access-Token": getSecret('SHOPIFY_TOKEN') },
       payload: JSON.stringify(query)
     };
-    const response = UrlFetchApp.fetch(getSecret('SHOPIFY_GRAPHQL_URL'), options);
+    const response = UrlFetchApp.fetch(SHOPIFY_GRAPHQL_URL, options);
     const jsonResponse = JSON.parse(response.getContentText());
 
     if (jsonResponse.errors) {
       const debugEmail = getDebugEmail();
       if (debugEmail) {
         MailApp.sendEmail({
-          to: debugEmail, 
-          subject: 'Debugging fetch shopify - errors 1', 
+          to: debugEmail,
+          subject: 'Debugging fetch shopify - errors 1',
           htmlBody: `query: ${JSON.stringify(query,null,2)} \n \n
           Shopify API Errors: ${JSON.stringify(jsonResponse.errors,null,2)}
           `
@@ -69,8 +70,8 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: 'Debugging fetch shopify - errors 2', 
+        to: debugEmail,
+        subject: 'Debugging fetch shopify - errors 2',
         htmlBody: `query: ${JSON.stringify(query,null,2)} \n \n
         Shopify Fetch Error: ${JSON.stringify(error.message,null,2)}
         `
@@ -85,7 +86,7 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
  */
 function getDebugEmail() {
   try {
-    return PropertiesService.getScriptProperties().getProperty('DEBUG_EMAIL') || 
+    return PropertiesService.getScriptProperties().getProperty('DEBUG_EMAIL') ||
            (typeof DEBUG_EMAIL !== 'undefined' ? DEBUG_EMAIL : null);
   } catch (error) {
     return null;
@@ -341,7 +342,7 @@ function updateCustomer({ customerId, tags, phone }) {
       input: {
         id: customerId,
         tags,
-        ...normalizedPhoneData, 
+        ...normalizedPhoneData,
       }
     }
   };
@@ -416,9 +417,9 @@ function fetchShopifyOrderDetails({ orderName, email }) {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: 'Debugging fetch shopify - errors 3', 
-        htmlBody: `query: ${JSON.stringify(query,null,2)} \n \n 
+        to: debugEmail,
+        subject: 'Debugging fetch shopify - errors 3',
+        htmlBody: `query: ${JSON.stringify(query,null,2)} \n \n
         fetchShopify threw error: ${JSON.stringify(err,null,2)}
         `
       });
@@ -516,8 +517,8 @@ const cancelShopifyOrder = (orderId) => {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: `❌ BARS Refund Request - Shopify Order Cancellation Failed`, 
+        to: debugEmail,
+        subject: `❌ BARS Refund Request - Shopify Order Cancellation Failed`,
         htmlBody: `Cancellation errors: ${JSON.stringify(responseData?.orderCancel?.userErrors || responseData?.orderCancel?.orderCancelUserErrors, null, 2)}`
       });
     }
@@ -585,8 +586,8 @@ const createShopifyDiscountCode = ({ codeTitle, refundAmount, customerId }) => {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: '❌ BARS Refund Request - Error creating discount', 
+        to: debugEmail,
+        subject: '❌ BARS Refund Request - Error creating discount',
         htmlBody: `Discount errors: ${JSON.stringify(response.discountCodeBasicCreate.userErrors, null, 2)}}`
       });
     }
@@ -681,8 +682,8 @@ const createShopifyRefund = (orderId, refundAmount) => {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: '❌ BARS Refund Request - Error creating refund', 
+        to: debugEmail,
+        subject: '❌ BARS Refund Request - Error creating refund',
         htmlBody: `Refund errors: ${JSON.stringify(errors, null, 2)}}`
       });
     }
@@ -744,8 +745,8 @@ const createShopifyStoreCredit = ({ formattedOrderNumber, orderId, refundAmount 
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: `❌ BARS Store Credit Request (Order ${formattedOrderNumber}) - Error creating Store Credit`, 
+        to: debugEmail,
+        subject: `❌ BARS Store Credit Request (Order ${formattedOrderNumber}) - Error creating Store Credit`,
         htmlBody: `Discount errors: ${JSON.stringify(errors, null, 2)}}`
       });
     }
@@ -834,7 +835,7 @@ const createShopifyRefundDebugVersion = (orderId, refundAmount) => {
   };
 
   const curlCommand = `
-  curl -X POST ${getSecret('SHOPIFY_GRAPHQL_URL')} \\
+  curl -X POST ${SHOPIFY_GRAPHQL_URL} \\
   -H "Content-Type: application/json" \\
   -H "X-Shopify-Access-Token: YOUR_ACCESS_TOKEN" \\
   -d '${JSON.stringify(refundMutation)}'
@@ -897,7 +898,7 @@ const createShopifyStoreCreditDebugVersion = ({ formattedOrderNumber, orderId, r
   };
 
   const curlCommand = `
-  curl -X POST ${getSecret('SHOPIFY_GRAPHQL_URL')} \\
+  curl -X POST ${SHOPIFY_GRAPHQL_URL} \\
   -H "Content-Type: application/json" \\
   -H "X-Shopify-Access-Token: YOUR_ACCESS_TOKEN" \\
   -d '${JSON.stringify(curlPayload)}'

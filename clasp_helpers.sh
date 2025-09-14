@@ -74,7 +74,7 @@ deploy() {
         log_info "Copied .clasp.json"
     fi
 
-    # Find and copy all .js files from src/ subdirectories with flattened names
+    # Find and copy all .gs files from src/ subdirectories with flattened names
     log_info "Copying and flattening src/ structure..."
 
     file_count=0
@@ -86,7 +86,7 @@ deploy() {
         dir_part=$(dirname "$rel_path")
         file_part=$(basename "$rel_path")
 
-        # Create flattened name (directory/filename.js)
+        # Create flattened name (directory/filename.gs)
         if [ "$dir_part" = "." ]; then
             # File is directly in src/
             new_name="$file_part"
@@ -95,15 +95,20 @@ deploy() {
             new_name="${dir_part}/${file_part}"
         fi
 
+        # Create directory if needed for subdirectory files
+        if [[ "$new_name" == *"/"* ]]; then
+            mkdir -p "$(dirname "$DEPLOY_TEMP/$new_name")"
+        fi
+
         # Copy to deploy_temp with new name
         cp "$file" "$DEPLOY_TEMP/$new_name"
         log_info "  $file → $new_name"
-        ((file_count++))
+        file_count=$((file_count + 1))
 
-    done < <(find src -name "*.js" -type f -print0)
+    done < <(find src -name "*.gs" -type f -print0)
 
     if [ $file_count -eq 0 ]; then
-        log_warning "No .js files found in src/ directory"
+        log_warning "No .gs files found in src/ directory"
     else
         log_success "Copied $file_count files with flattened structure"
     fi

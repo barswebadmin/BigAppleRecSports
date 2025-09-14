@@ -4,6 +4,10 @@ Shopify Product Update Handler Lambda Function
 Automatically updates product images to "sold out" versions when all relevant variants
 are out of stock. Uses sport detection to apply appropriate sold-out images.
 
+📚 Documentation: See README.md#lambda-functions for overview
+🚀 Development: See README_EXT/1_CONTRIBUTING.md#lambda-development for local setup
+🚀 Deployment: See README_EXT/2_DEPLOYMENT.md#lambda-functions-deployment for deployment
+
 Author: BARS
 Version: 1.0.1
 Last Updated: 2025-01-13

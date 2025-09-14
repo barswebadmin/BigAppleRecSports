@@ -1,5 +1,7 @@
 # Backend Tests Organization
 
+> 📚 **Documentation**: See [README_EXT/1_CONTRIBUTING.md#testing-guidelines](../README_EXT/1_CONTRIBUTING.md#testing-guidelines) for comprehensive testing documentation
+
 ## 📁 Test Structure
 
 ```

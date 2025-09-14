@@ -1,4 +1,0 @@
-# No external dependencies required
-# Using standard library urllib for HTTP requests
-# Using standard library json for JSON operations
-# Custom modules handle all other functionality 

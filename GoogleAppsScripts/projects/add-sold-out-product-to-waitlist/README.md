@@ -1,5 +1,7 @@
 # Add Sold Out Product to Waitlist - Refactored Structure
 
+> 📚 **Documentation**: See [README.md](../../../README.md#google-apps-scripts) for GAS overview and [README_EXT/2_DEPLOYMENT.md#google-apps-scripts-deployment](../../../README_EXT/2_DEPLOYMENT.md#google-apps-scripts-deployment) for deployment
+
 ## Overview
 This Google Apps Script project manages waitlist form options when products sell out. The code has been refactored for better organization and readability.
 
