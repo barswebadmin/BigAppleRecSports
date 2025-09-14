@@ -95,7 +95,10 @@ deploy() {
             new_name="${dir_part}/${file_part}"
         fi
 
-        # Copy to deploy_temp with new name
+        # Create directory if needed and copy to deploy_temp with new name
+        if [[ "$new_name" == *"/"* ]]; then
+            mkdir -p "$(dirname "$DEPLOY_TEMP/$new_name")"
+        fi
         cp "$file" "$DEPLOY_TEMP/$new_name"
         log_info "  $file → $new_name"
         ((file_count++))
