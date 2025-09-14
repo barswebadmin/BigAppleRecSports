@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     buildCommand: "pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt"
-    startCommand: "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: ENVIRONMENT
         value: production
