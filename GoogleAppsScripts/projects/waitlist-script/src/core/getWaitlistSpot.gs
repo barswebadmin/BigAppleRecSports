@@ -284,7 +284,7 @@ function diagnoseWaitlistIssues() {
         }
         if (result.debugLog) {
           console.log(`🔍 Debug log from test:`);
-          result.debugLog.forEach(log => console.log(`    ${log}`));
+          for (const log of result.debugLog.log)  console.log(`result of debugLog: \n${log}`);
         }
       }
     }
@@ -354,7 +354,7 @@ function testDoGetWithParams(email = "test@example.com", league = "Test League")
 
     if (result.debugLog) {
       console.log(`🔍 Debug log:`);
-      result.debugLog.forEach(log => console.log(`    ${log}`));
+      for (const log of result.debugLog.log)  console.log(`result of debugLog: \n${log}`);
     }
 
     if (result.leagues && result.leagues.length > 0) {
