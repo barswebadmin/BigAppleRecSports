@@ -31,9 +31,9 @@ jobs:
       run: |
         echo "🔍 Checking Backend compilation..."
 
-        # Set up Python and install from root requirements.txt
+        # Set up Python and install backend requirements
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r backend/requirements.txt
 
         cd backend
 
@@ -227,7 +227,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r ../requirements.txt
+        pip install -r requirements.txt
 
     - name: Set up test environment variables
       run: |
