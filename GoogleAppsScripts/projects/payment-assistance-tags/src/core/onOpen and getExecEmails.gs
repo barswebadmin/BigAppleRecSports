@@ -1,3 +1,6 @@
+// Global constants for payment-assistance-tags
+const BARS_LOGO_URL = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
+
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("💳 BARS Payment Assistance")
