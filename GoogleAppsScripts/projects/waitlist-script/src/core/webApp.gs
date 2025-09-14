@@ -491,6 +491,7 @@ function doGet(e) {
   try {
     debugInfo.push("🚀 doGet function called (Interactive Dropdown Version)");
     debugInfo.push("📥 Parameters received: " + JSON.stringify(e.parameter));
+    debugInfo.push("📥 ALL parameters: " + JSON.stringify(e, null, 2));
 
     // Extract parameters
     const email = e.parameter.email;
