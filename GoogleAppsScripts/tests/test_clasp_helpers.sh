@@ -240,7 +240,7 @@ deploy_test() {
         # Copy to deploy_temp with new name
         cp "$file" "$DEPLOY_TEMP/$new_name"
         log_info "  $file → $new_name"
-        ((file_count++))
+        file_count=$((file_count + 1))
 
     done < <(find src -name "*.gs" -type f -print0)
 
