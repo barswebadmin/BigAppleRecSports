@@ -4,9 +4,8 @@ function sendPaymentPlanConfirmationEmail({ playerDetails, planDetails, repaymen
   const repaymentList = repaymentDetails.map(item => `<li>${item}</li>`).join("");
   const repaymentHtml = `<ul>${repaymentList}</ul>`;
 
-  var barsLogoUrl = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
   var barsLogoBlob = UrlFetchApp
-                      .fetch(barsLogoUrl)
+                      .fetch(BARS_LOGO_URL)
                       .getBlob()
                       .setName("barsLogo.png");
   try {
@@ -54,9 +53,8 @@ function sendPaymentPlanConfirmationEmail({ playerDetails, planDetails, repaymen
 }
 
 function sendDenialEmail(firstName, email) {
-  var barsLogoUrl = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
   var barsLogoBlob = UrlFetchApp
-                      .fetch(barsLogoUrl)
+                      .fetch(BARS_LOGO_URL)
                       .getBlob()
                       .setName("barsLogo.png");
   try {

@@ -35,9 +35,8 @@ function sendDenialEmail(data) {
     } = data;
 
     // Get BARS logo for email
-    const barsLogoUrl = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
     const barsLogoBlob = UrlFetchApp
-                        .fetch(barsLogoUrl)
+                        .fetch(BARS_LOGO_URL)
                         .getBlob()
                         .setName("barsLogo");
 
@@ -45,7 +44,7 @@ function sendDenialEmail(data) {
     const subject = `Big Apple Rec Sports - Order ${order_number} - Refund Request Denied`;
 
     // Build email body
-    let htmlBody = `<p>Hi ${first_name},</p>`;
+    // let htmlBody = `<p>Hi ${first_name},</p>`;
 
     if (custom_message && custom_message.trim()) {
       // Use custom message if provided
@@ -59,19 +58,19 @@ function sendDenialEmail(data) {
     }
 
     // Add additional info section if custom message was provided
-    if (custom_message && custom_message.trim()) {
-      htmlBody += `
-        <p><strong>Additional Info:</strong> ${custom_message.replace(/\n/g, '<br>')}</p>
-      `;
-    }
+    // if (custom_message && custom_message.trim()) {
+    //   htmlBody += `
+    //     <p><strong>Additional Info:</strong> ${custom_message.replace(/\n/g, '<br>')}</p>
+    //   `;
+    // }
 
     // Add staff contact info if requested
-    if (include_staff_info) {
-      htmlBody += `
-        <br>
-        <p>If you have any questions about this decision, you can reach out to ${slack_user_name} who processed your request.</p>
-      `;
-    }
+    // if (include_staff_info) {
+    //   htmlBody += `
+    //     <br>
+    //     <p>If you have any questions about this decision, you can reach out to ${slack_user_name} who processed your request.</p>
+    //   `;
+    // }
 
     // Add general contact info
     htmlBody += `

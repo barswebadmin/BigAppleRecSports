@@ -39,45 +39,47 @@ jobs:
       run: |
         cd GoogleAppsScripts
         chmod +x tests/*.sh
+        chmod +x projects/*/tests/*.sh
 
-    - name: Run Deploy Script Tests
+    - name: Run Clasp Helpers Tests
       continue-on-error: true
       run: |
         cd GoogleAppsScripts
-        ./tests/test_deploy.sh
+        ./tests/test_clasp_helpers.sh
 
-    # - name: Run Sync Utilities Tests
-      # continue-on-error: true
-    #   run: |
-    #     cd GoogleAppsScripts
-    #     ./tests/test_sync_utilities.sh
-
-    # - name: Run Leadership Discount Codes Tests
-    #   continue-on-error: true
-    #   run: |
-    #     cd GoogleAppsScripts
-    #     ./tests/test_leadership_discount_codes.sh
-
+    # Project-specific tests moved to their own directories
     - name: Run Parse Registration Function Tests
       continue-on-error: true
       run: |
         cd GoogleAppsScripts
-        ./tests/test_parse_registration_functions.sh
+        ./projects/parse-registration-info/tests/test_parse_registration_functions.sh
 
     - name: Run Parse Registration Comprehensive Tests
       continue-on-error: true
       run: |
         cd GoogleAppsScripts
         echo "🧪 Running Parse Registration Comprehensive Tests with detailed output..."
-        ./tests/test_parse_registration_comprehensive.sh || {
+        ./projects/parse-registration-info/tests/test_parse_registration_comprehensive.sh || {
           echo "❌ Parse Registration tests failed. Checking for detailed output..."
-          if [ -f tests/parse-registration-info/test-runner.mjs ]; then
+          if [ -f projects/parse-registration-info/tests/test-runner.mjs ]; then
             echo "📋 Running Node.js test runner directly for detailed output:"
-            cd tests/parse-registration-info
+            cd projects/parse-registration-info/tests
             node test-runner.mjs || true
           fi
           exit 1
         }
+
+    - name: Run Process Refunds Exchanges Tests
+      continue-on-error: true
+      run: |
+        cd GoogleAppsScripts
+        ./projects/process-refunds-exchanges/tests/run_tests.sh
+
+    - name: Run Leadership Discount Codes Tests
+      continue-on-error: true
+      run: |
+        cd GoogleAppsScripts
+        ./projects/leadership-discount-codes/tests/test_leadership_discount_codes.sh
 
     - name: Run Instructions Tests
       run: |

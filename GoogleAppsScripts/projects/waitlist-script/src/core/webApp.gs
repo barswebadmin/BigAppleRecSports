@@ -345,16 +345,19 @@ function sendWaitlistConfirmationEmail(email, league, waitlistSpot) {
     const firstName = email.split('@')[0].split('.')[0];
     const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
-    // Generate spot check URL
+    // Generate spot check URL using known working deployment
     const encodedEmail = encodeURIComponent(email);
     const encodedLeague = encodeURIComponent(league);
-    const baseUrl = 'https://script.google.com/macros/s/AKfycbzEXiJ8h_Tomlw2e2YPbC61zP3btHqyiQNRxcI1pta2d7NbBkDFuPL4t9IXgDPaAIDGog/exec';
+    // Use known working web app URL directly
+    // ScriptApp.getService().getUrl() is unreliable and returns null even when deployment works
+    const baseUrl = WAITLIST_WEB_APP_URL;
+    Logger.log(`📍 Using web app URL: ${baseUrl}`);
+
     const spotCheckUrl = `${baseUrl}?email=${encodedEmail}&league=${encodedLeague}`;
 
     // Get BARS logo
-    const barsLogoUrl = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
     const barsLogoBlob = UrlFetchApp
-                        .fetch(barsLogoUrl)
+                        .fetch(BARS_LOGO_URL)
                         .getBlob()
                         .setName("barsLogo");
 
@@ -492,6 +495,7 @@ function doGet(e) {
   try {
     debugInfo.push("🚀 doGet function called (Interactive Dropdown Version)");
     debugInfo.push("📥 Parameters received: " + JSON.stringify(e.parameter));
+    debugInfo.push("📥 ALL parameters: " + JSON.stringify(e, null, 2));
 
     // Extract parameters
     const email = e.parameter.email;

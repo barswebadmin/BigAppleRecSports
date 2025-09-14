@@ -1,3 +1,7 @@
+// Global constants for waitlist-script
+const BARS_LOGO_URL = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
+const WAITLIST_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzEXiJ8h_Tomlw2e2YPbC61zP3btHqyiQNRxcI1pta2d7NbBkDFuPL4t9IXgDPaAIDGog/exec";
+
 function onOpen() {
   const ui = SpreadsheetApp.getUi()
 
