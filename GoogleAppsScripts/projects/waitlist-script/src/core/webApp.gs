@@ -348,7 +348,15 @@ function sendWaitlistConfirmationEmail(email, league, waitlistSpot) {
     // Generate spot check URL using current deployment
     const encodedEmail = encodeURIComponent(email);
     const encodedLeague = encodeURIComponent(league);
-    const baseUrl = ScriptApp.getService().getUrl();
+    let baseUrl = ScriptApp.getService().getUrl();
+
+    // Fallback to known working URL if dynamic URL is not available or looks wrong
+    if (!baseUrl || !baseUrl.includes('script.google.com/macros/s/') || !baseUrl.endsWith('/exec')) {
+      Logger.log(`⚠️ Dynamic URL looks incorrect: ${baseUrl}`);
+      baseUrl = "https://script.google.com/macros/s/AKfycbzEXiJ8h_Tomlw2e2YPbC61zP3btHqyiQNRxcI1pta2d7NbBkDFuPL4t9IXgDPaAIDGog/exec";
+      Logger.log(`🔄 Using fallback URL: ${baseUrl}`);
+    }
+
     const spotCheckUrl = `${baseUrl}?email=${encodedEmail}&league=${encodedLeague}`;
 
     // Get BARS logo

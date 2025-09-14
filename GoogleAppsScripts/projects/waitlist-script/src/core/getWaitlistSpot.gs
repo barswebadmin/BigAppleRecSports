@@ -298,6 +298,40 @@ function diagnoseWaitlistIssues() {
 }
 
 /**
+ * Debug function to check what URL ScriptApp.getService().getUrl() returns
+ * This helps debug web app deployment issues
+ */
+function checkWebAppUrl() {
+  console.log("🔍 === WEB APP URL CHECK ===");
+
+  try {
+    const currentUrl = ScriptApp.getService().getUrl();
+    console.log(`📍 Current ScriptApp.getService().getUrl(): ${currentUrl}`);
+
+    // Test if the URL is accessible
+    console.log("🧪 Testing URL accessibility...");
+
+    // Create a test URL with dummy parameters
+    const testUrl = `${currentUrl}?email=test@example.com&league=Test League`;
+    console.log(`🔗 Test URL would be: ${testUrl}`);
+
+    // Check if this looks like a proper web app URL
+    if (currentUrl && currentUrl.includes('script.google.com/macros/s/') && currentUrl.endsWith('/exec')) {
+      console.log("✅ URL format looks correct for a web app deployment");
+    } else {
+      console.log("❌ URL format does NOT look like a web app deployment");
+      console.log("💡 This might explain why the links don't work!");
+    }
+
+  } catch (error) {
+    console.log(`❌ Error getting web app URL: ${error.message}`);
+    console.log(`📍 Stack trace: ${error.stack}`);
+  }
+
+  console.log("🏁 === WEB APP URL CHECK COMPLETE ===");
+}
+
+/**
  * Test function to simulate a doGet call with specific parameters
  * Use this to test the web app functionality manually
  */
