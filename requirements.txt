@@ -1,79 +1,76 @@
 # ============================================================================
-# BARS Project - Unified Requirements
+# BARS Project - Lambda Functions & Shared Dependencies
 # ============================================================================
-# Install all: pip install -r requirements.txt
-# Install specific extras: pip install -e ".[dev,testing]"
-# Production only: pip install -e ".[backend]"
+# This file contains dependencies for:
+# - Lambda functions (lambda-functions/)
+# - Shared utilities (shared-utilities/)
+# - Development tooling across the project
+#
+# Backend dependencies: see backend/requirements.txt
+# GAS dependencies: managed via Google Apps Script runtime
 # ============================================================================
-
-# ============================================================================
-# CORE BACKEND DEPENDENCIES (backend/)
-# ============================================================================
-# FastAPI web framework and server
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-
-# HTTP client and utilities
-requests==2.32.3
-
-# Configuration and environment
-python-dotenv==1.0.1
-
-# Data validation and serialization
-pydantic==2.10.4
-
-# File upload support
-python-multipart==0.0.20
-
-# Date/time utilities
-python-dateutil==2.9.0
 
 # ============================================================================
 # LAMBDA FUNCTIONS DEPENDENCIES (lambda-functions/)
 # ============================================================================
 # Most lambda functions use standard library only
-# Lambda layer dependencies:
+# Common dependencies for lambda layers and functions:
+
+# Type hints support for older Python versions
 typing-extensions>=4.5.0
 
+# Date/time utilities (used by several lambda functions)
+python-dateutil==2.9.0
+
+# HTTP requests (used by some lambda functions)
+requests==2.32.3
+
+# Configuration and environment (used by lambda functions)
+python-dotenv==1.0.1
+
 # ============================================================================
-# TESTING DEPENDENCIES (backend/tests/, lambda-functions/tests/)
+# SHARED UTILITIES DEPENDENCIES (shared-utilities/)
 # ============================================================================
-# Core testing framework
+# Dependencies for shared utility modules used across services
+
+# Data validation (if needed by shared utilities)
+pydantic==2.10.4
+
+# ============================================================================
+# DEVELOPMENT & TESTING DEPENDENCIES
+# ============================================================================
+# Testing framework for lambda functions
 pytest==8.4.1
 pytest-asyncio==0.25.0
 pytest-mock==3.15.0
 pytest-cov>=4.0.0
 
-# HTTP testing client
+# HTTP testing client for integration tests
 httpx==0.25.2
-
-# ============================================================================
-# DEVELOPMENT DEPENDENCIES (optional)
-# ============================================================================
-# Code formatting and linting (already using Ruff via pyproject.toml)
-# black>=23.0.0
-# mypy>=1.0.0
 
 # ============================================================================
 # GOOGLE APPS SCRIPTS (GoogleAppsScripts/)
 # ============================================================================
 # No Python dependencies - uses Google Apps Script runtime
-# JavaScript dependencies managed via clasp and Google Apps Script
+# JavaScript/TypeScript dependencies managed via:
+# - clasp for deployment
+# - npm/package.json for TypeScript projects
+# - Google Apps Script built-in libraries
 
 # ============================================================================
 # INSTALLATION INSTRUCTIONS
 # ============================================================================
 #
-# Full development setup (recommended):
+# Lambda development setup:
 #   pip install -r requirements.txt
 #
-# Production backend only:
-#   pip install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil
+# Backend development:
+#   cd backend && pip install -r requirements.txt
 #
-# Testing only:
-#   pip install pytest pytest-asyncio pytest-mock pytest-cov httpx
+# Specific lambda function deployment:
+#   cd lambda-functions/[function-name] && pip install -r requirements.txt
 #
-# Lambda functions:
-#   Most use standard library only. For lambda layers: pip install typing-extensions python-dateutil
+# Testing across project:
+#   pip install -r requirements.txt  # (includes pytest and testing tools)
 #
 # ============================================================================

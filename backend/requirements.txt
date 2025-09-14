@@ -1,0 +1,48 @@
+# ============================================================================
+# BARS Backend - Production Requirements
+# ============================================================================
+# Backend service dependencies for Render deployment
+# Root directory: backend/
+# ============================================================================
+
+# ============================================================================
+# CORE BACKEND DEPENDENCIES
+# ============================================================================
+# FastAPI web framework and server
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# HTTP client and utilities
+requests==2.32.3
+
+# Configuration and environment
+python-dotenv==1.0.1
+
+# Data validation and serialization
+pydantic==2.10.4
+
+# File upload support
+python-multipart==0.0.20
+
+# Date/time utilities
+python-dateutil==2.9.0
+
+# ============================================================================
+# BACKEND TESTING DEPENDENCIES (for CI/CD)
+# ============================================================================
+# Core testing framework
+pytest==8.4.1
+pytest-asyncio==0.25.0
+pytest-mock==3.15.0
+pytest-cov>=4.0.0
+
+# HTTP testing client
+httpx==0.25.2
+
+# ============================================================================
+# DEPLOYMENT NOTES
+# ============================================================================
+# This file contains only backend service dependencies
+# For lambda functions: see ../requirements.txt
+# For GAS projects: no Python dependencies needed
+# ============================================================================
