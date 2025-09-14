@@ -46,3 +46,4 @@ httpx==0.25.2
 # For lambda functions: see ../requirements.txt
 # For GAS projects: no Python dependencies needed
 # ============================================================================
+# Test marker for backend requirements
