@@ -345,10 +345,10 @@ function sendWaitlistConfirmationEmail(email, league, waitlistSpot) {
     const firstName = email.split('@')[0].split('.')[0];
     const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
-    // Generate spot check URL
+    // Generate spot check URL using current deployment
     const encodedEmail = encodeURIComponent(email);
     const encodedLeague = encodeURIComponent(league);
-    const baseUrl = 'https://script.google.com/macros/s/AKfycbzEXiJ8h_Tomlw2e2YPbC61zP3btHqyiQNRxcI1pta2d7NbBkDFuPL4t9IXgDPaAIDGog/exec';
+    const baseUrl = ScriptApp.getService().getUrl();
     const spotCheckUrl = `${baseUrl}?email=${encodedEmail}&league=${encodedLeague}`;
 
     // Get BARS logo
