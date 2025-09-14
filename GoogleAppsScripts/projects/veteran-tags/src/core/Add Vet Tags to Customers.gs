@@ -1,5 +1,6 @@
 const SHOPIFY_STORE = "09fe59-3.myshopify.com";
 const GRAPHQL_URL = `https://${SHOPIFY_STORE}/admin/api/2025-01/graphql.json`;
+const SHOPIFY_TOKEN = PropertiesService.getScriptProperties().getProperty('SHOPIFY_ACCESS_TOKEN');
 
 // ✅ **Finds the row where a given field exists in Column A (case insensitive)**
 function getFieldValue(sheet, fieldName) {
