@@ -5,7 +5,7 @@
 # Runs Node.js-based automated tests for CI/CD compatibility
 
 set -e
-cd "$(dirname "$0")/../../.."
+cd "$(dirname "$0")"
 
 echo "🧪 === COMPREHENSIVE PARSE-REGISTRATION-INFO TESTS ==="
 echo "Testing all parsing logic, validation, and migration functions"
@@ -25,40 +25,32 @@ if ! command -v node &> /dev/null; then
     echo "Falling back to basic validation checks..."
 
     # Basic validation - check that key files exist
-    PARSE_REG_DIR="../projects/parse-registration-info"
-    if [ ! -d "$PARSE_REG_DIR" ]; then
-        echo -e "${RED}❌ Parse registration info directory not found${NC}"
+    PARSE_REG_DIR=".."
+    if [ ! -d "$PARSE_REG_DIR/src" ]; then
+        echo -e "${RED}❌ Parse registration info src directory not found${NC}"
         exit 1
     fi
 
-    echo -e "${GREEN}✅ Parse registration info directory exists${NC}"
+    echo -e "${GREEN}✅ Parse registration info project structure exists${NC}"
     echo -e "${YELLOW}⚠️  Install Node.js for comprehensive testing${NC}"
     exit 0
 fi
 
-# Set up Node.js test environment
-TEST_DIR="parse-registration-info"
-if [ ! -d "$TEST_DIR" ]; then
-    echo -e "${YELLOW}📦 Setting up Node.js test environment...${NC}"
-    mkdir -p "$TEST_DIR"
-fi
-
 # Install dependencies if needed
-if [ ! -d "$TEST_DIR/node_modules" ]; then
+if [ ! -d "node_modules" ]; then
     echo -e "${YELLOW}📦 Installing test dependencies...${NC}"
-    cd "$TEST_DIR"
     if [ -f "package.json" ]; then
         npm install --silent
-        cd ..
     else
         echo -e "${RED}❌ package.json not found in test directory${NC}"
         exit 1
     fi
+else
+    echo -e "${GREEN}📦 Node.js dependencies already installed${NC}"
 fi
 
 # Run the automated Node.js tests
 echo -e "${BLUE}🚀 Running automated Node.js tests...${NC}"
-cd "$TEST_DIR"
 
 # Run with detailed output
 echo -e "${BLUE}📋 Test output:${NC}"
@@ -70,6 +62,5 @@ else
     echo -e "${YELLOW}⚠️  Check the detailed output above for specific failures${NC}"
     TEST_EXIT_CODE=1
 fi
-cd ..
 
 exit $TEST_EXIT_CODE
