@@ -58,12 +58,12 @@ function getSheetDataById(sheetId, sheetName = null) {
 // =============================================================================
 
 /**
- * Parse row data based on headers (generic version)
+ * Parse row data based on headers (generic version for refunds/orders)
  * @param {Array} rowObject - Row data array
  * @param {Array} sheetHeaders - Headers array
  * @returns {Object} Parsed row data object
  */
-function parseRowData(rowObject, sheetHeaders) {
+function parseRefundRowData(rowObject, sheetHeaders) {
   const rowData = {};
 
   sheetHeaders.forEach((header, i) => {
@@ -99,10 +99,10 @@ function parseRowData(rowObject, sheetHeaders) {
  */
 function findRowByColumnValue(data, columnName, searchValue, normalizeFunc = null) {
   if (!data || data.length === 0) return null;
-  
+
   const headers = data[0];
   const columnIndex = headers.findIndex(h => h.toLowerCase().includes(columnName.toLowerCase()));
-  
+
   if (columnIndex === -1) {
     Logger.log(`❌ Column '${columnName}' not found in headers.`);
     return null;
@@ -146,7 +146,7 @@ function getRequestDetailsFromOrderNumber(rawOrderNumber) {
       const cellValue = row[orderIdColIndex];
       return normalizeOrderNumber(cellValue?.toString()?.trim()) === normalizeOrderNumber(rawOrderNumber);
     });
-    
+
   if (matchingRows.length === 0) {
     Logger.log(`❌ No matching order found for ${rawOrderNumber}.`);
     return null;
@@ -155,7 +155,7 @@ function getRequestDetailsFromOrderNumber(rawOrderNumber) {
   // Return the row with the most recent timestamp
   const mostRecentRow = matchingRows.sort((a, b) => new Date(b[timestampColIndex]) - new Date(a[timestampColIndex]))[0];
 
-  return parseRowData(mostRecentRow, sheetHeaders);
+  return parseRefundRowData(mostRecentRow, sheetHeaders);
 }
 
 // =============================================================================
@@ -183,7 +183,7 @@ function getSheetRowLink(sheetId, sheetGid, rowNumber) {
 function getRowLink(orderNumber, sheetId = null, sheetGid = null) {
   const data = getSheetData();
   const sheetHeaders = getSheetHeaders();
-  
+
   const orderIdColIndex = sheetHeaders.findIndex(h => h.toLowerCase().includes("order number"));
 
   const rowIndex = data.slice(1).findIndex(row => {
@@ -191,7 +191,7 @@ function getRowLink(orderNumber, sheetId = null, sheetGid = null) {
     if (!cellValue) return false;
     return normalizeOrderNumber(cellValue.toString()) === normalizeOrderNumber(orderNumber.toString());
   });
-  
+
   if (rowIndex === -1) {
     Logger.log(`⚠️ Order number ${orderNumber} not found in sheet.`);
     return "";
@@ -199,12 +199,12 @@ function getRowLink(orderNumber, sheetId = null, sheetGid = null) {
 
   // Convert to 1-based row index for Google Sheets link
   const rowNumber = rowIndex + 2;
-  
+
   // If sheetId and sheetGid are provided, use them; otherwise use defaults
   if (sheetId && sheetGid) {
     return getSheetRowLink(sheetId, sheetGid, rowNumber);
   }
-  
+
   // Fallback - this would need to be customized per project
   throw new Error("sheetId and sheetGid are required for getRowLink");
 }
@@ -269,7 +269,7 @@ function markOrderAsProcessed(rawOrderNumber) {
 /**
  * Update a cell value in the active sheet
  * @param {number} row - Row number (1-based)
- * @param {number} col - Column number (1-based) 
+ * @param {number} col - Column number (1-based)
  * @param {any} value - Value to set
  * @returns {boolean} Success status
  */

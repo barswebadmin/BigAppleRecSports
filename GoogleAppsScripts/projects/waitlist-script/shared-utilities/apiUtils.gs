@@ -17,18 +17,18 @@ function makeApiRequest(url, options = {}) {
     },
     muteHttpExceptions: true
   };
-  
+
   const requestOptions = { ...defaultOptions, ...options };
-  
+
   try {
     console.log(`Making ${requestOptions.method} request to: ${url}`);
-    
+
     const response = UrlFetchApp.fetch(url, requestOptions);
     const responseCode = response.getResponseCode();
     const responseText = response.getContentText();
-    
+
     console.log(`Response code: ${responseCode}`);
-    
+
     if (responseCode >= 200 && responseCode < 300) {
       try {
         return JSON.parse(responseText);
@@ -38,18 +38,18 @@ function makeApiRequest(url, options = {}) {
       }
     } else {
       console.error(`API request failed with code ${responseCode}: ${responseText}`);
-      return { 
-        success: false, 
-        error: `HTTP ${responseCode}`, 
-        message: responseText 
+      return {
+        success: false,
+        error: `HTTP ${responseCode}`,
+        message: responseText
       };
     }
   } catch (error) {
     console.error('API request failed:', error);
-    return { 
-      success: false, 
-      error: 'Request failed', 
-      message: error.toString() 
+    return {
+      success: false,
+      error: 'Request failed',
+      message: error.toString()
     };
   }
 }
@@ -63,7 +63,7 @@ function makeApiRequest(url, options = {}) {
  */
 function buildShopifyGraphQLRequest(query, variables = {}) {
   const shopifyToken = getSecret('SHOPIFY_TOKEN');
-  
+
   return {
     method: 'POST',
     headers: {
@@ -87,21 +87,21 @@ function buildShopifyGraphQLRequest(query, variables = {}) {
  */
 function retryApiRequest(requestFunction, maxRetries = 3, baseDelay = 1000) {
   let lastError;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const result = requestFunction();
-      
+
       // If successful, return immediately
       if (result && result.success !== false) {
         return result;
       }
-      
+
       lastError = result;
     } catch (error) {
       lastError = { success: false, error: 'Request failed', message: error.toString() };
     }
-    
+
     // If this wasn't the last attempt, wait before retrying
     if (attempt < maxRetries) {
       const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff
@@ -109,7 +109,7 @@ function retryApiRequest(requestFunction, maxRetries = 3, baseDelay = 1000) {
       Utilities.sleep(delay);
     }
   }
-  
+
   console.error(`All ${maxRetries + 1} attempts failed`);
   return lastError;
 }

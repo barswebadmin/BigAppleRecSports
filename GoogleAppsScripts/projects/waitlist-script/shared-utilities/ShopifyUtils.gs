@@ -56,8 +56,8 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
       const debugEmail = getDebugEmail();
       if (debugEmail) {
         MailApp.sendEmail({
-          to: debugEmail, 
-          subject: 'Debugging fetch shopify - errors 1', 
+          to: debugEmail,
+          subject: 'Debugging fetch shopify - errors 1',
           htmlBody: `query: ${JSON.stringify(query,null,2)} \n \n
           Shopify API Errors: ${JSON.stringify(jsonResponse.errors,null,2)}
           `
@@ -70,8 +70,8 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: 'Debugging fetch shopify - errors 2', 
+        to: debugEmail,
+        subject: 'Debugging fetch shopify - errors 2',
         htmlBody: `query: ${JSON.stringify(query,null,2)} \n \n
         Shopify Fetch Error: ${JSON.stringify(error.message,null,2)}
         `
@@ -86,7 +86,7 @@ const fetchShopifyWithEmailErrors = (query = {}) => {
  */
 function getDebugEmail() {
   try {
-    return PropertiesService.getScriptProperties().getProperty('DEBUG_EMAIL') || 
+    return PropertiesService.getScriptProperties().getProperty('DEBUG_EMAIL') ||
            (typeof DEBUG_EMAIL !== 'undefined' ? DEBUG_EMAIL : null);
   } catch (error) {
     return null;
@@ -342,7 +342,7 @@ function updateCustomer({ customerId, tags, phone }) {
       input: {
         id: customerId,
         tags,
-        ...normalizedPhoneData, 
+        ...normalizedPhoneData,
       }
     }
   };
@@ -417,9 +417,9 @@ function fetchShopifyOrderDetails({ orderName, email }) {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: 'Debugging fetch shopify - errors 3', 
-        htmlBody: `query: ${JSON.stringify(query,null,2)} \n \n 
+        to: debugEmail,
+        subject: 'Debugging fetch shopify - errors 3',
+        htmlBody: `query: ${JSON.stringify(query,null,2)} \n \n
         fetchShopify threw error: ${JSON.stringify(err,null,2)}
         `
       });
@@ -517,8 +517,8 @@ const cancelShopifyOrder = (orderId) => {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: `❌ BARS Refund Request - Shopify Order Cancellation Failed`, 
+        to: debugEmail,
+        subject: `❌ BARS Refund Request - Shopify Order Cancellation Failed`,
         htmlBody: `Cancellation errors: ${JSON.stringify(responseData?.orderCancel?.userErrors || responseData?.orderCancel?.orderCancelUserErrors, null, 2)}`
       });
     }
@@ -586,8 +586,8 @@ const createShopifyDiscountCode = ({ codeTitle, refundAmount, customerId }) => {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: '❌ BARS Refund Request - Error creating discount', 
+        to: debugEmail,
+        subject: '❌ BARS Refund Request - Error creating discount',
         htmlBody: `Discount errors: ${JSON.stringify(response.discountCodeBasicCreate.userErrors, null, 2)}}`
       });
     }
@@ -682,8 +682,8 @@ const createShopifyRefund = (orderId, refundAmount) => {
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: '❌ BARS Refund Request - Error creating refund', 
+        to: debugEmail,
+        subject: '❌ BARS Refund Request - Error creating refund',
         htmlBody: `Refund errors: ${JSON.stringify(errors, null, 2)}}`
       });
     }
@@ -745,8 +745,8 @@ const createShopifyStoreCredit = ({ formattedOrderNumber, orderId, refundAmount 
     const debugEmail = getDebugEmail();
     if (debugEmail) {
       MailApp.sendEmail({
-        to: debugEmail, 
-        subject: `❌ BARS Store Credit Request (Order ${formattedOrderNumber}) - Error creating Store Credit`, 
+        to: debugEmail,
+        subject: `❌ BARS Store Credit Request (Order ${formattedOrderNumber}) - Error creating Store Credit`,
         htmlBody: `Discount errors: ${JSON.stringify(errors, null, 2)}}`
       });
     }

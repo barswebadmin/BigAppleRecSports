@@ -1,5 +1,10 @@
 name: Google Apps Scripts Tests
 
+
+# Prevent duplicate runs for the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 on:
   push:
     branches: [ main ]
@@ -74,11 +79,10 @@ jobs:
           exit 1
         }
 
-    # - name: Run Instructions Tests TODO fix this later
-    #   continue-on-error: true
-    #   run: |
-    #     cd GoogleAppsScripts
-    #     ./tests/test_instructions.sh
+    - name: Run Instructions Tests
+      run: |
+        cd GoogleAppsScripts
+        ./tests/test_instructions.sh
 
     # - name: Run All Tests (Integration)
     #   run: |

@@ -14,13 +14,13 @@
 function getSlackBotToken(purpose = 'general') {
   const tokenMap = {
     'refunds': 'SLACK_BOT_TOKEN_REFUNDS',
-    'leadership': 'SLACK_BOT_TOKEN_LEADERSHIP', 
+    'leadership': 'SLACK_BOT_TOKEN_LEADERSHIP',
     'payment': 'SLACK_BOT_TOKEN_PAYMENT',
     'general': 'SLACK_BOT_TOKEN_GENERAL',
     'waitlist': 'SLACK_BOT_TOKEN_WAITLIST'
   };
   const secretKey = tokenMap[purpose] || 'SLACK_BOT_TOKEN_GENERAL';
-  
+
   try {
     const value = PropertiesService.getScriptProperties().getProperty(secretKey);
     if (!value) {
@@ -45,20 +45,20 @@ function getSlackBotToken(purpose = 'general') {
 function getSlackRefundsChannel() {
   // Check if MODE is defined (for process-refunds-exchanges project)
   if (typeof MODE !== 'undefined') {
-    return MODE.includes('prod') ? 
+    return MODE.includes('prod') ?
       {
         name: '#refunds',
         channelId: getSecret('SLACK_CHANNEL_REFUNDS_PROD'),
         bearerToken: getSlackBotToken('refunds')
-      } 
+      }
       :
-      { 
+      {
         name: '#joe-test',
         channelId: getSecret('SLACK_CHANNEL_JOE_TEST'),
         bearerToken: getSlackBotToken('refunds')
       };
   }
-  
+
   // Fallback for projects without MODE
   return {
     name: '#refunds',
@@ -75,7 +75,7 @@ function getJoeTestChannel() {
   try {
     const channelId = PropertiesService.getScriptProperties().getProperty('SLACK_CHANNEL_JOE_TEST');
     const bearerToken = getSlackBotToken('waitlist');
-    
+
     if (!channelId) {
       Logger.log("⚠️ SLACK_CHANNEL_JOE_TEST not found in properties");
       // Fallback to a default channel ID if available
@@ -85,7 +85,7 @@ function getJoeTestChannel() {
         bearerToken: bearerToken
       };
     }
-    
+
     return {
       name: '#joe-test',
       channelId: channelId,
@@ -104,7 +104,7 @@ function getJoeTestChannel() {
 /**
  * Get formatted order URL for Slack messages
  * @param {string} orderId - Order ID from Shopify
- * @param {string} orderName - Order name/number  
+ * @param {string} orderName - Order name/number
  * @returns {string} - Formatted Slack link
  */
 const getOrderUrl = (orderId, orderName) => {
@@ -269,9 +269,9 @@ const createConfirmButton = ({ emailMatches, requestorName, refundOrCredit, refu
         type: "plain_text",
         text: "Cancel"
       }
-    }      
+    }
   };
-  
+
   if (emailMatches) {
     button.style = "primary";
   }
@@ -312,7 +312,7 @@ const createDenyButton = ({ rawOrderNumber }) => {
         text: "Cancel"
       }
     }
-  };   
+  };
 }
 
 /**
@@ -406,7 +406,7 @@ const createRestockInventoryButtons = ({ orderId, refundAmount, formattedOrderNu
             type: "plain_text",
             text: "No, go back"
           }
-        }  
+        }
       };
     });
 
@@ -440,7 +440,7 @@ const createRestockInventoryButtons = ({ orderId, refundAmount, formattedOrderNu
         type: "plain_text",
         text: "No, go back"
       }
-    }  
+    }
   });
 
   return buttons;
@@ -467,7 +467,7 @@ function sendWaitlistValidationError(league, email, reason, productHandle) {
 
     const errorIcon = reason.includes("No product found") ? "🚫" : "📦";
     const title = reason.includes("No product found") ? "Product Not Found" : "Inventory Available";
-    
+
     const message = {
       text: `${errorIcon} Waitlist Validation Error: ${title}`,
       blocks: [
@@ -486,7 +486,7 @@ function sendWaitlistValidationError(league, email, reason, productHandle) {
               text: `*Error Type:*\n${title}`
             },
             {
-              type: "mrkdwn", 
+              type: "mrkdwn",
               text: `*League:*\n${league}`
             },
             {

@@ -24,10 +24,10 @@ function parseFlexibleDate(dateString) {
   if (!dateString) {
     throw new Error('Date string is required');
   }
-  
+
   // Try standard Date parsing first
   let date = new Date(dateString);
-  
+
   // If that fails, try some common formats
   if (isNaN(date.getTime())) {
     // Try MM/DD/YYYY format
@@ -35,18 +35,18 @@ function parseFlexibleDate(dateString) {
     if (mmddyyyy) {
       date = new Date(parseInt(mmddyyyy[3]), parseInt(mmddyyyy[1]) - 1, parseInt(mmddyyyy[2]));
     }
-    
+
     // Try DD/MM/YYYY format
     const ddmmyyyy = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (ddmmyyyy && isNaN(date.getTime())) {
       date = new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
     }
   }
-  
+
   if (isNaN(date.getTime())) {
     throw new Error(`Unable to parse date: ${dateString}`);
   }
-  
+
   return date;
 }
 
@@ -58,12 +58,12 @@ function parseFlexibleDate(dateString) {
 function getSeasonStart(date = new Date()) {
   const year = date.getFullYear();
   const month = date.getMonth(); // 0-based
-  
+
   // Spring: March - May
   if (month >= 2 && month <= 4) {
     return new Date(year, 2, 1); // March 1st
   }
-  // Summer: June - August  
+  // Summer: June - August
   else if (month >= 5 && month <= 7) {
     return new Date(year, 5, 1); // June 1st
   }
@@ -90,7 +90,7 @@ function formatDateForSlack(date) {
   if (!date || !(date instanceof Date)) {
     return 'Unknown Date';
   }
-  
+
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
     year: 'numeric',
@@ -109,10 +109,10 @@ function getBusinessDaysBetween(startDate, endDate) {
   if (!startDate || !endDate || !(startDate instanceof Date) || !(endDate instanceof Date)) {
     throw new Error('Valid start and end dates are required');
   }
-  
+
   let count = 0;
   const current = new Date(startDate);
-  
+
   while (current <= endDate) {
     const dayOfWeek = current.getDay();
     if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday (0) or Saturday (6)
@@ -120,7 +120,7 @@ function getBusinessDaysBetween(startDate, endDate) {
     }
     current.setDate(current.getDate() + 1);
   }
-  
+
   return count;
 }
 
@@ -134,20 +134,20 @@ function addBusinessDays(date, businessDays) {
   if (!date || !(date instanceof Date)) {
     throw new Error('Valid date is required');
   }
-  
+
   const result = new Date(date);
   let daysAdded = 0;
-  
+
   while (daysAdded < businessDays) {
     result.setDate(result.getDate() + 1);
     const dayOfWeek = result.getDay();
-    
+
     // If it's not a weekend, count it
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
       daysAdded++;
     }
   }
-  
+
   return result;
 }
 
@@ -172,13 +172,18 @@ const formatDateOnly = date => {
 /**
  * Format date and time together
  * @param {Date|string} date - Date to format
- * @returns {string} Formatted date and time string
+ * @returns {string} Formatted date and time string if Date is valid, otherwise null
  */
 const formatDateAndTime = date => {
-  const d = new Date(date);
-  const datePart = d.toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" });
-  const timePart = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-  return `${datePart} at ${timePart}`;
+  try {
+    const d = new Date(date);
+    const datePart = d.toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" });
+    const timePart = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${datePart} at ${timePart}`;
+  } catch (e) {
+    Logger.log(`❌ Error formatting date and time: ${e}`);
+    return null;
+  }
 };
 
 /**

@@ -12,7 +12,8 @@ help:
 	@echo "  make tunnel              - Start ngrok tunnel"
 	@echo "  make dev                 - Start server + tunnel (opens new terminal)"
 	@echo "  make stop                - Stop all processes"
-	@echo "  make install             - Install backend dependencies"
+	@echo "  make install             - Install all dependencies from unified requirements.txt"
+	@echo "  make install-prod        - Install production dependencies only"
 	@echo "  make clean               - Clean up processes and cache files"
 	@echo "  make status              - Show running processes"
 	@echo "  make url                 - Show ngrok URL"
@@ -150,11 +151,19 @@ _compile_backend_internal:
 		fi; \
 		if [ -f "$$TARGET_DIR/config.py" ]; then \
 			echo "⚙️  Testing config import..."; \
-			cd "$$TARGET_DIR" && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
+			if [ -f ".venv/bin/activate" ]; then \
+				cd "$$TARGET_DIR" && source ../.venv/bin/activate && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
+			else \
+				cd "$$TARGET_DIR" && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
+			fi; \
 		fi; \
 		if [ -f "$$TARGET_DIR/main.py" ]; then \
 			echo "🚀 Testing FastAPI app import..."; \
-			cd "$$TARGET_DIR" && python3 -c "from main import app; print('✅ FastAPI app loads successfully')" || exit 1; \
+			if [ -f ".venv/bin/activate" ]; then \
+				cd "$$TARGET_DIR" && source ../.venv/bin/activate && python3 -c "from main import app; print('✅ FastAPI app loads successfully')" || exit 1; \
+			else \
+				cd "$$TARGET_DIR" && python3 -c "from main import app; print('✅ FastAPI app loads successfully')" || exit 1; \
+			fi; \
 		fi; \
 		echo "✅ Python compilation successful for $$TARGET_DIR"; \
 	else \
@@ -287,7 +296,17 @@ stop:
 	@echo "✅ All processes stopped"
 
 install:
-	@echo "📦 Installing backend dependencies..."
+	@echo "📦 Installing all dependencies from unified requirements.txt..."
+	@pip3 install -r requirements.txt
+	@echo "✅ All dependencies installed!"
+
+install-prod:
+	@echo "📦 Installing production dependencies only..."
+	@pip3 install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil typing-extensions
+	@echo "✅ Production dependencies installed!"
+
+install-backend-legacy:
+	@echo "📦 Installing backend dependencies (legacy method)..."
 	@cd backend && pip3 install -r requirements.txt
 	@echo "📦 Installing test dependencies..."
 	@cd backend && pip3 install pytest pytest-asyncio pytest-mock

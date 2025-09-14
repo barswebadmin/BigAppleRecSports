@@ -1,5 +1,7 @@
 # Lambda Functions Directory
 
+> 📚 **Documentation**: See [README.md](../README.md#lambda-functions) for overview and [README_EXT/2_DEPLOYMENT.md#lambda-functions-deployment](../README_EXT/2_DEPLOYMENT.md#lambda-functions-deployment) for deployment
+
 This directory contains 6 Python Lambda functions that are automatically deployed to AWS via GitHub Actions.
 
 ## 🛠️ Local Development Setup

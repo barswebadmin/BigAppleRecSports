@@ -1,84 +1,156 @@
-# Leadership Discount Codes - Organized Structure
+# Leadership Discount Codes - TypeScript Migration
 
-This Google Apps Script project uses an organized directory structure locally while flattening files for Google Apps Script deployment.
+This project has been migrated to TypeScript for better code quality, type safety, and developer experience.
 
-## 📁 Directory Structure
+## 🎯 **Project Structure**
 
 ```
 leadership-discount-codes/
-├── processors/
-│   └── leadershipProcessor.gs       # Main processing logic
-├── shared-utilities/
-│   ├── apiUtils.gs                  # API helper functions
-│   ├── dateUtils.gs                 # Date utility functions
-│   └── secretsUtils.gs              # Secret management
-├── appsscript.json                  # GAS manifest
-├── clasp_helpers.sh                 # Clasp management helpers
-└── README.md                        # This file
+├── src-ts/                    # TypeScript source files
+│   ├── core/
+│   │   └── instructions.ts    # Instructions display
+│   ├── processors/
+│   │   └── leadershipProcessor.ts  # Main processing logic
+│   ├── types/
+│   │   └── gas-types.ts       # Custom type definitions
+│   └── utils/
+│       └── backend.ts         # Backend URL utilities
+├── dist/                      # Compiled JavaScript (auto-generated)
+├── src/                       # Final .js files for GAS deployment
+├── shared-utilities/          # Shared GAS utilities (from sync)
+├── tests/                     # Test files
+├── package.json              # Node.js dependencies and scripts
+├── tsconfig.json             # TypeScript configuration
+└── .eslintrc.json            # ESLint configuration
 ```
 
-## 🚀 Deployment Workflow
+## 🚀 **Development Workflow**
 
-### Local Development
-- Organize your code in directories for better structure
-- Edit files in their respective directories
-- Use meaningful directory names (processors/, shared-utilities/, etc.)
+### **1. Edit TypeScript Files**
+- Work in `src-ts/` directory
+- Full TypeScript support with type checking
+- IntelliSense for GAS APIs via `@types/google-apps-script`
 
-### Deployment to Google Apps Script
-- Files are automatically flattened with directory prefixes
-- Example: `shared-utilities/apiUtils.gs` → `shared-utilities_apiUtils.gs` in GAS
-
-## 🛠️ Commands
-
+### **2. Build and Deploy**
 ```bash
-# Push organized code to Google Apps Script
-./clasp_helpers.sh push
+# Build TypeScript and copy to src/
+npm run build
 
-# Pull from Google Apps Script and organize locally
-./clasp_helpers.sh pull
+# Type check only (no compilation)
+npm run type-check
 
-# Check clasp status
-./clasp_helpers.sh status
+# Lint TypeScript code
+npm run lint
 
-# Deploy a new version
-./clasp_helpers.sh deploy
-
-# Clean up temporary files
-./clasp_helpers.sh cleanup
-
-# Show help
-./clasp_helpers.sh help
+# Build and deploy to GAS
+npm run deploy
 ```
 
-## 📝 File Mapping
+### **3. Available Scripts**
+- `npm run build` - Compile TS → JS and copy to src/
+- `npm run type-check` - Type checking without compilation
+- `npm run lint` - ESLint code quality checks
+- `npm run clean` - Remove compiled files
+- `npm run dev` - Clean + build for development
+- `npm run deploy` - Build + deploy to GAS via clasp
 
-| Local File | Google Apps Script File |
-|------------|------------------------|
-| `processors/leadershipProcessor.gs` | `processors_leadershipProcessor.gs` |
-| `shared-utilities/apiUtils.gs` | `shared-utilities_apiUtils.gs` |
-| `shared-utilities/dateUtils.gs` | `shared-utilities_dateUtils.gs` |
-| `shared-utilities/secretsUtils.gs` | `shared-utilities_secretsUtils.gs` |
-| `appsscript.json` | `appsscript.json` (unchanged) |
+## 🔧 **TypeScript Configuration**
 
-## ✨ Benefits
+### **Target: ES5**
+- Compatible with GAS runtime
+- No modern JS features that break in GAS
 
-1. **Better Organization**: Logical directory structure for local development
-2. **GAS Compatibility**: Automatically flattened for Google Apps Script
-3. **Clear Separation**: Processors, utilities, and shared code in separate folders
-4. **Easy Navigation**: VS Code can treat .gs files as JavaScript with proper directory structure
-5. **Version Control**: Git-friendly organized structure
+### **Key Settings**
+- `"module": "none"` - GAS doesn't support modules
+- `"strict": true` - Full type safety
+- `"noImplicitAny": true` - Explicit typing required
 
-## 🔧 Setup
+### **Type Safety Features**
+- ✅ **Typed GAS APIs** - Full IntelliSense for SpreadsheetApp, UrlFetchApp, etc.
+- ✅ **Custom Interfaces** - BackendResponse, LeadershipPayload, etc.
+- ✅ **Function Signatures** - All parameters and return types specified
+- ✅ **Error Prevention** - Catch type mismatches at compile time
 
-1. Make sure you have `clasp` installed and authenticated
-2. Run `./clasp_helpers.sh push` to deploy organized code to Google Apps Script
-3. Your local directory structure is preserved while GAS gets flattened files
+## 📋 **Code Quality Tools**
 
-## 🔄 Workflow
+### **ESLint Rules**
+- Basic code quality checks
+- GAS global variables recognized
+- Warns about unused variables
+- Enforces modern JS patterns (const/let over var)
 
-1. **Edit** files in organized directories locally
-2. **Test** changes using `./clasp_helpers.sh push`
-3. **Commit** organized structure to Git
-4. **Deploy** production versions using `./clasp_helpers.sh deploy`
+### **Type Checking**
+- All function parameters typed
+- Return types specified
+- Interface contracts enforced
+- No implicit `any` types allowed
 
-This setup gives you the best of both worlds: organized local development and Google Apps Script compatibility!
+## 🎯 **Benefits Achieved**
+
+### **Developer Experience**
+- ✅ **IntelliSense** - Auto-complete for all GAS APIs
+- ✅ **Type Safety** - Catch errors before deployment
+- ✅ **Refactoring** - Safe renames and changes
+- ✅ **Documentation** - Types serve as inline docs
+
+### **Code Quality**
+- ✅ **Interface Contracts** - Clear function signatures
+- ✅ **Error Prevention** - No more runtime type errors
+- ✅ **Consistent APIs** - Typed backend responses
+- ✅ **Better Maintenance** - Self-documenting code
+
+## 🚨 **Important Notes**
+
+### **File Extensions**
+- **Development**: Work in `.ts` files in `src-ts/`
+- **Deployment**: `.js` files in `src/` are deployed to GAS
+- **Never edit** `.js` files directly - they're auto-generated
+
+### **GAS Compatibility**
+- No `async/await` - GAS doesn't support it
+- No ES6 modules - GAS uses global scope
+- HTTP methods must be lowercase (`"post"`, `"get"`)
+- All functions become global in GAS runtime
+
+### **Shared Utilities**
+- Shared utilities remain as `.gs` files
+- TypeScript files reference them via `/// <reference>`
+- Backend URL function implemented in TypeScript
+
+## 🔄 **Migration Status**
+
+### **✅ Completed**
+- TypeScript configuration
+- Type definitions for GAS APIs
+- Custom interfaces for backend communication
+- Build pipeline (TS → JS → GAS)
+- ESLint configuration
+- All existing functionality preserved
+
+### **📈 Next Steps**
+- Migrate other GAS projects using this as template
+- Add unit tests for TypeScript functions
+- Consider shared type definitions across projects
+- Explore automated deployment via GitHub Actions
+
+## 🛠 **Troubleshooting**
+
+### **Type Errors**
+```bash
+npm run type-check  # See all type issues
+```
+
+### **Build Issues**
+```bash
+npm run clean       # Clear compiled files
+npm run build       # Rebuild everything
+```
+
+### **Deployment Issues**
+```bash
+# Make sure you're in the project directory
+cd GoogleAppsScripts/projects/leadership-discount-codes
+npm run deploy
+```
+
+This TypeScript setup provides a solid foundation for type-safe GAS development while maintaining full compatibility with the existing deployment workflow.
