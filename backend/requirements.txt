@@ -1,0 +1,79 @@
+# ============================================================================
+# BARS Project - Unified Requirements
+# ============================================================================
+# Install all: pip install -r requirements.txt
+# Install specific extras: pip install -e ".[dev,testing]"
+# Production only: pip install -e ".[backend]"
+# ============================================================================
+
+# ============================================================================
+# CORE BACKEND DEPENDENCIES (backend/)
+# ============================================================================
+# FastAPI web framework and server
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# HTTP client and utilities
+requests==2.32.3
+
+# Configuration and environment
+python-dotenv==1.0.1
+
+# Data validation and serialization
+pydantic==2.10.4
+
+# File upload support
+python-multipart==0.0.20
+
+# Date/time utilities
+python-dateutil==2.9.0
+
+# ============================================================================
+# LAMBDA FUNCTIONS DEPENDENCIES (lambda-functions/)
+# ============================================================================
+# Most lambda functions use standard library only
+# Lambda layer dependencies:
+typing-extensions>=4.5.0
+
+# ============================================================================
+# TESTING DEPENDENCIES (backend/tests/, lambda-functions/tests/)
+# ============================================================================
+# Core testing framework
+pytest==8.4.1
+pytest-asyncio==0.25.0
+pytest-mock==3.15.0
+pytest-cov>=4.0.0
+
+# HTTP testing client
+httpx==0.25.2
+
+# ============================================================================
+# DEVELOPMENT DEPENDENCIES (optional)
+# ============================================================================
+# Code formatting and linting (already using Ruff via pyproject.toml)
+# black>=23.0.0
+# mypy>=1.0.0
+
+# ============================================================================
+# GOOGLE APPS SCRIPTS (GoogleAppsScripts/)
+# ============================================================================
+# No Python dependencies - uses Google Apps Script runtime
+# JavaScript dependencies managed via clasp and Google Apps Script
+
+# ============================================================================
+# INSTALLATION INSTRUCTIONS
+# ============================================================================
+#
+# Full development setup (recommended):
+#   pip install -r requirements.txt
+#
+# Production backend only:
+#   pip install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil
+#
+# Testing only:
+#   pip install pytest pytest-asyncio pytest-mock pytest-cov httpx
+#
+# Lambda functions:
+#   Most use standard library only. For lambda layers: pip install typing-extensions python-dateutil
+#
+# ============================================================================
