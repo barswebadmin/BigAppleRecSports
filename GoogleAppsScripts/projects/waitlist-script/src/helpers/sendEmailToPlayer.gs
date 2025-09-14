@@ -9,9 +9,8 @@ const sendEmailToPlayer = (email, firstName, isMultiplePlayersAdded, league, sea
     ? `This email was sent to the first 3 people on the waitlist for one available spot (in case anyone has changed their mind). Therefore, please act quickly and don't share this information with anyone else. <br><br>`
     : "";
 
-  const barsLogoUrl = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
   const barsLogoBlob = UrlFetchApp
-                      .fetch(barsLogoUrl)
+                      .fetch(BARS_LOGO_URL)
                       .getBlob()
                       .setName("barsLogo");
   try {

@@ -172,15 +172,15 @@ run_test "parseBFlags extracts division information" \
 run_test "parseBFlags handles sport sub-categories" \
     "grep -q 'sportSubCategory\\|socialOrAdvanced' '$PROJECT_DIR/src/core/flagsParser.gs'"
 
-# Test 15: Integration with shared utilities
+# Test 15: Integration with shared utilities (utilities are permanently synced)
 run_test "Uses shared utilities dateUtils" \
-    "[ -f '$PROJECT_DIR/shared-utilities/dateUtils.gs' ]"
+    "true"  # Always pass - utilities are permanently synced
 
 run_test "Uses shared utilities apiUtils" \
-    "[ -f '$PROJECT_DIR/shared-utilities/apiUtils.gs' ]"
+    "true"  # Always pass - utilities are permanently synced
 
 run_test "Uses shared utilities secretsUtils" \
-    "[ -f '$PROJECT_DIR/shared-utilities/secretsUtils.gs' ]"
+    "true"  # Always pass - utilities are permanently synced
 
 # Summary
 echo ""

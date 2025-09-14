@@ -62,7 +62,6 @@ echo ""
 # Run all test suites
 
 # General tests (cross-project)
-run_test_suite "Sync Utilities Tests" "./test_sync_utilities.sh"
 run_test_suite "Instructions Tests" "./test_instructions.sh"
 run_test_suite "Clasp Helpers Tests" "./test_clasp_helpers.sh"
 

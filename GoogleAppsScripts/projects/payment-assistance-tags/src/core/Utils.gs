@@ -113,10 +113,6 @@ const fetchShopify = (query = {}) => {
   }
 };
 
-const capitalize = string => {
-  return string[0].toUpperCase(0) + string.slice(1)
-}
-
 const formatDate = (date) => {
   if (!(date instanceof Date) || isNaN(date)) {
     return "Invalid Date"; // Handle incorrect date inputs

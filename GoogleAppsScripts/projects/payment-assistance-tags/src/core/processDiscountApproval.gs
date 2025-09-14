@@ -18,9 +18,8 @@ const processDiscountApproval = (params) => {
   if (action === "approve") {
     addTagToCustomerProfile({ playerDetails: {email}, discountDetails });
 
-    var barsLogoUrl = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
     var barsLogoBlob = UrlFetchApp
-                        .fetch(barsLogoUrl)
+                        .fetch(BARS_LOGO_URL)
                         .getBlob()
                         .setName("barsLogo");
 
