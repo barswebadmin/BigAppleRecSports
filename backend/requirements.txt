@@ -1,13 +1,12 @@
 # ============================================================================
-# BARS Project - Unified Requirements
+# BARS Backend - Production Requirements
 # ============================================================================
-# Install all: pip install -r requirements.txt
-# Install specific extras: pip install -e ".[dev,testing]"
-# Production only: pip install -e ".[backend]"
+# Backend service dependencies for Render deployment
+# Root directory: backend/
 # ============================================================================
 
 # ============================================================================
-# CORE BACKEND DEPENDENCIES (backend/)
+# CORE BACKEND DEPENDENCIES
 # ============================================================================
 # FastAPI web framework and server
 fastapi==0.115.6
@@ -29,14 +28,7 @@ python-multipart==0.0.20
 python-dateutil==2.9.0
 
 # ============================================================================
-# LAMBDA FUNCTIONS DEPENDENCIES (lambda-functions/)
-# ============================================================================
-# Most lambda functions use standard library only
-# Lambda layer dependencies:
-typing-extensions>=4.5.0
-
-# ============================================================================
-# TESTING DEPENDENCIES (backend/tests/, lambda-functions/tests/)
+# BACKEND TESTING DEPENDENCIES (for CI/CD)
 # ============================================================================
 # Core testing framework
 pytest==8.4.1
@@ -48,32 +40,9 @@ pytest-cov>=4.0.0
 httpx==0.25.2
 
 # ============================================================================
-# DEVELOPMENT DEPENDENCIES (optional)
+# DEPLOYMENT NOTES
 # ============================================================================
-# Code formatting and linting (already using Ruff via pyproject.toml)
-# black>=23.0.0
-# mypy>=1.0.0
-
-# ============================================================================
-# GOOGLE APPS SCRIPTS (GoogleAppsScripts/)
-# ============================================================================
-# No Python dependencies - uses Google Apps Script runtime
-# JavaScript dependencies managed via clasp and Google Apps Script
-
-# ============================================================================
-# INSTALLATION INSTRUCTIONS
-# ============================================================================
-#
-# Full development setup (recommended):
-#   pip install -r requirements.txt
-#
-# Production backend only:
-#   pip install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil
-#
-# Testing only:
-#   pip install pytest pytest-asyncio pytest-mock pytest-cov httpx
-#
-# Lambda functions:
-#   Most use standard library only. For lambda layers: pip install typing-extensions python-dateutil
-#
+# This file contains only backend service dependencies
+# For lambda functions: see ../requirements.txt
+# For GAS projects: no Python dependencies needed
 # ============================================================================
