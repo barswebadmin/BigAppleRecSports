@@ -226,16 +226,10 @@ function processFormSubmit(e) {
   const encodedEmail = encodeURIComponent(submittedEmail);
   const encodedLeague = encodeURIComponent(submittedLeague);
   const encodedTimestamp = encodeURIComponent(submittedTimestamp.toISOString());
-  // Get current web app deployment URL dynamically
-  // This automatically uses the most recent deployment
-  let baseUrl = ScriptApp.getService().getUrl();
-
-  // Fallback to known working URL if dynamic URL is not available or looks wrong
-  if (!baseUrl || !baseUrl.includes('script.google.com/macros/s/') || !baseUrl.endsWith('/exec')) {
-    Logger.log(`⚠️ Dynamic URL looks incorrect: ${baseUrl}`);
-    baseUrl = "https://script.google.com/macros/s/AKfycbzEXiJ8h_Tomlw2e2YPbC61zP3btHqyiQNRxcI1pta2d7NbBkDFuPL4t9IXgDPaAIDGog/exec";
-    Logger.log(`🔄 Using fallback URL: ${baseUrl}`);
-  }
+  // Use known working web app URL directly
+  // ScriptApp.getService().getUrl() is unreliable and returns null even when deployment works
+  const baseUrl = WAITLIST_WEB_APP_URL;
+  Logger.log(`📍 Using web app URL: ${baseUrl}`);
 
   const spotCheckUrl = `${baseUrl}?email=${encodedEmail}&league=${encodedLeague}`;
 

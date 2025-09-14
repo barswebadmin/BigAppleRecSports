@@ -345,17 +345,13 @@ function sendWaitlistConfirmationEmail(email, league, waitlistSpot) {
     const firstName = email.split('@')[0].split('.')[0];
     const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
-    // Generate spot check URL using current deployment
+    // Generate spot check URL using known working deployment
     const encodedEmail = encodeURIComponent(email);
     const encodedLeague = encodeURIComponent(league);
-    let baseUrl = ScriptApp.getService().getUrl();
-
-    // Fallback to known working URL if dynamic URL is not available or looks wrong
-    if (!baseUrl || !baseUrl.includes('script.google.com/macros/s/') || !baseUrl.endsWith('/exec')) {
-      Logger.log(`⚠️ Dynamic URL looks incorrect: ${baseUrl}`);
-      baseUrl = "https://script.google.com/macros/s/AKfycbzEXiJ8h_Tomlw2e2YPbC61zP3btHqyiQNRxcI1pta2d7NbBkDFuPL4t9IXgDPaAIDGog/exec";
-      Logger.log(`🔄 Using fallback URL: ${baseUrl}`);
-    }
+    // Use known working web app URL directly
+    // ScriptApp.getService().getUrl() is unreliable and returns null even when deployment works
+    const baseUrl = WAITLIST_WEB_APP_URL;
+    Logger.log(`📍 Using web app URL: ${baseUrl}`);
 
     const spotCheckUrl = `${baseUrl}?email=${encodedEmail}&league=${encodedLeague}`;
 
