@@ -24,10 +24,8 @@ class ProductsService:
 
         Args:
             data: Raw product data dictionary from request
-
         Returns:
             ProductCreationRequest instance if valid
-
         Raises:
             ProductCreationRequestValidationError: If validation fails with all error details
         """

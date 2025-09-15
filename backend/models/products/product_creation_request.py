@@ -57,4 +57,6 @@ class ProductCreationRequest(BaseModel):
             return cls(**data)
         except ValidationError as e:
             # Convert to our custom error class while preserving all error details
-            raise ProductCreationRequestValidationError(e.errors())
+            raise ProductCreationRequestValidationError(
+                [dict(error) for error in e.errors()]
+            )

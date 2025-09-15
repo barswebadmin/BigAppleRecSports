@@ -29,7 +29,7 @@ class ProductCreationRequestValidationError(Exception):
             self.field_name = "unknown"
 
         # Create error message for exception
-        error_messages = self.get_errors()
+        error_messages: List[str] = self.get_errors(formatted=True)  # type: ignore
         message = f"Product validation failed: {', '.join(error_messages)}"
         super().__init__(message)
 

@@ -7,7 +7,7 @@ from services.products.products_service import ProductsService
 
 
 class TestProductsServiceValidation:
-    """Test ProductsService.is_valid_product_request_data validation"""
+    """Test ProductsService.is_valid_product_creation_request validation"""
 
     def test_valid_complete_product_data(self):
         """Test validation with complete valid product data"""
@@ -47,7 +47,7 @@ class TestProductsServiceValidation:
             },
         }
 
-        result = ProductsService.is_valid_product_request_data(valid_data)
+        result = ProductsService.is_valid_product_creation_request(valid_data)
 
         assert result["valid"] is True
         assert result["errors"] == []
@@ -68,7 +68,7 @@ class TestProductsServiceValidation:
             "inventoryInfo": {"price": 150, "totalInventory": 64},
         }
 
-        result = ProductsService.is_valid_product_request_data(incomplete_data)
+        result = ProductsService.is_valid_product_creation_request(incomplete_data)
 
         assert result["valid"] is False
         assert any("Missing required fields:" in error for error in result["errors"])
@@ -89,7 +89,7 @@ class TestProductsServiceValidation:
             # Missing: optionalLeagueInfo, importantDates, inventoryInfo
         }
 
-        result = ProductsService.is_valid_product_request_data(data_missing_nested)
+        result = ProductsService.is_valid_product_creation_request(data_missing_nested)
 
         assert result["valid"] is False
         error_text = " ".join(result["errors"])
@@ -119,7 +119,7 @@ class TestProductsServiceValidation:
             },
         }
 
-        result = ProductsService.is_valid_product_request_data(
+        result = ProductsService.is_valid_product_creation_request(
             data_missing_nested_fields
         )
 
@@ -151,7 +151,7 @@ class TestProductsServiceValidation:
             "inventoryInfo": {"price": 100, "totalInventory": 50},
         }
 
-        result = ProductsService.is_valid_product_request_data(data_invalid_enums)
+        result = ProductsService.is_valid_product_creation_request(data_invalid_enums)
 
         assert result["valid"] is False
         error_text = " ".join(result["errors"])
@@ -185,7 +185,7 @@ class TestProductsServiceValidation:
             },
         }
 
-        result = ProductsService.is_valid_product_request_data(data_invalid_types)
+        result = ProductsService.is_valid_product_creation_request(data_invalid_types)
 
         assert result["valid"] is False
         error_text = " ".join(result["errors"])
@@ -220,7 +220,7 @@ class TestProductsServiceValidation:
             "inventoryInfo": {"price": 130, "totalInventory": 48},
         }
 
-        result = ProductsService.is_valid_product_request_data(data_invalid_dates)
+        result = ProductsService.is_valid_product_creation_request(data_invalid_dates)
 
         assert result["valid"] is False
         error_text = " ".join(result["errors"])
@@ -252,7 +252,7 @@ class TestProductsServiceValidation:
             },
         }
 
-        result = ProductsService.is_valid_product_request_data(data_year_too_low)
+        result = ProductsService.is_valid_product_creation_request(data_year_too_low)
 
         assert result["valid"] is False
         error_text = " ".join(result["errors"])
@@ -282,7 +282,7 @@ class TestProductsServiceValidation:
             "inventoryInfo": {"price": 150, "totalInventory": 64},
         }
 
-        result = ProductsService.is_valid_product_request_data(data_null_empty)
+        result = ProductsService.is_valid_product_creation_request(data_null_empty)
 
         assert result["valid"] is False
         assert any("Missing required fields:" in error for error in result["errors"])
@@ -325,7 +325,7 @@ class TestProductsServiceValidation:
             },
         }
 
-        result = ProductsService.is_valid_product_request_data(data_minimal_valid)
+        result = ProductsService.is_valid_product_creation_request(data_minimal_valid)
 
         assert result["valid"] is True
         assert result["errors"] == []
