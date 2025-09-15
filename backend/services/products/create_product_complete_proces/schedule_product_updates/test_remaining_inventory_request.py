@@ -127,10 +127,7 @@ class TestRemainingInventoryRequest:
                 remaining_req = remaining_inventory_requests[0]
 
                 # Verify the request structure
-                assert (
-                    remaining_req["actionType"]
-                    == "create-initial-inventory-addition-and-title-change"
-                )
+                assert remaining_req["actionType"] == "add-inventory-to-live-product"
                 assert (
                     "auto-add-remaining-inventory-7456508051550-pb-tuesday-openDiv"
                     in remaining_req["scheduleName"]
