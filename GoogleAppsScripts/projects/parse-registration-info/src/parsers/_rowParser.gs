@@ -13,6 +13,7 @@
  * @requires ../helpers/dateParsers.gs
  * @requires parseColFPrice_.gs
  * @requires parseColHLocation_.gs
+ * @requires parseColMNORegistrationDates_.gs
  * @requires notesParser.gs
  */
 
@@ -27,6 +28,7 @@
 /// <reference path="../helpers/dateParsers.gs" />
 /// <reference path="parseColFPrice_.gs" />
 /// <reference path="parseColHLocation_.gs" />
+/// <reference path="parseColMNORegistrationDates_.gs" />
 /// <reference path="notesParser.gs" />
 
 
@@ -100,12 +102,9 @@ function parseSourceRowEnhanced_(v) {
   productCreateData.location = location;
 
   // Registration windows (M/N/O) -> Date objects with seconds
-  const earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(v.M, sportStartTime, updatedUnresolved4, "earlyRegistrationStartDateTime");
-  const vetRegistrationStartDateTime   = parseDateFlexibleDateTime_(v.N, sportStartTime, updatedUnresolved4, "vetRegistrationStartDateTime");
-  const openRegistrationStartDateTime  = parseDateFlexibleDateTime_(v.O, sportStartTime, updatedUnresolved4, "openRegistrationStartDateTime");
 
-  const {earlyRegistrationStartDateTime, vetRegistrationStartDateTime, openRegistrationStartDateTime, updatedUnresolved7} = parseColMNORegistrationDates_(v.M, v.N, v.O, updatedUnresolved6);
-  const { updatedUnresolved7 } = parseColMNORegistrationDates_(v.C, updatedUnresolved6);
+  const {earlyRegistrationStartDateTime, vetRegistrationStartDateTime, openRegistrationStartDateTime, numberVetSpotsToReleaseAtGoLive, updatedUnresolved7} = parseColMNORegistrationDates_(v.M, v.N, v.O, totalInventory, updatedUnresolved6);
+
   const notes = parseNotes_(v.C, sportStartTime, updatedUnresolved4);
   const {
     orientationDate,
