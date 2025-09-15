@@ -3,15 +3,21 @@
  * This handles creating products and variants directly from parse-registration-info
  *
  * @fileoverview Create Shopify products and variants from parsed registration data
- * @requires ../rowParser.gs
+ * @requires ../../parsers/_rowParser.gs
+ * @requires ../../validators/fieldValidation.gs
  * @requires ../../shared-utilities/secretsUtils.gs
  * @requires ../../shared-utilities/ShopifyUtils.gs
  */
 
+// Import references for editor support
+/// <reference path="../../validators/fieldValidation.gs" />
+
 /**
  * Main function to create Shopify product from a row in parse-registration-info
  */
-function createShopifyProductFromRow_(sourceSheet, selectedRow) {
+
+// biome-ignore lint/correctness/noUnusedVariables: <it's called from menu items>
+function  createShopifyProductFromRow_(sourceSheet, selectedRow) {
   const ui = SpreadsheetApp.getUi();
 
   // Read and parse the row data
@@ -21,27 +27,33 @@ function createShopifyProductFromRow_(sourceSheet, selectedRow) {
     return;
   }
 
+  const unresolvedFields = calculateUnresolvedFieldsForParsedData(parsedData);
+
   // Show confirmation dialog with editable fields
-  const confirmedData = showProductCreationConfirmationDialog_(parsedData);
+  Logger.log(`About to show confirmation dialog with parsedData: ${JSON.stringify(parsedData, null, 2)}`);
+  const confirmedData = showProductCreationConfirmationDialog_(parsedData, unresolvedFields);
   if (!confirmedData) {
     return; // User cancelled
   }
 
   // Create the product and variants
   try {
-    const result = createShopifyProductAndVariants_(confirmedData);
+    Logger.log(`About to send confirmed data to backend: ${JSON.stringify(confirmedData, null, 2)}`);
+    const result = sendProductInfoToBackendForCreation(confirmedData);
 
-    if (result.success) {
-      // Write the results back to the sheet
-      writeProductCreationResults_(sourceSheet, selectedRow, result);
+    console.log('done!')
 
-      ui.alert(`✅ Product created successfully!\n\nProduct URL: ${result.productUrl}\n\nVariants created:\n${result.variantsSummary}`);
-    } else {
-      ui.alert(`❌ Product creation failed:\n\n${result.error}`);
-    }
+    // if (result.success) {
+    //   // Write the results back to the sheet
+    //   writeProductCreationResults_(sourceSheet, selectedRow, result);
+
+    //   ui.alert(`✅ Product created successfully!\n\nProduct URL: ${result.productUrl}\n\nVariants created:\n${result.variantsSummary}`);
+    // } else {
+    //   ui.alert(`❌ Product creation failed:\n\n${result.error}`);
+    // }
 
   } catch (error) {
-    Logger.log(`Error in createShopifyProductAndVariants_: ${error}`);
+    Logger.log(`Error in sendProductInfoToBackendForCreation: ${error}`);
     ui.alert(`❌ Unexpected error during product creation:\n\n${error.message}`);
   }
 }
@@ -77,18 +89,10 @@ function parseRowDataForProductCreation_(sourceSheet, rowNumber) {
     };
 
     // Parse using existing logic
-    const unresolved = [];
-    const parsed = parseSourceRowEnhanced_(vals, unresolved);
+    const parsed = parseSourceRowEnhanced_(vals);
 
-    if (unresolved.length > 0) {
-      Logger.log(`Unresolved fields during parsing: ${JSON.stringify(unresolved)}`);
-    }
-
-    // Convert to product-variant-creation format
-    const productData = convertToProductCreationFormat_(parsed, rowNumber);
-
-    Logger.log(`Parsed product data: ${JSON.stringify(productData, null, 2)}`);
-    return productData;
+    Logger.log(`Parsed product data: ${JSON.stringify(parsed, null, 2)}`);
+    return parsed;
 
   } catch (error) {
     Logger.log(`Error parsing row data: ${error}`);
@@ -97,53 +101,27 @@ function parseRowDataForProductCreation_(sourceSheet, rowNumber) {
 }
 
 /**
- * Convert parsed data to product-variant-creation format
- */
-function convertToProductCreationFormat_(parsed, rowNumber) {
-  // Map parsed data to the format expected by product creation logic
-  return {
-    rowNumber: rowNumber,
-    sport: parsed.sport || '',
-    day: parsed.day || '',
-    sportSubCategory: (parsed.sport && parsed.sport.toLowerCase() === 'dodgeball') ? (parsed.sportSubCategory || '') : 'N/A',
-    division: parsed.division || '',
-    season: parsed.season || '',
-    year: parseInt(parsed.year) || new Date().getFullYear(),
-    socialOrAdvanced: parsed.socialOrAdvanced || '',
-    types: parsed.types || '',
-    newPlayerOrientationDateTime: parsed.newPlayerOrientationDateTime || null,
-    scoutNightDateTime: (parsed.sport && parsed.sport.toLowerCase() === 'kickball') ? (parsed.scoutNightDateTime || null) : null,
-    openingPartyDate: parsed.openingPartyDate || null,
-    seasonStartDate: parsed.seasonStartDate || '',
-    seasonEndDate: parsed.seasonEndDate || '',
-    offDatesCommaSeparated: parsed.offDatesCommaSeparated || '',
-    rainDate: (parsed.sport && parsed.sport.toLowerCase() === 'kickball') ? (parsed.rainDate || null) : null,
-    closingPartyDate: parsed.closingPartyDate || null,
-    sportStartTime: parsed.sportStartTime || '',
-    sportEndTime: parsed.sportEndTime || '',
-    alternativeStartTime: parsed.alternativeStartTime || null,
-    alternativeEndTime: parsed.alternativeEndTime || null,
-    location: parsed.location || '',
-    price: parsed.price || 0,
-    vetRegistrationStartDateTime: parsed.vetRegistrationStartDateTime || null,
-    earlyRegistrationStartDateTime: parsed.earlyRegistrationStartDateTime || null,
-    openRegistrationStartDateTime: parsed.openRegistrationStartDateTime || null,
-    numOfWeeks: parsed.numOfWeeks || 0,
-    totalInventory: parsed.totalInventory || '', // Use empty string for missing data, not default
-
-    // Additional fields for display/editing
-    leagueDetails: parsed.notes || '',
-    playTimes: parsed.times || '',
-    wtnbRegister: parsed.wtnbRegister || '',
-    openRegister: parsed.openRegister || ''
-  };
-}
-
-/**
  * Show confirmation dialog with editable fields
  */
-function showProductCreationConfirmationDialog_(productData) {
+function showProductCreationConfirmationDialog_(productData, unresolvedFields) {
   const ui = SpreadsheetApp.getUi();
+
+  Logger.log(`showProductCreationConfirmationDialog_ called with productData: ${JSON.stringify(productData, null, 2)}`);
+  Logger.log(`Unresolved fields: ${JSON.stringify(unresolvedFields)}`);
+
+  // Check if there are unresolved fields and ask user for confirmation
+  if (unresolvedFields && unresolvedFields.length > 0) {
+    const unresolvedMessage = buildUnresolvedFieldsMessage_(unresolvedFields);
+    const proceedAnyway = ui.alert(
+      '⚠️ Unresolved Fields Detected',
+      unresolvedMessage + '\n\nDo you want to proceed with product creation anyway?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (proceedAnyway !== ui.Button.YES) {
+      return null; // User chose not to proceed
+    }
+  }
 
   // Create an HTML dialog for better UX
   const htmlTemplate = HtmlService.createTemplate(`
@@ -161,6 +139,8 @@ function showProductCreationConfirmationDialog_(productData) {
           .confirm { background-color: #4CAF50; color: white; }
           .cancel { background-color: #f44336; color: white; }
           .info { background-color: #e3f2fd; padding: 10px; border-radius: 4px; margin-bottom: 20px; }
+          .warning { background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #ffc107; }
+          .unresolved-list { margin: 10px 0; padding-left: 20px; }
         </style>
       </head>
       <body>
@@ -169,15 +149,18 @@ function showProductCreationConfirmationDialog_(productData) {
           Review and edit the product details below, then click "Create Product" to proceed.
         </div>
 
+        <?= unresolvedWarningHtml ?>
+
+
         <form id="productForm">
           <div class="field-group">
-            <label for="sport">Sport:</label>
-            <input type="text" id="sport" name="sport" value="<?= sport ?>" required>
+            <label for="sportName">Sport:</label>
+            <input type="text" id="sportName" name="sportName" value="<?= sportName ?>" required>
           </div>
 
           <div class="field-group">
-            <label for="day">Day:</label>
-            <input type="text" id="day" name="day" value="<?= day ?>" required>
+            <label for="dayOfPlay">Day:</label>
+            <input type="text" id="dayOfPlay" name="dayOfPlay" value="<?= dayOfPlay ?>" required>
           </div>
 
           <div class="field-group">
@@ -264,10 +247,46 @@ function showProductCreationConfirmationDialog_(productData) {
     </html>
   `);
 
-  // Set template variables
+  // Set template variables - flatten nested structure for template access
+  const flatData = flattenProductData_(productData);
+  Logger.log(`Template flatData: ${JSON.stringify(flatData, null, 2)}`);
+
+  // First set all top-level fields from original productData
   Object.keys(productData).forEach(key => {
-    htmlTemplate[key] = productData[key] || '';
+    if (typeof productData[key] !== 'object' || productData[key] === null || Array.isArray(productData[key])) {
+      htmlTemplate[key] = productData[key] || '';
+      Logger.log(`Set top-level template variable ${key}: ${htmlTemplate[key]}`);
+    }
   });
+
+  // Then set all flattened nested fields
+  Object.keys(flatData).forEach(key => {
+    // Only set if not already set from top-level (avoid overwriting)
+    if (!(key in htmlTemplate)) {
+      htmlTemplate[key] = flatData[key] || '';
+      Logger.log(`Set nested template variable ${key}: ${htmlTemplate[key]}`);
+    }
+  });
+
+  // Add missing template variables that are used in HTML but not in productData
+  const leagueStartTime = flatData.leagueStartTime || '';
+  const leagueEndTime = flatData.leagueEndTime || '';
+  htmlTemplate.playTimes = (leagueStartTime && leagueEndTime) ? `${leagueStartTime} - ${leagueEndTime}` : '';
+  htmlTemplate.leagueDetails = 'some details'; // This can be filled manually by user
+
+  // Add unresolved fields warning to template
+  if (unresolvedFields && unresolvedFields.length > 0) {
+    htmlTemplate.unresolvedWarningHtml = `
+      <div class="warning">
+        <strong>⚠️ Warning: ${unresolvedFields.length} Unresolved Fields</strong><br>
+        The following fields could not be automatically parsed and may need manual entry:
+        <ul class="unresolved-list">
+          ${unresolvedFields.map(field => `<li>${field}</li>`).join('')}
+        </ul>
+      </div>`;
+  } else {
+    htmlTemplate.unresolvedWarningHtml = '';
+  }
 
   const htmlOutput = htmlTemplate.evaluate()
     .setWidth(500)
@@ -278,30 +297,89 @@ function showProductCreationConfirmationDialog_(productData) {
 }
 
 /**
+ * Build a user-friendly message about unresolved fields
+ * @param {Array<string>} unresolvedFields - Array of field names that couldn't be parsed
+ * @returns {string} Formatted message for the user
+ */
+function buildUnresolvedFieldsMessage_(unresolvedFields) {
+  if (!unresolvedFields || unresolvedFields.length === 0) {
+    return '';
+  }
+
+  const count = unresolvedFields.length;
+  const fieldList = unresolvedFields.map(field => `• ${formatFieldNameForUser_(field)}`).join('\n');
+
+  return `${count} field${count > 1 ? 's' : ''} could not be automatically parsed from the spreadsheet data:\n\n${fieldList}\n\nThese fields may be missing or contain data that couldn't be recognized. You'll need to manually review and complete them during product creation.`;
+}
+
+/**
+ * Format field names for user-friendly display
+ * @param {string} fieldName - Internal field name
+ * @returns {string} User-friendly field name
+ */
+function formatFieldNameForUser_(fieldName) {
+  // Convert camelCase to readable format
+  const formatted = fieldName
+    .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+    .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+    .replace(/\bDate\b/g, 'Date') // Ensure Date is capitalized
+    .replace(/\bTime\b/g, 'Time') // Ensure Time is capitalized
+    .replace(/\bId\b/g, 'ID') // Ensure ID is capitalized
+    .trim();
+
+  // Handle specific field mappings for better readability
+  const fieldMappings = {
+    'Sport Name': 'Sport',
+    'Day Of Play': 'Day of Play',
+    'Sport Sub Category': 'Sport Sub-Category',
+    'Social Or Advanced': 'Social/Advanced Level',
+    'New Player Orientation Date Time': 'New Player Orientation',
+    'Scout Night Date Time': 'Scout Night',
+    'Opening Party Date': 'Opening Party',
+    'Season Start Date': 'Season Start',
+    'Season End Date': 'Season End',
+    'Off Dates': 'Off Dates (Skipped Dates)',
+    'Rain Date': 'Rain Date',
+    'Closing Party Date': 'Closing Party',
+    'Vet Registration Start Date Time': 'Veteran Registration Start',
+    'Early Registration Start Date Time': 'Early Registration Start',
+    'Open Registration Start Date Time': 'Open Registration Start',
+    'League Start Time': 'League Start Time',
+    'League End Time': 'League End Time',
+    'Alternative Start Time': 'Alternative Start Time',
+    'Alternative End Time': 'Alternative End Time',
+    'Total Inventory': 'Total Players/Inventory',
+    'Number Vet Spots To Release At Go Live': 'Veteran Spots at Go-Live'
+  };
+
+  return fieldMappings[formatted] || formatted;
+}
+
+/**
  * Validate that all required fields are present
  */
 function validateRequiredFields_(productData) {
   const requiredFields = [
-    { key: 'sport', name: 'Sport' },
-    { key: 'day', name: 'Day' },
-    { key: 'division', name: 'Division' },
-    { key: 'season', name: 'Season' },
-    { key: 'year', name: 'Year' },
-    { key: 'seasonStartDate', name: 'Season Start Date' },
-    { key: 'seasonEndDate', name: 'Season End Date' },
-    { key: 'sportStartTime', name: 'Sport Start Time' },
-    { key: 'sportEndTime', name: 'Sport End Time' },
-    { key: 'location', name: 'Location' },
-    { key: 'price', name: 'Price' },
-    { key: 'totalInventory', name: 'Total Inventory' },
-    { key: 'earlyRegistrationStartDateTime', name: 'Early Registration Start' },
-    { key: 'openRegistrationStartDateTime', name: 'Open Registration Start' }
+    { key: 'sportName', name: 'Sport', path: 'sportName' },
+    { key: 'dayOfPlay', name: 'Day', path: 'dayOfPlay' },
+    { key: 'division', name: 'Division', path: 'division' },
+    { key: 'season', name: 'Season', path: 'season' },
+    { key: 'year', name: 'Year', path: 'year' },
+    { key: 'seasonStartDate', name: 'Season Start Date', path: 'importantDates.seasonStartDate' },
+    { key: 'seasonEndDate', name: 'Season End Date', path: 'importantDates.seasonEndDate' },
+    { key: 'leagueStartTime', name: 'League Start Time', path: 'leagueStartTime' },
+    { key: 'leagueEndTime', name: 'League End Time', path: 'leagueEndTime' },
+    { key: 'location', name: 'Location', path: 'location' },
+    { key: 'price', name: 'Price', path: 'inventoryInfo.price' },
+    { key: 'totalInventory', name: 'Total Inventory', path: 'inventoryInfo.totalInventory' },
+    { key: 'earlyRegistrationStartDateTime', name: 'Early Registration Start', path: 'importantDates.earlyRegistrationStartDateTime' },
+    { key: 'openRegistrationStartDateTime', name: 'Open Registration Start', path: 'importantDates.openRegistrationStartDateTime' }
   ];
 
   const missingFields = [];
 
   for (const field of requiredFields) {
-    const value = productData[field.key];
+    const value = getNestedValue_(productData, field.path);
     if (!value || value === '' || value === 0 || (typeof value === 'string' && value.trim() === '')) {
       missingFields.push(field.name);
     }
@@ -314,9 +392,62 @@ function validateRequiredFields_(productData) {
 }
 
 /**
+ * Get nested value from object using dot notation path
+ * @param {Object} obj - Object to get value from
+ * @param {string} path - Dot notation path (e.g., 'importantDates.seasonStartDate')
+ * @returns {*} Value at the path, or undefined if not found
+ */
+function getNestedValue_(obj, path) {
+  if (!obj || !path) return undefined;
+
+  const keys = path.split('.');
+  let current = obj;
+
+  for (const key of keys) {
+    if (current == null || typeof current !== 'object') {
+      return undefined;
+    }
+    current = current[key];
+  }
+
+  return current;
+}
+
+/**
+ * Recursively flatten nested object for display/validation purposes
+ * @param {Object} obj - Object to flatten
+ * @param {Object} result - Result object to accumulate flattened keys
+ * @returns {Object} Flattened object with all nested fields at top level
+ */
+function flattenProductData_(obj, result = {}) {
+  if (!obj || typeof obj !== 'object') return result;
+
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+
+    if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      // Recursively flatten nested objects
+      flattenProductData_(value, result);
+    } else {
+      // Add the field to the flattened result
+      result[key] = value;
+    }
+  }
+
+  // Special handling for offDatesCommaSeparated
+  if (result.offDates && Array.isArray(result.offDates)) {
+    result.offDatesCommaSeparated = result.offDates.join(', ');
+  }
+
+  return result;
+}
+
+/**
  * Build error display for missing required fields
  */
 function buildErrorDisplay_(productData, missingFields) {
+  // Flatten the nested data for easier access
+  const flatData = flattenProductData_(productData);
   // Helper function to format values for display with specific formatting rules
   function formatValue(value, label, formatType = 'default') {
     // Handle TBD values specially first, before checking for empty
@@ -369,66 +500,66 @@ function buildErrorDisplay_(productData, missingFields) {
 
   let summary = `Cannot Create Shopify Product - Not all Required Fields are Present. Parsed Info Found:\n\n` +
     `=== BASIC INFO ===\n` +
-    `${formatValue(productData.sport, 'Sport')}\n` +
-    `${formatValue(productData.day, 'Day')}\n`;
+    `${formatValue(flatData.sportName, 'Sport')}\n` +
+    `${formatValue(flatData.dayOfPlay, 'Day')}\n`;
 
   // Only show sport sub-category for dodgeball
-  if (productData.sport && productData.sport.toLowerCase() === 'dodgeball') {
-    summary += `${formatValue(productData.sportSubCategory, 'Sport Sub-Category')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() === 'dodgeball') {
+    summary += `${formatValue(flatData.sportSubCategory, 'Sport Sub-Category')}\n`;
   }
 
-  summary += `${formatValue(productData.division, 'Division')}\n` +
-    `${formatValue(productData.season, 'Season')}\n` +
-    `${formatValue(productData.year, 'Year')}\n`;
+  summary += `${formatValue(flatData.division, 'Division')}\n` +
+    `${formatValue(flatData.season, 'Season')}\n` +
+    `${formatValue(flatData.year, 'Year')}\n`;
 
   // Don't show Social/Advanced for bowling
-  if (productData.sport && productData.sport.toLowerCase() !== 'bowling') {
-    summary += `${formatValue(productData.socialOrAdvanced, 'Social or Advanced')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() !== 'bowling') {
+    summary += `${formatValue(flatData.socialOrAdvanced, 'Social or Advanced')}\n`;
   }
 
-  summary += `${formatValue(productData.types, 'Type(s)')}\n\n` +
+  summary += `${formatValue(flatData.types, 'Type(s)')}\n\n` +
 
     `=== DATES & TIMES ===\n` +
-    `${formatValue(productData.seasonStartDate, 'Season Start Date', 'date')}\n` +
-    `${formatValue(productData.seasonEndDate, 'Season End Date', 'date')}\n` +
-    `${formatValue(productData.sportStartTime, 'Sport Start Time', 'time')}\n` +
-    `${formatValue(productData.sportEndTime, 'Sport End Time', 'time')}\n`;
+    `${formatValue(flatData.seasonStartDate, 'Season Start Date', 'date')}\n` +
+    `${formatValue(flatData.seasonEndDate, 'Season End Date', 'date')}\n` +
+    `${formatValue(flatData.sportNameStartTime, 'Sport Start Time', 'time')}\n` +
+    `${formatValue(flatData.sportNameEndTime, 'Sport End Time', 'time')}\n`;
 
   // Only show alternative times if they exist
-  if (productData.alternativeStartTime) {
-    summary += `${formatValue(productData.alternativeStartTime, 'Alternative Start Time', 'time')}\n`;
+  if (flatData.alternativeStartTime) {
+    summary += `${formatValue(flatData.alternativeStartTime, 'Alternative Start Time', 'time')}\n`;
   }
-  if (productData.alternativeEndTime) {
-    summary += `${formatValue(productData.alternativeEndTime, 'Alternative End Time', 'time')}\n`;
+  if (flatData.alternativeEndTime) {
+    summary += `${formatValue(flatData.alternativeEndTime, 'Alternative End Time', 'time')}\n`;
   }
 
-  summary += `${formatValue(productData.offDatesCommaSeparated, 'Off Dates')}\n\n` +
+  summary += `${formatValue(flatData.offDatesCommaSeparated, 'Off Dates')}\n\n` +
 
     `=== SPECIAL EVENTS ===\n`;
 
   // Don't show New Player Orientation for bowling
-  if (productData.sport && productData.sport.toLowerCase() !== 'bowling') {
-    summary += `${formatValue(productData.newPlayerOrientationDateTime, 'New Player Orientation', 'datetime')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() !== 'bowling') {
+    summary += `${formatValue(flatData.newPlayerOrientationDateTime, 'New Player Orientation', 'datetime')}\n`;
   }
 
-  summary += `${formatValue(productData.openingPartyDate, 'Opening Party Date', 'date')}\n`;
+  summary += `${formatValue(flatData.openingPartyDate, 'Opening Party Date', 'date')}\n`;
 
   // Only show Rain Date for kickball
-  if (productData.sport && productData.sport.toLowerCase() === 'kickball') {
-    summary += `${formatValue(productData.rainDate, 'Rain Date', 'date')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() === 'kickball') {
+    summary += `${formatValue(flatData.rainDate, 'Rain Date', 'date')}\n`;
   }
 
-  summary += `${formatValue(productData.closingPartyDate, 'Closing Party Date', 'date')}\n\n` +
+  summary += `${formatValue(flatData.closingPartyDate, 'Closing Party Date', 'date')}\n\n` +
 
     `=== LOCATION & PRICING ===\n` +
-    `${formatValue(productData.location, 'Location')}\n` +
-    `${formatValue(productData.price, 'Price', 'price')}\n` +
-    `${formatValue(productData.totalInventory, 'Total Inventory')}\n\n` +
+    `${formatValue(flatData.location, 'Location')}\n` +
+    `${formatValue(flatData.price, 'Price', 'price')}\n` +
+    `${formatValue(flatData.totalInventory, 'Total Inventory')}\n\n` +
 
     `=== REGISTRATION WINDOWS ===\n` +
-    `${formatValue(productData.vetRegistrationStartDateTime, 'Veteran Registration Start', 'datetime')}\n` +
-    `${formatValue(productData.earlyRegistrationStartDateTime, 'Early Registration Start', 'datetime')}\n` +
-    `${formatValue(productData.openRegistrationStartDateTime, 'Open Registration Start', 'datetime')}\n\n`;
+    `${formatValue(flatData.vetRegistrationStartDateTime, 'Veteran Registration Start', 'datetime')}\n` +
+    `${formatValue(flatData.earlyRegistrationStartDateTime, 'Early Registration Start', 'datetime')}\n` +
+    `${formatValue(flatData.openRegistrationStartDateTime, 'Open Registration Start', 'datetime')}\n\n`;
 
   return summary;
 }
@@ -438,8 +569,8 @@ function buildErrorDisplay_(productData, missingFields) {
  */
 function getEditableFieldsList_(productData) {
   const editableFields = [
-    { key: 'sport', name: 'Sport', format: 'default' },
-    { key: 'day', name: 'Day', format: 'default' },
+    { key: 'sportName', name: 'Sport', format: 'default' },
+    { key: 'dayOfPlay', name: 'Day', format: 'default' },
     { key: 'sportSubCategory', name: 'Sport Sub-Category', format: 'default' },
     { key: 'division', name: 'Division', format: 'default' },
     { key: 'season', name: 'Season', format: 'default' },
@@ -456,8 +587,8 @@ function getEditableFieldsList_(productData) {
     { key: 'offDatesCommaSeparated', name: 'Off Dates, Separated by Comma (Leave Blank if None)\n\nMake Sure This is in the Format M/D/YY', format: 'default' },
     { key: 'rainDate', name: 'Rain Date', format: 'date' },
     { key: 'closingPartyDate', name: 'Closing Party Date', format: 'date' },
-    { key: 'sportStartTime', name: 'Sport Start Time', format: 'time' },
-    { key: 'sportEndTime', name: 'Sport End Time', format: 'time' },
+    { key: 'leagueStartTime', name: 'Sport Start Time', format: 'time' },
+    { key: 'leagueEndTime', name: 'Sport End Time', format: 'time' },
     { key: 'location', name: 'Location', format: 'default' },
     { key: 'price', name: 'Price', format: 'price' },
     { key: 'vetRegistrationStartDateTime', name: 'Veteran Registration Start Date/Time\n(Leave Blank if No Vet Registration Applies for This Season)', format: 'datetime' },
@@ -494,11 +625,11 @@ function getEditableFieldsList_(productData) {
  */
 function updateFieldValue_(productData, fieldNumber, newValue) {
   const editableFields = [
-    'sport', 'day', 'sportSubCategory', 'division', 'season', 'year',
+    'sportName', 'dayOfPlay', 'sportSubCategory', 'division', 'season', 'year',
     'socialOrAdvanced', 'types', 'newPlayerOrientationDateTime', 'scoutNightDateTime',
     'openingPartyDate', 'seasonStartDate', 'seasonEndDate', 'alternativeStartTime',
     'alternativeEndTime', 'offDatesCommaSeparated', 'rainDate', 'closingPartyDate',
-    'sportStartTime', 'sportEndTime', 'location', 'price', 'vetRegistrationStartDateTime',
+    'leagueStartTime', 'leagueEndTime', 'location', 'price', 'vetRegistrationStartDateTime',
     'earlyRegistrationStartDateTime', 'openRegistrationStartDateTime', 'totalInventory'
   ];
 
@@ -651,6 +782,8 @@ function showFieldEditingFlow_(productData) {
  * Build confirmation display (same as before but extracted as separate function)
  */
 function buildConfirmationDisplay_(productData) {
+  // Flatten the nested data for easier access
+  const flatData = flattenProductData_(productData);
   // Helper function to format values for display with specific formatting rules
   function formatValue(value, label, formatType = 'default') {
     // Handle TBD values specially first, before checking for empty
@@ -704,66 +837,66 @@ function buildConfirmationDisplay_(productData) {
   // Only show fields that should be displayed based on sport type and presence
   let summary = `🛍️ Create Shopify Product - All Parsed Fields\n\n` +
     `=== BASIC INFO ===\n` +
-    `${formatValue(productData.sport, 'Sport')}\n` +
-    `${formatValue(productData.day, 'Day')}\n`;
+    `${formatValue(flatData.sportName, 'Sport')}\n` +
+    `${formatValue(flatData.dayOfPlay, 'Day')}\n`;
 
   // Only show sport sub-category for dodgeball
-  if (productData.sport && productData.sport.toLowerCase() === 'dodgeball') {
-    summary += `${formatValue(productData.sportSubCategory, 'Sport Sub-Category')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() === 'dodgeball') {
+    summary += `${formatValue(flatData.sportNameSubCategory, 'Sport Sub-Category')}\n`;
   }
 
-  summary += `${formatValue(productData.division, 'Division')}\n` +
-    `${formatValue(productData.season, 'Season')}\n` +
-    `${formatValue(productData.year, 'Year')}\n`;
+  summary += `${formatValue(flatData.division, 'Division')}\n` +
+    `${formatValue(flatData.season, 'Season')}\n` +
+    `${formatValue(flatData.year, 'Year')}\n`;
 
   // Don't show Social/Advanced for bowling
-  if (productData.sport && productData.sport.toLowerCase() !== 'bowling') {
-    summary += `${formatValue(productData.socialOrAdvanced, 'Social or Advanced')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() !== 'bowling') {
+    summary += `${formatValue(flatData.socialOrAdvanced, 'Social or Advanced')}\n`;
   }
 
-  summary += `${formatValue(productData.types, 'Type(s)')}\n\n` +
+  summary += `${formatValue(flatData.types, 'Type(s)')}\n\n` +
 
     `=== DATES & TIMES ===\n` +
-    `${formatValue(productData.seasonStartDate, 'Season Start Date', 'date')}\n` +
-    `${formatValue(productData.seasonEndDate, 'Season End Date', 'date')}\n` +
-    `${formatValue(productData.sportStartTime, 'Sport Start Time', 'time')}\n` +
-    `${formatValue(productData.sportEndTime, 'Sport End Time', 'time')}\n`;
+    `${formatValue(flatData.seasonStartDate, 'Season Start Date', 'date')}\n` +
+    `${formatValue(flatData.seasonEndDate, 'Season End Date', 'date')}\n` +
+    `${formatValue(flatData.sportNameStartTime, 'Sport Start Time', 'time')}\n` +
+    `${formatValue(flatData.sportNameEndTime, 'Sport End Time', 'time')}\n`;
 
   // Only show alternative times if they exist
-  if (productData.alternativeStartTime) {
-    summary += `${formatValue(productData.alternativeStartTime, 'Alternative Start Time', 'time')}\n`;
+  if (flatData.alternativeStartTime) {
+    summary += `${formatValue(flatData.alternativeStartTime, 'Alternative Start Time', 'time')}\n`;
   }
-  if (productData.alternativeEndTime) {
-    summary += `${formatValue(productData.alternativeEndTime, 'Alternative End Time', 'time')}\n`;
+  if (flatData.alternativeEndTime) {
+    summary += `${formatValue(flatData.alternativeEndTime, 'Alternative End Time', 'time')}\n`;
   }
 
-  summary += `${formatValue(productData.offDatesCommaSeparated, 'Off Dates')}\n\n` +
+  summary += `${formatValue(flatData.offDatesCommaSeparated, 'Off Dates')}\n\n` +
 
     `=== SPECIAL EVENTS ===\n`;
 
   // Don't show New Player Orientation for bowling
-  if (productData.sport && productData.sport.toLowerCase() !== 'bowling') {
-    summary += `${formatValue(productData.newPlayerOrientationDateTime, 'New Player Orientation', 'datetime')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() !== 'bowling') {
+    summary += `${formatValue(flatData.newPlayerOrientationDateTime, 'New Player Orientation', 'datetime')}\n`;
   }
 
-  summary += `${formatValue(productData.openingPartyDate, 'Opening Party Date', 'date')}\n`;
+  summary += `${formatValue(flatData.openingPartyDate, 'Opening Party Date', 'date')}\n`;
 
   // Only show Rain Date for kickball
-  if (productData.sport && productData.sport.toLowerCase() === 'kickball') {
-    summary += `${formatValue(productData.rainDate, 'Rain Date', 'date')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() === 'kickball') {
+    summary += `${formatValue(flatData.rainDate, 'Rain Date', 'date')}\n`;
   }
 
-  summary += `${formatValue(productData.closingPartyDate, 'Closing Party Date', 'date')}\n\n` +
+  summary += `${formatValue(flatData.closingPartyDate, 'Closing Party Date', 'date')}\n\n` +
 
     `=== LOCATION & PRICING ===\n` +
-    `${formatValue(productData.location, 'Location')}\n` +
-    `${formatValue(productData.price, 'Price', 'price')}\n` +
-    `${formatValue(productData.totalInventory, 'Total Inventory')}\n\n` +
+    `${formatValue(flatData.location, 'Location')}\n` +
+    `${formatValue(flatData.price, 'Price', 'price')}\n` +
+    `${formatValue(flatData.totalInventory, 'Total Inventory')}\n\n` +
 
     `=== REGISTRATION WINDOWS ===\n` +
-    `${formatValue(productData.vetRegistrationStartDateTime, 'Veteran Registration Start', 'datetime')}\n` +
-    `${formatValue(productData.earlyRegistrationStartDateTime, 'Early Registration Start', 'datetime')}\n` +
-    `${formatValue(productData.openRegistrationStartDateTime, 'Open Registration Start', 'datetime')}\n\n` +
+    `${formatValue(flatData.vetRegistrationStartDateTime, 'Veteran Registration Start', 'datetime')}\n` +
+    `${formatValue(flatData.earlyRegistrationStartDateTime, 'Early Registration Start', 'datetime')}\n` +
+    `${formatValue(flatData.openRegistrationStartDateTime, 'Open Registration Start', 'datetime')}\n\n` +
 
     `Create this product in Shopify with the above parsed data?`;
 
@@ -775,6 +908,9 @@ function buildConfirmationDisplay_(productData) {
  */
 function showSimpleConfirmationPrompt_(productData) {
   const ui = SpreadsheetApp.getUi();
+
+  // Flatten the nested data for easier access
+  const flatData = flattenProductData_(productData);
 
   // Helper function to format values for display with specific formatting rules
   function formatValue(value, label, formatType = 'default') {
@@ -830,62 +966,62 @@ function showSimpleConfirmationPrompt_(productData) {
   // Only show fields that should be displayed based on sport type and presence
   let summary = `🛍️ Create Shopify Product - All Parsed Fields\n\n` +
     `=== BASIC INFO ===\n` +
-    `${formatValue(productData.sport, 'Sport')}\n` +
-    `${formatValue(productData.day, 'Day')}\n`;
+    `${formatValue(flatData.sportName, 'Sport')}\n` +
+    `${formatValue(flatData.dayOfPlay, 'Day')}\n`;
 
   // Only show sport sub-category for dodgeball
-  if (productData.sport && productData.sport.toLowerCase() === 'dodgeball') {
-    summary += `${formatValue(productData.sportSubCategory, 'Sport Sub-Category')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() === 'dodgeball') {
+    summary += `${formatValue(flatData.sportNameSubCategory, 'Sport Sub-Category')}\n`;
   }
 
-  summary += `${formatValue(productData.division, 'Division')}\n` +
-    `${formatValue(productData.season, 'Season')}\n` +
-    `${formatValue(productData.year, 'Year')}\n` +
-    `${formatValue(productData.socialOrAdvanced, 'Social or Advanced')}\n` +
-    `${formatValue(productData.types, 'Type(s)')}\n\n` +
+  summary += `${formatValue(flatData.division, 'Division')}\n` +
+    `${formatValue(flatData.season, 'Season')}\n` +
+    `${formatValue(flatData.year, 'Year')}\n` +
+    `${formatValue(flatData.socialOrAdvanced, 'Social or Advanced')}\n` +
+    `${formatValue(flatData.types, 'Type(s)')}\n\n` +
 
     `=== DATES & TIMES ===\n` +
-    `${formatValue(productData.seasonStartDate, 'Season Start Date', 'date')}\n` +
-    `${formatValue(productData.seasonEndDate, 'Season End Date', 'date')}\n` +
-    `${formatValue(productData.sportStartTime, 'Sport Start Time', 'time')}\n` +
-    `${formatValue(productData.sportEndTime, 'Sport End Time', 'time')}\n`;
+    `${formatValue(flatData.seasonStartDate, 'Season Start Date', 'date')}\n` +
+    `${formatValue(flatData.seasonEndDate, 'Season End Date', 'date')}\n` +
+    `${formatValue(flatData.sportNameStartTime, 'Sport Start Time', 'time')}\n` +
+    `${formatValue(flatData.sportNameEndTime, 'Sport End Time', 'time')}\n`;
 
   // Only show alternative times if they exist
-  if (productData.alternativeStartTime) {
-    summary += `${formatValue(productData.alternativeStartTime, 'Alternative Start Time', 'time')}\n`;
+  if (flatData.alternativeStartTime) {
+    summary += `${formatValue(flatData.alternativeStartTime, 'Alternative Start Time', 'time')}\n`;
   }
-  if (productData.alternativeEndTime) {
-    summary += `${formatValue(productData.alternativeEndTime, 'Alternative End Time', 'time')}\n`;
+  if (flatData.alternativeEndTime) {
+    summary += `${formatValue(flatData.alternativeEndTime, 'Alternative End Time', 'time')}\n`;
   }
 
-  summary += `${formatValue(productData.offDatesCommaSeparated, 'Off Dates')}\n\n` +
+  summary += `${formatValue(flatData.offDatesCommaSeparated, 'Off Dates')}\n\n` +
 
     `=== SPECIAL EVENTS ===\n` +
-    `${formatValue(productData.newPlayerOrientationDateTime, 'New Player Orientation', 'datetime')}\n`;
+    `${formatValue(flatData.newPlayerOrientationDateTime, 'New Player Orientation', 'datetime')}\n`;
 
   // Only show Scout Night for kickball
-  if (productData.sport && productData.sport.toLowerCase() === 'kickball') {
-    summary += `${formatValue(productData.scoutNightDateTime, 'Scout Night', 'datetime')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() === 'kickball') {
+    summary += `${formatValue(flatData.scoutNightDateTime, 'Scout Night', 'datetime')}\n`;
   }
 
-  summary += `${formatValue(productData.openingPartyDate, 'Opening Party Date', 'date')}\n`;
+  summary += `${formatValue(flatData.openingPartyDate, 'Opening Party Date', 'date')}\n`;
 
   // Only show Rain Date for kickball
-  if (productData.sport && productData.sport.toLowerCase() === 'kickball') {
-    summary += `${formatValue(productData.rainDate, 'Rain Date', 'date')}\n`;
+  if (flatData.sportName && flatData.sportName.toLowerCase() === 'kickball') {
+    summary += `${formatValue(flatData.rainDate, 'Rain Date', 'date')}\n`;
   }
 
-  summary += `${formatValue(productData.closingPartyDate, 'Closing Party Date', 'date')}\n\n` +
+  summary += `${formatValue(flatData.closingPartyDate, 'Closing Party Date', 'date')}\n\n` +
 
     `=== LOCATION & PRICING ===\n` +
-    `${formatValue(productData.location, 'Location')}\n` +
-    `${formatValue(productData.price, 'Price', 'price')}\n` +
-    `${formatValue(productData.totalInventory, 'Total Inventory')}\n\n` +
+    `${formatValue(flatData.location, 'Location')}\n` +
+    `${formatValue(flatData.price, 'Price', 'price')}\n` +
+    `${formatValue(flatData.totalInventory, 'Total Inventory')}\n\n` +
 
     `=== REGISTRATION WINDOWS ===\n` +
-    `${formatValue(productData.vetRegistrationStartDateTime, 'Veteran Registration Start', 'datetime')}\n` +
-    `${formatValue(productData.earlyRegistrationStartDateTime, 'Early Registration Start', 'datetime')}\n` +
-    `${formatValue(productData.openRegistrationStartDateTime, 'Open Registration Start', 'datetime')}\n\n` +
+    `${formatValue(flatData.vetRegistrationStartDateTime, 'Veteran Registration Start', 'datetime')}\n` +
+    `${formatValue(flatData.earlyRegistrationStartDateTime, 'Early Registration Start', 'datetime')}\n` +
+    `${formatValue(flatData.openRegistrationStartDateTime, 'Open Registration Start', 'datetime')}\n\n` +
 
     `Create this product in Shopify with the above parsed data?`;
 
@@ -901,20 +1037,7 @@ function showSimpleConfirmationPrompt_(productData) {
 /**
  * Create the Shopify product and variants
  */
-function createShopifyProductAndVariants_(productData) {
-  try {
-    // Use the ported logic from product-variant-creation
-    const result = createShopifyProductFromData_(productData);
-    return result;
-
-  } catch (error) {
-    Logger.log(`Error in createShopifyProductAndVariants_: ${error}`);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
+// createShopifyProductAndVariants_ removed - now calling sendProductInfoToBackendForCreation directly
 
 /**
  * Write product creation results back to the sheet

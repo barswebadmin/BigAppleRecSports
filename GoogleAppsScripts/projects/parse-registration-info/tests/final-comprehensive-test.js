@@ -50,12 +50,11 @@ const files = [
   'config/constants.gs',
   'helpers/textUtils.gs',
   'helpers/normalizers.gs',
-  'core/dateParser.gs',
-  'core/timeParser.gs',
-  'core/priceParser.gs',
-  'core/flagsParser.gs',
-  'core/notesParser.gs',
-  'core/rowParser.gs',
+  'parsers/dateParser.gs',
+  'parsers/timeParser.gs',
+  'parsers/priceParser.gs',
+  'parsers/parseColBLeagueBasicInfo_.gs',
+  'parsers/_rowParser.gs',
   'core/portedFromProductCreateSheet/createShopifyProduct.gs'
 ];
 
@@ -94,8 +93,8 @@ try {
 
   // Check critical field mappings
   const checks = {
-    'sport': { expected: 'Pickleball', actual: productData.sport },
-    'day': { expected: 'Sunday', actual: productData.day },
+    'sportName': { expected: 'Pickleball', actual: productData.sportName },
+    'dayOfPlay': { expected: 'Sunday', actual: productData.dayOfPlay },
     'sportSubCategory': { expected: 'N/A', actual: productData.sportSubCategory },
     'division': { expected: 'WTNB+', actual: productData.division },
     'season': { expected: 'Fall', actual: productData.season },
@@ -180,7 +179,7 @@ try {
 
   // Key checks for dodgeball
   const checks = {
-    'sport': { expected: 'Dodgeball', actual: productData.sport },
+    'sportName': { expected: 'Dodgeball', actual: productData.sportName },
     'sportSubCategory': { expected: 'Big Ball', actual: productData.sportSubCategory },
     'socialOrAdvanced': { expected: 'Social', actual: productData.socialOrAdvanced },
     'totalInventory': { expected: '', actual: productData.totalInventory } // Should be empty (missing)
@@ -239,7 +238,7 @@ try {
 
   // Check key bowling fields
   const checks = {
-    'sport': { expected: 'Bowling', actual: productData.sport },
+    'sportName': { expected: 'Bowling', actual: productData.sportName },
     'types': { expected: 'Randomized Teams, Buddy Sign-up', actual: productData.types },
     'totalInventory': { expected: 364, actual: productData.totalInventory }, // Should take max from range
     'alternativeStartTime': { expected: null, actual: productData.alternativeStartTime },

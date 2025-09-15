@@ -15,5 +15,3 @@ services:
         value: /etc/ssl/certs/ca-certificates.crt
       - key: CURL_CA_BUNDLE
         value: /etc/ssl/certs/ca-certificates.crt
-      # Note: SHOPIFY_STORE and SHOPIFY_TOKEN must be set manually in Render dashboard
-      # for security reasons - they cannot be in the yaml file

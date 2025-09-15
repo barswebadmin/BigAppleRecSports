@@ -50,12 +50,11 @@ const files = [
   'config/constants.gs',
   'helpers/textUtils.gs',
   'helpers/normalizers.gs',
-  'core/dateParser.gs',
-  'core/timeParser.gs',
-  'core/priceParser.gs',
-  'core/flagsParser.gs',
-  'core/notesParser.gs',
-  'core/rowParser.gs',
+  'parsers/dateParser.gs',
+  'parsers/timeParser.gs',
+  'parsers/priceParser.gs',
+  'parsers/parseColBLeagueBasicInfo_.gs',
+  'parsers/_rowParser.gs',
   'core/portedFromProductCreateSheet/createShopifyProduct.gs'
 ];
 
@@ -97,8 +96,8 @@ if ('parseSourceRowEnhanced_' in context) {
 
     console.log('📊 Parsed result keys:', Object.keys(parsed));
     console.log('📊 Basic fields:', {
-      sport: parsed.sport,
-      day: parsed.day,
+      sportName: parsed.sportName,
+      dayOfPlay: parsed.dayOfPlay,
       division: parsed.division,
       socialOrAdvanced: parsed.socialOrAdvanced,
       types: parsed.types,
@@ -115,8 +114,8 @@ if ('parseSourceRowEnhanced_' in context) {
 
       // Check key fields against user specification
       const expectedValues = {
-        sport: 'Pickleball',
-        day: 'Sunday',
+        sportName: 'Pickleball',
+        dayOfPlay: 'Sunday',
         sportSubCategory: 'N/A',
         division: 'WTNB+',
         season: 'Fall',
@@ -186,7 +185,7 @@ if ('parseSourceRowEnhanced_' in context) {
       Object.assign(context, { testData, unresolved }));
 
     console.log('📊 Dodgeball parsed:', {
-      sport: parsed.sport,
+      sportName: parsed.sportName,
       sportSubCategory: parsed.sportSubCategory,
       socialOrAdvanced: parsed.socialOrAdvanced,
       totalInventory: parsed.totalInventory

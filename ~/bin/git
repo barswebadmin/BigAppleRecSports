@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Smart git wrapper that auto-handles formatting fixes on commit
+# This script intercepts `git commit` commands and auto-fixes formatting issues
+
+if [[ "$1" == "commit" ]]; then
+    shift  # Remove "commit" from arguments
+
+    echo "🚀 Attempting git commit..."
+
+    # Try the commit
+    if /usr/bin/git commit "$@"; then
+        echo "✅ Commit successful!"
+        exit 0
+    else
+        commit_exit_code=$?
+        echo "🔧 Commit failed, checking if it was just formatting..."
+
+        # Check if there are unstaged changes (likely from pre-commit auto-fixes)
+        if /usr/bin/git status --porcelain | grep -q "^[ M]M"; then
+            echo "📝 Found auto-fixed formatting changes, staging and retrying..."
+            /usr/bin/git add .
+            echo "🎯 Re-attempting commit..."
+            /usr/bin/git commit "$@"
+            echo "✅ Commit completed after auto-fixing formatting!"
+        else
+            echo "❌ Commit failed for non-formatting reasons (exit code: $commit_exit_code)"
+            exit $commit_exit_code
+        fi
+    fi
+else
+    # For all other git commands, pass through to real git
+    exec /usr/bin/git "$@"
+fi

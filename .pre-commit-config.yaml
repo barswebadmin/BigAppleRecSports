@@ -140,9 +140,10 @@ repos:
     rev: v4.4.0
     hooks:
       - id: trailing-whitespace
-        # Auto-fix trailing whitespace without failing
+        # Auto-fix trailing whitespace without failing the commit
+        args: ['--markdown-linebreak-ext=md']
       - id: end-of-file-fixer
-        # Auto-fix missing newlines without failing
+        # Auto-fix missing newlines without failing the commit
       - id: check-yaml
         args: ['--unsafe']  # Allow custom tags in GitHub Actions
       - id: check-added-large-files
