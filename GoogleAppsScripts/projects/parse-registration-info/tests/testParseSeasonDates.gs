@@ -24,67 +24,61 @@ function testParseSeasonDates_() {
   let totalTests = 0;
   const failedTests = [];
 
-  // Test numeric date formats
-  const numericFormatResult = testNumericDateFormats_();
-  totalTests += 1;
+  // Initialize unresolved fields for testing (using Kickball as default)
+  const baseUnresolved = initializeUnresolvedFields('Kickball');
+
+  // Test 1: Numeric date formats
+  totalTests++;
+  const numericFormatResult = testNumericDateFormats_(baseUnresolved);
   if (numericFormatResult === true) {
     passedTests++;
   } else {
     failedTests.push(`Test 1 FAILED: Numeric date formats - ${numericFormatResult}`);
   }
 
-  // Test text-based date formats
-  const textFormatResult = testTextDateFormats_();
-  totalTests += 1;
+  // Test 2: Text-based date formats
+  totalTests++;
+  const textFormatResult = testTextDateFormats_(baseUnresolved);
   if (textFormatResult === true) {
     passedTests++;
   } else {
     failedTests.push(`Test 2 FAILED: Text date formats - ${textFormatResult}`);
   }
 
-  // Test ordinal date formats (with "th", "st", etc.)
-  const ordinalFormatResult = testOrdinalDateFormats_();
-  totalTests += 1;
+  // Test 3: Ordinal date formats (with "th", "st", etc.)
+  totalTests++;
+  const ordinalFormatResult = testOrdinalDateFormats_(baseUnresolved);
   if (ordinalFormatResult === true) {
     passedTests++;
   } else {
     failedTests.push(`Test 3 FAILED: Ordinal date formats - ${ordinalFormatResult}`);
   }
 
-  // Test season and year derivation
-  const seasonYearResult = testSeasonYearDerivation_();
-  totalTests += 1;
+  // Test 4: Season and year derivation
+  totalTests++;
+  const seasonYearResult = testSeasonYearDerivation_(baseUnresolved);
   if (seasonYearResult === true) {
     passedTests++;
   } else {
     failedTests.push(`Test 4 FAILED: Season/year derivation - ${seasonYearResult}`);
   }
 
-  // Test unresolved field tracking
-  const unresolvedTrackingResult = testUnresolvedFieldTracking_();
-  totalTests += 1;
-  if (unresolvedTrackingResult === true) {
-    passedTests++;
-  } else {
-    failedTests.push(`Test 5 FAILED: Unresolved field tracking - ${unresolvedTrackingResult}`);
-  }
-
-  // Test edge cases and error handling
-  const edgeCasesResult = testEdgeCases_();
-  totalTests += 1;
+  // Test 5: Edge cases and error handling
+  totalTests++;
+  const edgeCasesResult = testEdgeCases_(baseUnresolved);
   if (edgeCasesResult === true) {
     passedTests++;
   } else {
-    failedTests.push(`Test 6 FAILED: Edge cases - ${edgeCasesResult}`);
+    failedTests.push(`Test 5 FAILED: Edge cases - ${edgeCasesResult}`);
   }
 
-  // Test UTC timestamp consistency
-  const utcTimestampResult = testUTCTimestampConsistency_();
-  totalTests += 1;
+  // Test 6: UTC timestamp consistency
+  totalTests++;
+  const utcTimestampResult = testUTCTimestampConsistency_(baseUnresolved);
   if (utcTimestampResult === true) {
     passedTests++;
   } else {
-    failedTests.push(`Test 7 FAILED: UTC timestamp consistency - ${utcTimestampResult}`);
+    failedTests.push(`Test 6 FAILED: UTC timestamp consistency - ${utcTimestampResult}`);
   }
 
   // Display results
@@ -106,9 +100,10 @@ function testParseSeasonDates_() {
 
 /**
  * Test numeric date formats: M/d/yy, M/d/yyyy, M-d-yy, M-d-yyyy
+ * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} true if passed, error message if failed
  */
-function testNumericDateFormats_() {
+function testNumericDateFormats_(baseUnresolved) {
   try {
     const testCases = [
       { start: '10/15/25', end: '12/10/25', expectedStartUTC: '2025-10-15T04:00:00.000Z', expectedEndUTC: '2025-12-10T04:00:00.000Z' },
@@ -119,8 +114,8 @@ function testNumericDateFormats_() {
     ];
 
     for (const testCase of testCases) {
-      const baseUnresolved = ['seasonStartDate', 'seasonEndDate', 'season', 'year'];
-      const result = parseSeasonDates_(testCase.start, testCase.end, baseUnresolved);
+      const unresolved = [...baseUnresolved];
+      const result = parseSeasonDates_(testCase.start, testCase.end, unresolved);
 
       if (!result.seasonStartDate || result.seasonStartDate.toISOString() !== testCase.expectedStartUTC) {
         return `Start date mismatch for "${testCase.start}": expected ${testCase.expectedStartUTC}, got ${result.seasonStartDate?.toISOString()}`;
@@ -128,6 +123,14 @@ function testNumericDateFormats_() {
 
       if (!result.seasonEndDate || result.seasonEndDate.toISOString() !== testCase.expectedEndUTC) {
         return `End date mismatch for "${testCase.end}": expected ${testCase.expectedEndUTC}, got ${result.seasonEndDate?.toISOString()}`;
+      }
+
+      // Validate that all season-related fields were removed from unresolved
+      const expectedRemainingFields = baseUnresolved.filter(field =>
+        !['seasonStartDate', 'seasonEndDate', 'season', 'year'].includes(field)
+      );
+      if (JSON.stringify(result.updatedUnresolved.sort()) !== JSON.stringify(expectedRemainingFields.sort())) {
+        return `Unresolved fields mismatch for "${testCase.start}/${testCase.end}": expected [${expectedRemainingFields.join(', ')}], got [${result.updatedUnresolved.join(', ')}]`;
       }
     }
 
@@ -139,9 +142,10 @@ function testNumericDateFormats_() {
 
 /**
  * Test text-based date formats: "October 12", "Oct 14"
+ * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} true if passed, error message if failed
  */
-function testTextDateFormats_() {
+function testTextDateFormats_(baseUnresolved) {
   try {
     const currentYear = new Date().getFullYear();
     const testCases = [
@@ -154,11 +158,19 @@ function testTextDateFormats_() {
     ];
 
     for (const testCase of testCases) {
-      const baseUnresolved = ['seasonStartDate', 'seasonEndDate', 'season', 'year'];
-      const result = parseSeasonDates_(testCase.start, '', baseUnresolved);
+      const unresolved = [...baseUnresolved];
+      const result = parseSeasonDates_(testCase.start, '', unresolved);
 
       if (!result.seasonStartDate || result.seasonStartDate.toISOString() !== testCase.expectedStartUTC) {
         return `Start date mismatch for "${testCase.start}": expected ${testCase.expectedStartUTC}, got ${result.seasonStartDate?.toISOString()}`;
+      }
+
+      // Validate that season-related fields (except seasonEndDate) were removed from unresolved
+      const expectedRemainingFields = baseUnresolved.filter(field =>
+        !['seasonStartDate', 'season', 'year'].includes(field)
+      );
+      if (JSON.stringify(result.updatedUnresolved.sort()) !== JSON.stringify(expectedRemainingFields.sort())) {
+        return `Unresolved fields mismatch for "${testCase.start}": expected [${expectedRemainingFields.join(', ')}], got [${result.updatedUnresolved.join(', ')}]`;
       }
     }
 
@@ -170,9 +182,10 @@ function testTextDateFormats_() {
 
 /**
  * Test ordinal date formats: "Oct 14th", "October 12th"
+ * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} true if passed, error message if failed
  */
-function testOrdinalDateFormats_() {
+function testOrdinalDateFormats_(baseUnresolved) {
   try {
     const currentYear = new Date().getFullYear();
     const testCases = [
@@ -184,11 +197,19 @@ function testOrdinalDateFormats_() {
     ];
 
     for (const testCase of testCases) {
-      const baseUnresolved = ['seasonStartDate', 'seasonEndDate', 'season', 'year'];
-      const result = parseSeasonDates_(testCase.start, '', baseUnresolved);
+      const unresolved = [...baseUnresolved];
+      const result = parseSeasonDates_(testCase.start, '', unresolved);
 
       if (!result.seasonStartDate || result.seasonStartDate.toISOString() !== testCase.expectedStartUTC) {
         return `Start date mismatch for "${testCase.start}": expected ${testCase.expectedStartUTC}, got ${result.seasonStartDate?.toISOString()}`;
+      }
+
+      // Validate that season-related fields (except seasonEndDate) were removed from unresolved
+      const expectedRemainingFields = baseUnresolved.filter(field =>
+        !['seasonStartDate', 'season', 'year'].includes(field)
+      );
+      if (JSON.stringify(result.updatedUnresolved.sort()) !== JSON.stringify(expectedRemainingFields.sort())) {
+        return `Unresolved fields mismatch for "${testCase.start}": expected [${expectedRemainingFields.join(', ')}], got [${result.updatedUnresolved.join(', ')}]`;
       }
     }
 
@@ -200,9 +221,10 @@ function testOrdinalDateFormats_() {
 
 /**
  * Test season and year derivation accuracy
+ * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} true if passed, error message if failed
  */
-function testSeasonYearDerivation_() {
+function testSeasonYearDerivation_(baseUnresolved) {
   try {
     const testCases = [
       { start: '10/15/25', expectedSeason: 'Fall', expectedYear: 2025 },
@@ -213,8 +235,8 @@ function testSeasonYearDerivation_() {
     ];
 
     for (const testCase of testCases) {
-      const baseUnresolved = ['seasonStartDate', 'seasonEndDate', 'season', 'year'];
-      const result = parseSeasonDates_(testCase.start, '', baseUnresolved);
+      const unresolved = [...baseUnresolved];
+      const result = parseSeasonDates_(testCase.start, '', unresolved);
 
       if (result.season !== testCase.expectedSeason) {
         return `Season mismatch for "${testCase.start}": expected ${testCase.expectedSeason}, got ${result.season}`;
@@ -222,6 +244,14 @@ function testSeasonYearDerivation_() {
 
       if (result.year !== testCase.expectedYear) {
         return `Year mismatch for "${testCase.start}": expected ${testCase.expectedYear}, got ${result.year}`;
+      }
+
+      // Validate that season-related fields (except seasonEndDate) were removed from unresolved
+      const expectedRemainingFields = baseUnresolved.filter(field =>
+        !['seasonStartDate', 'season', 'year'].includes(field)
+      );
+      if (JSON.stringify(result.updatedUnresolved.sort()) !== JSON.stringify(expectedRemainingFields.sort())) {
+        return `Unresolved fields mismatch for "${testCase.start}": expected [${expectedRemainingFields.join(', ')}], got [${result.updatedUnresolved.join(', ')}]`;
       }
     }
 
@@ -232,43 +262,12 @@ function testSeasonYearDerivation_() {
 }
 
 /**
- * Test unresolved field tracking
- * @returns {boolean|string} true if passed, error message if failed
- */
-function testUnresolvedFieldTracking_() {
-  try {
-    const baseUnresolved = ['seasonStartDate', 'seasonEndDate', 'season', 'year', 'otherField'];
-
-    // Test successful parsing removes fields
-    const result1 = parseSeasonDates_('10/15/25', '12/10/25', [...baseUnresolved]);
-    const expectedUnresolved1 = ['otherField']; // All season-related fields should be removed
-
-    if (JSON.stringify(result1.updatedUnresolved.sort()) !== JSON.stringify(expectedUnresolved1.sort())) {
-      return `Unresolved tracking mismatch for valid dates: expected [${expectedUnresolved1.join(', ')}], got [${result1.updatedUnresolved.join(', ')}]`;
-    }
-
-    // Test failed parsing keeps fields in unresolved
-    const result2 = parseSeasonDates_('invalid', 'invalid', [...baseUnresolved]);
-    const expectedUnresolved2 = ['seasonStartDate', 'seasonEndDate', 'season', 'year', 'otherField']; // Should remain unchanged
-
-    if (JSON.stringify(result2.updatedUnresolved.sort()) !== JSON.stringify(expectedUnresolved2.sort())) {
-      return `Unresolved tracking mismatch for invalid dates: expected [${expectedUnresolved2.join(', ')}], got [${result2.updatedUnresolved.join(', ')}]`;
-    }
-
-    return true;
-  } catch (error) {
-    return `ERROR in testUnresolvedFieldTracking_: ${error.toString()}`;
-  }
-}
-
-/**
  * Test edge cases and error handling
+ * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} true if passed, error message if failed
  */
-function testEdgeCases_() {
+function testEdgeCases_(baseUnresolved) {
   try {
-    const baseUnresolved = ['seasonStartDate', 'seasonEndDate', 'season', 'year'];
-
     // Test empty/null/undefined inputs
     const edgeCases = [
       { start: '', end: '', expectedStartDate: null, expectedEndDate: null },
@@ -279,7 +278,8 @@ function testEdgeCases_() {
     ];
 
     for (const testCase of edgeCases) {
-      const result = parseSeasonDates_(testCase.start, testCase.end, [...baseUnresolved]);
+      const unresolved = [...baseUnresolved];
+      const result = parseSeasonDates_(testCase.start, testCase.end, unresolved);
 
       if (result.seasonStartDate !== testCase.expectedStartDate) {
         return `Edge case start date mismatch for "${testCase.start}": expected ${testCase.expectedStartDate}, got ${result.seasonStartDate}`;
@@ -287,6 +287,13 @@ function testEdgeCases_() {
 
       if (result.seasonEndDate !== testCase.expectedEndDate) {
         return `Edge case end date mismatch for "${testCase.end}": expected ${testCase.expectedEndDate}, got ${result.seasonEndDate}`;
+      }
+
+      // For invalid dates, all season-related fields should remain in unresolved
+      if (testCase.expectedStartDate === null) {
+        if (JSON.stringify(result.updatedUnresolved.sort()) !== JSON.stringify(baseUnresolved.sort())) {
+          return `Edge case unresolved mismatch for invalid dates: expected [${baseUnresolved.join(', ')}], got [${result.updatedUnresolved.join(', ')}]`;
+        }
       }
     }
 
@@ -298,16 +305,17 @@ function testEdgeCases_() {
 
 /**
  * Test UTC timestamp consistency (October 12th should return Date('2025-10-13T04:00:00Z'))
+ * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} true if passed, error message if failed
  */
-function testUTCTimestampConsistency_() {
+function testUTCTimestampConsistency_(baseUnresolved) {
   try {
     // Test the specific example from requirements
-    const baseUnresolved = ['seasonStartDate', 'seasonEndDate', 'season', 'year'];
-    const result = parseSeasonDates_('October 12', '', baseUnresolved);
+    const unresolved = [...baseUnresolved];
+    const result = parseSeasonDates_('October 12', '', unresolved);
 
     const currentYear = new Date().getFullYear();
-    const expectedUTC = `${currentYear}-10-12T04:00:00.000Z`; // Note: 12th at 4AM UTC, not 13th
+    const expectedUTC = `${currentYear}-10-13T04:00:00.000Z`; // October 12th -> 13th at 4AM UTC
 
     if (!result.seasonStartDate || result.seasonStartDate.toISOString() !== expectedUTC) {
       return `UTC timestamp mismatch for "October 12": expected ${expectedUTC}, got ${result.seasonStartDate?.toISOString()}`;
@@ -317,11 +325,20 @@ function testUTCTimestampConsistency_() {
     const timeTestCases = ['10/15/25', 'Dec 25th', 'January 1'];
 
     for (const dateStr of timeTestCases) {
-      const result = parseSeasonDates_(dateStr, '', [...baseUnresolved]);
-      if (result.seasonStartDate) {
-        const date = result.seasonStartDate;
+      const testUnresolved = [...baseUnresolved];
+      const testResult = parseSeasonDates_(dateStr, '', testUnresolved);
+      if (testResult.seasonStartDate) {
+        const date = testResult.seasonStartDate;
         if (date.getUTCHours() !== 4 || date.getUTCMinutes() !== 0 || date.getUTCSeconds() !== 0) {
           return `Time not 4:00 AM UTC for "${dateStr}": got ${date.getUTCHours()}:${date.getUTCMinutes()}:${date.getUTCSeconds()} UTC`;
+        }
+
+        // Validate unresolved field tracking for each test case
+        const expectedRemainingFields = baseUnresolved.filter(field =>
+          !['seasonStartDate', 'season', 'year'].includes(field)
+        );
+        if (JSON.stringify(testResult.updatedUnresolved.sort()) !== JSON.stringify(expectedRemainingFields.sort())) {
+          return `Unresolved fields mismatch for "${dateStr}": expected [${expectedRemainingFields.join(', ')}], got [${testResult.updatedUnresolved.join(', ')}]`;
         }
       }
     }

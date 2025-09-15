@@ -130,12 +130,12 @@ class DateParsers {
       const fallbackDate = new Date(cleanStr);
       if (!isNaN(fallbackDate.getTime())) {
         if (useUTC) {
-          // Convert to UTC midnight
+          // Convert to UTC midnight on the next day (EST -> UTC conversion)
           return new Date(Date.UTC(
             fallbackDate.getFullYear(),
             fallbackDate.getMonth(),
-            fallbackDate.getDate(),
-            4, 0, 0  // 4:00 AM UTC for EST midnight
+            fallbackDate.getDate() + 1,
+            4, 0, 0  // 4:00 AM UTC on next day for EST conversion
           ));
         } else {
           return fallbackDate;
@@ -270,12 +270,12 @@ class DateParsers {
    * @param {number} month - Month (1-12)
    * @param {number} day - Day (1-31)
    * @param {number} year - Full year (e.g., 2025)
-   * @returns {Date} UTC Date object at 4:00 AM UTC (midnight EST)
+   * @returns {Date} UTC Date object at 4:00 AM UTC (next day for EST conversion)
    */
   static createUTCDate_(month, day, year) {
-    // Create date at 4:00 AM UTC (which is midnight EST/EDT)
-    // This handles the timezone conversion for Eastern timezone
-    return new Date(Date.UTC(year, month - 1, day, 4, 0, 0));
+    // Create date at 4:00 AM UTC on the next day
+    // This converts local EST date to UTC: Oct 12 EST -> Oct 13 4:00 AM UTC
+    return new Date(Date.UTC(year, month - 1, day + 1, 4, 0, 0));
   }
 
   /**
