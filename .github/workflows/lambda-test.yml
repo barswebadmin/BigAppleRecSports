@@ -1,10 +1,5 @@
 # .github/workflows/lambda-tests.yml
 name: Lambda Tests
-
-# Prevent duplicate runs for the same branch/PR
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
 on:
   push:
     branches: [ main ]
