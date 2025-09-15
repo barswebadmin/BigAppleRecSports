@@ -15,7 +15,7 @@
  */
 
 // biome-ignore lint/correctness/noUnusedVariables: <it is called in the flow from menu item click>
-function parseBFlags_(bColumnData, unresolved, sportName) {
+function parseColBLeagueDetails_(bColumnData, unresolved, sportName) {
   // Split B column into lines
   const bLines = splitLines_(bColumnData);
 

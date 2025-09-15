@@ -217,7 +217,7 @@ function testValidRowsFiltering() {
     const bLines = bRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     const dayRaw = (bLines[0] || '').trim();
 
-    // Mock parseBFlags_ function (simplified)
+    // Mock parseColBLeagueDetails_ function (simplified)
     const division = 'Social'; // Simplified for test
 
     const sportNorm = toTitleCase_(lastA);

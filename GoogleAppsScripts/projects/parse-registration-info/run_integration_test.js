@@ -146,7 +146,7 @@ try {
     'dateParser.gs',
     'timeParser.gs',
     'priceParser.gs',
-    'parseBFlags_.gs',
+    'parseColBLeagueDetails.gs',
     'notesParser.gs',
     '_rowParser.gs'  // Main parser last
   ];

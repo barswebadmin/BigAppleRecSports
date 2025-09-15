@@ -53,7 +53,7 @@ const files = [
   'parsers/dateParser.gs',
   'parsers/timeParser.gs',
   'parsers/priceParser.gs',
-  'parsers/parseBFlags_.gs',
+  'parsers/parseColBLeagueDetails_.gs',
   'parsers/notesParser.gs',
   'parsers/_rowParser.gs',
   'core/portedFromProductCreateSheet/createShopifyProduct.gs'

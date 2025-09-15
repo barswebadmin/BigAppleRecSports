@@ -13,7 +13,7 @@
 
 // Import references for editor support
 /// <reference path="src/config/constants.gs" />
-/// <reference path="src/parsers/parseBFlags_.gs" />
+/// <reference path="src/parsers/parseColBLeagueDetails.gs" />
 /// <reference path="src/core/portedFromProductCreateSheet/createShopifyProduct.gs" />
 /// <reference path="src/core/portedFromProductCreateSheet/shopifyProductCreation.gs" />
 /// <reference path="src/helpers/textUtils.gs" />
@@ -118,7 +118,7 @@ function showCreateProductPrompt() {
         const bLines = bRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
         const dayRaw = (bLines[0] || '').trim();
         const sportNorm = toTitleCase_(lastA);
-        const { division } = parseBFlags_(bLines, [], sportNorm);
+        const { division } = parseColBLeagueDetails_(bLines, [], sportNorm);
         const dayNorm = toTitleCase_(dayRaw);
 
         const bOneLine = bRaw.replace(/\s*\n+\s*/g, ' / ');

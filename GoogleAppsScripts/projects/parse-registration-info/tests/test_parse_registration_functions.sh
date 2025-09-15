@@ -63,8 +63,8 @@ run_test "Main entry point exists" \
 run_test "parseSourceRowEnhanced_ function exists" \
     "grep -q 'function parseSourceRowEnhanced_' '$PROJECT_DIR/src/parsers/_rowParser.gs'"
 
-run_test "parseBFlags_ function exists" \
-    "grep -q 'function parseBFlags_' '$PROJECT_DIR/src/parsers/parseBFlags_.gs'"
+run_test "parseColBLeagueDetails_ function exists" \
+    "grep -q 'function parseColBLeagueDetails_' '$PROJECT_DIR/src/parsers/parseColBLeagueDetails.gs'"
 
 run_test "parseTimeRangeBothSessions_ function exists" \
     "grep -q 'function parseTimeRangeBothSessions_' '$PROJECT_DIR/src/parsers/timeParser.gs'"
@@ -148,11 +148,11 @@ run_test "Time parsing creates proper Date objects" \
     "grep -A 10 'parseTimeRangeBothSessions_' '$PROJECT_DIR/src/parsers/timeParser.gs' | grep -q 'Date\\|DateOnly'"
 
 # Test 14: Division and sport category parsing
-run_test "parseBFlags extracts division information" \
-    "grep -A 30 'function parseBFlags_' '$PROJECT_DIR/src/parsers/parseBFlags_.gs' | grep -q 'division'"
+run_test "parseColBLeagueDetails extracts division information" \
+    "grep -A 30 'function parseColBLeagueDetails_' '$PROJECT_DIR/src/parsers/parseColBLeagueDetails.gs' | grep -q 'division'"
 
-run_test "parseBFlags handles sport sub-categories" \
-    "grep -q 'sportSubCategory\\|socialOrAdvanced' '$PROJECT_DIR/src/parsers/parseBFlags_.gs'"
+run_test "parseColBLeagueDetails handles sport sub-categories" \
+    "grep -q 'sportSubCategory\\|socialOrAdvanced' '$PROJECT_DIR/src/parsers/parseColBLeagueDetails.gs'"
 
 # Test 15: Product creation and validation functions
 run_test "sendProductInfoToBackendForCreation function exists" \

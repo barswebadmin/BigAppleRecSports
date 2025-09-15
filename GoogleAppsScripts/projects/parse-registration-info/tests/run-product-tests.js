@@ -39,7 +39,7 @@ loadGasFile('config/constants.gs');
 loadGasFile('helpers/textUtils.gs');
 loadGasFile('helpers/normalizers.gs');
 loadGasFile('parsers/dateParser.gs');
-loadGasFile('parsers/parseBFlags_.gs');
+loadGasFile('parsers/parseColBLeagueDetails_.gs');
 loadGasFile('parsers/notesParser.gs');
 loadGasFile('parsers/_rowParser.gs');
 loadGasFile('core/portedFromProductCreateSheet/createShopifyProduct.gs');

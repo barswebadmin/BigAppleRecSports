@@ -1,21 +1,21 @@
 /**
- * Focused tests for parseBFlags_ function
+ * Focused tests for parseColBLeagueDetails_ function
  * Tests each of the 5 fields individually for correct parsing and unresolved tracking
  *
- * @fileoverview Field-by-field test suite for parseBFlags_
+ * @fileoverview Field-by-field test suite for parseColBLeagueDetails_
  */
 
 // Import references for editor support
 /// <reference path="../src/config/constants.gs" />
 /// <reference path="../src/helpers/normalizers.gs" />
-/// <reference path="../src/parsers/parseBFlags_.gs" />
+/// <reference path="../src/parsers/parseColBLeagueDetails.gs" />
 
 /**
- * Main test function for parseBFlags_
+ * Main test function for parseColBLeagueDetails_
  * Tests each field individually
  */
-function testParseBFlags_() {
-  console.log('🧪 Running parseBFlags_ field-by-field tests...');
+function testParseColBLeagueDetails_() {
+  console.log('🧪 Running parseColBLeagueDetails_ field-by-field tests...');
   console.log('TODO: add tests for other sports');
 
   let passedTests = 0;
@@ -82,10 +82,10 @@ function testParseBFlags_() {
   }
 
   if (passedTests === totalTests) {
-    console.log('✅ All parseBFlags_ field tests passed!');
+    console.log('✅ All parseColBLeagueDetails_ field tests passed!');
     return true;
   } else {
-    console.log('❌ Some parseBFlags_ field tests failed!');
+    console.log('❌ Some parseColBLeagueDetails_ field tests failed!');
     return false;
   }
 }
@@ -118,7 +118,7 @@ function testDayOfPlayField_(baseUnresolved) {
       // Create a copy of the base unresolved array for this test
       const unresolved = [...baseUnresolved];
 
-      const result = parseBFlags_(test.bColumnData, unresolved, test.sportName);
+      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
 
       const dayOfPlayCorrect = result.dayOfPlay === test.expectedDayOfPlay;
       const unresolvedCorrect = unresolved.includes('dayOfPlay') === test.expectedInUnresolved;
@@ -168,7 +168,7 @@ function testDivisionField_(baseUnresolved) {
     for (const test of tests) {
       // Create a copy of the base unresolved array for this test
       const unresolved = [...baseUnresolved];
-      const result = parseBFlags_(test.bColumnData, unresolved, test.sportName);
+      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
 
       const divisionCorrect = result.division === test.expectedDivision;
       const unresolvedCorrect = unresolved.includes('division') === test.expectedInUnresolved;
@@ -218,7 +218,7 @@ function testSportSubCategoryField_(baseUnresolved) {
     for (const test of tests) {
       // Create a copy of the base unresolved array for this test
       const unresolved = [...baseUnresolved];
-      const result = parseBFlags_(test.bColumnData, unresolved, test.sportName);
+      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
 
       const sportSubCategoryCorrect = result.sportSubCategory === test.expectedSportSubCategory;
       const unresolvedCorrect = unresolved.includes('sportSubCategory') === test.expectedInUnresolved;
@@ -268,7 +268,7 @@ function testSocialOrAdvancedField_(baseUnresolved) {
     for (const test of tests) {
       // Create a copy of the base unresolved array for this test
       const unresolved = [...baseUnresolved];
-      const result = parseBFlags_(test.bColumnData, unresolved, test.sportName);
+      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
 
       const socialOrAdvancedCorrect = result.socialOrAdvanced === test.expectedSocialOrAdvanced;
       const unresolvedCorrect = unresolved.includes('socialOrAdvanced') === test.expectedInUnresolved;
@@ -325,7 +325,7 @@ function testTypesField_(baseUnresolved) {
     for (const test of tests) {
       // Create a copy of the base unresolved array for this test
       const unresolved = [...baseUnresolved];
-      const result = parseBFlags_(test.bColumnData, unresolved, test.sportName);
+      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
 
       const typesCorrect = arraysEqual(result.types, test.expectedTypes);
       const unresolvedCorrect = unresolved.includes('types') === test.expectedInUnresolved;

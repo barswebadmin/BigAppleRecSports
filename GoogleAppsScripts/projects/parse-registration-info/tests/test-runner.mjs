@@ -87,7 +87,7 @@ function loadGASFunctions() {
   const gasFiles = [
     'config/constants.gs',
     'parsers/dateParser.gs',
-    'parsers/parseBFlags_.gs',
+    'parsers/parseColBLeagueDetails_.gs',
     'parsers/notesParser.gs',
     'parsers/_rowParser.gs',
     'core/migration.gs',
@@ -386,10 +386,10 @@ function main() {
 
   // ---- Extra shims to satisfy comprehensive tests ----
 
-  // 1) parseFlags_: prefer your newer parseBFlags_ if present
+  // 1) parseFlags_: prefer your newer parseColBLeagueDetails_ if present
   if (typeof globalThis.parseFlags_ !== 'function') {
-    if (typeof globalThis.parseBFlags_ === 'function') {
-      globalThis.parseFlags_ = (text) => globalThis.parseBFlags_(text);
+    if (typeof globalThis.parseColBLeagueDetails_ === 'function') {
+      globalThis.parseFlags_ = (text) => globalThis.parseColBLeagueDetails_(text);
     } else {
       // Minimal fallback: only buddy flag (enough for your tests)
       globalThis.parseFlags_ = (text) => ({
@@ -438,7 +438,7 @@ function main() {
     };
   }
 
-  // --- Robust, string-only parseFlags_ (don't delegate to parseBFlags_) ---
+  // --- Robust, string-only parseFlags_ (don't delegate to parseColBLeagueDetails_) ---
   globalThis.parseFlags_ = (text) => {
     const s = String(text || '');
     return {

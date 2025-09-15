@@ -6,7 +6,7 @@
  * @requires ../config/constants.gs
  * @requires ../helpers/normalizers.gs
  * @requires ../helpers/textUtils.gs
- * @requires bFlagsParser.gs
+ * @requires parseColBLeagueDetails.gs
  * @requires timeParser.gs
  * @requires dateParser.gs
  * @requires priceParser.gs
@@ -17,7 +17,7 @@
 /// <reference path="../config/constants.gs" />
 /// <reference path="../helpers/normalizers.gs" />
 /// <reference path="../helpers/textUtils.gs" />
-/// <reference path="parseBFlags_.gs" />
+/// <reference path="parseColBLeagueDetails.gs" />
 /// <reference path="timeParser.gs" />
 /// <reference path="dateParser.gs" />
 /// <reference path="priceParser.gs" />
@@ -51,9 +51,9 @@ function parseSourceRowEnhanced_(v) {
   productCreateData.sportName = sportName;
 
   const { dayOfPlay, division, sportSubCategory, socialOrAdvanced, types } =
-    parseBFlags_(v.B, unresolved, sportName);
+    parseColBLeagueDetails_(v.B, unresolved, sportName);
 
-  // Set fields returned by parseBFlags on productCreateData
+  // Set fields returned by parseColBLeagueDetails on productCreateData
   productCreateData.dayOfPlay = dayOfPlay;
   productCreateData.division = division;
   productCreateData.sportSubCategory = sportSubCategory;
