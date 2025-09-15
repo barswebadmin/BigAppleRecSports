@@ -22,6 +22,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     - create-scheduled-inventory-movements: Schedule inventory moves between variants
     - create-scheduled-price-changes: Schedule price changes throughout a season
     - create-initial-inventory-addition-and-title-change: Schedule initial inventory addition and title update
+    - add-inventory-to-live-product: Schedule remaining inventory addition to live product
     """
     try:
         print("🔄 ScheduleChangesForShopifyProductsLambda invoked")
@@ -39,21 +40,19 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Route to appropriate handler based on action type
         if action_type == "create-scheduled-inventory-movements":
             result = create_scheduled_inventory_movements(event_body)
-            return format_response(201, result)
+            return format_response(200, result)
 
         elif action_type == "create-scheduled-price-changes":
             result = create_scheduled_price_changes(event_body)
-            return format_response(200, result)
+            return format_response(201, result)
 
         elif action_type == "create-initial-inventory-addition-and-title-change":
-            # Check groupName to determine which Lambda function to target
-            group_name = event_body.get("groupName")
-            if group_name == "add-remaining-inventory-to-live-product":
-                result = create_remaining_inventory_addition_schedule(event_body)
-                return format_response(201, result)
-            else:
-                result = create_initial_inventory_addition_and_title_change(event_body)
-                return format_response(201, result)
+            result = create_initial_inventory_addition_and_title_change(event_body)
+            return format_response(202, result)
+
+        elif action_type == "add-inventory-to-live-product":
+            result = create_remaining_inventory_addition_schedule(event_body)
+            return format_response(203, result)
 
         else:
             # Return 422 Unprocessable Entity for unsupported action types
@@ -65,6 +64,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         "create-scheduled-inventory-movements",
                         "create-scheduled-price-changes",
                         "create-initial-inventory-addition-and-title-change",
+                        "add-inventory-to-live-product",
                     ],
                     "received": action_type,
                 },

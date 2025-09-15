@@ -3,7 +3,7 @@ Inventory Information model for product creation
 """
 
 from pydantic import BaseModel, field_validator
-from typing import Optional, Union
+from typing import Union
 
 
 class InventoryInfo(BaseModel):
@@ -11,7 +11,7 @@ class InventoryInfo(BaseModel):
 
     price: Union[int, float]
     totalInventory: int
-    numberVetSpotsToReleaseAtGoLive: Optional[int] = None
+    numberVetSpotsToReleaseAtGoLive: int
 
     @field_validator("price", mode="before")
     @classmethod
@@ -42,3 +42,22 @@ class InventoryInfo(BaseModel):
         if inventory_int <= 0:
             raise ValueError("Total inventory must be greater than 0")
         return inventory_int
+
+    @field_validator("numberVetSpotsToReleaseAtGoLive", mode="before")
+    @classmethod
+    def validate_vet_spots(cls, v):
+        if isinstance(v, str):
+            try:
+                vet_spots_int = int(v)
+            except ValueError:
+                raise ValueError(
+                    "Number of vet spots to release at go live must be a valid integer"
+                )
+        else:
+            vet_spots_int = v
+
+        if vet_spots_int < 0:
+            raise ValueError(
+                "Number of vet spots to release at go live must be non-negative"
+            )
+        return vet_spots_int
