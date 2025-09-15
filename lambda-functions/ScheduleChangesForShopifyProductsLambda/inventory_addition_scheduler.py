@@ -198,7 +198,7 @@ def create_remaining_inventory_addition_schedule(
     # Parse and validate datetime
     try:
         # Parse the datetime and add 1 minute buffer
-        parsed_dt = datetime.fromisoformat(new_datetime.replace("Z", "+00:00"))
+        parsed_dt = datetime.fromisoformat(str(new_datetime).replace("Z", "+00:00"))
         eastern_dt = parsed_dt.astimezone(ZoneInfo("America/New_York")) + timedelta(
             minutes=1
         )
