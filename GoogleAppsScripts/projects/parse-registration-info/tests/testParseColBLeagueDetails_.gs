@@ -1,33 +1,30 @@
 /**
- * Focused tests for parseColBLeagueDetails_ function
+ * Focused tests for parseColBLeagueBasicInfo_ function
  * Tests each of the 5 fields individually for correct parsing and unresolved tracking
  *
- * @fileoverview Field-by-field test suite for parseColBLeagueDetails_
+ * @fileoverview Field-by-field test suite for parseColBLeagueBasicInfo_
  */
 
 // Import references for editor support
 /// <reference path="../src/config/constants.gs" />
 /// <reference path="../src/helpers/normalizers.gs" />
-/// <reference path="../src/parsers/parseColBLeagueDetails.gs" />
+/// <reference path="../src/parsers/parseColBLeagueBasicInfo_.gs" />
 
 /**
- * Main test function for parseColBLeagueDetails_
+ * Main test function for parseColBLeagueBasicInfo_
  * Tests each field individually
  */
-function testParseColBLeagueDetails_() {
-  console.log('🧪 Running parseColBLeagueDetails_ field-by-field tests...');
+function testparseColBLeagueBasicInfo_() {
+  console.log('🧪 Running parseColBLeagueBasicInfo_ field-by-field tests...');
   console.log('TODO: add tests for other sports');
 
   let passedTests = 0;
   let totalTests = 0;
   const failedTests = [];
 
-  // Initialize unresolved fields for testing (using Kickball as default)
-  const baseUnresolved = initializeUnresolvedFields('Kickball');
-
   // Test 1: dayOfPlay field parsing
   totalTests++;
-  const dayOfPlayResult = testDayOfPlayField_(baseUnresolved);
+  const dayOfPlayResult = testDayOfPlayField_();
   if (dayOfPlayResult === true) {
     passedTests++;
   } else {
@@ -36,7 +33,7 @@ function testParseColBLeagueDetails_() {
 
   // Test 2: division field parsing
   totalTests++;
-  const divisionResult = testDivisionField_(baseUnresolved);
+  const divisionResult = testDivisionField_();
   if (divisionResult === true) {
     passedTests++;
   } else {
@@ -45,7 +42,7 @@ function testParseColBLeagueDetails_() {
 
   // Test 3: sportSubCategory field parsing
   totalTests++;
-  const sportSubCategoryResult = testSportSubCategoryField_(baseUnresolved);
+  const sportSubCategoryResult = testSportSubCategoryField_();
   if (sportSubCategoryResult === true) {
     passedTests++;
   } else {
@@ -54,7 +51,7 @@ function testParseColBLeagueDetails_() {
 
   // Test 4: socialOrAdvanced field parsing
   totalTests++;
-  const socialOrAdvancedResult = testSocialOrAdvancedField_(baseUnresolved);
+  const socialOrAdvancedResult = testSocialOrAdvancedField_();
   if (socialOrAdvancedResult === true) {
     passedTests++;
   } else {
@@ -63,7 +60,7 @@ function testParseColBLeagueDetails_() {
 
   // Test 5: types field parsing
   totalTests++;
-  const typesResult = testTypesField_(baseUnresolved);
+  const typesResult = testTypesField_();
   if (typesResult === true) {
     passedTests++;
   } else {
@@ -78,53 +75,49 @@ function testParseColBLeagueDetails_() {
 
   if (failedTests.length > 0) {
     console.log(`\n❌ Failed Tests:`);
-    failedTests.forEach(failure => console.log(`   - ${failure}`));
+    for (const failure of failedTests) {
+      console.log(`   - ${failure}`);
+    }
   }
 
   if (passedTests === totalTests) {
-    console.log('✅ All parseColBLeagueDetails_ field tests passed!');
+    console.log('✅ All parseColBLeagueBasicInfo_ field tests passed!');
     return true;
   } else {
-    console.log('❌ Some parseColBLeagueDetails_ field tests failed!');
+    console.log('❌ Some parseColBLeagueBasicInfo_ field tests failed!');
     return false;
   }
 }
 
 /**
  * Test #1: dayOfPlay field parsing
- * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} True if all tests pass, error message if any fail
  */
-function testDayOfPlayField_(baseUnresolved) {
+function testDayOfPlayField_() {
   try {
     const tests = [
       {
         description: 'dayOfPlay found and extracted correctly',
         bColumnData: 'Tuesday\nSome other text',
         sportName: 'Kickball',
-        expectedDayOfPlay: 'Tuesday',
-        expectedInUnresolved: false
+        expectedDayOfPlay: 'Tuesday'
       },
       {
         description: 'dayOfPlay not found, remains in unresolved',
         bColumnData: '', // Completely empty
         sportName: 'Kickball',
-        expectedDayOfPlay: '',
-        expectedInUnresolved: true
+        expectedDayOfPlay: ''
       }
     ];
 
     for (const test of tests) {
-      // Create a copy of the base unresolved array for this test
-      const unresolved = [...baseUnresolved];
 
-      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
+      const result = parseColBLeagueBasicInfo_(test.bColumnData, test.sportName);
 
       const dayOfPlayCorrect = result.dayOfPlay === test.expectedDayOfPlay;
-      const unresolvedCorrect = unresolved.includes('dayOfPlay') === test.expectedInUnresolved;
 
-      if (!dayOfPlayCorrect || !unresolvedCorrect) {
-        return `${test.description} - Expected: dayOfPlay='${test.expectedDayOfPlay}', inUnresolved=${test.expectedInUnresolved}, Got: dayOfPlay='${result.dayOfPlay}', inUnresolved=${unresolved.includes('dayOfPlay')}`;
+      if (!dayOfPlayCorrect) {
+        return `${test.description} - Expected: dayOfPlay='${test.expectedDayOfPlay}', Got: dayOfPlay='${result.dayOfPlay}'}`;
       }
     }
 
@@ -136,10 +129,9 @@ function testDayOfPlayField_(baseUnresolved) {
 
 /**
  * Test #2: division field parsing
- * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} True if all tests pass, error message if any fail
  */
-function testDivisionField_(baseUnresolved) {
+function testDivisionField_() {
   try {
     const tests = [
       {
@@ -147,34 +139,28 @@ function testDivisionField_(baseUnresolved) {
         bColumnData: 'Tuesday\nOpen Division\nSome text',
         sportName: 'Kickball',
         expectedDivision: 'Open',
-        expectedInUnresolved: false
       },
       {
         description: 'division "WTNB+" found and extracted correctly',
         bColumnData: 'Tuesday\nWTNB Division\nSome text',
         sportName: 'Kickball',
-        expectedDivision: 'WTNB+',
-        expectedInUnresolved: false
+        expectedDivision: 'WTNB+'
       },
       {
-        description: 'division not found, remains in unresolved',
+        description: 'division not found',
         bColumnData: 'Tuesday\nNo division keywords\nSome text',
         sportName: 'Kickball',
-        expectedDivision: '',
-        expectedInUnresolved: true
+        expectedDivision: ''
       }
     ];
 
     for (const test of tests) {
-      // Create a copy of the base unresolved array for this test
-      const unresolved = [...baseUnresolved];
-      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
+      const result = parseColBLeagueBasicInfo_(test.bColumnData, test.sportName);
 
       const divisionCorrect = result.division === test.expectedDivision;
-      const unresolvedCorrect = unresolved.includes('division') === test.expectedInUnresolved;
 
-      if (!divisionCorrect || !unresolvedCorrect) {
-        return `${test.description} - Expected: division='${test.expectedDivision}', inUnresolved=${test.expectedInUnresolved}, Got: division='${result.division}', inUnresolved=${unresolved.includes('division')}`;
+      if (!divisionCorrect) {
+        return `${test.description} - Expected: division='${test.expectedDivision}', Got: division='${result.division}'}`;
       }
     }
 
@@ -186,45 +172,38 @@ function testDivisionField_(baseUnresolved) {
 
 /**
  * Test #3: sportSubCategory field parsing
- * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} True if all tests pass, error message if any fail
  */
-function testSportSubCategoryField_(baseUnresolved) {
+function testSportSubCategoryField_() {
   try {
     const tests = [
       {
         description: 'sportSubCategory "Small Ball" found for Dodgeball',
         bColumnData: 'Tuesday\nSmall Ball\nSome text',
         sportName: 'Dodgeball',
-        expectedSportSubCategory: 'Small Ball',
-        expectedInUnresolved: false
+        expectedSportSubCategory: 'Small Ball'
       },
       {
         description: 'sportSubCategory "Big Ball" found for Dodgeball',
         bColumnData: 'Tuesday\n8.5 inch ball\nSome text',
         sportName: 'Dodgeball',
-        expectedSportSubCategory: 'Big Ball',
-        expectedInUnresolved: false
+        expectedSportSubCategory: 'Big Ball'
       },
       {
         description: 'sportSubCategory not extracted for non-Dodgeball sport',
         bColumnData: 'Tuesday\nSmall Ball\nSome text',
         sportName: 'Kickball',
-        expectedSportSubCategory: '',
-        expectedInUnresolved: true
+        expectedSportSubCategory: ''
       }
     ];
 
     for (const test of tests) {
-      // Create a copy of the base unresolved array for this test
-      const unresolved = [...baseUnresolved];
-      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
+      const result = parseColBLeagueBasicInfo_(test.bColumnData, test.sportName);
 
       const sportSubCategoryCorrect = result.sportSubCategory === test.expectedSportSubCategory;
-      const unresolvedCorrect = unresolved.includes('sportSubCategory') === test.expectedInUnresolved;
 
-      if (!sportSubCategoryCorrect || !unresolvedCorrect) {
-        return `${test.description} - Expected: sportSubCategory='${test.expectedSportSubCategory}', inUnresolved=${test.expectedInUnresolved}, Got: sportSubCategory='${result.sportSubCategory}', inUnresolved=${unresolved.includes('sportSubCategory')}`;
+      if (!sportSubCategoryCorrect ) {
+        return `${test.description} - Expected: sportSubCategory='${test.expectedSportSubCategory}', Got: sportSubCategory='${result.sportSubCategory}'}`;
       }
     }
 
@@ -236,10 +215,9 @@ function testSportSubCategoryField_(baseUnresolved) {
 
 /**
  * Test #4: socialOrAdvanced field parsing
- * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} True if all tests pass, error message if any fail
  */
-function testSocialOrAdvancedField_(baseUnresolved) {
+function testSocialOrAdvancedField_() {
   try {
     const tests = [
       {
@@ -247,34 +225,32 @@ function testSocialOrAdvancedField_(baseUnresolved) {
         bColumnData: 'Tuesday\nSocial League\nSome text',
         sportName: 'Kickball',
         expectedSocialOrAdvanced: 'Social League',
-        expectedInUnresolved: false
+
       },
       {
         description: 'socialOrAdvanced "Advanced" found and extracted correctly',
         bColumnData: 'Tuesday\nAdvanced Division\nSome text',
         sportName: 'Pickleball',
         expectedSocialOrAdvanced: 'Advanced Division',
-        expectedInUnresolved: false
+
       },
       {
         description: 'socialOrAdvanced not found, remains in unresolved',
         bColumnData: 'Tuesday\nNo keywords here\nSome text',
         sportName: 'Kickball',
         expectedSocialOrAdvanced: '',
-        expectedInUnresolved: true
       }
     ];
 
     for (const test of tests) {
-      // Create a copy of the base unresolved array for this test
-      const unresolved = [...baseUnresolved];
-      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
+
+
+      const result = parseColBLeagueBasicInfo_(test.bColumnData, test.sportName);
 
       const socialOrAdvancedCorrect = result.socialOrAdvanced === test.expectedSocialOrAdvanced;
-      const unresolvedCorrect = unresolved.includes('socialOrAdvanced') === test.expectedInUnresolved;
 
-      if (!socialOrAdvancedCorrect || !unresolvedCorrect) {
-        return `${test.description} - Expected: socialOrAdvanced='${test.expectedSocialOrAdvanced}', inUnresolved=${test.expectedInUnresolved}, Got: socialOrAdvanced='${result.socialOrAdvanced}', inUnresolved=${unresolved.includes('socialOrAdvanced')}`;
+      if (!socialOrAdvancedCorrect ) {
+        return `${test.description} - Expected: socialOrAdvanced='${test.expectedSocialOrAdvanced}', Got: socialOrAdvanced='${result.socialOrAdvanced}'}`;
       }
     }
 
@@ -286,52 +262,50 @@ function testSocialOrAdvancedField_(baseUnresolved) {
 
 /**
  * Test #5: types field parsing
- * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} True if all tests pass, error message if any fail
  */
-function testTypesField_(baseUnresolved) {
+function testTypesField_() {
   try {
     const tests = [
       {
         description: 'types "Randomized Teams" found and extracted correctly',
         bColumnData: 'Tuesday\nRandomized Teams\nSome text',
         sportName: 'Kickball',
-        expectedTypes: ['Randomized Teams'],
-        expectedInUnresolved: false
+        expectedTypes: ['Randomized Teams']
+
       },
       {
         description: 'types "Draft" found and extracted correctly',
         bColumnData: 'Tuesday\nDraft League\nSome text',
         sportName: 'Kickball',
-        expectedTypes: ['Draft'],
-        expectedInUnresolved: false
+        expectedTypes: ['Draft']
+
       },
       {
         description: 'types combination found and extracted correctly',
         bColumnData: 'Tuesday\nRandomized Teams\nBuddy sign-up available\nSome text',
         sportName: 'Kickball',
-        expectedTypes: ['Randomized Teams, Buddy Sign-up'],
-        expectedInUnresolved: false
+        expectedTypes: ['Randomized Teams, Buddy Sign-up']
+
       },
       {
         description: 'types not found, remains in unresolved',
         bColumnData: 'Tuesday\nNo type keywords\nSome text',
         sportName: 'Kickball',
-        expectedTypes: [],
-        expectedInUnresolved: true
+        expectedTypes: []
+
       }
     ];
 
     for (const test of tests) {
-      // Create a copy of the base unresolved array for this test
-      const unresolved = [...baseUnresolved];
-      const result = parseColBLeagueDetails_(test.bColumnData, unresolved, test.sportName);
+
+
+      const result = parseColBLeagueBasicInfo_(test.bColumnData, test.sportName);
 
       const typesCorrect = arraysEqual(result.types, test.expectedTypes);
-      const unresolvedCorrect = unresolved.includes('types') === test.expectedInUnresolved;
 
-      if (!typesCorrect || !unresolvedCorrect) {
-        return `${test.description} - Expected: types=${JSON.stringify(test.expectedTypes)}, inUnresolved=${test.expectedInUnresolved}, Got: types=${JSON.stringify(result.types)}, inUnresolved=${unresolved.includes('types')}`;
+      if (!typesCorrect ) {
+        return `${test.description} - Expected: types=${JSON.stringify(test.expectedTypes)}, Got: types=${JSON.stringify(result.types)}`;
       }
     }
 

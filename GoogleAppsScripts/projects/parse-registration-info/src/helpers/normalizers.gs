@@ -11,30 +11,6 @@
 /// <reference path="../config/constants.gs" />
 /// <reference path="textUtils.gs" />
 
-
-/**
- * Initialize unresolved tracking with all fields, then remove sport-specific irrelevant fields
- * @param {string} sportName - The identified sport name (e.g., "Pickleball")
- * @returns {Array<string>} List of fields to track for this specific sport
- */
-
-// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
-function initializeUnresolvedFields(sportName) {
-  // Start with all comprehensive fields except sportName (since we already know it)
-  const unresolved = comprehensiveProductCreateFields.filter(field => field !== 'sportName');
-
-  // Remove sport-specific irrelevant fields
-  if (sportName && irrelevantFieldsForSport[sportName]) {
-    const irrelevantFields = irrelevantFieldsForSport[sportName];
-    for (const field of irrelevantFields) {
-      const fieldIndex = unresolved.indexOf(field);
-      if (fieldIndex > -1) unresolved.splice(fieldIndex, 1);
-    }
-  }
-
-  return unresolved;
-}
-
 /**
  * Normalize sport name to canonical form
  */

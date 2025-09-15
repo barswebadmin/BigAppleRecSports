@@ -14,12 +14,16 @@
 
 // Import references for editor support
 /// <reference path="../config/constants.gs" />
-/// <reference path="../parsers/parseColBLeagueDetails.gs" />
+/// <reference path="../parsers/parseColBLeagueBasicInfo_.gs" />
 /// <reference path="./portedFromProductCreateSheet/createShopifyProduct.gs" />
-/// <reference path="./portedFromProductCreateSheet/shopifyProductCreation.gs" />
+/// <reference path="../../../../shopifyProductCreation.gs" />
 /// <reference path="../helpers/textUtils.gs" />
 /// <reference path="../validators/fieldValidation.gs" />
 /// <reference path="./instructions.gs" />
+
+// Configuration constants
+const ENVIRONMENT = 'dev'; // 'prod' or 'dev'
+const NGROK_URL = 'https://248e99d2c322.ngrok-free.app';
 
 /***** MENU *****/
 function onOpen() {
@@ -56,6 +60,8 @@ function  onEdit(e) {
       ui.ButtonSet.OK
     );
   }
+
+  // TODO: add warnings to force users to put dates in a consistent format
 }
 
 /***** ENTRY POINTS *****/
@@ -123,7 +129,7 @@ function  showCreateProductPrompt() {
         const bLines = bRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
         const dayRaw = (bLines[0] || '').trim();
         const sportNorm = capitalize(lastA, true);
-        const { division } = parseColBLeagueDetails_(bRaw, [], sportNorm);
+        const { division } = parseColBLeagueBasicInfo_(bRaw, [], sportNorm);
         const dayNorm = capitalize(dayRaw, true);
 
         const bOneLine = bRaw.replace(/\s*\n+\s*/g, ' / ');

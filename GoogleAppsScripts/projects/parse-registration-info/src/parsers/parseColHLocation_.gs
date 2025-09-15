@@ -14,16 +14,14 @@
  *
  * @param {string} hColumnData - The raw string content from column H.
  * @param {string} sportName - The sport name to get valid locations for.
- * @param {Array<string>} unresolved - The array of unresolved fields.
- * @returns {{location: string, updatedUnresolved6: Array<string>}} Parsed location and updated unresolved array.
+ * @returns {{location: string | null}} Parsed location or null
  */
-function parseColHLocation_(hColumnData, sportName, unresolved) {
-  const updatedUnresolved6 = [...unresolved];
+function parseColHLocation_(hColumnData, sportName) {
   let location = null;
 
   const inputStr = (hColumnData || '').trim();
   if (!inputStr) {
-    return { location, updatedUnresolved6 };
+    return { location };
   }
 
   // Get sport-specific locations from productFieldEnums
@@ -32,9 +30,9 @@ function parseColHLocation_(hColumnData, sportName, unresolved) {
     : [];
 
   if (validLocations.length === 0) {
-    // No valid locations for this sport - return as-is but don't remove from unresolved
+    // No valid locations for this sport - return null
     location = inputStr;
-    return { location, updatedUnresolved6 };
+    return { location };
   }
 
   // Convert input to lowercase for case-insensitive matching
@@ -97,17 +95,10 @@ function parseColHLocation_(hColumnData, sportName, unresolved) {
       location = enumLocation;
       found = true;
     }
-
-    if (found) {
-      // Successfully found location - remove from unresolved
-      const index = updatedUnresolved6.indexOf("location");
-      if (index > -1) updatedUnresolved6.splice(index, 1);
-      break;
-    }
   }
 
-  // If no match found, location remains null and "location" stays in unresolved
-  return { location, updatedUnresolved6 };
+  // If no match found, location remains null
+  return { location };
 }
 
 /**

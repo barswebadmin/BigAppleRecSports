@@ -39,8 +39,7 @@ loadGasFile('config/constants.gs');
 loadGasFile('helpers/textUtils.gs');
 loadGasFile('helpers/normalizers.gs');
 loadGasFile('parsers/dateParser.gs');
-loadGasFile('parsers/parseColBLeagueDetails_.gs');
-loadGasFile('parsers/notesParser.gs');
+loadGasFile('parsers/parseColBLeagueBasicInfo_.gs');
 loadGasFile('parsers/_rowParser.gs');
 loadGasFile('core/portedFromProductCreateSheet/createShopifyProduct.gs');
 
@@ -72,8 +71,8 @@ try {
   const productData = convertToProductCreationFormat_(parsed, 14);
 
   console.log('📊 Parsed Data:', {
-    sport: parsed.sport,
-    day: parsed.day,
+    sportName: parsed.sportName,
+    dayOfPlay: parsed.dayOfPlay,
     division: parsed.division,
     socialOrAdvanced: parsed.socialOrAdvanced,
     types: parsed.types,
@@ -83,8 +82,8 @@ try {
   });
 
   console.log('📋 Product Data Sample:', {
-    sport: productData.sport,
-    day: productData.day,
+    sportName: productData.sportName,
+    dayOfPlay: productData.dayOfPlay,
     division: productData.division,
     season: productData.season,
     year: productData.year,
@@ -136,8 +135,8 @@ try {
   const productData = convertToProductCreationFormat_(parsed, 8);
 
   console.log('📊 Parsed Data:', {
-    sport: parsed.sport,
-    day: parsed.day,
+    sportName: parsed.sportName,
+    dayOfPlay: parsed.dayOfPlay,
     division: parsed.division,
     openingPartyDate: parsed.openingPartyDate,
     rainDate: parsed.rainDate,
@@ -179,8 +178,8 @@ try {
   const productData = convertToProductCreationFormat_(parsed, 5);
 
   console.log('📊 Parsed Data:', {
-    sport: parsed.sport,
-    day: parsed.day,
+    sportName: parsed.sportName,
+    dayOfPlay: parsed.dayOfPlay,
     types: parsed.types,
     alternativeStartTime: parsed.alternativeStartTime,
     alternativeEndTime: parsed.alternativeEndTime,
@@ -227,9 +226,9 @@ try {
   const productData = convertToProductCreationFormat_(parsed, 14);
 
   console.log('📊 Parsed Data:', {
-    sport: parsed.sport,
+    sportName: parsed.sportName,
     sportSubCategory: parsed.sportSubCategory,
-    day: parsed.day,
+    dayOfPlay: parsed.dayOfPlay,
     newPlayerOrientationDateTime: parsed.newPlayerOrientationDateTime,
     offDatesFromNotes: parsed.offDatesFromNotes,
     totalInventory: parsed.totalInventory

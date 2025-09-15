@@ -87,8 +87,7 @@ function loadGASFunctions() {
   const gasFiles = [
     'config/constants.gs',
     'parsers/dateParser.gs',
-    'parsers/parseColBLeagueDetails_.gs',
-    'parsers/notesParser.gs',
+    'parsers/parseColBLeagueBasicInfo_.gs',
     'parsers/_rowParser.gs',
     'core/migration.gs',
     'helpers/textUtils.gs',
@@ -240,7 +239,7 @@ function testWriteValidationLogic() {
   runTest('Write validation detects data validation failures', () => {
     const writeAttempts = [
       { header: 'Type', newValue: 'Buddy Signup', objectKey: 'type' },
-      { header: 'Sport', newValue: 'Kickball', objectKey: 'sport' }
+      { header: 'Sport', newValue: 'Kickball', objectKey: 'sportName' }
     ];
     const actualWrittenValues = ['Kickball', 'Buddy Sign-up']; // deliberate mismatch
 
@@ -287,8 +286,8 @@ function testEndToEndParsing() {
     const unresolved = [];
     const parsed = parseSourceRowEnhanced_(sourceData, unresolved);
 
-    assertEquals(parsed.sport, 'Kickball', 'Sport should be parsed correctly');
-    assertEquals(parsed.day, 'Tuesday', 'Day should be parsed correctly');
+    assertEquals(parsed.sportName, 'Kickball', 'Sport should be parsed correctly');
+    assertEquals(parsed.dayOfPlay, 'Tuesday', 'Day should be parsed correctly');
     // assertTrue(parsed.flags && parsed.flags.buddy === true, 'Buddy flag should be parsed correctly');
     assertEquals(parsed.seasonStart, '2025-01-15', 'Season start should be parsed correctly');
     assertEquals(parsed.price, '45', 'Price should be parsed correctly');
@@ -386,10 +385,10 @@ function main() {
 
   // ---- Extra shims to satisfy comprehensive tests ----
 
-  // 1) parseFlags_: prefer your newer parseColBLeagueDetails_ if present
+  // 1) parseFlags_: prefer your newer parseColBLeagueBasicInfo_ if present
   if (typeof globalThis.parseFlags_ !== 'function') {
-    if (typeof globalThis.parseColBLeagueDetails_ === 'function') {
-      globalThis.parseFlags_ = (text) => globalThis.parseColBLeagueDetails_(text);
+    if (typeof globalThis.parseColBLeagueBasicInfo_ === 'function') {
+      globalThis.parseFlags_ = (text) => globalThis.parseColBLeagueBasicInfo_(text);
     } else {
       // Minimal fallback: only buddy flag (enough for your tests)
       globalThis.parseFlags_ = (text) => ({
@@ -438,7 +437,7 @@ function main() {
     };
   }
 
-  // --- Robust, string-only parseFlags_ (don't delegate to parseColBLeagueDetails_) ---
+  // --- Robust, string-only parseFlags_ (don't delegate to parseColBLeagueBasicInfo_) ---
   globalThis.parseFlags_ = (text) => {
     const s = String(text || '');
     return {

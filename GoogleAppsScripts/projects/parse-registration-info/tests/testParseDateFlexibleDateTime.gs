@@ -45,15 +45,6 @@ function testParseDateFlexibleDateTime_() {
     failedTests.push(`Test 3 FAILED: Various date formats - ${formatResult}`);
   }
 
-  // Test 4: Unresolved field tracking
-  totalTests++;
-  const unresolvedResult = testUnresolvedFieldTracking_();
-  if (unresolvedResult === true) {
-    passedTests++;
-  } else {
-    failedTests.push(`Test 4 FAILED: Unresolved field tracking - ${unresolvedResult}`);
-  }
-
   // Display results
   console.log(`\n📊 parseDateFlexibleDateTime_ Test Summary:`);
   console.log(`   Tests Run: ${totalTests}`);
@@ -95,8 +86,7 @@ function testEnhancedDateTimeParsing_() {
   ];
 
   for (const testCase of testCases) {
-    const unresolved = ['testField'];
-    const result = parseDateFlexibleDateTime_(testCase.input, null, unresolved, 'testField');
+    const result = parseDateFlexibleDateTime_(testCase.input, null, 'testField');
 
     if (!result || !(result instanceof Date)) {
       return `FAIL for "${testCase.description}": Expected Date object, got ${typeof result}`;
@@ -108,10 +98,6 @@ function testEnhancedDateTimeParsing_() {
       return `FAIL for "${testCase.description}": Expected ${testCase.expected.toISOString()}, got ${result.toISOString()}`;
     }
 
-    // Check that field was removed from unresolved
-    if (unresolved.includes('testField')) {
-      return `FAIL for "${testCase.description}": Field should be removed from unresolved when successfully parsed`;
-    }
   }
   return true;
 }
@@ -140,8 +126,7 @@ function testTimezoneConversion_() {
   ];
 
   for (const testCase of testCases) {
-    const unresolved = ['testField'];
-    const result = parseDateFlexibleDateTime_(testCase.input, null, unresolved, 'testField');
+    const result = parseDateFlexibleDateTime_(testCase.input, null, 'testField');
 
     if (!result || !(result instanceof Date)) {
       return `FAIL for "${testCase.description}": Expected Date object, got ${typeof result}`;
@@ -188,8 +173,7 @@ function testVariousDateFormats_() {
   ];
 
   for (const testCase of testCases) {
-    const unresolved = ['testField'];
-    const result = parseDateFlexibleDateTime_(testCase.input, null, unresolved, 'testField');
+    const result = parseDateFlexibleDateTime_(testCase.input, null, 'testField');
 
     // Should parse successfully and return a Date object
     if (!result || !(result instanceof Date)) {
@@ -201,54 +185,6 @@ function testVariousDateFormats_() {
       return `FAIL for "${testCase.description}": Expected September 2025, got ${result.getUTCFullYear()}-${result.getUTCMonth() + 1}`;
     }
 
-    // Field should be removed from unresolved
-    if (unresolved.includes('testField')) {
-      return `FAIL for "${testCase.description}": Field should be removed from unresolved when successfully parsed`;
-    }
   }
-  return true;
-}
-
-/**
- * Tests unresolved field tracking.
- * @returns {boolean|string} True if all tests pass, or an error message.
- */
-function testUnresolvedFieldTracking_() {
-  // Test valid date - field should be removed
-  const unresolved1 = ['testField', 'otherField'];
-  const validResult = parseDateFlexibleDateTime_("9/16/25 7PM", null, unresolved1, 'testField');
-
-  if (!validResult || !(validResult instanceof Date)) {
-    return `FAIL for valid date: Expected Date object, got ${typeof validResult}`;
-  }
-
-  if (unresolved1.includes('testField')) {
-    return `FAIL for valid date: testField should be removed from unresolved`;
-  }
-
-  if (!unresolved1.includes('otherField')) {
-    return `FAIL for valid date: otherField should remain in unresolved`;
-  }
-
-  // Test invalid date - field should remain
-  const unresolved2 = ['testField', 'otherField'];
-  const invalidResult = parseDateFlexibleDateTime_("not a date", null, unresolved2, 'testField');
-
-  if (invalidResult !== '') {
-    return `FAIL for invalid date: Expected empty string, got ${invalidResult}`;
-  }
-
-  if (!unresolved2.includes('testField')) {
-    return `FAIL for invalid date: testField should remain in unresolved`;
-  }
-
-  // Test without fieldName - unresolved should not be modified
-  const unresolved3 = ['testField', 'otherField'];
-  const noFieldResult = parseDateFlexibleDateTime_("9/16/25 7PM", null, unresolved3);
-
-  if (unresolved3.length !== 2 || !unresolved3.includes('testField')) {
-    return `FAIL for no fieldName: unresolved array should not be modified`;
-  }
-
   return true;
 }

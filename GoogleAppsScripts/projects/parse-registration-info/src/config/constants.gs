@@ -48,7 +48,7 @@ const comprehensiveProductCreateFields = [
 
 /***** SPORT-SPECIFIC IRRELEVANT FIELDS *****/
 // Fields that will never be present for specific sports
-// These should be removed from unresolved after sport is identified
+// These should be excluded from validation checks for the productCreateData
 const irrelevantFieldsForSport = {
   "Kickball": [
     "sportSubCategory",

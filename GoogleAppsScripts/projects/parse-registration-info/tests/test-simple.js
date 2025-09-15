@@ -62,8 +62,8 @@ if (typeof parseSourceRowEnhanced_ !== 'undefined') {
     const unresolved = [];
     const result = parseSourceRowEnhanced_(testData, unresolved);
     console.log('✅ Parse result:', {
-      sport: result.sport,
-      day: result.day,
+      sportName: result.sportName,
+      dayOfPlay: result.dayOfPlay,
       division: result.division,
       totalInventory: result.totalInventory
     });

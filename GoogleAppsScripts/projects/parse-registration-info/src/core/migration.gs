@@ -14,7 +14,3 @@
 /// <reference path="../validators/fieldValidation.gs" />
 /// <reference path="../helpers/textUtils.gs" />
 /// <reference path="../parsers/_rowParser.gs" />
-
-// migrateRowToTarget_ function removed - only creating products from this sheet, not migrating them
-// Helper functions like parseSourceRowEnhanced_, buildFuzzyHeaderIndex_, checkRequiredFields_,
-// getTargetIndexMap_, and makeKey_ are preserved in their respective files for potential use in product creation

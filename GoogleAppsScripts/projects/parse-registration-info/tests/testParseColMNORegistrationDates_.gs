@@ -11,7 +11,7 @@
 // Import references for editor support
 /// <reference path="../src/config/constants.gs" />
 /// <reference path="../src/helpers/normalizers.gs" />
-/// <reference path="../src/helpers/DateParsers.gs" />
+/// <reference path="../src/helpers/dateParsers.gs" />
 /// <reference path="../src/parsers/parseColMNORegistrationDates_.gs" />
 
 /**
@@ -24,11 +24,9 @@ function testParseColMNORegistrationDates_() {
   let totalTests = 0;
   const failedTests = [];
 
-  const baseUnresolved = ['earlyRegistrationStartDateTime', 'vetRegistrationStartDateTime', 'openRegistrationStartDateTime', 'price'];
-
   // Test 1: All falsy inputs
   totalTests++;
-  const falsyResult = testFalsyInputs_(baseUnresolved);
+  const falsyResult = testFalsyInputs_();
   if (falsyResult === true) {
     passedTests++;
   } else {
@@ -37,7 +35,7 @@ function testParseColMNORegistrationDates_() {
 
   // Test 2: Registration prefix removal
   totalTests++;
-  const prefixResult = testRegistrationPrefixRemoval_(baseUnresolved);
+  const prefixResult = testRegistrationPrefixRemoval_();
   if (prefixResult === true) {
     passedTests++;
   } else {
@@ -46,7 +44,7 @@ function testParseColMNORegistrationDates_() {
 
   // Test 3: Through/until suffix removal
   totalTests++;
-  const suffixResult = testThroughUntilSuffixRemoval_(baseUnresolved);
+  const suffixResult = testThroughUntilSuffixRemoval_();
   if (suffixResult === true) {
     passedTests++;
   } else {
@@ -55,20 +53,11 @@ function testParseColMNORegistrationDates_() {
 
   // Test 4: Veteran spots calculation
   totalTests++;
-  const vetSpotsResult = testVetSpotsCalculation_(baseUnresolved);
+  const vetSpotsResult = testVetSpotsCalculation_();
   if (vetSpotsResult === true) {
     passedTests++;
   } else {
     failedTests.push(`Test 4 FAILED: Veteran spots calculation - ${vetSpotsResult}`);
-  }
-
-  // Test 5: Unresolved field tracking
-  totalTests++;
-  const unresolvedResult = testUnresolvedFieldTracking_(baseUnresolved);
-  if (unresolvedResult === true) {
-    passedTests++;
-  } else {
-    failedTests.push(`Test 5 FAILED: Unresolved field tracking - ${unresolvedResult}`);
   }
 
   // Display results
@@ -84,11 +73,10 @@ function testParseColMNORegistrationDates_() {
 }
 
 /**
- * Tests falsy inputs return null values and don't remove from unresolved.
- * @param {Array<string>} baseUnresolved - The base unresolved array.
+ * Tests falsy inputs return null values.
  * @returns {boolean|string} True if all tests pass, or an error message.
  */
-function testFalsyInputs_(baseUnresolved) {
+function testFalsyInputs_() {
   const testCases = [
     { m: null, n: null, o: null, description: "All null" },
     { m: '', n: '', o: '', description: "All empty strings" },
@@ -97,8 +85,7 @@ function testFalsyInputs_(baseUnresolved) {
   ];
 
   for (const testCase of testCases) {
-    const unresolved = [...baseUnresolved];
-    const result = parseColMNORegistrationDates_(testCase.m, testCase.n, testCase.o, 100, unresolved);
+    const result = parseColMNORegistrationDates_(testCase.m, testCase.n, testCase.o, 100);
 
     // For falsy inputs, corresponding datetime should be null
     if ((!testCase.m || !testCase.m.trim()) && result.earlyRegistrationStartDateTime !== null) {
@@ -110,27 +97,15 @@ function testFalsyInputs_(baseUnresolved) {
     if ((!testCase.o || !testCase.o.trim()) && result.openRegistrationStartDateTime !== null) {
       return `FAIL for "${testCase.description}": openRegistrationStartDateTime should be null for falsy O input`;
     }
-
-    // Fields should remain in unresolved for null/falsy inputs
-    if ((!testCase.m || !testCase.m.trim()) && !result.updatedUnresolved7.includes('earlyRegistrationStartDateTime')) {
-      return `FAIL for "${testCase.description}": earlyRegistrationStartDateTime should remain in unresolved for falsy M`;
-    }
-    if ((!testCase.n || !testCase.n.trim()) && !result.updatedUnresolved7.includes('vetRegistrationStartDateTime')) {
-      return `FAIL for "${testCase.description}": vetRegistrationStartDateTime should remain in unresolved for falsy N`;
-    }
-    if ((!testCase.o || !testCase.o.trim()) && !result.updatedUnresolved7.includes('openRegistrationStartDateTime')) {
-      return `FAIL for "${testCase.description}": openRegistrationStartDateTime should remain in unresolved for falsy O`;
-    }
   }
   return true;
 }
 
 /**
  * Tests registration prefix removal.
- * @param {Array<string>} baseUnresolved - The base unresolved array.
  * @returns {boolean|string} True if all tests pass, or an error message.
  */
-function testRegistrationPrefixRemoval_(baseUnresolved) {
+function testRegistrationPrefixRemoval_() {
   const testCases = [
     { input: "Early Registration Sept 16th 7PM", expected: "Sept 16th 7PM", description: "Early Registration prefix" },
     { input: "Veteran registration Wed Sept 3rd 6pm", expected: "Wed Sept 3rd 6pm", description: "Veteran registration prefix" },
@@ -149,10 +124,9 @@ function testRegistrationPrefixRemoval_(baseUnresolved) {
 
 /**
  * Tests through/until suffix removal.
- * @param {Array<string>} baseUnresolved - The base unresolved array.
  * @returns {boolean|string} True if all tests pass, or an error message.
  */
-function testThroughUntilSuffixRemoval_(baseUnresolved) {
+function testThroughUntilSuffixRemoval_() {
   const testCases = [
     { input: "Sept 16th 7PM through Oct 1st", expected: "Sept 16th 7PM", description: "through suffix" },
     { input: "Wed Sept 3rd 6pm until further notice", expected: "Wed Sept 3rd 6pm", description: "until suffix" },
@@ -172,10 +146,9 @@ function testThroughUntilSuffixRemoval_(baseUnresolved) {
 
 /**
  * Tests veteran spots calculation.
- * @param {Array<string>} baseUnresolved - The base unresolved array.
  * @returns {boolean|string} True if all tests pass, or an error message.
  */
-function testVetSpotsCalculation_(baseUnresolved) {
+function testVetSpotsCalculation_() {
   const testCases = [
     { input: "Veteran registration: 20 spots available", totalInventory: 100, expected: 20, description: "20 spots" },
     { input: "Vet reg: 15 through Oct 1st", totalInventory: 100, expected: 15, description: "15 through" },
@@ -188,49 +161,11 @@ function testVetSpotsCalculation_(baseUnresolved) {
   ];
 
   for (const testCase of testCases) {
-    const unresolved = [...baseUnresolved];
-    const result = parseColMNORegistrationDates_('', testCase.input, '', testCase.totalInventory, unresolved);
+    const result = parseColMNORegistrationDates_('', testCase.input, '', testCase.totalInventory);
 
     if (result.numberVetSpotsToReleaseAtGoLive !== testCase.expected) {
       return `FAIL for "${testCase.description}": Expected ${testCase.expected}, got ${result.numberVetSpotsToReleaseAtGoLive}`;
     }
   }
-  return true;
-}
-
-/**
- * Tests unresolved field tracking.
- * @param {Array<string>} baseUnresolved - The base unresolved array.
- * @returns {boolean|string} True if all tests pass, or an error message.
- */
-function testUnresolvedFieldTracking_(baseUnresolved) {
-  // Test with valid dates - fields should be removed from unresolved
-  const unresolved1 = [...baseUnresolved];
-  const validResult = parseColMNORegistrationDates_(
-    "Early Registration 9/16/25 7PM",
-    "Veteran registration 9/3/25 6PM",
-    "Open registration 8/29/25 7PM",
-    100,
-    unresolved1
-  );
-
-  // All registration datetime fields should be removed from unresolved if successfully parsed
-  const expectedRemaining1 = baseUnresolved.filter(field =>
-    !['earlyRegistrationStartDateTime', 'vetRegistrationStartDateTime', 'openRegistrationStartDateTime'].includes(field)
-  );
-
-  if (JSON.stringify(validResult.updatedUnresolved7.sort()) !== JSON.stringify(expectedRemaining1.sort())) {
-    return `FAIL for valid inputs: Unresolved tracking mismatch. Expected [${expectedRemaining1.join(', ')}], got [${validResult.updatedUnresolved7.join(', ')}]`;
-  }
-
-  // Test with invalid dates - fields should remain in unresolved
-  const unresolved2 = [...baseUnresolved];
-  const invalidResult = parseColMNORegistrationDates_('invalid', 'also invalid', 'bad date', 100, unresolved2);
-
-  // All registration datetime fields should remain in unresolved if parsing failed
-  if (JSON.stringify(invalidResult.updatedUnresolved7.sort()) !== JSON.stringify(baseUnresolved.sort())) {
-    return `FAIL for invalid inputs: Unresolved tracking mismatch. Expected [${baseUnresolved.join(', ')}], got [${invalidResult.updatedUnresolved7.join(', ')}]`;
-  }
-
   return true;
 }

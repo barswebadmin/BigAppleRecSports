@@ -17,11 +17,9 @@
  * Parse season start and end dates with flexible format support
  * @param {string} startDateStr - Raw start date string from column D
  * @param {string} endDateStr - Raw end date string from column E
- * @param {Array<string>} unresolved - Array to track unresolved fields
- * @returns {{season: string, year: number, seasonStartDate: Date, seasonEndDate: Date, updatedUnresolved: Array<string>}} Parsed season information
+ * @returns {{season: string, year: number, seasonStartDate: Date, seasonEndDate: Date}} Parsed season information
  */
-function parseSeasonDates_(startDateStr, endDateStr, unresolved) {
-  const updatedUnresolved = [...unresolved];
+function parseColDESeasonDates_(startDateStr, endDateStr) {
   let season = null;
   let year = null;
   let seasonStartDate = null;
@@ -30,19 +28,9 @@ function parseSeasonDates_(startDateStr, endDateStr, unresolved) {
   try {
     // Parse start date using dateParsers with UTC support
     seasonStartDate = parseFlexibleDate_(startDateStr?.trim(), true);
-    if (seasonStartDate) {
-      // Remove seasonStartDate from unresolved
-      const startIndex = updatedUnresolved.indexOf("seasonStartDate");
-      if (startIndex > -1) updatedUnresolved.splice(startIndex, 1);
-    }
 
     // Parse end date using dateParsers with UTC support
     seasonEndDate = parseFlexibleDate_(endDateStr?.trim(), true);
-    if (seasonEndDate) {
-      // Remove seasonEndDate from unresolved
-      const endIndex = updatedUnresolved.indexOf("seasonEndDate");
-      if (endIndex > -1) updatedUnresolved.splice(endIndex, 1);
-    }
 
     // Derive season and year from the start date
     if (seasonStartDate) {
@@ -50,15 +38,6 @@ function parseSeasonDates_(startDateStr, endDateStr, unresolved) {
       season = derivedInfo.season;
       year = derivedInfo.year;
 
-      if (season) {
-        const seasonIndex = updatedUnresolved.indexOf("season");
-        if (seasonIndex > -1) updatedUnresolved.splice(seasonIndex, 1);
-      }
-
-      if (year) {
-        const yearIndex = updatedUnresolved.indexOf("year");
-        if (yearIndex > -1) updatedUnresolved.splice(yearIndex, 1);
-      }
     }
   } catch (error) {
     console.warn('Error parsing season dates:', error);
@@ -68,7 +47,6 @@ function parseSeasonDates_(startDateStr, endDateStr, unresolved) {
     season,
     year,
     seasonStartDate,
-    seasonEndDate,
-    updatedUnresolved
+    seasonEndDate
   };
 }

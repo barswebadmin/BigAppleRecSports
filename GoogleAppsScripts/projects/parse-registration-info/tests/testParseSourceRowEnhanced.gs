@@ -95,7 +95,7 @@ Only holding 40 vet spots`,                         // N: Vet Registration
 
     // Call the actual parseSourceRowEnhanced_ function
     Logger.log('🚀 Calling parseSourceRowEnhanced_...');
-    const {parsed: actualResult, unresolved} = parseSourceRowEnhanced_(testRowData);
+    const {parsed: actualResult} = parseSourceRowEnhanced_(testRowData);
 
     Logger.log('📤 Actual result:');
     Logger.log(JSON.stringify(actualResult, null, 2));
@@ -204,16 +204,6 @@ Only holding 40 vet spots`,                         // N: Vet Registration
     } else {
       hasInventoryErrors = true;
       Logger.log(`    ❌ inventoryInfo structure missing or incomplete`);
-    }
-
-    // Unresolved items logging
-    if (unresolved.length > 0) {
-      Logger.log('⚠️ Unresolved items during parsing:');
-      unresolved.forEach((item, index) => {
-        Logger.log(`  ${index + 1}. ${item}`);
-      });
-    } else {
-      Logger.log('✅ No unresolved items during parsing');
     }
 
     // Overall test result

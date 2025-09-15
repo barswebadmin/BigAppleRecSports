@@ -16,12 +16,10 @@
  * @param {string} nColumnData - The raw string content from column N (veteran registration).
  * @param {string} oColumnData - The raw string content from column O (open registration).
  * @param {number} totalInventory - Total inventory count for calculating veteran spots.
- * @param {Array<string>} unresolved - The array of unresolved fields.
- * @returns {{earlyRegistrationStartDateTime: Date|null, vetRegistrationStartDateTime: Date|null, openRegistrationStartDateTime: Date|null, numberVetSpotsToReleaseAtGoLive: number, updatedUnresolved7: Array<string>}}
- *   Parsed registration dates and updated unresolved array.
+ * @returns {{ earlyRegistrationStartDateTime: Date|null, vetRegistrationStartDateTime: Date|null, openRegistrationStartDateTime: Date|null, numberVetSpotsToReleaseAtGoLive: number }}
+ *   Parsed registration dates, if found.
  */
-function parseColMNORegistrationDates_(mColumnData, nColumnData, oColumnData, totalInventory, unresolved) {
-  const updatedUnresolved7 = [...unresolved];
+function parseColMNORegistrationDates_(mColumnData, nColumnData, oColumnData, totalInventory) {
   let earlyRegistrationStartDateTime = null;
   let vetRegistrationStartDateTime = null;
   let openRegistrationStartDateTime = null;
@@ -30,19 +28,19 @@ function parseColMNORegistrationDates_(mColumnData, nColumnData, oColumnData, to
   // Parse early registration (M)
   if (mColumnData && typeof mColumnData === 'string' && mColumnData.trim()) {
     const cleanedM = cleanRegistrationString_(mColumnData);
-    earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(cleanedM, null, updatedUnresolved7, "earlyRegistrationStartDateTime");
+    earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(cleanedM, null, "earlyRegistrationStartDateTime");
   }
 
   // Parse veteran registration (N)
   if (nColumnData && typeof nColumnData === 'string' && nColumnData.trim()) {
     const cleanedN = cleanRegistrationString_(nColumnData);
-    vetRegistrationStartDateTime = parseDateFlexibleDateTime_(cleanedN, null, updatedUnresolved7, "vetRegistrationStartDateTime");
+    vetRegistrationStartDateTime = parseDateFlexibleDateTime_(cleanedN, null, "vetRegistrationStartDateTime");
   }
 
   // Parse open registration (O)
   if (oColumnData && typeof oColumnData === 'string' && oColumnData.trim()) {
     const cleanedO = cleanRegistrationString_(oColumnData);
-    openRegistrationStartDateTime = parseDateFlexibleDateTime_(cleanedO, null, updatedUnresolved7, "openRegistrationStartDateTime");
+    openRegistrationStartDateTime = parseDateFlexibleDateTime_(cleanedO, null, "openRegistrationStartDateTime");
   }
 
   // Try to calculate numberVetSpotsToReleaseAtGoLive from the veteran registration string
@@ -57,8 +55,7 @@ function parseColMNORegistrationDates_(mColumnData, nColumnData, oColumnData, to
     earlyRegistrationStartDateTime,
     vetRegistrationStartDateTime,
     openRegistrationStartDateTime,
-    numberVetSpotsToReleaseAtGoLive,
-    updatedUnresolved7
+    numberVetSpotsToReleaseAtGoLive
   };
 }
 
@@ -107,7 +104,7 @@ function extractVetSpots_(rawString) {
       // Extract number from this line
       const numberMatch = line.match(/(\d+)/);
       if (numberMatch) {
-        return parseInt(numberMatch[1]);
+        return Number.parseInt(numberMatch[1]);
       }
     }
   }

@@ -276,14 +276,14 @@ dev:
 		osascript -e 'tell application "Cursor" to activate' \
 			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
 			-e 'delay 1' \
-			-e 'tell application "System Events" to keystroke "cd backend && make tunnel"' \
+			-e 'tell application "System Events" to keystroke "make tunnel"' \
 			-e 'tell application "System Events" to key code 36' & \
 	elif command -v code >/dev/null 2>&1 && pgrep -x "Code" >/dev/null 2>&1; then \
 		echo "📱 Detected VS Code - opening system terminal..."; \
-		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)/backend\" && make tunnel"' & \
+		osascript -e 'tell application "Terminal" to do script "make tunnel"' & \
 	else \
 		echo "🖥️  Opening system terminal..."; \
-		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)/backend\" && make tunnel"' & \
+		osascript -e 'tell application "Terminal" to do script "make tunnel"' & \
 	fi
 	@sleep 3
 	@echo "✅ Starting server now (tunnel will start in new terminal)..."

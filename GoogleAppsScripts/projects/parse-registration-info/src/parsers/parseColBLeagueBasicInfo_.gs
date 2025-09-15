@@ -10,23 +10,18 @@
 /**
  * Parse B column data to extract day and flags
  * @param {string} bColumnData - Raw B column data containing day and flags
- * @param {Array<string>} unresolved - Array to collect parsing issues
- * @returns {{day: string, division: string, sportSubCategory: string, socialOrAdvanced: string, types: Array<string>}} Parsed B column data
+ * @param {string} sportName - Sport name for conditional logic
+ * @returns {{dayOfPlay: string, division: string, sportSubCategory: string, socialOrAdvanced: string, types: Array<string>}} Parsed B column data
  */
 
 // biome-ignore lint/correctness/noUnusedVariables: <it is called in the flow from menu item click>
-function parseColBLeagueDetails_(bColumnData, unresolved, sportName) {
+function parseColBLeagueBasicInfo_(bColumnData, sportName) {
   // Split B column into lines
   const bLines = splitLines_(bColumnData);
 
   // Extract day from first line
   const dayRaw = bLines[0] || '';
   const dayOfPlay = normalizeDay_(dayRaw);
-
-  if (dayOfPlay && unresolved) {
-    const index = unresolved.indexOf("dayOfPlay");
-    if (index > -1) unresolved.splice(index, 1);
-  }
 
   // ---------- Division ----------
   let division = '';
@@ -46,11 +41,9 @@ function parseColBLeagueDetails_(bColumnData, unresolved, sportName) {
     }
   }
 
-  // If division found, remove element from bLines and field from unresolved
+  // If division found, remove element from bLines
   if (division && divisionElementIndex !== -1) {
     bLines.splice(divisionElementIndex, 1);
-    const unresolvedIndex = unresolved.indexOf("division");
-    if (unresolvedIndex > -1) unresolved.splice(unresolvedIndex, 1);
   }
 
   // ---------- Social or Advanced ----------
@@ -109,8 +102,6 @@ function parseColBLeagueDetails_(bColumnData, unresolved, sportName) {
     if (sportName !== "Dodgeball") {
       bLines.splice(socialAdvancedElementIndex, 1);
     }
-    const unresolvedIndex = unresolved.indexOf("socialOrAdvanced");
-    if (unresolvedIndex > -1) unresolved.splice(unresolvedIndex, 1);
   }
 
   // ---------- Sport Sub-Category (Dodgeball only) ----------
@@ -140,8 +131,6 @@ function parseColBLeagueDetails_(bColumnData, unresolved, sportName) {
     // If sportSubCategory found, remove element from bLines and field from unresolved
     if (sportSubCategory && sportSubCategoryElementIndex !== -1) {
       bLines.splice(sportSubCategoryElementIndex, 1);
-      const unresolvedIndex = unresolved.indexOf("sportSubCategory");
-      if (unresolvedIndex > -1) unresolved.splice(unresolvedIndex, 1);
     }
   }
 
@@ -195,11 +184,6 @@ function parseColBLeagueDetails_(bColumnData, unresolved, sportName) {
     }
   }
 
-  // Remove types from unresolved if any types were found
-  if (types.length > 0 && unresolved) {
-    const typesIndex = unresolved.indexOf("types");
-    if (typesIndex > -1) unresolved.splice(typesIndex, 1);
-  }
 
 
   return {
@@ -207,7 +191,6 @@ function parseColBLeagueDetails_(bColumnData, unresolved, sportName) {
     division,
     sportSubCategory,
     socialOrAdvanced,
-    types,
-    updatedUnresolved1: unresolved
+    types
   };
 }

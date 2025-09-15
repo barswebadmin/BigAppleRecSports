@@ -152,7 +152,6 @@ try {
     'parseColBLeagueDetails.gs',
     'parseRowC.gs',
     'parseSeasonDates.gs',
-    'notesParser.gs',
     '_rowParser.gs'  // Main parser last
   ];
 
