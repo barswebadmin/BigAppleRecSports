@@ -365,7 +365,7 @@ def schedule_product_updates(
             )
 
             add_remaining_inventory_request = {
-                "actionType": "create-initial-inventory-addition-and-title-change",
+                "actionType": "add-inventory-to-live-product",
                 "scheduleName": f"auto-add-remaining-inventory-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}",
                 "groupName": "add-remaining-inventory-to-live-product",
                 "productUrl": product_url,
@@ -404,6 +404,7 @@ def schedule_product_updates(
                 "day": basic_details.dayOfPlay,
                 "division": basic_details.division,
                 "productGid": product_gid,
+                "productUrl": product_url,
                 "openVariantGid": open_gid,
                 "waitlistVariantGid": waitlist_gid,
                 "price": float(inventory_info.price),
