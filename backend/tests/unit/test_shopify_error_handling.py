@@ -32,110 +32,124 @@ class TestShopifyErrorHandling:
         self.test_email = "test@example.com"
 
     def test_shopify_service_handles_401_invalid_token(self):
-        """Test ShopifyService properly handles 401 authentication errors"""
-        shopify_service = ShopifyService()
+        """Test ShopifyService properly handles authentication errors"""
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
 
-        # Mock 401 response with Shopify error format
-        mock_response = Mock()
-        mock_response.status_code = 401
-        mock_response.text = '{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"}'
-        mock_response.json.return_value = {
-            "errors": "[API] Invalid API key or access token (unrecognized login or wrong password)"
-        }
+            # Mock Shopify response - Shopify returns 200 even for auth errors
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.text = '{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"}'
+            mock_response.json.return_value = {
+                "errors": "[API] Invalid API key or access token (unrecognized login or wrong password)"
+            }
 
-        with patch("requests.post") as mock_post:
-            mock_post.return_value = mock_response
+            with patch("requests.post") as mock_post:
+                mock_post.return_value = mock_response
 
-            result = shopify_service._make_shopify_request({"query": "test"})
+                result = shopify_service._make_shopify_request({"query": "test"})
 
-            assert result is not None
-            assert result["error"] == "authentication_error"
-            assert result["status_code"] == 401
-            assert "[API] Invalid API key" in result["shopify_errors"]
+                assert result is not None
+                assert result["error"] == "authentication_error"
+                assert result["status_code"] == 200
+                assert "[API] Invalid API key" in result["shopify_errors"]
 
     def test_shopify_service_handles_404_invalid_store(self):
         """Test ShopifyService properly handles 404 store not found errors"""
-        shopify_service = ShopifyService()
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
 
-        # Mock 404 response with Shopify error format
-        mock_response = Mock()
-        mock_response.status_code = 404
-        mock_response.text = '{"errors":"Not Found"}'
-        mock_response.json.return_value = {"errors": "Not Found"}
+            # Mock 404 response with Shopify error format
+            mock_response = Mock()
+            mock_response.status_code = 404
+            mock_response.text = '{"errors":"Not Found"}'
+            mock_response.json.return_value = {"errors": "Not Found"}
 
-        with patch("requests.post") as mock_post:
-            mock_post.return_value = mock_response
+            with patch("requests.post") as mock_post:
+                mock_post.return_value = mock_response
 
-            result = shopify_service._make_shopify_request({"query": "test"})
+                result = shopify_service._make_shopify_request({"query": "test"})
 
-            assert result is not None
-            assert result["error"] == "store_not_found"
-            assert result["status_code"] == 404
-            assert result["shopify_errors"] == "Not Found"
+                assert result is not None
+                assert result["error"] == "store_not_found"
+                assert result["status_code"] == 404
+                assert result["shopify_errors"] == "Not Found"
 
     def test_shopify_service_handles_500_server_error(self):
         """Test ShopifyService properly handles 5xx server errors"""
-        shopify_service = ShopifyService()
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
 
-        # Mock 500 response
-        mock_response = Mock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal Server Error"
+            # Mock 500 response
+            mock_response = Mock()
+            mock_response.status_code = 500
+            mock_response.text = "Internal Server Error"
 
-        with patch("requests.post") as mock_post:
-            mock_post.return_value = mock_response
+            with patch("requests.post") as mock_post:
+                mock_post.return_value = mock_response
 
-            result = shopify_service._make_shopify_request({"query": "test"})
+                result = shopify_service._make_shopify_request({"query": "test"})
 
-            assert result is not None
-            assert result["error"] == "server_error"
-            assert result["status_code"] == 500
-            assert "Internal Server Error" in result["message"]
+                assert result is not None
+                assert result["error"] == "server_error"
+                assert result["status_code"] == 500
+                assert "Internal Server Error" in result["message"]
 
     def test_shopify_service_handles_connection_error(self):
         """Test ShopifyService properly handles network connection errors"""
-        shopify_service = ShopifyService()
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
 
-        with patch("requests.post") as mock_post:
-            mock_post.side_effect = requests.exceptions.ConnectionError("Network error")
+            with patch("requests.post") as mock_post:
+                mock_post.side_effect = requests.exceptions.ConnectionError(
+                    "Network error"
+                )
 
-            result = shopify_service._make_shopify_request({"query": "test"})
+                result = shopify_service._make_shopify_request({"query": "test"})
 
-            assert result is None  # Connection errors return None
+                assert result is None  # Connection errors return None
 
     def test_shopify_service_handles_timeout_error(self):
         """Test ShopifyService properly handles timeout errors"""
-        shopify_service = ShopifyService()
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
 
-        with patch("requests.post") as mock_post:
-            mock_post.side_effect = requests.exceptions.Timeout("Request timeout")
+            with patch("requests.post") as mock_post:
+                mock_post.side_effect = requests.exceptions.Timeout("Request timeout")
 
-            result = shopify_service._make_shopify_request({"query": "test"})
+                result = shopify_service._make_shopify_request({"query": "test"})
 
-            assert result is None  # Timeout errors return None
+                assert result is None  # Timeout errors return None
 
     def test_shopify_service_ssl_fallback_with_401_error(self):
         """Test SSL fallback also handles status code errors correctly"""
-        shopify_service = ShopifyService()
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
 
-        # Mock SSL error on first call, 401 error on fallback
-        mock_response = Mock()
-        mock_response.status_code = 401
-        mock_response.text = '{"errors":"[API] Invalid API key"}'
-        mock_response.json.return_value = {"errors": "[API] Invalid API key"}
+            # Mock SSL error on first call, 401 error on fallback
+            mock_response = Mock()
+            mock_response.status_code = 401
+            mock_response.text = '{"errors":"[API] Invalid API key"}'
+            mock_response.json.return_value = {"errors": "[API] Invalid API key"}
 
-        with patch("requests.post") as mock_post:
-            mock_post.side_effect = [
-                requests.exceptions.SSLError("SSL error"),
-                mock_response,
-            ]
+            with patch("requests.post") as mock_post:
+                mock_post.side_effect = [
+                    requests.exceptions.SSLError("SSL error"),
+                    mock_response,
+                ]
 
-            result = shopify_service._make_shopify_request({"query": "test"})
+                result = shopify_service._make_shopify_request({"query": "test"})
 
-            assert result is not None
-            assert result["error"] == "authentication_error"
-            assert result["status_code"] == 401
-            assert mock_post.call_count == 2
+                assert result is not None
+                assert result["error"] == "authentication_error"
+                assert result["status_code"] == 401
+                assert mock_post.call_count == 2
 
     def test_orders_service_handles_authentication_error(self):
         """Test OrdersService properly processes authentication errors from Shopify"""
@@ -452,44 +466,48 @@ class TestShopifyErrorExtractionEdgeCases:
 
     def test_shopify_service_handles_non_json_error_response(self):
         """Test ShopifyService handles non-JSON error responses"""
-        shopify_service = ShopifyService()
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
 
-        # Mock 401 response with plain text (not JSON)
-        mock_response = Mock()
-        mock_response.status_code = 401
-        mock_response.text = "Unauthorized"
-        mock_response.json.side_effect = ValueError("Not JSON")
+            # Mock 401 response with plain text (not JSON)
+            mock_response = Mock()
+            mock_response.status_code = 401
+            mock_response.text = "Unauthorized"
+            mock_response.json.side_effect = ValueError("Not JSON")
 
-        with patch("requests.post") as mock_post:
-            mock_post.return_value = mock_response
+            with patch("requests.post") as mock_post:
+                mock_post.return_value = mock_response
 
-            result = shopify_service._make_shopify_request({"query": "test"})
+                result = shopify_service._make_shopify_request({"query": "test"})
 
-            assert result is not None
-            assert result["error"] == "authentication_error"
-            assert result["status_code"] == 401
-            assert result["shopify_errors"] == "Unauthorized"  # Falls back to text
+                assert result is not None
+                assert result["error"] == "authentication_error"
+                assert result["status_code"] == 401
+                assert result["shopify_errors"] == "Unauthorized"  # Falls back to text
 
     def test_shopify_service_handles_json_without_errors_field(self):
         """Test ShopifyService handles JSON response without 'errors' field"""
-        shopify_service = ShopifyService()
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
 
-        # Mock 404 response with JSON but no 'errors' field
-        mock_response = Mock()
-        mock_response.status_code = 404
-        mock_response.text = '{"message":"Not Found"}'
-        mock_response.json.return_value = {"message": "Not Found"}
+            # Mock 404 response with JSON but no 'errors' field
+            mock_response = Mock()
+            mock_response.status_code = 404
+            mock_response.text = '{"message":"Not Found"}'
+            mock_response.json.return_value = {"message": "Not Found"}
 
-        with patch("requests.post") as mock_post:
-            mock_post.return_value = mock_response
+            with patch("requests.post") as mock_post:
+                mock_post.return_value = mock_response
 
-            result = shopify_service._make_shopify_request({"query": "test"})
+                result = shopify_service._make_shopify_request({"query": "test"})
 
-            assert result is not None
-            assert result["error"] == "store_not_found"
-            assert result["status_code"] == 404
-            # Should fall back to response.text when 'errors' field is missing
-            assert result["shopify_errors"] == '{"message":"Not Found"}'
+                assert result is not None
+                assert result["error"] == "store_not_found"
+                assert result["status_code"] == 404
+                # Should fall back to response.text when 'errors' field is missing
+                assert result["shopify_errors"] == '{"message":"Not Found"}'
 
 
 if __name__ == "__main__":
