@@ -44,10 +44,10 @@ class ProductCreationRequestValidationError(Exception):
 
     def get_errors(self) -> List[str]:
         """
-        Get list of error messages for backward compatibility
+        Get list of formatted error messages for API responses
 
         Returns:
-            List of formatted error messages
+            List of formatted error messages in "field_name: message" format
         """
         return [
             f"{'.'.join(str(loc) for loc in error.get('loc', []))}: {error.get('msg', 'Validation failed')}"
