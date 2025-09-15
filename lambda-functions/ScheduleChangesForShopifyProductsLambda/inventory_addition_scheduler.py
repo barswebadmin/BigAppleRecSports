@@ -25,12 +25,13 @@ def create_initial_inventory_addition_and_title_change(
         "productUrl": "https://09fe59-3.myshopify.com/admin/products/123456789",
         "productTitle": "New Product Title",
         "variantGid": "gid://shopify/ProductVariant/123456789",
-        "inventoryToAdd": 180,
         "newDatetime": "2024-01-01T10:00:00",
         "note": "...",
         "totalInventory": 64,
         "numberVetSpotsToReleaseAtGoLive": 40
     }
+
+    Note: inventoryToAdd is calculated from numberVetSpotsToReleaseAtGoLive
     """
     print("🚀 Creating scheduled inventory addition and title change")
     print(f"🔍 Event data: {json.dumps(event_body, indent=2)}")
@@ -47,11 +48,13 @@ def create_initial_inventory_addition_and_title_change(
     product_url = event_body.get("productUrl")
     product_title = event_body.get("productTitle")
     variant_gid = event_body.get("variantGid")
-    inventory_to_add = event_body.get("inventoryToAdd")
 
-    # Extract optional inventory fields
+    # Extract inventory fields
     total_inventory = event_body.get("totalInventory")
     number_vet_spots = event_body.get("numberVetSpotsToReleaseAtGoLive")
+
+    # Use numberVetSpotsToReleaseAtGoLive as the inventory to add
+    inventory_to_add = number_vet_spots
 
     # Validate required fields
     required_fields = [
@@ -61,7 +64,7 @@ def create_initial_inventory_addition_and_title_change(
         "productUrl",
         "productTitle",
         "variantGid",
-        "inventoryToAdd",
+        "numberVetSpotsToReleaseAtGoLive",
     ]
     missing_fields = [field for field in required_fields if not event_body.get(field)]
 
@@ -82,9 +85,11 @@ def create_initial_inventory_addition_and_title_change(
             f"❌ Invalid datetime format. Expected YYYY-MM-DDTHH:MM:SS, received: {new_datetime}"
         )
 
-    # Validate inventory amount
+    # Validate inventory amount (numberVetSpotsToReleaseAtGoLive)
     if not isinstance(inventory_to_add, int) or inventory_to_add <= 0:
-        raise ValueError("❌ inventoryToAdd must be a positive integer")
+        raise ValueError(
+            "❌ numberVetSpotsToReleaseAtGoLive must be a positive integer"
+        )
 
     # Prepare the input for the setProductLiveByAddingInventory lambda
     lambda_input = {
@@ -99,7 +104,9 @@ def create_initial_inventory_addition_and_title_change(
     updated_input = json.dumps(lambda_input)
 
     print(f"🕐 Scheduling for: {formatted_datetime} (America/New_York)")
-    print(f"📦 Will add {inventory_to_add} inventory to variant {variant_gid}")
+    print(
+        f"📦 Will add {inventory_to_add} inventory to variant {variant_gid} (using numberVetSpotsToReleaseAtGoLive)"
+    )
     print(f"📝 Will update product title to: {product_title}")
     print(f"📊 Total inventory: {total_inventory}")
     print(f"🎖️ Vet spots to release: {number_vet_spots}")

@@ -347,7 +347,6 @@ def schedule_product_updates(
             "productUrl": product_url,
             "productTitle": f"Big Apple {validated_request.sportName} - {basic_details.dayOfPlay} - {basic_details.division} Division - {basic_details.season.value} {basic_details.year}",
             "variantGid": first_variant_gid,
-            "inventoryToAdd": inventory_info.totalInventory,
             "newDatetime": first_registration_date,
             "note": "newDateTime is in UTC (ET is 4 hours earlier than what this says)",
             "totalInventory": inventory_info.totalInventory,
