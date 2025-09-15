@@ -309,17 +309,19 @@ class TestShopifyServiceSSLHandling:
         """Test ShopifyService falls back to no SSL verification on SSL errors"""
         from requests.exceptions import SSLError
 
-        # First call raises SSL error, second succeeds
-        mock_post.side_effect = [
-            SSLError("Certificate verification failed"),
-            Mock(status_code=200, json=lambda: {"data": {"orders": {"edges": []}}}),
-        ]
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            # First call raises SSL error, second succeeds
+            mock_post.side_effect = [
+                SSLError("Certificate verification failed"),
+                Mock(status_code=200, json=lambda: {"data": {"orders": {"edges": []}}}),
+            ]
 
-        shopify_service = ShopifyService()
-        result = shopify_service._make_shopify_request({"query": "test"})
+            shopify_service = ShopifyService()
+            result = shopify_service._make_shopify_request({"query": "test"})
 
-        assert result is not None
-        assert mock_post.call_count == 2
+            assert result is not None
+            assert mock_post.call_count == 2
 
         # First call should have verify=True, second should have verify=False
         first_call_kwargs = mock_post.call_args_list[0][1]
