@@ -354,6 +354,38 @@ def schedule_product_updates(
         }
         requests.append(initial_inventory_request)
 
+        # Add remaining inventory request if totalInventory > numberVetSpotsToReleaseAtGoLive
+        if (
+            inventory_info.totalInventory
+            > inventory_info.numberVetSpotsToReleaseAtGoLive
+        ):
+            remaining_inventory = (
+                inventory_info.totalInventory
+                - inventory_info.numberVetSpotsToReleaseAtGoLive
+            )
+
+            add_remaining_inventory_request = {
+                "actionType": "create-initial-inventory-addition-and-title-change",
+                "scheduleName": f"auto-add-remaining-inventory-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}",
+                "groupName": "add-remaining-inventory-to-live-product",
+                "productUrl": product_url,
+                "productTitle": f"Big Apple {validated_request.sportName} - {basic_details.dayOfPlay} - {basic_details.division} Division - {basic_details.season.value} {basic_details.year}",
+                "variantGid": early_gid,
+                "newDatetime": early_date_string,
+                "note": "newDateTime is in UTC (ET is 4 hours earlier than what this says)",
+                "totalInventory": inventory_info.totalInventory,
+                "numberVetSpotsToReleaseAtGoLive": remaining_inventory,  # Lambda will use this as inventoryToAdd
+            }
+            requests.append(add_remaining_inventory_request)
+
+            logger.info(
+                f"📦 Added remaining inventory request: {remaining_inventory} inventory to early variant"
+            )
+        else:
+            logger.info(
+                f"⏭️ Skipping remaining inventory request: totalInventory ({inventory_info.totalInventory}) <= numberVetSpotsToReleaseAtGoLive ({inventory_info.numberVetSpotsToReleaseAtGoLive})"
+            )
+
         # Price changes request (exact GAS schedulePriceChanges structure)
         if open_gid and waitlist_gid:
             # Format off dates (matching GAS logic)
@@ -395,7 +427,7 @@ def schedule_product_updates(
             action_type = request.get("actionType")
             schedule_name = request.get("scheduleName")
 
-            logger.info(f"📋 Request {i+1}/{len(requests)}: {action_type}")
+            logger.info(f"📋 Request {i + 1}/{len(requests)}: {action_type}")
             logger.info(f"   📛 Schedule Name: {schedule_name}")
             logger.info(f"   🏷️ Group Name: {request.get('groupName')}")
 
@@ -423,7 +455,7 @@ def schedule_product_updates(
             elif settings.aws_create_product_endpoint:
                 aws_url = settings.aws_create_product_endpoint
             else:
-                logger.warning(f"⚠️ No AWS URL configured for request {i+1}")
+                logger.warning(f"⚠️ No AWS URL configured for request {i + 1}")
 
             # Send the request to AWS Lambda
             if aws_url:
@@ -439,15 +471,15 @@ def schedule_product_updates(
                 )
 
                 if aws_response.get("success"):
-                    logger.info(f"   ✅ AWS request {i+1} successful")
+                    logger.info(f"   ✅ AWS request {i + 1} successful")
                     successful_requests += 1
                 else:
                     logger.error(
-                        f"   ❌ AWS request {i+1} failed: {aws_response.get('message')}"
+                        f"   ❌ AWS request {i + 1} failed: {aws_response.get('message')}"
                     )
                     failed_requests += 1
             else:
-                logger.warning(f"   ⚠️ Skipping AWS request {i+1} - no URL configured")
+                logger.warning(f"   ⚠️ Skipping AWS request {i + 1} - no URL configured")
                 aws_responses.append(
                     {
                         "request_index": i + 1,
