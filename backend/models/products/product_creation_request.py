@@ -4,7 +4,6 @@ from pydantic import (
     ConfigDict,
     ValidationError,
 )
-from typing import Optional
 from enum import Enum
 from .regular_season_basic_details import RegularSeasonBasicDetails
 from .product_creation_request_validation_error import (
@@ -25,8 +24,6 @@ class SportName(str, Enum):
 class ProductCreationRequest(BaseModel):
     sportName: SportName
     regularSeasonBasicDetails: RegularSeasonBasicDetails
-    alternativeStartTime: Optional[str] = None
-    alternativeEndTime: Optional[str] = None
     optionalLeagueInfo: OptionalLeagueInfo
     importantDates: ImportantDates
     inventoryInfo: InventoryInfo

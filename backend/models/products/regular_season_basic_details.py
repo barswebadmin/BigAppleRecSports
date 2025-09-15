@@ -95,6 +95,8 @@ class RegularSeasonBasicDetails(BaseModel):
     # League timing
     leagueStartTime: str
     leagueEndTime: str
+    alternativeStartTime: Optional[str] = None
+    alternativeEndTime: Optional[str] = None
 
     @field_validator("year")
     @classmethod
