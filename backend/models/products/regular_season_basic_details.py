@@ -51,7 +51,7 @@ class LeagueAssignmentTypes(str, Enum):
 
 
 # Valid locations by sport
-VALID_LOCATIONS = {
+VALID_SPORT_LOCATIONS = {
     "Dodgeball": [
         "Elliott Center (26th St & 9th Ave)",
         "PS3 Charrette School (Grove St & Hudson St)",
@@ -114,6 +114,20 @@ class RegularSeasonBasicDetails(BaseModel):
             raise ValueError("Year must be between 2024 and 2030")
         return year_int
 
+    @field_validator(
+        "sportSubCategory",
+        "socialOrAdvanced",
+        "alternativeStartTime",
+        "alternativeEndTime",
+        mode="before",
+    )
+    @classmethod
+    def empty_string_to_none(cls, v):
+        """Convert empty strings to None for optional fields"""
+        if v == "":
+            return None
+        return v
+
     def validate_sport_specific_requirements(self, sport_name: str, optional_info=None):
         """
         Validate sport-specific required fields and location constraints
@@ -133,14 +147,14 @@ class RegularSeasonBasicDetails(BaseModel):
             sport_sub_category = sport_sub_category or optional_info.sportSubCategory
 
         # Validate location is valid for the sport
-        valid_locations = VALID_LOCATIONS.get(sport_name, [])
+        valid_locations = VALID_SPORT_LOCATIONS.get(sport_name, [])
         if location not in valid_locations:
             raise ValueError(
                 f"Location '{location}' is not valid for {sport_name}. Valid locations: {', '.join(valid_locations)}"
             )
 
         # Sport-specific required field validation
-        if sport_name in ["Dodgeball", "Kickball"]:
+        if sport_name in ["Dodgeball", "Kickball", "Pickleball"]:
             if social_or_advanced is None:
                 raise ValueError(
                     f"socialOrAdvanced is required for {sport_name} (Social, Advanced, or Mixed Social/Advanced)"

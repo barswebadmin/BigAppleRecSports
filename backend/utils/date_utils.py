@@ -47,7 +47,31 @@ def parse_shopify_datetime(date_str: str) -> Optional[datetime]:
         # Handle different Shopify datetime formats
         if date_str.endswith("Z"):
             # ISO format with Z (UTC)
-            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+            dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+
+            # Special handling for dates that appear to be "day boundaries" stored as 4 AM UTC
+            # These represent midnight ET of the intended date, but stored as 4 AM UTC
+            if dt.time().hour == 4 and dt.time().minute == 0 and dt.time().second == 0:
+                # Convert to Eastern Time first to see what date we get
+                et_dt = dt.astimezone(get_eastern_timezone())
+                # Get the date part - this is the date we want to represent
+                target_date = et_dt.date()
+
+                # If converting 4 AM UTC to ET results in midnight, it means we're in EDT
+                # If it results in 11 PM previous day, it means we're in EST
+                if et_dt.time().hour == 0:
+                    # EDT case: 4 AM UTC = midnight ET same day, but we want previous day
+                    target_date = target_date - timedelta(days=1)
+                # else: EST case: 4 AM UTC = 11 PM ET previous day, which is correct
+
+                # Create midnight ET for the target date
+                dt = datetime.combine(target_date, datetime.min.time()).replace(
+                    tzinfo=get_eastern_timezone()
+                )
+                # Convert back to UTC for consistent storage
+                dt = dt.astimezone(timezone.utc)
+
+            return dt
         elif "+" in date_str or date_str.endswith("T"):
             # ISO format with timezone or without timezone
             return datetime.fromisoformat(date_str)
@@ -289,15 +313,29 @@ def calculate_refund_amount(
         return 0, f"Error calculating refund amount: {str(e)}"
 
 
-def format_date_only(date) -> str:
+def format_date_only(date) -> Optional[str]:
     """
     Format date to MM/DD/YY format in Eastern time
     Based on formatDateOnly from Google Apps Script Utils.gs
+
+    Args:
+        date: datetime object, string, or other convertible type
+
+    Returns:
+        Formatted date string (MM/DD/YY) or original string if parsing fails
+        Returns None for empty strings
     """
     if isinstance(date, str):
-        date = parse_shopify_datetime(date)
-        if date is None:
-            return "Unknown Date"
+        # Return None for empty strings
+        if not date.strip():
+            return None
+
+        # Try to parse the string as a datetime
+        parsed_date = parse_shopify_datetime(date)
+        if parsed_date is None:
+            # If parsing fails, return the original string
+            return date
+        date = parsed_date
     elif not isinstance(date, datetime):
         # Assume it's a timestamp or other convertible type
         try:
@@ -343,3 +381,23 @@ def format_date_and_time(date) -> str:
     )  # Remove leading zero from hour
 
     return f"{date_part} at {time_part}"
+
+
+def format_league_play_times(start_time: str, end_time: str) -> str:
+    """
+    Format league play times, stripping PM from start time if both times are PM
+    Example: "8:00 PM" and "11:00 PM" becomes "8:00 – 11:00 PM"
+    """
+    if not start_time or not end_time:
+        return f"{start_time or ''} – {end_time or ''}"
+
+    start_time = start_time.strip()
+    end_time = end_time.strip()
+
+    # Check if both times end with PM
+    if start_time.upper().endswith(" PM") and end_time.upper().endswith(" PM"):
+        # Strip PM and whitespace from start time
+        formatted_start = start_time[:-3].strip()
+        return f"{formatted_start} – {end_time}"
+    else:
+        return f"{start_time} – {end_time}"

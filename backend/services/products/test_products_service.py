@@ -1,5 +1,5 @@
 """
-Test suite for ProductsService.is_valid_product_creation_request validation
+Test suite for ProductsService.create_product_creation_request validation
 Tests cover all validation rules including sport-specific requirements
 """
 
@@ -50,7 +50,7 @@ class TestIsValidProductCreationRequest:
             },
         }
 
-        result = ProductsService.is_valid_product_creation_request(complete_data)
+        result = ProductsService.to_product_creation_request(complete_data)
 
         assert result.sportName == "Dodgeball"
         assert (
@@ -75,10 +75,10 @@ class TestIsValidProductCreationRequest:
         }
 
         with pytest.raises(ProductCreationRequestValidationError) as exc_info:
-            ProductsService.is_valid_product_creation_request(incomplete_data)
+            ProductsService.to_product_creation_request(incomplete_data)
 
-        errors = exc_info.value.get_errors()
-        error_text = " ".join(errors)
+        errors = exc_info.value.get_errors(formatted=True)
+        error_text = " ".join(errors)  # type: ignore
 
         assert "regularSeasonBasicDetails: Field required" in error_text
 
@@ -107,10 +107,10 @@ class TestIsValidProductCreationRequest:
         }
 
         with pytest.raises(ProductCreationRequestValidationError) as exc_info:
-            ProductsService.is_valid_product_creation_request(data_invalid_enums)
+            ProductsService.to_product_creation_request(data_invalid_enums)
 
-        errors = exc_info.value.get_errors()
-        error_text = " ".join(errors)
+        errors = exc_info.value.get_errors(formatted=True)
+        error_text = " ".join(errors)  # type: ignore
 
         assert "sportName:" in error_text
         assert "regularSeasonBasicDetails.division:" in error_text
@@ -144,7 +144,7 @@ class TestIsValidProductCreationRequest:
         }
 
         with pytest.raises(ProductCreationRequestValidationError) as exc_info:
-            ProductsService.is_valid_product_creation_request(data_missing_social)
+            ProductsService.to_product_creation_request(data_missing_social)
 
         errors = exc_info.value.get_errors()
         assert any(
@@ -178,7 +178,7 @@ class TestIsValidProductCreationRequest:
         }
 
         with pytest.raises(ProductCreationRequestValidationError) as exc_info:
-            ProductsService.is_valid_product_creation_request(data_missing_social)
+            ProductsService.to_product_creation_request(data_missing_social)
 
         errors = exc_info.value.get_errors()
         assert any(
@@ -211,9 +211,7 @@ class TestIsValidProductCreationRequest:
         }
 
         with pytest.raises(ProductCreationRequestValidationError) as exc_info:
-            ProductsService.is_valid_product_creation_request(
-                data_invalid_bowling_location
-            )
+            ProductsService.to_product_creation_request(data_invalid_bowling_location)
 
         errors = exc_info.value.get_errors()
         assert any("not valid for Bowling" in error for error in errors)
@@ -246,7 +244,7 @@ class TestIsValidProductCreationRequest:
         }
 
         with pytest.raises(ProductCreationRequestValidationError) as exc_info:
-            ProductsService.is_valid_product_creation_request(data_multiple_errors)
+            ProductsService.to_product_creation_request(data_multiple_errors)
 
         errors = exc_info.value.get_errors()
 
@@ -282,17 +280,17 @@ class TestIsValidProductCreationRequest:
         }
 
         with pytest.raises(ProductCreationRequestValidationError) as exc_info:
-            ProductsService.is_valid_product_creation_request(data_year_too_low)
+            ProductsService.to_product_creation_request(data_year_too_low)
 
-        errors = exc_info.value.get_errors()
-        error_text = " ".join(errors)
+        errors = exc_info.value.get_errors(formatted=True)
+        error_text = " ".join(errors)  # type: ignore
 
         assert "Year must be between 2024 and 2030" in error_text
 
     def test_valid_minimal_data(self):
         """Test validation with minimal valid data (all optional fields None/missing)"""
         data_minimal_valid = {
-            "sportName": "Pickleball",  # No sport-specific requirements
+            "sportName": "Pickleball",
             "regularSeasonBasicDetails": {
                 "division": "Open",
                 "season": "Spring",
@@ -301,6 +299,7 @@ class TestIsValidProductCreationRequest:
                 "location": "Gotham Pickleball (46th and Vernon in LIC)",
                 "leagueStartTime": "10:00 AM",
                 "leagueEndTime": "12:00 PM",
+                "socialOrAdvanced": "Social",
             },
             "optionalLeagueInfo": {},
             "importantDates": {
@@ -313,6 +312,6 @@ class TestIsValidProductCreationRequest:
             "inventoryInfo": {"price": 85, "totalInventory": 32},
         }
 
-        result = ProductsService.is_valid_product_creation_request(data_minimal_valid)
+        result = ProductsService.to_product_creation_request(data_minimal_valid)
         assert result is not None
         assert result.sportName == "Pickleball"

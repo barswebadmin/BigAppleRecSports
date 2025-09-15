@@ -8,6 +8,9 @@ from models.products.product_creation_request import ProductCreationRequest
 from models.products.product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )
+from .create_product_complete_proces.create_product_complete_process import (
+    create_product_complete_process,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,14 +19,14 @@ class ProductsService:
     """Service for handling product creation and validation"""
 
     @classmethod
-    def is_valid_product_creation_request(
+    def to_product_creation_request(
         cls, data: Dict[str, Any]
     ) -> ProductCreationRequest:
         """
-        Validate product creation request data using Pydantic model
+        Create and validate a ProductCreationRequest instance from raw data
 
         Args:
-            data: Raw product data dictionary from request
+            data: Raw product data dictionary from request (should already be properly structured by GAS)
         Returns:
             ProductCreationRequest instance if valid
         Raises:
@@ -36,4 +39,15 @@ class ProductsService:
             raise
         except Exception as e:
             logger.error(f"Unexpected error during validation: {e}")
-            raise ProductCreationRequestValidationError([f"Validation error: {str(e)}"])
+            raise ProductCreationRequestValidationError(
+                [{"msg": f"Validation error: {str(e)}", "loc": ["unknown"]}]
+            )
+
+    @classmethod
+    def create_product(
+        cls, validated_request: ProductCreationRequest
+    ) -> Dict[str, Any]:
+        """
+        Create a product from a validated ProductCreationRequest instance
+        """
+        return create_product_complete_process(validated_request)

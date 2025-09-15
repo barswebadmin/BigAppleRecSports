@@ -179,10 +179,10 @@ function testIrrelevantFieldsForSport() {
 
     // Validate specific sport requirements
     const sportValidations = {
-      'Kickball': ['sportSubCategory', 'alternativeStartTime', 'alternativeEndTime'],
-      'Dodgeball': ['scoutNightDateTime', 'rainDate', 'alternativeStartTime', 'alternativeEndTime'],
+      'Kickball': ['sportSubCategory', 'alternativeStartTime', 'alternativeEndTime', 'openingPartyDate'],
+      'Dodgeball': ['scoutNightDateTime', 'rainDate', 'alternativeStartTime', 'alternativeEndTime', 'openingPartyDate'],
       'Bowling': ['sportSubCategory', 'socialOrAdvanced', 'newPlayerOrientationDateTime', 'scoutNightDateTime', 'openingPartyDate', 'rainDate'],
-      'Pickleball': ['sportSubCategory', 'newPlayerOrientationDateTime', 'scoutNightDateTime', 'rainDate', 'alternativeStartTime', 'alternativeEndTime']
+      'Pickleball': ['sportSubCategory', 'newPlayerOrientationDateTime', 'scoutNightDateTime', 'rainDate', 'alternativeStartTime', 'alternativeEndTime', 'openingPartyDate']
     };
 
     for (const [sport, requiredFields] of Object.entries(sportValidations)) {

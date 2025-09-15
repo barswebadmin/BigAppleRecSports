@@ -8,14 +8,32 @@ if os.getenv("ENVIRONMENT") != "production":
 
 class Settings:
     def __init__(self):
-        self.shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
-        self.shopify_token = os.getenv("SHOPIFY_TOKEN")
-        self.shopify_location_id = os.getenv("SHOPIFY_LOCATION_ID")
+        self.environment = os.getenv("ENVIRONMENT", "dev").lower()
+
+        # Environment-specific Shopify configuration
+        if self.environment in ["staging", "production"]:
+            # Use production Shopify credentials for staging and production
+            self.shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
+            self.shopify_token = os.getenv("SHOPIFY_TOKEN")
+            self.shopify_location_id = os.getenv("SHOPIFY_LOCATION_ID")
+        else:
+            # Use dev/test Shopify credentials (if any) or fallback to production
+            self.shopify_store = os.getenv(
+                "SHOPIFY_DEV_STORE",
+                os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com"),
+            )
+            self.shopify_token = os.getenv(
+                "SHOPIFY_DEV_TOKEN", os.getenv("SHOPIFY_TOKEN")
+            )
+            self.shopify_location_id = os.getenv(
+                "SHOPIFY_DEV_LOCATION_ID", os.getenv("SHOPIFY_LOCATION_ID")
+            )
+
+        # Slack configuration (environment-aware)
         self.slack_refunds_bot_token = os.getenv("SLACK_REFUNDS_BOT_TOKEN")
         self.slack_dev_bot_token = os.getenv("SLACK_DEV_BOT_TOKEN")
         self.slack_dev_signing_secret = os.getenv("SLACK_DEV_SIGNING_SECRET")
         self.slack_signing_secret = os.getenv("SLACK_SIGNING_SECRET")
-        self.environment = os.getenv("ENVIRONMENT", "production")
 
         # Slack channels configuration
         self.slack_channels = {
@@ -50,9 +68,15 @@ class Settings:
             else ["*"]
         )
 
-        # Only require token in production, allow test tokens for CI
-        if not self.shopify_token and self.environment == "production":
-            raise ValueError("SHOPIFY_TOKEN environment variable is required")
+        # Token validation based on environment
+        if self.environment in ["staging", "production"] and not self.shopify_token:
+            raise ValueError(
+                "SHOPIFY_TOKEN environment variable is required for staging/production"
+            )
+        elif self.environment in ["dev", "test"] and not self.shopify_token:
+            print(
+                f"[INFO] No SHOPIFY_TOKEN provided for {self.environment} environment - will use mocks"
+            )
 
         # Debug: Log environment information in CI
         if os.getenv("CI"):

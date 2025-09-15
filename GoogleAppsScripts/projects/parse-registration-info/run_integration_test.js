@@ -109,10 +109,10 @@ try {
   }
   if (typeof irrelevantFieldsForSport === 'undefined') {
     global.irrelevantFieldsForSport = {
-      "Kickball": ["sportSubCategory", "alternativeStartTime", "alternativeEndTime"],
-      "Dodgeball": ["scoutNightDateTime", "rainDate", "alternativeStartTime", "alternativeEndTime"],
+      "Kickball": ["sportSubCategory", "alternativeStartTime", "alternativeEndTime", "openingPartyDate"],
+      "Dodgeball": ["scoutNightDateTime", "rainDate", "alternativeStartTime", "alternativeEndTime", "openingPartyDate"],
       "Bowling": ["sportSubCategory", "socialOrAdvanced", "newPlayerOrientationDateTime", "scoutNightDateTime", "openingPartyDate", "rainDate"],
-      "Pickleball": ["sportSubCategory", "newPlayerOrientationDateTime", "scoutNightDateTime", "rainDate", "alternativeStartTime", "alternativeEndTime"]
+      "Pickleball": ["sportSubCategory", "newPlayerOrientationDateTime", "scoutNightDateTime", "rainDate", "alternativeStartTime", "alternativeEndTime", "openingPartyDate"]
     };
   }
   if (typeof productFieldEnums === 'undefined') {

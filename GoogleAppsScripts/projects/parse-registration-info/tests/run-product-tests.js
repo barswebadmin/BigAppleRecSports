@@ -25,6 +25,7 @@ function loadGasFile(filePath) {
   const fullPath = path.resolve(__dirname, '../../projects/parse-registration-info', filePath);
   if (fs.existsSync(fullPath)) {
     const content = fs.readFileSync(fullPath, 'utf8');
+    // biome-ignore lint/security/noGlobalEval: <not a risk and necessary>
     eval(content);
     console.log(`✅ Loaded: ${filePath}`);
   } else {

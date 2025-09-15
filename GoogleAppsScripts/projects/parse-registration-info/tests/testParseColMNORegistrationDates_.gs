@@ -67,7 +67,9 @@ function testParseColMNORegistrationDates_() {
   console.log(`   Tests Failed: ${failedTests.length}`);
 
   if (failedTests.length > 0) {
-    failedTests.forEach(failure => console.log(failure));
+    for (const failure of failedTests) {
+      console.log(failure);
+    }
     throw new Error('❌ Some parseColMNORegistrationDates_ tests failed!');
   }
 }

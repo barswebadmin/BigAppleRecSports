@@ -404,7 +404,7 @@ function testSportSpecificValidationRules() {
       // REQUIRED FIELDS VALIDATION
       // ========================================
 
-      // socialOrAdvanced (required for Dodgeball, Kickball)
+      // socialOrAdvanced (required for Dodgeball, Kickball, Pickleball)
       { sportName: 'Dodgeball', field: 'socialOrAdvanced', action: 'set', value: 'Social', expectedValid: true },
       { sportName: 'Dodgeball', field: 'socialOrAdvanced', action: 'delete', value: null, expectedValid: false },
 
@@ -440,7 +440,8 @@ function testSportSpecificValidationRules() {
 
       { sportName: 'Kickball', field: 'socialOrAdvanced', action: 'set', value: 'invalidValue', expectedValid: false },
 
-      { sportName: 'Pickleball', field: 'socialOrAdvanced', action: 'delete', value: null, expectedValid: true },
+      { sportName: 'Pickleball', field: 'socialOrAdvanced', action: 'set', value: 'Social', expectedValid: true },
+      { sportName: 'Pickleball', field: 'socialOrAdvanced', action: 'delete', value: null, expectedValid: false },
       { sportName: 'Pickleball', field: 'socialOrAdvanced', action: 'set', value: 'InvalidLevel', expectedValid: false },
 
       // sportSubCategory (optional for Bowling, Kickball, Pickleball - can be missing or have invalid values)
@@ -1054,7 +1055,7 @@ function validateTimeFields(payload) {
         }
       } else if (validation.type === 'date') {
         if (!(payload[validation.field] instanceof Date) && typeof payload[validation.field] !== 'string') {
-          errors.push(`${validation.field} must be a Date object or date string`);
+      errors.push(`${validation.field} must be a Date object or date string`);
         }
       }
     }

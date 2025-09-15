@@ -52,7 +52,9 @@ function testParseDateFlexibleDateTime_() {
   console.log(`   Tests Failed: ${failedTests.length}`);
 
   if (failedTests.length > 0) {
-    failedTests.forEach(failure => console.log(failure));
+    for (const failure of failedTests) {
+      console.log(failure);
+    }
     throw new Error('❌ Some parseDateFlexibleDateTime_ tests failed!');
   }
 }

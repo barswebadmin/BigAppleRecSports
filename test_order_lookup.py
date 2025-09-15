@@ -4,7 +4,6 @@ Quick test script to check if order 42309 exists in Shopify
 """
 import requests
 import json
-import os
 
 # Use your production values
 SHOPIFY_STORE = "09fe59-3.myshopify.com"

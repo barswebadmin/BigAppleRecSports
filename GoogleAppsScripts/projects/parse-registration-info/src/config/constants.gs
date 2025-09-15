@@ -53,13 +53,15 @@ const irrelevantFieldsForSport = {
   "Kickball": [
     "sportSubCategory",
     "alternativeStartTime",
-    "alternativeEndTime"
+    "alternativeEndTime",
+    "openingPartyDate"
   ],
   "Dodgeball": [
     "scoutNightDateTime",
     "rainDate",
     "alternativeStartTime",
-    "alternativeEndTime"
+    "alternativeEndTime",
+    "openingPartyDate"
   ],
   "Bowling": [
     "sportSubCategory",
@@ -75,7 +77,8 @@ const irrelevantFieldsForSport = {
     "scoutNightDateTime",
     "rainDate",
     "alternativeStartTime",
-    "alternativeEndTime"
+    "alternativeEndTime",
+    "openingPartyDate"
   ]
 };
 

@@ -60,7 +60,9 @@ function testParseColGLeagueTimes_() {
     console.log('✅ All parseColGLeagueTimes_ tests passed!');
   } else {
     console.log('❌ Some parseColGLeagueTimes_ tests failed!');
-    failedTests.forEach(error => console.error(error));
+    for (const error of failedTests) {
+      console.error(error);
+    }
   }
 
   if (failedTests.length > 0) {

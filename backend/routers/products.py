@@ -3,8 +3,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
 from services.products.products_service import ProductsService
-from services.products.create_product import create_product as create_product_service
-from models.products.product_creation_request import (
+from models.products.product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )
 
@@ -24,9 +23,11 @@ async def create_product(
     logger.info("Product creation request received")
     logger.debug(f"Product data: {json.dumps(create_product_request_data, indent=2)}")
 
-    # Validate the product request data
+    # Validate and create ProductCreationRequest instance
     try:
-        ProductsService.is_valid_product_creation_request(create_product_request_data)
+        validated_request = ProductsService.to_product_creation_request(
+            create_product_request_data
+        )
         logger.info("Product validation passed")
     except ProductCreationRequestValidationError as e:
         logger.warning(f"Product validation failed: {e.get_errors()}")
@@ -38,9 +39,9 @@ async def create_product(
             },
         )
 
-    # Create the product
+    # Create the product using the validated request object
     try:
-        result = create_product_service(create_product_request_data)
+        result = ProductsService.create_product(validated_request)
 
         if result["success"]:
             logger.info(f"Product created successfully: {result.get('product_id')}")

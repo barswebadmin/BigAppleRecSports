@@ -16,14 +16,14 @@
 /// <reference path="../config/constants.gs" />
 /// <reference path="../parsers/parseColBLeagueBasicInfo_.gs" />
 /// <reference path="./portedFromProductCreateSheet/createShopifyProduct.gs" />
-/// <reference path="../../../../shopifyProductCreation.gs" />
+/// <reference path="./portedFromProductCreateSheet/shopifyProductCreation.gs" />
 /// <reference path="../helpers/textUtils.gs" />
 /// <reference path="../validators/fieldValidation.gs" />
 /// <reference path="./instructions.gs" />
 
 // Configuration constants
 const ENVIRONMENT = 'dev'; // 'prod' or 'dev'
-const NGROK_URL = 'https://248e99d2c322.ngrok-free.app';
+const NGROK_URL = 'https://c9615d689596.ngrok-free.app';
 
 /***** MENU *****/
 function onOpen() {

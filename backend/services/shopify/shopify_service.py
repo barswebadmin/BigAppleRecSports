@@ -62,6 +62,66 @@ class ShopifyService:
             "X-Shopify-Access-Token": settings.shopify_token,
         }
 
+    def _get_mock_response(self, query: Dict[str, Any]) -> Dict[str, Any]:
+        """Return mock response for dev/test environments"""
+        # Extract query type from the GraphQL query
+        query_str = query.get("query", "")
+
+        if "productCreate" in query_str:
+            return {
+                "data": {
+                    "productCreate": {
+                        "product": {
+                            "id": "gid://shopify/Product/8123456789012345678",
+                            "title": "Mock Product",
+                            "handle": "mock-product",
+                        },
+                        "userErrors": [],
+                    }
+                }
+            }
+        elif "productOptionsCreate" in query_str:
+            return {
+                "data": {
+                    "productOptionsCreate": {
+                        "product": {"id": "gid://shopify/Product/8123456789012345678"},
+                        "userErrors": [],
+                    }
+                }
+            }
+        elif "productVariantUpdate" in query_str:
+            return {
+                "data": {
+                    "productVariantUpdate": {
+                        "productVariant": {
+                            "id": "gid://shopify/ProductVariant/45123456789012345678"
+                        },
+                        "userErrors": [],
+                    }
+                }
+            }
+        elif "productVariantsBulkCreate" in query_str:
+            return {
+                "data": {
+                    "productVariantsBulkCreate": {
+                        "productVariants": [
+                            {"id": "gid://shopify/ProductVariant/45123456789012345679"},
+                            {"id": "gid://shopify/ProductVariant/45123456789012345680"},
+                            {"id": "gid://shopify/ProductVariant/45123456789012345681"},
+                        ],
+                        "userErrors": [],
+                    }
+                }
+            }
+        else:
+            # Generic mock response
+            return {
+                "data": {
+                    "mock": True,
+                    "message": "Mock response for dev/test environment",
+                }
+            }
+
     def _make_shopify_request(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Make a GraphQL request to Shopify"""
         import logging
@@ -69,11 +129,13 @@ class ShopifyService:
 
         logger = logging.getLogger(__name__)
 
-        # FIX: Ensure SSL certificates are properly configured for Render (Ubuntu)
-        # Only set Ubuntu SSL paths if we're in a production/cloud environment
-        if os.getenv("ENVIRONMENT") == "production" and not os.path.exists(
-            "/opt/homebrew"
-        ):
+        # Configure SSL certificates and endpoints based on environment
+        environment = os.getenv("ENVIRONMENT", "dev").lower()
+        logger.info(f"🌍 Environment: {environment}")
+
+        # SSL Certificate Configuration
+        if environment == "production":
+            # Production: Ubuntu/Linux environment - use system certificates
             if not os.getenv("SSL_CERT_FILE") or not os.path.exists(
                 os.getenv("SSL_CERT_FILE", "")
             ):
@@ -86,6 +148,45 @@ class ShopifyService:
                 os.getenv("CURL_CA_BUNDLE", "")
             ):
                 os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
+            logger.info("🔒 Using Ubuntu system SSL certificates for production")
+        elif environment in ["dev", "staging"]:
+            # Dev/Staging: Use local environment certificate configuration
+            local_cert_file = os.getenv("LOCAL_SSL_CERT_FILE")
+            if local_cert_file and os.path.exists(local_cert_file):
+                # Use certificate specified in .env file
+                os.environ["SSL_CERT_FILE"] = local_cert_file
+                os.environ["REQUESTS_CA_BUNDLE"] = local_cert_file
+                os.environ["CURL_CA_BUNDLE"] = local_cert_file
+                logger.info(
+                    f"🔒 Using local SSL certificate from env: {local_cert_file}"
+                )
+            else:
+                # Fallback to certifi for local development
+                try:
+                    import certifi
+
+                    cert_path = certifi.where()
+                    if os.path.exists(cert_path):
+                        os.environ["SSL_CERT_FILE"] = cert_path
+                        os.environ["REQUESTS_CA_BUNDLE"] = cert_path
+                        os.environ["CURL_CA_BUNDLE"] = cert_path
+                        logger.info(f"🔒 Using certifi SSL certificates: {cert_path}")
+                except ImportError:
+                    logger.warning(
+                        "⚠️ certifi package not found, using system SSL settings"
+                    )
+
+        # Endpoint and Token Configuration
+        should_use_mock = environment in ["dev", "test"]
+        should_use_production_endpoints = environment in ["staging", "production"]
+
+        logger.info(f"🎯 Use mocks: {should_use_mock}")
+        logger.info(f"🌐 Use production endpoints: {should_use_production_endpoints}")
+
+        # Return early with mock data if in dev/test environment
+        if should_use_mock and not os.getenv("FORCE_REAL_API"):
+            logger.info("🎭 Using mock data for dev/test environment")
+            return self._get_mock_response(query)
 
         # DEBUG: Log the request details
         logger.info(f"🔗 Making Shopify request to: {self.graphql_url}")
@@ -113,6 +214,7 @@ class ShopifyService:
 
             # Handle different HTTP status codes
             if response.status_code == 401:
+                logger.info(f"📥 Response text: {response.text}")
                 logger.error("🚨 Shopify authentication error (401): Invalid API token")
                 try:
                     error_data = response.json()

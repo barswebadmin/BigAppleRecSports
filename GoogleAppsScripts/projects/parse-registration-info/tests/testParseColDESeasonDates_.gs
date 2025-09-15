@@ -86,7 +86,9 @@ function testParseColDESeasonDates_() {
 
   if (failedTests.length > 0) {
     console.log('\n❌ Failed Tests:');
-    failedTests.forEach(failure => console.log(`   ${failure}`));
+    for (const failure of failedTests) {
+      console.log(`   ${failure}`);
+    }
     console.log('❌ Some parseColDESeasonDates_ tests failed!');
   } else {
     console.log('✅ All parseSeasonDates_ tests passed!');

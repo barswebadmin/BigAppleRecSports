@@ -60,7 +60,9 @@ function testParseColFPrice_() {
     console.log('✅ All parseColFPrice_ tests passed!');
   } else {
     console.log('❌ Some parseColFPrice_ tests failed!');
-    failedTests.forEach(error => console.error(error));
+    for (const error of failedTests) {
+      console.error(error);
+    }
   }
 
   if (failedTests.length > 0) {

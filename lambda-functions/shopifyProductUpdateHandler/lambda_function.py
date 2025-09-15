@@ -26,6 +26,13 @@ except ImportError:
     # Fallback for local development without layer
     print("⚠️ Lambda layer not available, using local utilities")
 
+# Import inventory utilities for shared sport detection logic
+try:
+    from inventory.inventory_checker import is_sport_product  # noqa: F401
+except ImportError:
+    # Fallback if shared utilities not available
+    print("⚠️ Shared inventory utilities not available")
+
 # Import local modules
 from sport_detection import (
     detect_sport,
