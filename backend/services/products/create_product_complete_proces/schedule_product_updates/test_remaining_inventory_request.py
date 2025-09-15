@@ -143,9 +143,7 @@ class TestRemainingInventoryRequest:
                     remaining_req["variantGid"]
                     == "gid://shopify/ProductVariant/42032228106334"
                 )  # early variant
-                assert (
-                    remaining_req["numberVetSpotsToReleaseAtGoLive"] == 60
-                )  # 100 - 40 = 60
+                assert remaining_req["inventoryToAdd"] == 60  # 100 - 40 = 60
 
     def test_remaining_inventory_request_not_added_when_total_equals_vet_spots(
         self, base_product_request, mock_product_data, mock_variants_data
@@ -288,7 +286,4 @@ class TestRemainingInventoryRequest:
                     remaining_req = remaining_inventory_requests[0]
 
                     # Check that the calculation is correct
-                    assert (
-                        remaining_req["numberVetSpotsToReleaseAtGoLive"]
-                        == expected_remaining
-                    )
+                    assert remaining_req["inventoryToAdd"] == expected_remaining

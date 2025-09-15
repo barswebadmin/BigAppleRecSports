@@ -374,7 +374,8 @@ def schedule_product_updates(
                 "newDatetime": early_date_string,
                 "note": "newDateTime is in UTC (ET is 4 hours earlier than what this says)",
                 "totalInventory": inventory_info.totalInventory,
-                "numberVetSpotsToReleaseAtGoLive": remaining_inventory,  # Lambda will use this as inventoryToAdd
+                "numberVetSpotsToReleaseAtGoLive": inventory_info.numberVetSpotsToReleaseAtGoLive,
+                "inventoryToAdd": remaining_inventory,
             }
             requests.append(add_remaining_inventory_request)
 
