@@ -48,9 +48,23 @@ def create_product_complete_process(
 
     try:
         # Step 1: Create the product (matching Create Product From Row.gs)
-        logger.info("📦 Step 1: Creating product...")
+        logger.info("=" * 80)
+        logger.info("🚀 PRODUCT CREATION PROCESS STARTED")
+        logger.info("=" * 80)
+        logger.info("📦 STEP 1: Creating Shopify Product...")
+        logger.info(f"   Sport: {validated_request.sportName}")
+        logger.info(
+            f"   Details: {basic_details.dayOfPlay} {basic_details.division} - {basic_details.season} {basic_details.year}"
+        )
+
         product_result = create_product(validated_request)
-        logger.info(f"📦 Product creation result: {product_result}")
+        logger.info(f"📦 STEP 1 RESULT: {product_result.get('success', False)}")
+        if product_result.get("success"):
+            logger.info(
+                f"   ✅ Product URL: {product_result.get('data', {}).get('productUrl')}"
+            )
+        else:
+            logger.error(f"   ❌ Error: {product_result.get('error')}")
 
         if not product_result.get("success"):
             logger.error(f"❌ Product creation failed: {product_result.get('error')}")
@@ -67,10 +81,22 @@ def create_product_complete_process(
         )
 
         # Step 2: Create variants (matching Create Variants From Row.gs)
-        logger.info("🎯 Step 2: Creating variants...")
+        logger.info("🎯 STEP 2: Creating Product Variants...")
+        logger.info(
+            f"   Product ID: {product_result.get('data', {}).get('product_id')}"
+        )
+
         variants_result = create_variants(
             validated_request, product_result.get("data", {})
         )
+        logger.info(f"🎯 STEP 2 RESULT: {variants_result.get('success', False)}")
+        if variants_result.get("success"):
+            variant_mapping = variants_result.get("data", {}).get("variant_mapping", {})
+            logger.info(
+                f"   ✅ Created {len(variant_mapping)} variants: {list(variant_mapping.keys())}"
+            )
+        else:
+            logger.error(f"   ❌ Error: {variants_result.get('error')}")
 
         if not variants_result.get("success"):
             logger.error(f"❌ Variants creation failed: {variants_result.get('error')}")
@@ -90,10 +116,18 @@ def create_product_complete_process(
         )
 
         # Step 3: Schedule product updates (matching scheduleInventoryMoves + schedulePriceChanges)
-        logger.info("⏰ Step 3: Scheduling product updates...")
+        logger.info("⏰ STEP 3: Scheduling AWS Product Updates...")
+        logger.info("   This will create AWS Lambda scheduling requests")
+
         scheduling_result = schedule_product_updates(
             validated_request, product_result.get("data", {}), variants_result
         )
+        logger.info(f"⏰ STEP 3 RESULT: {scheduling_result.get('success', False)}")
+        if scheduling_result.get("success"):
+            total_requests = scheduling_result.get("data", {}).get("total_requests", 0)
+            logger.info(f"   ✅ Generated {total_requests} AWS scheduling requests")
+        else:
+            logger.error(f"   ❌ Error: {scheduling_result.get('error')}")
 
         if not scheduling_result.get("success"):
             logger.error(
@@ -166,12 +200,27 @@ def create_product_complete_process(
             },
         }
 
-        logger.info("🎉 Complete product creation process finished successfully!")
-        logger.info(f"   Product URL: {product_url}")
-        logger.info(f"   Variants: {list(variant_mapping.keys())}")
+        # Final success summary
+        logger.info("=" * 80)
+        logger.info("🎉 PRODUCT CREATION PROCESS COMPLETED SUCCESSFULLY!")
+        logger.info("=" * 80)
+        logger.info("📄 Product Details:")
+        logger.info(f"   🔗 Product URL: {product_url}")
+        logger.info(f"   🆔 Product ID: {product_data.get('product_id')}")
+        logger.info(f"   📝 Product Title: {product_data.get('product_title')}")
+        logger.info(f"📊 Variants Created: {len(variant_mapping)}")
+        for variant_type, variant_gid in variant_mapping.items():
+            logger.info(f"   🎯 {variant_type}: {variant_gid}")
         logger.info(
-            f"   Scheduled Requests: {scheduling_data.get('total_requests', 0)}"
+            f"⏰ AWS Requests Generated: {scheduling_data.get('total_requests', 0)}"
         )
+        logger.info(
+            f"   📦 Inventory moves: {scheduling_data.get('inventory_moves_scheduled', False)}"
+        )
+        logger.info(
+            f"   💰 Price changes: {scheduling_data.get('price_changes_scheduled', False)}"
+        )
+        logger.info("=" * 80)
 
         return complete_result
 

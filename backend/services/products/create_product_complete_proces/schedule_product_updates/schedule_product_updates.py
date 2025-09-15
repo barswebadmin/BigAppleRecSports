@@ -2,6 +2,7 @@
 Product scheduling and updates service - matching scheduleInventoryMoves.gs and schedulePriceChanges.gs
 """
 
+import json
 import logging
 from typing import Dict, Any
 from datetime import datetime
@@ -264,11 +265,44 @@ def schedule_product_updates(
             requests.append(price_changes_request)
 
         # Log all requests (matching GAS)
-        logger.info(f"Generated {len(requests)} scheduling requests:")
+        logger.info("🔮 AWS SCHEDULING REQUESTS GENERATED")
+        logger.info(f"📊 Total Requests: {len(requests)}")
+
         for i, request in enumerate(requests):
-            logger.info(
-                f"Request {i+1}: {request.get('actionType')} - {request.get('scheduleName')}"
-            )
+            action_type = request.get("actionType")
+            schedule_name = request.get("scheduleName")
+
+            logger.info(f"📋 Request {i+1}/{len(requests)}: {action_type}")
+            logger.info(f"   📛 Schedule Name: {schedule_name}")
+            logger.info(f"   🏷️ Group Name: {request.get('groupName')}")
+
+            if action_type == "create-scheduled-inventory-movements":
+                logger.info(
+                    f"   📦 Inventory Move: {request.get('sourceVariant', {}).get('type')} → {request.get('destinationVariant', {}).get('type')}"
+                )
+                logger.info(f"   📅 Scheduled For: {request.get('newDatetime')}")
+                logger.info(f"   🔢 Total Inventory: {request.get('totalInventory')}")
+            elif action_type == "create-initial-inventory-addition-and-title-change":
+                logger.info(f"   🎯 Go Live: {request.get('productTitle')}")
+                logger.info(f"   📦 Initial Inventory: {request.get('inventoryToAdd')}")
+                logger.info(f"   📅 Launch Date: {request.get('newDatetime')}")
+            elif action_type == "create-scheduled-price-changes":
+                logger.info(f"   💰 Price Changes: ${request.get('price')}")
+                logger.info(
+                    f"   🏃 Sport: {request.get('sport')} - {request.get('day')} - {request.get('division')}"
+                )
+                logger.info(f"   📅 Season Start: {request.get('seasonStartDate')}")
+
+            logger.info(f"   📤 Full Request: {json.dumps(request, indent=4)}")
+
+        # Note: In current implementation, these requests are prepared but not sent to AWS
+        # They would be sent to AWS Lambda endpoints in a full integration
+        logger.info(
+            "📝 NOTE: Requests prepared for AWS integration (not yet implemented)"
+        )
+        logger.info(
+            "🔗 These would be sent to AWS Lambda URLs when integration is complete"
+        )
 
         # Success response (matching GAS success structure)
         result = {

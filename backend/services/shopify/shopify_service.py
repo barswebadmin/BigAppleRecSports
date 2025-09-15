@@ -189,11 +189,31 @@ class ShopifyService:
             return self._get_mock_response(query)
 
         # DEBUG: Log the request details
-        logger.info(f"🔗 Making Shopify request to: {self.graphql_url}")
+        # Extract operation type for better logging
+        operation_name = "Unknown"
+        query_str = query.get("query", "")
+        if "productCreate" in query_str:
+            operation_name = "CREATE_PRODUCT"
+        elif "productVariantsBulkCreate" in query_str:
+            operation_name = "CREATE_VARIANTS_BULK"
+        elif "productVariantUpdate" in query_str:
+            operation_name = "UPDATE_VARIANT"
+        elif "productOptionsCreate" in query_str:
+            operation_name = "CREATE_PRODUCT_OPTIONS"
+        elif "inventoryAdjustQuantities" in query_str:
+            operation_name = "ADJUST_INVENTORY"
+        elif "GetInventoryItemId" in query_str:
+            operation_name = "GET_INVENTORY_ITEM"
+        elif "productUpdate" in query_str:
+            operation_name = "UPDATE_PRODUCT"
+
+        logger.info(f"🚀 SHOPIFY API REQUEST - {operation_name}")
+        logger.info(f"🔗 Endpoint: {self.graphql_url}")
         logger.info(f"🔑 Headers: {self.headers}")
-        logger.info(f"📤 Query: {query}")
-        logger.info(f"🔒 SSL_CERT_FILE: {os.getenv('SSL_CERT_FILE')}")
-        logger.info(f"🔒 REQUESTS_CA_BUNDLE: {os.getenv('REQUESTS_CA_BUNDLE')}")
+        logger.info(f"📤 Request Query: {json.dumps(query, indent=2)}")
+        logger.info(
+            f"🔒 SSL Configuration - CERT_FILE: {os.getenv('SSL_CERT_FILE')}, CA_BUNDLE: {os.getenv('REQUESTS_CA_BUNDLE')}"
+        )
 
         try:
             # Use explicit SSL certificate bundle for production
@@ -210,7 +230,15 @@ class ShopifyService:
                 timeout=30,
                 verify=cert_bundle,  # Use explicit certificate bundle
             )
-            logger.info(f"📥 Response status: {response.status_code}")
+
+            # Enhanced response logging
+            logger.info(f"📥 SHOPIFY API RESPONSE - {operation_name}")
+            logger.info(f"📊 Status Code: {response.status_code}")
+            logger.info(f"📈 Response Headers: {dict(response.headers)}")
+
+            # Log response size and timing info if available
+            content_length = response.headers.get("content-length", "unknown")
+            logger.info(f"📏 Response Size: {content_length} bytes")
 
             # Handle different HTTP status codes
             if response.status_code == 401:
@@ -259,7 +287,67 @@ class ShopifyService:
 
             # Success - parse JSON response
             result = response.json()
-            logger.info(f"📋 Response data: {result}")
+
+            # Enhanced success logging
+            logger.info(f"✅ SHOPIFY API SUCCESS - {operation_name}")
+            logger.info("📋 Response Summary:")
+
+            # Log key response details based on operation type
+            if "data" in result:
+                data = result["data"]
+                if operation_name == "CREATE_PRODUCT" and "productCreate" in data:
+                    product = data["productCreate"].get("product", {})
+                    logger.info(f"   🆔 Product ID: {product.get('id')}")
+                    logger.info(f"   📝 Product Title: {product.get('title')}")
+                    logger.info(f"   🔗 Product Handle: {product.get('handle')}")
+                elif (
+                    operation_name == "CREATE_VARIANTS_BULK"
+                    and "productVariantsBulkCreate" in data
+                ):
+                    variants = data["productVariantsBulkCreate"].get(
+                        "productVariants", []
+                    )
+                    logger.info(f"   🎯 Created Variants: {len(variants)}")
+                    for i, variant in enumerate(variants):
+                        logger.info(
+                            f"     Variant {i+1}: {variant.get('id')} - {variant.get('title', 'No title')}"
+                        )
+                elif (
+                    operation_name == "UPDATE_VARIANT"
+                    and "productVariantUpdate" in data
+                ):
+                    variant = data["productVariantUpdate"].get("productVariant", {})
+                    logger.info(f"   🎯 Updated Variant: {variant.get('id')}")
+                elif (
+                    operation_name == "ADJUST_INVENTORY"
+                    and "inventoryAdjustQuantities" in data
+                ):
+                    changes = (
+                        data["inventoryAdjustQuantities"]
+                        .get("inventoryAdjustmentGroup", {})
+                        .get("changes", [])
+                    )
+                    logger.info(f"   📦 Inventory Changes: {len(changes)}")
+                    for change in changes:
+                        logger.info(
+                            f"     {change.get('name')}: {change.get('delta', 0):+d}"
+                        )
+
+            # Log any errors in the response
+            if "errors" in result:
+                logger.warning(f"⚠️ GraphQL Errors in Response: {result['errors']}")
+
+            # Check for userErrors in the data
+            if "data" in result:
+                for key, value in result["data"].items():
+                    if (
+                        isinstance(value, dict)
+                        and "userErrors" in value
+                        and value["userErrors"]
+                    ):
+                        logger.warning(f"⚠️ User Errors in {key}: {value['userErrors']}")
+
+            logger.info(f"📤 Full Response: {json.dumps(result, indent=2)}")
             return result
 
         except requests.exceptions.SSLError as ssl_error:
