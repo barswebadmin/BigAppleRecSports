@@ -7,42 +7,100 @@
  * @requires ../../shared-utilities/ShopifyUtils.gs
  */
 
-// Shopify location GID (same as product-variant-creation)
+// Configuration constants
 const SHOPIFY_LOCATION_GID = "gid://shopify/Location/61802217566";
+const ENVIRONMENT = 'dev'; // 'prod' or 'dev'
+const NGROK_URL = 'https://chubby-grapes-trade.loca.lt/api/products';
 
 /**
  * Main function to create Shopify product from parsed data
+ * Sends request to backend API instead of calling Shopify directly
  */
-function createShopifyProductFromData_(productData) {
+function sendProductInfoToBackendForCreation(productData) {
   try {
     Logger.log(`Creating Shopify product from data: ${JSON.stringify(productData, null, 2)}`);
 
-    // Step 1: Create the main product
-    const productResult = createMainProduct_(productData);
-    if (!productResult.success) {
-      return productResult;
+
+    let apiUrl;
+
+    if (ENVIRONMENT.toLowerCase() === 'prod') {
+      apiUrl = getSecret('BACKEND_API_URL');
+    } else {
+      apiUrl = NGROK_URL;
     }
 
-    // Step 2: Create variants
-    const variantsResult = createProductVariants_(productResult.productGid, productData);
-    if (!variantsResult.success) {
-      return variantsResult;
+    Logger.log(`Sending request to API: ${apiUrl} (environment: ${ENVIRONMENT})`);
+
+    // Send POST request to backend API
+    const response = UrlFetchApp.fetch(apiUrl, {
+      method: 'POST',
+      contentType: 'application/json',
+      headers: {
+        'Accept': 'application/json'
+      },
+      payload: JSON.stringify(productData),
+      muteHttpExceptions: true
+    });
+
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+
+    Logger.log(`Backend API response code: ${responseCode}`);
+    Logger.log(`Backend API response: ${responseText}`);
+
+    if (responseCode < 300) {
+      // Success response (200, 201, 204, etc.)
+      let responseData = null;
+      if (responseText?.trim()) {
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseError) {
+          Logger.log(`Warning: Could not parse response as JSON: ${parseError.message}`);
+        }
+      }
+
+      Logger.log(`✅ Product created successfully: ${JSON.stringify(responseData, null, 2)}`);
+
+      // Show success UI alert
+      SpreadsheetApp.getUi().alert('Success! Product created successfully');
+
+      return {
+        success: true,
+        data: responseData,
+        message: 'Product created successfully'
+      };
+    } else {
+      const errorMessage = `Request was sent to back-end server but failed with response code: ${responseCode} \n\n${responseText}`;
+      Logger.log(`❌ ${errorMessage}`);
+      Logger.log(`Error response: ${responseText}`);
+
+      // Show UI alert with error details
+      SpreadsheetApp.getUi().alert(
+        `Request was sent to back-end server but failed\n\n${JSON.stringify({
+          responseCode: responseCode,
+          responseBody: responseText
+        }, null, 2)}`
+      );
+
+      return {
+        success: false,
+        error: errorMessage,
+        responseCode: responseCode,
+        responseBody: responseText
+      };
     }
-
-    // Step 3: Schedule inventory moves and price changes
-    scheduleProductUpdates_(productResult.productId, productData);
-
-    return {
-      success: true,
-      productUrl: productResult.productUrl,
-      productId: productResult.productId,
-      productGid: productResult.productGid,
-      variants: variantsResult.variants,
-      variantsSummary: variantsResult.summary
-    };
 
   } catch (error) {
-    Logger.log(`Error in createShopifyProductFromData_: ${error}`);
+    Logger.log(`Error in sendProductInfoToBackendForCreation: ${error}`);
+
+    // Show UI alert for network/parsing errors
+    SpreadsheetApp.getUi().alert(
+      `Request was sent to back-end server but failed\n\n${JSON.stringify({
+        error: error.message,
+        stack: error.stack
+      }, null, 2)}`
+    );
+
     return {
       success: false,
       error: error.message

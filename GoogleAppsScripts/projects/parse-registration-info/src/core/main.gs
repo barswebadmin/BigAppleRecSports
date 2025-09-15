@@ -11,6 +11,7 @@
  * @requires helpers/textUtils.gs
  * @requires validators/fieldValidation.gs
  */
+/** biome-ignore-all lint/suspicious/useIterableCallbackReturn: <explanation> */
 
 // Import references for editor support
 /// <reference path="config/constants.gs" />
@@ -106,7 +107,7 @@ function showCreateProductPrompt() {
         validRows.push({
           sheetRow,
           a: sportNorm,
-          b: `${dayNorm}${bOneLine.replace(/^([^/]+)/, '').trim() ? ' ' + bOneLine.replace(/^([^/]+)/, '').trim() : ''}`,
+          b: `${dayNorm}${bOneLine.replace(/^([^/]+)/, '').trim() ? ` ${bOneLine.replace(/^([^/]+)/, '').trim()}` : ''}`,
           division: division
         });
       }

@@ -172,7 +172,17 @@ run_test "parseBFlags extracts division information" \
 run_test "parseBFlags handles sport sub-categories" \
     "grep -q 'sportSubCategory\\|socialOrAdvanced' '$PROJECT_DIR/src/core/flagsParser.gs'"
 
-# Test 15: Integration with shared utilities (utilities are permanently synced)
+# Test 15: Product creation and validation functions
+run_test "sendProductInfoToBackendForCreation function exists" \
+    "grep -q 'function sendProductInfoToBackendForCreation' '$PROJECT_DIR/src/core/portedFromProductCreateSheet/shopifyProductCreation.gs'"
+
+run_test "Product validation test suite exists" \
+    "[ -f '$PROJECT_DIR/src/tests/testSendProductInfoToBackendForCreation.gs' ]"
+
+run_test "testSendProductInfoToBackendForCreation function exists" \
+    "grep -q 'function testSendProductInfoToBackendForCreation' '$PROJECT_DIR/src/tests/testSendProductInfoToBackendForCreation.gs'"
+
+# Test 16: Integration with shared utilities (utilities are permanently synced)
 run_test "Uses shared utilities dateUtils" \
     "true"  # Always pass - utilities are permanently synced
 

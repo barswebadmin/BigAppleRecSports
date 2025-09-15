@@ -11,7 +11,9 @@
 /**
  * Main function to create Shopify product from a row in parse-registration-info
  */
-function createShopifyProductFromRow_(sourceSheet, selectedRow) {
+
+// biome-ignore lint/correctness/noUnusedVariables: <it's called from menu items>
+function  createShopifyProductFromRow_(sourceSheet, selectedRow) {
   const ui = SpreadsheetApp.getUi();
 
   // Read and parse the row data
@@ -29,7 +31,7 @@ function createShopifyProductFromRow_(sourceSheet, selectedRow) {
 
   // Create the product and variants
   try {
-    const result = createShopifyProductAndVariants_(confirmedData);
+    const result = sendProductInfoToBackendForCreation(confirmedData);
 
     if (result.success) {
       // Write the results back to the sheet
@@ -41,7 +43,7 @@ function createShopifyProductFromRow_(sourceSheet, selectedRow) {
     }
 
   } catch (error) {
-    Logger.log(`Error in createShopifyProductAndVariants_: ${error}`);
+    Logger.log(`Error in sendProductInfoToBackendForCreation: ${error}`);
     ui.alert(`❌ Unexpected error during product creation:\n\n${error.message}`);
   }
 }
@@ -901,20 +903,7 @@ function showSimpleConfirmationPrompt_(productData) {
 /**
  * Create the Shopify product and variants
  */
-function createShopifyProductAndVariants_(productData) {
-  try {
-    // Use the ported logic from product-variant-creation
-    const result = createShopifyProductFromData_(productData);
-    return result;
-
-  } catch (error) {
-    Logger.log(`Error in createShopifyProductAndVariants_: ${error}`);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
+// createShopifyProductAndVariants_ removed - now calling sendProductInfoToBackendForCreation directly
 
 /**
  * Write product creation results back to the sheet

@@ -116,9 +116,9 @@ EOF
 
     # Copy the clasp_helpers.sh script (from project root)
     log_info "Current directory: $(pwd)"
-    log_info "Looking for clasp_helpers.sh at: ../../clasp_helpers.sh"
-    ls -la ../../clasp_helpers.sh || log_error "File not found"
-    cp ../../clasp_helpers.sh . || log_error "Copy failed"
+    log_info "Looking for clasp_helpers.sh at: ../../../clasp_helpers.sh"
+    ls -la ../../../clasp_helpers.sh || log_error "File not found"
+    cp ../../../clasp_helpers.sh . || log_error "Copy failed"
 
     log_success "Test project structure created"
 }
