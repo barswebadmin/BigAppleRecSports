@@ -60,9 +60,6 @@ function parseSourceRowEnhanced_(v) {
   productCreateData.socialOrAdvanced = socialOrAdvanced;
   productCreateData.types = types;
 
-  // TODO: Continue with rest of parsing
-  return { parsed: productCreateData, unresolved };
-
   // Time range (G)
   const timeInfo = parseTimeRangeBothSessions_(v.G, unresolved);
   const sportStartTime = timeInfo.primaryStartDateOnly;   // Date object with only time-of-day
@@ -134,7 +131,7 @@ function parseSourceRowEnhanced_(v) {
     division,
     season,
     year,
-    dayOfPlay: day,
+    dayOfPlay,
     location,
     optionalLeagueInfo: {
       socialOrAdvanced,

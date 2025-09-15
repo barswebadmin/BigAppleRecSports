@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# BARS-specific git commit wrapper that auto-handles formatting fixes
+# Only works in BARS_Github subdirectories for safety
+
+# Check if we're in a BARS repository
+current_path=$(pwd)
+if [[ ! "$current_path" =~ BARS_Github ]]; then
+    echo "❌ This script only works in BARS_Github repositories"
+    echo "   Current path: $current_path"
+    echo "   Use regular 'git commit' instead"
+    exit 1
+fi
+
+echo "🚀 BARS Smart Commit - Attempting git commit..."
+
+# Try the commit
+if git commit "$@"; then
+    echo "✅ Commit successful!"
+    exit 0
+else
+    commit_exit_code=$?
+    echo "🔧 Commit failed, checking if it was just formatting..."
+
+    # Check if there are unstaged changes (likely from pre-commit auto-fixes)
+    if git status --porcelain | grep -q "^[ M]M"; then
+        echo "📝 Found auto-fixed formatting changes, staging and retrying..."
+        git add .
+        echo "🎯 Re-attempting commit..."
+        git commit "$@"
+        echo "✅ BARS commit completed after auto-fixing formatting!"
+    else
+        echo "❌ Commit failed for non-formatting reasons (exit code: $commit_exit_code)"
+        echo "💡 Check the error above and fix manually"
+        exit $commit_exit_code
+    fi
+fi

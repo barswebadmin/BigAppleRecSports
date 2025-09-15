@@ -1,0 +1,22 @@
+#!/bin/zsh
+
+# BARS Smart Git Commit Function
+# Automatically handles pre-commit formatting fixes in BARS repositories
+git() {
+    if [[ "$1" == "commit" ]] && [[ "$(pwd)" =~ BARS_Github ]]; then
+        shift  # Remove "commit" from arguments
+
+        # Find the BARS repo root and use the smart commit script
+        bars_root=$(command git rev-parse --show-toplevel 2>/dev/null)
+        if [[ -f "$bars_root/scripts/git-commit-bars" ]]; then
+            echo "🚀 Using BARS smart commit..."
+            "$bars_root/scripts/git-commit-bars" "$@"
+        else
+            echo "⚠️  BARS smart commit script not found, using regular git"
+            command git commit "$@"
+        fi
+    else
+        # For all other git commands or non-BARS repos, use regular git
+        command git "$@"
+    fi
+}
