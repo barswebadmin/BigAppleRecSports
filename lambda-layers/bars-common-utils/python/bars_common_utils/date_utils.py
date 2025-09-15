@@ -9,14 +9,14 @@ from typing import List, Dict, Optional
 def parse_date(date_str: str, default_century: int = 2000) -> datetime:
     """
     Parse a date string in MM/DD/YY or MM/DD/YYYY format
-    
+
     Args:
         date_str: Date string in MM/DD/YY or MM/DD/YYYY format
         default_century: Century to use for 2-digit years
-        
+
     Returns:
         datetime object
-        
+
     Raises:
         ValueError: If date string is invalid
     """
@@ -25,35 +25,35 @@ def parse_date(date_str: str, default_century: int = 2000) -> datetime:
         if year < 100:
             year += default_century
         return datetime(year, month, day)
-    except Exception as e:
+    except Exception:
         raise ValueError(f"Invalid date format. Expected MM/DD/YY or MM/DD/YYYY, got: {date_str}")
 
 def parse_time(time_str: str) -> dt_time:
     """
     Parse a time string in HH:MM AM/PM format
-    
+
     Args:
         time_str: Time string in HH:MM AM/PM format
-        
+
     Returns:
         time object
-        
+
     Raises:
         ValueError: If time string is invalid
     """
     try:
         return datetime.strptime(time_str.strip(), "%I:%M %p").time()
-    except Exception as e:
+    except Exception:
         raise ValueError(f"Invalid time format. Expected HH:MM AM/PM, got: {time_str}")
 
 def parse_off_dates(dates_str: Optional[str], sport_time: dt_time) -> List[datetime]:
     """
     Parse a comma-separated list of dates and combine with sport time
-    
+
     Args:
         dates_str: Comma-separated dates in MM/DD/YY format
         sport_time: Time object to combine with dates
-        
+
     Returns:
         List of datetime objects
     """
@@ -77,25 +77,25 @@ def calculate_discounted_schedule(
 ) -> List[Dict]:
     """
     Calculate a schedule of discounted prices with dates
-    
+
     Args:
         season_start_date: Starting datetime
         off_dates: List of datetime objects to skip
         base_price: Base price to discount
         discount_tiers: List of discount multipliers (default: [0.85, 0.75, 0.65, 0.55])
-        
+
     Returns:
         List of dicts with timestamp and price
     """
     if discount_tiers is None:
         discount_tiers = [0.85, 0.75, 0.65, 0.55]
-        
+
     # Generate initial week dates
     week_dates = [season_start_date]
     for i in range(1, len(discount_tiers)):
         week_date = week_dates[i - 1] + timedelta(days=7)
         week_dates.append(week_date)
-        
+
     # Shift weeks for off-dates
     for off_date in sorted(off_dates):
         for i in range(len(week_dates)):
@@ -103,7 +103,7 @@ def calculate_discounted_schedule(
                 for j in range(i, len(week_dates)):
                     week_dates[j] += timedelta(days=7)
                 break
-                
+
     # Calculate discounted prices
     return [
         {
@@ -111,4 +111,4 @@ def calculate_discounted_schedule(
             "updated_price": round(base_price * multiplier, 2)
         }
         for date, multiplier in zip(week_dates, discount_tiers)
-    ] 
+    ]

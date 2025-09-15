@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start tunnel dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
 
 # Default target
 help:
@@ -10,7 +10,9 @@ help:
 	@echo "🔧 Backend Development:"
 	@echo "  make start               - Start backend server (uvicorn)"
 	@echo "  make tunnel              - Start ngrok tunnel"
-	@echo "  make dev                 - Start server + tunnel (opens new terminal)"
+	@echo "  make tunnel-and-update   - Start ngrok tunnel and update GAS URLs"
+	@echo "  make dev                 - Start server + tunnel with auto URL updates"
+	@echo "  make update-gas-ngrok    - Update NGROK_URL in Google Apps Scripts"
 	@echo "  make stop                - Stop all processes"
 	@echo "  make install             - Install all dependencies from unified requirements.txt"
 	@echo "  make install-prod        - Install production dependencies only"
@@ -253,16 +255,62 @@ _compile_js_files:
 # BACKEND DEVELOPMENT COMMANDS
 # =============================================================================
 
+# Helper function to find the correct Python executable
+define find_python
+	@if [ -f backend/.venv/bin/python ]; then \
+		echo "./.venv/bin/python"; \
+	elif [ -f .venv/bin/python ]; then \
+		echo "../.venv/bin/python"; \
+	elif [ -f backend/venv/bin/python ]; then \
+		echo "./venv/bin/python"; \
+	else \
+		echo "python"; \
+	fi
+endef
+
 # Backend server management
 start:
 	@echo "🚀 Starting backend server..."
-	@cd backend && ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+	@if [ -f backend/.venv/bin/python ]; then \
+		cd backend && ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	elif [ -f .venv/bin/python ]; then \
+		cd backend && ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	elif [ -f backend/venv/bin/python ]; then \
+		cd backend && ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	else \
+		echo "❌ Virtual environment not found. Trying system python..."; \
+		cd backend && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	fi
 
 tunnel:
 	@echo "🌐 Starting ngrok tunnel..."
 	@pkill -f ngrok || true
 	@sleep 1
 	@ngrok http 8000
+
+tunnel-and-update:
+	@echo "🌐 Starting ngrok tunnel with automatic URL updates..."
+	@pkill -f ngrok || true
+	@sleep 1
+	@echo "🚀 Starting ngrok in background..."
+	@ngrok http 8000 > /dev/null 2>&1 &
+	@echo "⏳ Waiting for ngrok to initialize..."
+	@sleep 5
+	@echo "📝 Updating Google Apps Scripts with new ngrok URL..."
+	@if [ -f .venv/bin/python ]; then \
+		.venv/bin/python scripts/update_ngrok_urls.py; \
+	else \
+		python3 scripts/update_ngrok_urls.py; \
+	fi
+	@echo "🌐 Ngrok tunnel ready! Bringing to foreground..."
+	@sleep 2
+	@pkill -f ngrok || true
+	@sleep 1
+	@ngrok http 8000
+
+update-gas-ngrok:
+	@echo "📝 Updating NGROK_URL in Google Apps Scripts..."
+	@python3 scripts/update_ngrok_urls.py
 
 dev:
 	@echo "🔧 Starting development environment..."
@@ -276,18 +324,27 @@ dev:
 		osascript -e 'tell application "Cursor" to activate' \
 			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
 			-e 'delay 1' \
-			-e 'tell application "System Events" to keystroke "cd backend && make tunnel"' \
+			-e 'tell application "System Events" to keystroke "make tunnel-and-update"' \
 			-e 'tell application "System Events" to key code 36' & \
 	elif command -v code >/dev/null 2>&1 && pgrep -x "Code" >/dev/null 2>&1; then \
 		echo "📱 Detected VS Code - opening system terminal..."; \
-		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)/backend\" && make tunnel"' & \
+		osascript -e 'tell application "Terminal" to do script "make tunnel-and-update"' & \
 	else \
 		echo "🖥️  Opening system terminal..."; \
-		osascript -e 'tell application "Terminal" to do script "cd \"$(PWD)/backend\" && make tunnel"' & \
+		osascript -e 'tell application "Terminal" to do script "make tunnel-and-update"' & \
 	fi
 	@sleep 3
 	@echo "✅ Starting server now (tunnel will start in new terminal)..."
-	@cd backend && ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+	@if [ -f backend/.venv/bin/python ]; then \
+		cd backend && ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	elif [ -f .venv/bin/python ]; then \
+		cd backend && ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	elif [ -f backend/venv/bin/python ]; then \
+		cd backend && ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	else \
+		echo "❌ Virtual environment not found. Trying system python..."; \
+		cd backend && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	fi
 
 stop:
 	@echo "🛑 Stopping all processes..."
@@ -336,7 +393,15 @@ url:
 version:
 	@echo "📈 Backend Version Information:"
 	@echo "=============================="
-	@cd backend && ./venv/bin/python -c "from version import get_version_info; info = get_version_info(); print(f'Version: {info[\"version\"]}'); print(f'Build: {info[\"build\"]}'); print(f'Full: {info[\"full_version\"]}'); print(f'Updated: {info[\"last_updated\"]}'); print(f'Codename: {info[\"codename\"]}')"
+	@if [ -f backend/.venv/bin/python ]; then \
+		cd backend && ./.venv/bin/python -c "from version import get_version_info; info = get_version_info(); print(f'Version: {info[\"version\"]}'); print(f'Build: {info[\"build\"]}'); print(f'Full: {info[\"full_version\"]}'); print(f'Updated: {info[\"last_updated\"]}'); print(f'Codename: {info[\"codename\"]}')"; \
+	elif [ -f .venv/bin/python ]; then \
+		cd backend && ../.venv/bin/python -c "from version import get_version_info; info = get_version_info(); print(f'Version: {info[\"version\"]}'); print(f'Build: {info[\"build\"]}'); print(f'Full: {info[\"full_version\"]}'); print(f'Updated: {info[\"last_updated\"]}'); print(f'Codename: {info[\"codename\"]}')"; \
+	elif [ -f backend/venv/bin/python ]; then \
+		cd backend && ./venv/bin/python -c "from version import get_version_info; info = get_version_info(); print(f'Version: {info[\"version\"]}'); print(f'Build: {info[\"build\"]}'); print(f'Full: {info[\"full_version\"]}'); print(f'Updated: {info[\"last_updated\"]}'); print(f'Codename: {info[\"codename\"]}')"; \
+	else \
+		cd backend && python -c "from version import get_version_info; info = get_version_info(); print(f'Version: {info[\"version\"]}'); print(f'Build: {info[\"build\"]}'); print(f'Full: {info[\"full_version\"]}'); print(f'Updated: {info[\"last_updated\"]}'); print(f'Codename: {info[\"codename\"]}')"; \
+	fi
 
 changelog:
 	@echo "📝 Recent Changelog Entries:"
@@ -345,7 +410,15 @@ changelog:
 
 version-bump:
 	@echo "🔄 Manually triggering version management..."
-	@cd backend && ./venv/bin/python ../scripts/backend_version_manager.py
+	@if [ -f backend/.venv/bin/python ]; then \
+		cd backend && ./.venv/bin/python ../scripts/backend_version_manager.py; \
+	elif [ -f .venv/bin/python ]; then \
+		cd backend && ../.venv/bin/python ../scripts/backend_version_manager.py; \
+	elif [ -f backend/venv/bin/python ]; then \
+		cd backend && ./venv/bin/python ../scripts/backend_version_manager.py; \
+	else \
+		cd backend && python ../scripts/backend_version_manager.py; \
+	fi
 
 # =============================================================================
 # TESTING COMMANDS
@@ -376,22 +449,64 @@ test-backend-unit:
 	@echo "🔍 Checking backend compilation first..."
 	@$(MAKE) compile backend
 	@echo "✅ Backend compilation successful, proceeding with unit tests..."
-	@cd backend && ./venv/bin/python -m pytest tests/unit/ -v
-	@echo ""
-	@echo "🧪 Running service-specific unit tests..."
-	@cd backend && ./venv/bin/python -m pytest services/*/tests/ -v
-	@echo ""
-	@echo "🧪 Running router unit tests..."
-	@cd backend && ./venv/bin/python -m pytest routers/tests/ -v
+	@if [ -f backend/.venv/bin/python ]; then \
+		cd backend && ./.venv/bin/python -m pytest tests/unit/ -v; \
+		echo ""; \
+		echo "🧪 Running service-specific unit tests..."; \
+		cd backend && ./.venv/bin/python -m pytest services/*/tests/ -v; \
+		echo ""; \
+		echo "🧪 Running router unit tests..."; \
+		cd backend && ./.venv/bin/python -m pytest routers/tests/ -v; \
+	elif [ -f .venv/bin/python ]; then \
+		cd backend && ../.venv/bin/python -m pytest tests/unit/ -v; \
+		echo ""; \
+		echo "🧪 Running service-specific unit tests..."; \
+		cd backend && ../.venv/bin/python -m pytest services/*/tests/ -v; \
+		echo ""; \
+		echo "🧪 Running router unit tests..."; \
+		cd backend && ../.venv/bin/python -m pytest routers/tests/ -v; \
+	elif [ -f backend/venv/bin/python ]; then \
+		cd backend && ./venv/bin/python -m pytest tests/unit/ -v; \
+		echo ""; \
+		echo "🧪 Running service-specific unit tests..."; \
+		cd backend && ./venv/bin/python -m pytest services/*/tests/ -v; \
+		echo ""; \
+		echo "🧪 Running router unit tests..."; \
+		cd backend && ./venv/bin/python -m pytest routers/tests/ -v; \
+	else \
+		cd backend && python -m pytest tests/unit/ -v; \
+		echo ""; \
+		echo "🧪 Running service-specific unit tests..."; \
+		cd backend && python -m pytest services/*/tests/ -v; \
+		echo ""; \
+		echo "🧪 Running router unit tests..."; \
+		cd backend && python -m pytest routers/tests/ -v; \
+	fi
 
 test-backend-integration:
 	@echo "🧪 Running backend integration tests..."
 	@echo "Note: Make sure the server is running (make start)"
-	@cd backend && ./venv/bin/python -m pytest tests/integration/ -v
+	@if [ -f backend/.venv/bin/python ]; then \
+		cd backend && ./.venv/bin/python -m pytest tests/integration/ -v; \
+	elif [ -f .venv/bin/python ]; then \
+		cd backend && ../.venv/bin/python -m pytest tests/integration/ -v; \
+	elif [ -f backend/venv/bin/python ]; then \
+		cd backend && ./venv/bin/python -m pytest tests/integration/ -v; \
+	else \
+		cd backend && python -m pytest tests/integration/ -v; \
+	fi
 
 test-backend-slack:
 	@echo "🧪 Running backend Slack message formatting tests..."
-	@cd backend && ./venv/bin/python run_slack_tests.py
+	@if [ -f backend/.venv/bin/python ]; then \
+		cd backend && ./.venv/bin/python run_slack_tests.py; \
+	elif [ -f .venv/bin/python ]; then \
+		cd backend && ../.venv/bin/python run_slack_tests.py; \
+	elif [ -f backend/venv/bin/python ]; then \
+		cd backend && ./venv/bin/python run_slack_tests.py; \
+	else \
+		cd backend && python run_slack_tests.py; \
+	fi
 
 test-backend-all:
 	@echo "🧪 Running all backend tests..."
@@ -410,13 +525,37 @@ test-specific:
 	@echo "🧪 Running specific test: $(TEST)"
 	@if echo "$(TEST)" | grep -q "::"; then \
 		echo "Running pytest test case: $(TEST)"; \
-		cd backend && ./venv/bin/python -m pytest "../$(TEST)" -v; \
+		if [ -f backend/.venv/bin/python ]; then \
+			cd backend && ./.venv/bin/python -m pytest "../$(TEST)" -v; \
+		elif [ -f .venv/bin/python ]; then \
+			cd backend && ../.venv/bin/python -m pytest "../$(TEST)" -v; \
+		elif [ -f backend/venv/bin/python ]; then \
+			cd backend && ./venv/bin/python -m pytest "../$(TEST)" -v; \
+		else \
+			cd backend && python -m pytest "../$(TEST)" -v; \
+		fi; \
 	elif echo "$(TEST)" | grep -q "\.py$$"; then \
 		echo "Running Python test file: $(TEST)"; \
 		if echo "$(TEST)" | grep -q "^backend/"; then \
-			cd backend && ./venv/bin/python -m pytest "../$(TEST)" -v; \
+			if [ -f backend/.venv/bin/python ]; then \
+				cd backend && ./.venv/bin/python -m pytest "../$(TEST)" -v; \
+			elif [ -f .venv/bin/python ]; then \
+				cd backend && ../.venv/bin/python -m pytest "../$(TEST)" -v; \
+			elif [ -f backend/venv/bin/python ]; then \
+				cd backend && ./venv/bin/python -m pytest "../$(TEST)" -v; \
+			else \
+				cd backend && python -m pytest "../$(TEST)" -v; \
+			fi; \
 		else \
-			cd backend && ./venv/bin/python "../$(TEST)"; \
+			if [ -f backend/.venv/bin/python ]; then \
+				cd backend && ./.venv/bin/python "../$(TEST)"; \
+			elif [ -f .venv/bin/python ]; then \
+				cd backend && ../.venv/bin/python "../$(TEST)"; \
+			elif [ -f backend/venv/bin/python ]; then \
+				cd backend && ./venv/bin/python "../$(TEST)"; \
+			else \
+				cd backend && python "../$(TEST)"; \
+			fi; \
 		fi; \
 	else \
 		echo "❌ Invalid test format. Use .py file or pytest::test_name format"; \

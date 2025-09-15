@@ -84,6 +84,36 @@ make compile backend
 make ready backend
 ```
 
+### Smart Git Commit (BARS-Only)
+Automatically handles pre-commit formatting fixes so you only need to run `git commit` once:
+
+**Setup (Recommended):**
+```bash
+# Add to your ~/.zshrc file:
+source ~/Documents/scripts/zshrc_scripts
+
+# Reload shell
+source ~/.zshrc
+```
+
+**Alternative Usage:**
+```bash
+# Use script directly
+./scripts/git-commit-bars -m "your commit message"
+```
+
+**How It Works:**
+- ✅ **First Attempt**: Runs `git commit` normally
+- 🔧 **Auto-Recovery**: If only formatting issues, auto-stages fixes and re-commits
+- 🛡️ **Safety**: Only works in BARS_Github directories
+- 🎯 **Result**: No more running commits twice for whitespace fixes!
+
+```bash
+# These now work seamlessly, even with formatting issues:
+git commit -m "feat: add new feature"
+git commit -am "fix: update logic"
+```
+
 ## 🔧 Configuration
 
 ### Environment Variables

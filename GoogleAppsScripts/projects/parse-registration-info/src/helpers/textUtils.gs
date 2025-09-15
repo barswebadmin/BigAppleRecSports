@@ -2,12 +2,24 @@
  * Text processing and normalization helpers for parse-registration-info
  */
 
+
 /**
- * Convert text to title case
+ * Split text into lines and clean them
+ * @param {string} text - Text to split
+ * @returns {Array<string>} Array of lines - if single line, returns [text], if multiple lines, returns split array
  */
-function toTitleCase_(s) {
-  if (!s) return s;
-  return s.toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
+function splitLines_(text) {
+  if (!text) return [];
+
+  // Check if text contains line breaks
+  if (!/\r?\n/.test(text)) {
+    // Single line - return as array with one element
+    const trimmed = text.trim();
+    return trimmed ? [trimmed] : [];
+  }
+
+  // Multiple lines - split and filter
+  return text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 }
 
 /**
@@ -49,13 +61,6 @@ function _editDistance(a, b) {
 }
 
 /**
- * Split text into lines and clean up
- */
-function splitLines_(text) {
-  return (text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-}
-
-/**
  * Normalize header text for fuzzy matching
  */
 function normalizeHeader_(header) {
@@ -72,34 +77,77 @@ function makeKey_(sport, day, division) {
 /**
  * Extract player count from details text
  */
-function extractPlayersFromDetails_(details) {
+function extractPlayersFromDetails_(details, unresolved) {
   const text = (details || '').replace(/\s+/g, ' ');
 
   // 1) Range like "350-364 players" → take max
   let m = text.match(/\b(\d{1,5})\s*[-–—]\s*(\d{1,5})\s*players?\b/i);
-  if (m) return Math.max(Number(m[1]), Number(m[2]));
+  if (m) {
+    const result = Math.max(Number(m[1]), Number(m[2]));
+    if (result && unresolved) {
+      const index = unresolved.indexOf("totalInventory");
+      if (index > -1) unresolved.splice(index, 1);
+    }
+    return result;
+  }
 
   // 2) Explicit count formats
   //    a) "60 players" (number BEFORE the word)
   m = text.match(/\b(\d{1,5})\s*players?\b/i);
-  if (m) return Number(m[1]);
+  if (m) {
+    const result = Number(m[1]);
+    if (result && unresolved) {
+      const index = unresolved.indexOf("totalInventory");
+      if (index > -1) unresolved.splice(index, 1);
+    }
+    return result;
+  }
 
   //    b) "Players: 60" or "# of Players: 60" (number AFTER the word)
   m = text.match(/(?:#\s*of\s*)?players?\s*[:\-]\s*(\d{1,5})/i);
-  if (m) return Number(m[1]);
+  if (m) {
+    const result = Number(m[1]);
+    if (result && unresolved) {
+      const index = unresolved.indexOf("totalInventory");
+      if (index > -1) unresolved.splice(index, 1);
+    }
+    return result;
+  }
 
   // 3) Teams x players-per-team → multiply (e.g., "6 teams of 10" => 60)
   m = text.match(/\b(\d{1,4})\s*teams?\s*of\s*(\d{1,4})\b/i);
-  if (m) return Number(m[1]) * Number(m[2]);
+  if (m) {
+    const result = Number(m[1]) * Number(m[2]);
+    if (result && unresolved) {
+      const index = unresolved.indexOf("totalInventory");
+      if (index > -1) unresolved.splice(index, 1);
+    }
+    return result;
+  }
 
   // 4) "364 (X players per team)" keep the first big number
   m = text.match(/\b(\d{1,5})\s*\(\s*\d+\s*players?\s*per\s*team/i);
-  if (m) return Number(m[1]);
+  if (m) {
+    const result = Number(m[1]);
+    if (result && unresolved) {
+      const index = unresolved.indexOf("totalInventory");
+      if (index > -1) unresolved.splice(index, 1);
+    }
+    return result;
+  }
 
   // 5) Very last resort: a number *immediately after* "players"
   //    (tighten the window to avoid picking dates like 11/9)
   m = text.match(/\bplayers?\b[^0-9]{0,5}(\d{1,5})(?!\/)/i);
-  if (m) return Number(m[1]);
+  if (m) {
+    const result = Number(m[1]);
+    if (result && unresolved) {
+      const index = unresolved.indexOf("totalInventory");
+      if (index > -1) unresolved.splice(index, 1);
+    }
+    return result;
+  }
 
+  // Total inventory not found - leave "totalInventory" in unresolved array
   return '';
 }

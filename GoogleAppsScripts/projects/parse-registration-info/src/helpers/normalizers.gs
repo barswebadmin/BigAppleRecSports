@@ -11,41 +11,33 @@
 /// <reference path="../config/constants.gs" />
 /// <reference path="textUtils.gs" />
 
-// === OPTIONAL: fuzzy map sport names ===
-const CANONICAL_SPORTS = ['Bowling','Kickball','Dodgeball','Pickleball'];
-
 /**
  * Normalize sport name to canonical form
  */
-function normalizeSport_(s, unresolved) {
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
+function normalizeSport_(s) {
   const IN = (s || '').trim();
   if (!IN) return '';
 
-  // Exact case-insensitive hit?
-  for (const cand of CANONICAL_SPORTS) {
-    if (cand.toLowerCase() === IN.toLowerCase()) return cand;
+  const validSports = productFieldEnums.sportName || [];
+
+  for (const cand of validSports) {
+    if (cand.toLowerCase() === IN.toLowerCase()) {
+      return cand; // Return the properly capitalized version from enum
+    }
   }
 
-  // Fuzzy matching
-  let best = '', bestScore = 0;
-  for (const cand of CANONICAL_SPORTS) {
-    const sc = _simpleSimilarity(IN, cand);
-    if (sc > bestScore) { bestScore = sc; best = cand; }
-  }
-
-  if (bestScore >= 0.7) {
-    unresolved.push(`Sport might be "${best}" (from "${IN}", similarity ${bestScore.toFixed(2)}) → populated in target`);
-    return best;
-  }
-
-  unresolved.push(`Sport unrecognized: "${IN}" → omitted (left blank)`);
+  // Sport not found
   return '';
 }
 
 /**
  * Normalize day of week
  */
-function normalizeDay_(dayRaw) {
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
+function  normalizeDay_(dayRaw) {
   const day = (dayRaw || '').trim();
   if (!day) return '';
 
@@ -60,78 +52,16 @@ function normalizeDay_(dayRaw) {
   };
 
   const normalized = dayMap[day.toLowerCase()];
-  return normalized || toTitleCase_(day);
-}
-
-/**
- * Canonicalize location to allowed list
- */
-function canonicalizeLocation_(s, unresolved) {
-  const inStr = (s || '').trim();
-  if (!inStr) {
-    unresolved.push('Location missing → omitted (left blank)');
-    return '';
-  }
-  const lc = inStr.toLowerCase();
-
-  // Try direct contains/shortcut rules
-  let best = '';
-  for (const cand of CANONICAL_LOCATIONS) {
-    // Check John Jay first (before general includes check to avoid similarity warning)
-    if (/john jay/i.test(lc) && cand.startsWith('John Jay College')) {
-      return cand; // Return immediately, no warning needed for this well-known abbreviation
-    }
-
-    if (lc.includes(cand.toLowerCase().split(' (')[0])) { best = cand; break; }
-    if (/dewitt/i.test(lc) && cand.startsWith('Dewitt Clinton Park')) best = cand;
-    if (/gansevoort/i.test(lc) && cand.startsWith('Gansevoort Peninsula')) best = cand;
-    if (/elliott/i.test(lc) && cand.startsWith('Elliott Center')) best = cand;
-    if (/ps3|charrette/i.test(lc) && cand.startsWith('PS3')) best = cand;
-    if ( (/\bv(?:\.?\s*)c(?:\.?\s*)s\b/i.test(lc) || /village community/i.test(lc))
-        && cand.startsWith('Village Community') ) {
-      best = cand;
-    }
-    if (/hartley/i.test(lc) && cand.startsWith('Hartley House')) best = cand;
-    if (/chelsea park/i.test(lc) && cand.startsWith('Chelsea Park')) best = cand;
-    if (/gotham pickle/i.test(lc) && cand.startsWith('Gotham Pickleball')) best = cand;
-    if (/pickle1/i.test(lc) && cand.endsWith('1')) best = cand;
-    if (/frames/i.test(lc) && cand.startsWith('Frames Bowling')) best = cand;
-    if (/bowlero/i.test(lc) && cand.startsWith('Bowlero')) best = cand;
-  }
-
-  if (best) {
-    const sim = _simpleSimilarity(inStr, best);
-    if (sim < 0.9) {
-      unresolved.push(
-        `Location might be "${best}" (from "${inStr}", similarity ${sim.toFixed(2)}) → populated in target`
-      );
-    }
-    return best;
-  }
-
-  // Fallback: pick the most similar canonical entry and flag it
-  let bestCand = '', bestScore = 0;
-  for (const cand of CANONICAL_LOCATIONS) {
-    const sc = _simpleSimilarity(inStr, cand);
-    if (sc > bestScore) { bestScore = sc; bestCand = cand; }
-  }
-
-  if (bestScore >= 0.6) {
-    unresolved.push(
-      `Location might be "${bestCand}" (from "${inStr}", similarity ${bestScore.toFixed(2)}) → populated in target`
-    );
-    return bestCand;
-  }
-
-  unresolved.push(`Location not in allowed list: "${inStr}" → omitted (left blank)`);
-  return '';
+  return normalized || capitalize(day, true);
 }
 
 /**
  * Derive season and year from a date
  */
-function deriveSeasonYearFromDate_(d) {
-  if (!(d instanceof Date) || isNaN(d)) return { season: '', year: '' };
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
+function  deriveSeasonYearFromDate_(d) {
+  if (!(d instanceof Date) || Number.isNaN(d)) return { season: '', year: '' };
   const month = d.getMonth()+1;
   const year = d.getFullYear();
   let season = '';

@@ -25,6 +25,7 @@ function loadGasFile(filePath) {
   const fullPath = path.resolve(__dirname, '../../projects/parse-registration-info', filePath);
   if (fs.existsSync(fullPath)) {
     const content = fs.readFileSync(fullPath, 'utf8');
+    // biome-ignore lint/security/noGlobalEval: <not a risk and necessary>
     eval(content);
     console.log(`✅ Loaded: ${filePath}`);
   } else {
@@ -38,10 +39,9 @@ console.log('🚀 Loading GAS functions...');
 loadGasFile('config/constants.gs');
 loadGasFile('helpers/textUtils.gs');
 loadGasFile('helpers/normalizers.gs');
-loadGasFile('core/dateParser.gs');
-loadGasFile('core/flagsParser.gs');
-loadGasFile('core/notesParser.gs');
-loadGasFile('core/rowParser.gs');
+loadGasFile('parsers/dateParser.gs');
+loadGasFile('parsers/parseColBLeagueBasicInfo_.gs');
+loadGasFile('parsers/_rowParser.gs');
 loadGasFile('core/portedFromProductCreateSheet/createShopifyProduct.gs');
 
 console.log('📋 Running comprehensive product creation tests...\n');
@@ -72,8 +72,8 @@ try {
   const productData = convertToProductCreationFormat_(parsed, 14);
 
   console.log('📊 Parsed Data:', {
-    sport: parsed.sport,
-    day: parsed.day,
+    sportName: parsed.sportName,
+    dayOfPlay: parsed.dayOfPlay,
     division: parsed.division,
     socialOrAdvanced: parsed.socialOrAdvanced,
     types: parsed.types,
@@ -83,8 +83,8 @@ try {
   });
 
   console.log('📋 Product Data Sample:', {
-    sport: productData.sport,
-    day: productData.day,
+    sportName: productData.sportName,
+    dayOfPlay: productData.dayOfPlay,
     division: productData.division,
     season: productData.season,
     year: productData.year,
@@ -136,8 +136,8 @@ try {
   const productData = convertToProductCreationFormat_(parsed, 8);
 
   console.log('📊 Parsed Data:', {
-    sport: parsed.sport,
-    day: parsed.day,
+    sportName: parsed.sportName,
+    dayOfPlay: parsed.dayOfPlay,
     division: parsed.division,
     openingPartyDate: parsed.openingPartyDate,
     rainDate: parsed.rainDate,
@@ -179,8 +179,8 @@ try {
   const productData = convertToProductCreationFormat_(parsed, 5);
 
   console.log('📊 Parsed Data:', {
-    sport: parsed.sport,
-    day: parsed.day,
+    sportName: parsed.sportName,
+    dayOfPlay: parsed.dayOfPlay,
     types: parsed.types,
     alternativeStartTime: parsed.alternativeStartTime,
     alternativeEndTime: parsed.alternativeEndTime,
@@ -227,9 +227,9 @@ try {
   const productData = convertToProductCreationFormat_(parsed, 14);
 
   console.log('📊 Parsed Data:', {
-    sport: parsed.sport,
+    sportName: parsed.sportName,
     sportSubCategory: parsed.sportSubCategory,
-    day: parsed.day,
+    dayOfPlay: parsed.dayOfPlay,
     newPlayerOrientationDateTime: parsed.newPlayerOrientationDateTime,
     offDatesFromNotes: parsed.offDatesFromNotes,
     totalInventory: parsed.totalInventory

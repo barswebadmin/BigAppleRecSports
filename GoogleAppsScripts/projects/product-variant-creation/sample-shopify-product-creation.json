@@ -1,0 +1,78 @@
+{
+  "description": "Sample JSON payload for creating a BARS Shopify product via GraphQL API",
+  "endpoint": "https://big-apple-rec-sports.myshopify.com/admin/api/2024-01/graphql.json",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-Shopify-Access-Token": "[SHOPIFY_ACCESS_TOKEN]"
+  },
+  "method": "POST",
+  "payload": {
+    "query": "mutation {\n  productCreate(\n    media: [\n      {\n        mediaContentType: IMAGE,\n        originalSource: \"https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Kickball_Open.png?v=1744224266\"\n      }\n    ],\n    product: {\n      handle: \"2025-spring-kickball-sunday-opendiv\",\n      title: \"Big Apple Kickball - Sunday - Open Division - Spring 2025 (*Registration Not Yet Open - Please scroll down to description for dates*)\",\n      status: ACTIVE,\n      category: \"gid://shopify/TaxonomyCategory/sg-4\",\n      tags: [\"Kickball\", \"Open Division\"],\n      descriptionHtml: \"\n        <p></p>\n        <h1>SUNDAY KICKBALL</h1>\n        <p></p>\n        <h1>Open Division</h1>\n        <p><br/></p>\n\n        <p><h2><span>LEAGUE DETAILS:</span></h2></p>\n        <ul>\n          <li>\n            <strong>Sport:</strong> Kickball\n          </li>\n          <li>\n            <strong>Day:</strong> Sunday\n          </li>\n          <li>\n            <strong>Division:</strong> Open Division\n          </li>\n          <li>\n            <strong>Season:</strong> Spring 2025\n          </li>\n          <li>\n            <strong>Location:</strong> Central Park - North Meadow\n          </li>\n          <li>\n            <strong>Time:</strong> 10:00 AM - 1:00 PM\n          </li>\n          <li>\n            <strong>Duration:</strong> 8 weeks\n          </li>\n          <li>\n            <strong>Price:</strong> $85\n          </li>\n        </ul>\n\n        <p><h2><span>REGISTRATION DATES:</span></h2></p>\n        <ul>\n          <li><strong>Veteran Registration:</strong> March 1, 2025 at 12:00 PM</li>\n          <li><strong>WTNB+ and BIPOC Early Registration:</strong> March 3, 2025 at 12:00 PM</li>\n          <li><strong>Open Registration:</strong> March 5, 2025 at 12:00 PM</li>\n        </ul>\n\n        <p><h2><span>SEASON SCHEDULE:</span></h2></p>\n        <ul>\n          <li><strong>New Player Orientation:</strong> March 15, 2025</li>\n          <li><strong>Scout Night:</strong> March 22, 2025</li>\n          <li><strong>Opening Party:</strong> March 29, 2025</li>\n          <li><strong>Season Start:</strong> April 6, 2025</li>\n          <li><strong>Season End:</strong> May 25, 2025</li>\n          <li><strong>Rain Date:</strong> June 1, 2025</li>\n          <li><strong>Closing Party:</strong> June 8, 2025</li>\n        </ul>\n\n        <p><h2><span>CONTACT:</span></p>\n        <p>Questions? Email us at <a href='mailto:kickball@bigapplerecsports.com' style='color:blue'>kickball@bigapplerecsports.com</a></p>\n      \"\n    }\n  ) {\n    product {\n      id\n      title\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+    "variables": {}
+  },
+  "sample_response": {
+    "data": {
+      "productCreate": {
+        "product": {
+          "id": "gid://shopify/Product/8234567890123",
+          "title": "Big Apple Kickball - Sunday - Open Division - Spring 2025 (*Registration Not Yet Open - Please scroll down to description for dates*)"
+        },
+        "userErrors": []
+      }
+    }
+  },
+  "variants_creation": {
+    "description": "After product creation, variants are created separately using productOptionsCreate and productVariantsBulkCreate mutations",
+    "typical_variants": [
+      {
+        "title": "Veteran Registration",
+        "price": "85.00",
+        "inventory": 0,
+        "description": "Early registration for veterans"
+      },
+      {
+        "title": "WTNB+ and BIPOC Early Registration",
+        "price": "85.00",
+        "inventory": 0,
+        "description": "Early registration for women, trans, non-binary, and BIPOC players"
+      },
+      {
+        "title": "Open Registration",
+        "price": "85.00",
+        "inventory": 0,
+        "description": "General registration for all players"
+      },
+      {
+        "title": "Coming Off Waitlist Registration",
+        "price": "85.00",
+        "inventory": 0,
+        "description": "Registration for players coming off the waitlist"
+      }
+    ]
+  },
+  "field_explanations": {
+    "handle": "URL-friendly identifier: {year}-{season}-{sport}-{day}-{division}div",
+    "title": "Product display name with registration status notice",
+    "status": "ACTIVE makes product visible, DRAFT keeps it hidden",
+    "category": "Shopify taxonomy category for sports/recreation",
+    "tags": "Used for filtering and organization in Shopify admin",
+    "descriptionHtml": "Rich HTML description with league details, dates, and contact info",
+    "mediaContentType": "IMAGE for product photos",
+    "originalSource": "CDN URL for sport-specific product image"
+  },
+  "sport_specific_images": {
+    "Bowling": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/BARS_BowlingCrest_2025.png?v=1744213239",
+    "Dodgeball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/AF92B4C5-5AA4-4B40-8774-F42937B7C631.png?v=1743883324",
+    "Kickball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/Kickball_Open.png?v=1744224266",
+    "Pickleball": "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/BARS_PickleballCrest_2025.png?v=1744213148"
+  },
+  "typical_values": {
+    "sports": ["Kickball", "Bowling", "Dodgeball", "Pickleball"],
+    "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    "divisions": ["Open Division", "WTNB+ Division", "Social Division", "Advanced Division"],
+    "seasons": ["Spring", "Summer", "Fall", "Winter"],
+    "years": ["2024", "2025", "2026"],
+    "prices": ["$75", "$85", "$95", "$105"],
+    "locations": ["Central Park", "Prospect Park", "Brooklyn Bridge Park", "Governors Island"]
+  }
+}
