@@ -8,7 +8,7 @@
 /**
  * Parse time range with primary and alternative sessions
  */
-function parseTimeRangeBothSessions_(s) {
+function parseTimeRangeBothSessions_(s, unresolved) {
   const out = {
     primaryStartDateOnly: '',
     primaryEndDateOnly: '',
@@ -26,6 +26,15 @@ function parseTimeRangeBothSessions_(s) {
       const p = tm_(m1);
       out.primaryStartDateOnly = p.start;
       out.primaryEndDateOnly = p.end;
+
+      // Successfully found times - remove from unresolved
+      if (unresolved) {
+        const startIndex = unresolved.indexOf("sportStartTime");
+        if (startIndex > -1) unresolved.splice(startIndex, 1);
+
+        const endIndex = unresolved.indexOf("sportEndTime");
+        if (endIndex > -1) unresolved.splice(endIndex, 1);
+      }
     }
   }
   if (segments[1]) {

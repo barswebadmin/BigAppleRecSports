@@ -1,11 +1,10 @@
 /**
  * Main entry point and menu for parse-registration-info
- * User interface and migration workflow
+ * User interface and product creation workflow
  *
  * @fileoverview Main controller for parse-registration-info
  * @requires config/constants.gs
- * @requires core/migration.gs
- * @requires core/flagsParser.gs
+ * @requires ../parsers/bFlagsParser.gs
  * @requires core/portedFromProductCreateSheet/createShopifyProduct.gs
  * @requires core/portedFromProductCreateSheet/shopifyProductCreation.gs
  * @requires helpers/textUtils.gs
@@ -14,20 +13,18 @@
 /** biome-ignore-all lint/suspicious/useIterableCallbackReturn: <explanation> */
 
 // Import references for editor support
-/// <reference path="config/constants.gs" />
-/// <reference path="core/migration.gs" />
-/// <reference path="core/flagsParser.gs" />
-/// <reference path="core/portedFromProductCreateSheet/createShopifyProduct.gs" />
-/// <reference path="core/portedFromProductCreateSheet/shopifyProductCreation.gs" />
-/// <reference path="helpers/textUtils.gs" />
-/// <reference path="validators/fieldValidation.gs" />
-/// <reference path="instructions.gs" />
+/// <reference path="../config/constants.gs" />
+/// <reference path="../parsers/parseBFlags_.gs" />
+/// <reference path="./portedFromProductCreateSheet/createShopifyProduct.gs" />
+/// <reference path="./portedFromProductCreateSheet/shopifyProductCreation.gs" />
+/// <reference path="../helpers/textUtils.gs" />
+/// <reference path="../validators/fieldValidation.gs" />
+/// <reference path="./instructions.gs" />
 
 /***** MENU *****/
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('📊 BARS Sport Registration Parser')
-    .addItem('🔄 Migrate Row to Product Creation Sheet', 'showMigrationPrompt')
     .addItem('🛍️ Create Shopify Product', 'showCreateProductPrompt')
     .addSeparator()
     .addItem('📘 View Instructions', 'showInstructions')
@@ -37,16 +34,43 @@ function onOpen() {
   showInstructions();
 }
 
+/***** EVENT HANDLERS *****/
+
+/**
+ * Triggered when any cell is edited in the spreadsheet
+ * Shows warning when columns A or B are edited
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event
+ */
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in GAS on edit>
+function  onEdit(e) {
+  const range = e.range;
+  const column = range.getColumn();
+
+  // Check if the edited cell is in column A (1) or B (2)
+  if (column === 1 || column === 2) {
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Column Edit Warning',
+      'Please do not edit columns without confirming with Joe or web team first - this can cause issues with proper product creation',
+      ui.ButtonSet.OK
+    );
+  }
+}
+
 /***** ENTRY POINTS *****/
 
 /**
  * Entry point for Create Shopify Product functionality
  */
-function showCreateProductPrompt() {
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in GAS on menu item click>
+function  showCreateProductPrompt() {
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sourceSheet = ss.getActiveSheet();
 
+  const SOURCE_LISTING_START_ROW = 3; // source headers end at row 2; data from row 3+
   const lastRow = sourceSheet.getLastRow();
   if (lastRow < SOURCE_LISTING_START_ROW) {
     ui.alert('No data rows found to create products from.');
@@ -98,10 +122,9 @@ function showCreateProductPrompt() {
       if (!hasExistingProduct) {
         const bLines = bRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
         const dayRaw = (bLines[0] || '').trim();
-        const { division } = parseBFlags_(bLines, []);
-
-        const sportNorm = toTitleCase_(lastA);
-        const dayNorm = toTitleCase_(dayRaw);
+        const sportNorm = capitalize(lastA, true);
+        const { division } = parseBFlags_(bRaw, [], sportNorm);
+        const dayNorm = capitalize(dayRaw, true);
 
         const bOneLine = bRaw.replace(/\s*\n+\s*/g, ' / ');
         validRows.push({
@@ -147,147 +170,5 @@ function showCreateProductPrompt() {
   } catch (error) {
     Logger.log(`Error creating product: ${error}`);
     ui.alert(`Error creating product: ${error.message}`);
-  }
-}
-
-function showMigrationPrompt() {
-  const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sourceSheet = ss.getActiveSheet();
-
-  const lastRow = sourceSheet.getLastRow();
-  if (lastRow < SOURCE_LISTING_START_ROW) {
-    ui.alert('No data rows found to migrate.');
-    return;
-  }
-
-  const startRow = SOURCE_LISTING_START_ROW + 1; // => 4
-  const values = sourceSheet
-    .getRange(startRow, 1, lastRow - SOURCE_LISTING_START_ROW, 2) // rows 4..last
-    .getDisplayValues();
-
-  const targetSs = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
-  const destTabName = (sourceSheet.getRange('A1').getDisplayValue() || '').trim();
-  const targetSheet = destTabName ? targetSs.getSheetByName(destTabName) : null;
-  const targetMap = targetSheet ? getTargetIndexMap_(targetSheet, TARGET_HEADER_ROW) : new Map();
-
-  Logger.log(`destinationTabName ${destTabName}`)
-  Logger.log(`targetSheet: ${targetSheet}`)
-  Logger.log('targetMap entries:\n%s', JSON.stringify(
-    Array.from(targetMap.entries()).map(([k, v]) => ({ key: k, row: v.row, readyTrue: v.readyTrue })), null, 2
-  ));
-
-  let lastA = '';
-  const rows = [];
-  for (let i = 0; i < values.length; i++) {
-    const sheetRow = startRow + i;      // actual sheet row number
-    const aRaw = (values[i][0] || '').trim();
-    const bRaw = (values[i][1] || '').trim();
-
-    if (aRaw) lastA = aRaw;             // carry forward merged A
-    if (!bRaw) continue; // skip blanks (no day/details)
-
-    // Break B into lines for parsing
-    const bLines = bRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    const dayRaw = (bLines[0] || '').trim();
-    const { division } = parseBFlags_(bLines, []);  // reuse your helper
-
-    // Normalize using same logic as migration
-    const sportNorm = toTitleCase_(lastA);
-    const dayNorm   = toTitleCase_(dayRaw);
-
-    // If we have a target tab, filter out rows that exist with Ready=true
-    if (targetSheet) {
-      const key = makeKey_(sportNorm, dayNorm, division);
-      const found = targetMap.get(key);
-      if (found && found.readyTrue) continue; // hide from options
-    }
-
-    const bOneLine = bRaw.replace(/\s*\n+\s*/g, ' / ');
-    rows.push({ sheetRow, a: sportNorm, b: `${dayNorm}${bOneLine.replace(/^([^/]+)/, '').trim() ? ' ' + bOneLine.replace(/^([^/]+)/, '').trim() : ''}` });
-  }
-
-  if (!rows.length) {
-    ui.alert('No rows found to migrate. Make sure column B has content.');
-    return;
-  }
-
-  const items = rows.map(r => `${r.sheetRow}: ${r.a ? r.a : ''} | ${r.b}`);
-
-  const message =
-    'Enter the ROW NUMBER to migrate.\n\n' +
-    'Available rows (Row#):\n' +
-    items.slice(0, 60).join('\n') + (items.length > 60 ? `\n… (${items.length - 60} more)` : '') +
-    '\n\nDestination tab will be looked up by cell A1 (on this sheet). Make sure that has the season and year you want this to be ported into.';
-
-  const resp = ui.prompt('Migrate a row', message, ui.ButtonSet.OK_CANCEL);
-  if (resp.getSelectedButton() !== ui.Button.OK) return;
-
-  const selectedRow = parseInt(resp.getResponseText().trim(), 10);
-  if (!Number.isInteger(selectedRow) || selectedRow < SOURCE_LISTING_START_ROW || selectedRow > lastRow) {
-    ui.alert('Invalid row number.');
-    return;
-  }
-  const bCell = sourceSheet.getRange(selectedRow, 2).getDisplayValue().trim();
-  if (!bCell) {
-    ui.alert('That row has no details in column B (day/league info). Please pick a row with data.');
-    return;
-  }
-  const ab = sourceSheet.getRange(selectedRow, 1, 1, 2).getDisplayValues()[0];
-  if (!ab[0].toString().trim() && !ab[1].toString().trim()) {
-    ui.alert('That row has no data in columns A or B. Please pick a row with data.');
-    return;
-  }
-
-  try {
-    const { unresolved, requiredCheck, cancel, writeAttempts, writeFailures, targetRow } = migrateRowToTarget_(sourceSheet, selectedRow);
-    if (cancel) return ui.alert('Canceled')
-
-    // Determine success status
-    const hasWriteFailures = writeFailures && writeFailures.length > 0;
-    const successfulWrites = writeAttempts ? writeAttempts.length - (writeFailures ? writeFailures.length : 0) : 0;
-    const totalAttempts = writeAttempts ? writeAttempts.length : 0;
-
-    const parts = [];
-
-    if (hasWriteFailures) {
-      parts.push(`Migration of row ${selectedRow} completed with WARNINGS.`);
-      parts.push(`Successfully written: ${successfulWrites}/${totalAttempts} fields to target row ${targetRow}`);
-    } else {
-      parts.push(`Migration of row ${selectedRow} completed successfully.`);
-      if (totalAttempts > 0) {
-        parts.push(`All ${totalAttempts} fields written successfully to target row ${targetRow}`);
-      }
-    }
-
-    // Show write failures first (most important)
-    if (hasWriteFailures) {
-      parts.push(`\n❌ Write failures (${writeFailures.length}):`);
-      writeFailures.slice(0, 5).forEach(failure => {
-        if (failure.header === 'ALL_FIELDS') {
-          parts.push(`• Sheet write error: ${failure.reason}`);
-        } else {
-          parts.push(`• ${failure.header}: "${failure.expected}" → "${failure.actual}" (${failure.reason})`);
-        }
-      });
-      if (writeFailures.length > 5) parts.push(`• ... and ${writeFailures.length - 5} more write failures`);
-    }
-
-    if (unresolved.length) {
-      parts.push(`\n⚠️ Unresolved items (${unresolved.length}):`);
-      unresolved.slice(0, 5).forEach(item => parts.push(`• ${item}`));
-      if (unresolved.length > 5) parts.push(`• ... and ${unresolved.length - 5} more`);
-    }
-
-    if (requiredCheck.missing.length) {
-      parts.push(`\n⚠️ Missing required fields (${requiredCheck.missing.length}):`);
-      requiredCheck.missing.slice(0, 5).forEach(item => parts.push(`• ${item}`));
-      if (requiredCheck.missing.length > 5) parts.push(`• ... and ${requiredCheck.missing.length - 5} more`);
-    }
-
-    ui.alert(parts.join('\n'));
-  } catch (err) {
-    ui.alert(`Migration failed: ${err.message}`);
-    Logger.log('Migration error: %s', err.toString());
   }
 }

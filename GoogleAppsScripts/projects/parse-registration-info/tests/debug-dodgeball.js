@@ -35,12 +35,12 @@ const files = [
   'config/constants.gs',
   'helpers/textUtils.gs',
   'helpers/normalizers.gs',
-  'core/dateParser.gs',
-  'core/timeParser.gs',
-  'core/priceParser.gs',
-  'core/flagsParser.gs',
-  'core/notesParser.gs',
-  'core/rowParser.gs',
+  'parsers/dateParser.gs',
+  'parsers/timeParser.gs',
+  'parsers/priceParser.gs',
+  'parsers/parseBFlags_.gs',
+  'parsers/notesParser.gs',
+  'parsers/_rowParser.gs',
 ];
 
 files.forEach(loadGasFile);

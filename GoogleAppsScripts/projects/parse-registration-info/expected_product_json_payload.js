@@ -21,27 +21,27 @@
                 ]
     optionalLeagueInfo?: {
         sportSubCategory?: string [enum - 'Big Ball' or 'Small Ball' or 'Foam']
-        socialOrAdvanced?: string [enum - 'Social' or 'Advanced' or 'Mixed Social/Advanced']
+        socialOrAdvanced?: string [enum - 'Social' or 'Advanced' or 'Mixed Social/Advanced' or 'Competitive/Advanced' or 'Intermediate/Advanced']
         types?: [stringArray] [enum - 'Draft' or 'Randomized Teams' or 'Buddy Sign-up' or 'Sign up with a newbie (randomized otherwise)']
     }
     importantDates: {
-        newPlayerOrientationDateTime?: Date
-        scoutNightDateTime?: Date
-        openingPartyDate?: Date
+        newPlayerOrientationDateTime?: Date | string
+        scoutNightDateTime?: Date | string
+        openingPartyDate?: Date | string
         seasonStartDate: Date
         seasonEndDate: Date
-        offDatesCommaSeparated?: string
-        rainDate?: string
-        closingPartyDate?: string
+        offDates?: Date[]
+        rainDate?: Date | string
+        closingPartyDate?: Date | string
         vetRegistrationStartDateTime?: Date
         earlyRegistrationStartDateTime: Date
         openRegistrationStartDateTime: Date
 
     }
-    seasonStartTime: Date
-    seasonEndTime: Date
-    alternativeStartTime?: Date
-    alternativeEndTime?: Date
+    leagueStartTime: string
+    leagueEndTime: string
+    alternativeStartTime?: String
+    alternativeEndTime?: String
     inventoryInfo: {
         price: number
         totalInventory: number

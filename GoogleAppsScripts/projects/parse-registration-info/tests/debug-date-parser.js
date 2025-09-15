@@ -31,7 +31,7 @@ function loadGasFile(filePath) {
 }
 
 // Load date parser
-loadGasFile('core/dateParser.gs');
+loadGasFile('parsers/dateParser.gs');
 
 console.log('🧪 Testing date parsing directly...');
 

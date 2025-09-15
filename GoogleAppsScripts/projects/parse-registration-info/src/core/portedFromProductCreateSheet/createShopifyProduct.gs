@@ -3,7 +3,7 @@
  * This handles creating products and variants directly from parse-registration-info
  *
  * @fileoverview Create Shopify products and variants from parsed registration data
- * @requires ../rowParser.gs
+ * @requires ../../parsers/_rowParser.gs
  * @requires ../../shared-utilities/secretsUtils.gs
  * @requires ../../shared-utilities/ShopifyUtils.gs
  */
@@ -79,8 +79,7 @@ function parseRowDataForProductCreation_(sourceSheet, rowNumber) {
     };
 
     // Parse using existing logic
-    const unresolved = [];
-    const parsed = parseSourceRowEnhanced_(vals, unresolved);
+    const {parsed, unresolved} = parseSourceRowEnhanced_(vals);
 
     if (unresolved.length > 0) {
       Logger.log(`Unresolved fields during parsing: ${JSON.stringify(unresolved)}`);

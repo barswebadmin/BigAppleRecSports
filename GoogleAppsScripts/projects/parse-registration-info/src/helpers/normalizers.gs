@@ -11,41 +11,57 @@
 /// <reference path="../config/constants.gs" />
 /// <reference path="textUtils.gs" />
 
-// === OPTIONAL: fuzzy map sport names ===
-const CANONICAL_SPORTS = ['Bowling','Kickball','Dodgeball','Pickleball'];
+
+/**
+ * Initialize unresolved tracking with all fields, then remove sport-specific irrelevant fields
+ * @param {string} sportName - The identified sport name (e.g., "Pickleball")
+ * @returns {Array<string>} List of fields to track for this specific sport
+ */
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
+function initializeUnresolvedFields(sportName) {
+  // Start with all comprehensive fields except sportName (since we already know it)
+  const unresolved = comprehensiveProductCreateFields.filter(field => field !== 'sportName');
+
+  // Remove sport-specific irrelevant fields
+  if (sportName && irrelevantFieldsForSport[sportName]) {
+    const irrelevantFields = irrelevantFieldsForSport[sportName];
+    for (const field of irrelevantFields) {
+      const fieldIndex = unresolved.indexOf(field);
+      if (fieldIndex > -1) unresolved.splice(fieldIndex, 1);
+    }
+  }
+
+  return unresolved;
+}
 
 /**
  * Normalize sport name to canonical form
  */
-function normalizeSport_(s, unresolved) {
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
+function normalizeSport_(s) {
   const IN = (s || '').trim();
   if (!IN) return '';
 
-  // Exact case-insensitive hit?
-  for (const cand of CANONICAL_SPORTS) {
-    if (cand.toLowerCase() === IN.toLowerCase()) return cand;
+  const validSports = productFieldEnums.sportName || [];
+
+  for (const cand of validSports) {
+    if (cand.toLowerCase() === IN.toLowerCase()) {
+      return cand; // Return the properly capitalized version from enum
+    }
   }
 
-  // Fuzzy matching
-  let best = '', bestScore = 0;
-  for (const cand of CANONICAL_SPORTS) {
-    const sc = _simpleSimilarity(IN, cand);
-    if (sc > bestScore) { bestScore = sc; best = cand; }
-  }
-
-  if (bestScore >= 0.7) {
-    unresolved.push(`Sport might be "${best}" (from "${IN}", similarity ${bestScore.toFixed(2)}) → populated in target`);
-    return best;
-  }
-
-  unresolved.push(`Sport unrecognized: "${IN}" → omitted (left blank)`);
+  // Sport not found
   return '';
 }
 
 /**
  * Normalize day of week
  */
-function normalizeDay_(dayRaw) {
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
+function  normalizeDay_(dayRaw) {
   const day = (dayRaw || '').trim();
   if (!day) return '';
 
@@ -60,26 +76,39 @@ function normalizeDay_(dayRaw) {
   };
 
   const normalized = dayMap[day.toLowerCase()];
-  return normalized || toTitleCase_(day);
+  return normalized || capitalize(day, true);
 }
 
 /**
  * Canonicalize location to allowed list
  */
-function canonicalizeLocation_(s, unresolved) {
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
+function  canonicalizeLocation_(s, sportName, unresolved) {
   const inStr = (s || '').trim();
   if (!inStr) {
-    unresolved.push('Location missing → omitted (left blank)');
+    // Location missing - leave "location" in unresolved array
     return '';
   }
   const lc = inStr.toLowerCase();
 
-  // Try direct contains/shortcut rules
+  // Get sport-specific locations from productFieldEnums
+  const validLocations = productFieldEnums.location?.[sportName]
+    ? productFieldEnums.location[sportName]
+    : [];
+
+  if (validLocations.length === 0) {
+    // No valid locations for this sport - return as-is
+    return inStr;
+  }
+
+  // Try direct contains/shortcut rules for sport-specific locations
   let best = '';
-  for (const cand of CANONICAL_LOCATIONS) {
+  for (const cand of validLocations) {
     // Check John Jay first (before general includes check to avoid similarity warning)
     if (/john jay/i.test(lc) && cand.startsWith('John Jay College')) {
-      return cand; // Return immediately, no warning needed for this well-known abbreviation
+      best = cand;
+      break;
     }
 
     if (lc.includes(cand.toLowerCase().split(' (')[0])) { best = cand; break; }
@@ -100,38 +129,37 @@ function canonicalizeLocation_(s, unresolved) {
   }
 
   if (best) {
-    const sim = _simpleSimilarity(inStr, best);
-    if (sim < 0.9) {
-      unresolved.push(
-        `Location might be "${best}" (from "${inStr}", similarity ${sim.toFixed(2)}) → populated in target`
-      );
-    }
+    // Successfully found location - remove from unresolved
+    const index = unresolved.indexOf("location");
+    if (index > -1) unresolved.splice(index, 1);
     return best;
   }
 
-  // Fallback: pick the most similar canonical entry and flag it
+  // Fallback: pick the most similar location from sport-specific list
   let bestCand = '', bestScore = 0;
-  for (const cand of CANONICAL_LOCATIONS) {
+  for (const cand of validLocations) {
     const sc = _simpleSimilarity(inStr, cand);
     if (sc > bestScore) { bestScore = sc; bestCand = cand; }
   }
 
   if (bestScore >= 0.6) {
-    unresolved.push(
-      `Location might be "${bestCand}" (from "${inStr}", similarity ${bestScore.toFixed(2)}) → populated in target`
-    );
+    // Successfully found similar location - remove from unresolved
+    const index = unresolved.indexOf("location");
+    if (index > -1) unresolved.splice(index, 1);
     return bestCand;
   }
 
-  unresolved.push(`Location not in allowed list: "${inStr}" → omitted (left blank)`);
+  // Location not recognized - leave "location" in unresolved array
   return '';
 }
 
 /**
  * Derive season and year from a date
  */
-function deriveSeasonYearFromDate_(d) {
-  if (!(d instanceof Date) || isNaN(d)) return { season: '', year: '' };
+
+// biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
+function  deriveSeasonYearFromDate_(d) {
+  if (!(d instanceof Date) || Number.isNaN(d)) return { season: '', year: '' };
   const month = d.getMonth()+1;
   const year = d.getFullYear();
   let season = '';

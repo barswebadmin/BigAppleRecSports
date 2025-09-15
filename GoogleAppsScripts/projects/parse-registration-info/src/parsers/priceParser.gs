@@ -16,9 +16,13 @@ function parsePriceNumber_(s, unresolved) {
   const num = parseFloat(clean);
 
   if (isNaN(num)) {
-    unresolved.push(`Price unreadable: "${s}"`);
+    // Price not found - leave "price" in unresolved array
     return '';
   }
+
+  // Successfully found price - remove from unresolved
+  const index = unresolved.indexOf("price");
+  if (index > -1) unresolved.splice(index, 1);
 
   return num; // number; target sheet will format to $ via its existing formatting
 }

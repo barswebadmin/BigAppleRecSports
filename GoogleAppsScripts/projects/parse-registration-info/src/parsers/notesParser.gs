@@ -43,7 +43,12 @@ function parseNotes_(cVal, sportStartTime, unresolved) {
   const orientMatch = text.match(/(?:newbie\s+night|open\s*play)(?:\/\s*open\s*play)?\s*(?:-|:)?\s*([a-z]{3,9}\.?[\s.,]*\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/i);
   if (orientMatch) {
     const dt = parseWithSportTime_(orientMatch[1]);
-    if (dt) res.orientationDate = dt;
+    if (dt) {
+      res.orientationDate = dt;
+      // Successfully found orientation date - remove from unresolved
+      const index = unresolved.indexOf("newPlayerOrientationDateTime");
+      if (index > -1) unresolved.splice(index, 1);
+    }
   }
 
   // ---- Opening Party ----
@@ -51,8 +56,11 @@ function parseNotes_(cVal, sportStartTime, unresolved) {
   if (openingPartyMatch) {
     if (/(?:date\s+)?tbd/i.test(openingPartyMatch[1])) {
       res.openingPartyDate = 'TBD';
+      // Successfully found opening party date (TBD) - remove from unresolved
+      const index = unresolved.indexOf("openingPartyDate");
+      if (index > -1) unresolved.splice(index, 1);
     } else {
-      const d = parseDateFlexibleDateOnly_(openingPartyMatch[1], unresolved);
+      const d = parseDateFlexibleDateOnly_(openingPartyMatch[1], unresolved, "openingPartyDate");
       if (d) res.openingPartyDate = d;
     }
   }
@@ -61,13 +69,18 @@ function parseNotes_(cVal, sportStartTime, unresolved) {
   const scoutMatch = text.match(/scout\s+night\s*:\s*([a-z]{3,9}\.?[\s.,]*\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/i);
   if (scoutMatch) {
     const dt = parseWithSportTime_(scoutMatch[1]);
-    if (dt) res.scoutNightDate = dt;
+    if (dt) {
+      res.scoutNightDate = dt;
+      // Successfully found scout night date - remove from unresolved
+      const index = unresolved.indexOf("scoutNightDateTime");
+      if (index > -1) unresolved.splice(index, 1);
+    }
   }
 
   // ---- Rain Date ----
   const rainMatch = text.match(/rain\s+date\s*:\s*([a-z]{3,9}\.?[\s.,]*\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/i);
   if (rainMatch) {
-    const d = parseDateFlexibleDateOnly_(rainMatch[1], unresolved);
+    const d = parseDateFlexibleDateOnly_(rainMatch[1], unresolved, "rainDate");
     if (d) res.rainDate = d;
   }
 
@@ -76,8 +89,11 @@ function parseNotes_(cVal, sportStartTime, unresolved) {
   if (closingMatch) {
     if (/(?:date\s+)?tbd/i.test(closingMatch[1])) {
       res.closingPartyDate = 'TBD';
+      // Successfully found closing party date (TBD) - remove from unresolved
+      const index = unresolved.indexOf("closingPartyDate");
+      if (index > -1) unresolved.splice(index, 1);
     } else {
-      const d = parseDateFlexibleDateOnly_(closingMatch[1], unresolved);
+      const d = parseDateFlexibleDateOnly_(closingMatch[1], unresolved, "closingPartyDate");
       if (d) res.closingPartyDate = d;
     }
   }

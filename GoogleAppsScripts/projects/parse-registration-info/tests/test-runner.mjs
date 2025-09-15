@@ -86,10 +86,10 @@ function loadGASFunctions() {
 
   const gasFiles = [
     'config/constants.gs',
-    'core/dateParser.gs',
-    'core/flagsParser.gs',
-    'core/notesParser.gs',
-    'core/rowParser.gs',
+    'parsers/dateParser.gs',
+    'parsers/parseBFlags_.gs',
+    'parsers/notesParser.gs',
+    'parsers/_rowParser.gs',
     'core/migration.gs',
     'helpers/textUtils.gs',
     'validators/fieldValidation.gs',

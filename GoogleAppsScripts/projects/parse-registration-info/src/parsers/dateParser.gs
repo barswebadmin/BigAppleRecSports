@@ -12,13 +12,20 @@
 /**
  * Parse flexible date format (date only, no time)
  */
-function parseDateFlexibleDateOnly_(s, unresolved) {
+function parseDateFlexibleDateOnly_(s, unresolved, fieldName) {
   // Accepts "10-19-2025", "9/25/25", "October 12" (assume year = current; if passed already, next year)
   const d = parseFlexible_(s, { assumeDateOnly: true });
   if (!d) {
-    if (s && s.trim()) unresolved.push(`Unrecognized date: "${s}"`);
+    // Date not found - leave fieldName in unresolved array (if provided)
     return '';
   }
+
+  // Successfully found date - remove from unresolved (if fieldName provided)
+  if (fieldName && unresolved) {
+    const index = unresolved.indexOf(fieldName);
+    if (index > -1) unresolved.splice(index, 1);
+  }
+
   // Zero out time
   d.setHours(0,0,0,0);
   return d;
@@ -27,7 +34,7 @@ function parseDateFlexibleDateOnly_(s, unresolved) {
 /**
  * Parse flexible datetime format
  */
-function parseDateFlexibleDateTime_(s, fallbackTimeDateOnly, unresolved) {
+function parseDateFlexibleDateTime_(s, fallbackTimeDateOnly, unresolved, fieldName) {
   // Accepts "8/31/25 @ 7pm", "6/6/2025 18:00", etc.
   if (!s || !s.trim()) return '';
   const d = parseFlexible_(s, { assumeDateTime: true });
@@ -36,11 +43,25 @@ function parseDateFlexibleDateTime_(s, fallbackTimeDateOnly, unresolved) {
     const maybeDate = parseFlexible_(s, { assumeDateOnly: true });
     if (maybeDate && fallbackTimeDateOnly instanceof Date) {
       maybeDate.setHours(fallbackTimeDateOnly.getHours(), fallbackTimeDateOnly.getMinutes(), 0, 0);
+
+      // Successfully found datetime - remove from unresolved (if fieldName provided)
+      if (fieldName && unresolved) {
+        const index = unresolved.indexOf(fieldName);
+        if (index > -1) unresolved.splice(index, 1);
+      }
+
       return maybeDate;
     }
-    unresolved.push(`Unrecognized date/time: "${s}"`);
+    // DateTime not found - leave fieldName in unresolved array (if provided)
     return '';
   }
+
+  // Successfully found datetime - remove from unresolved (if fieldName provided)
+  if (fieldName && unresolved) {
+    const index = unresolved.indexOf(fieldName);
+    if (index > -1) unresolved.splice(index, 1);
+  }
+
   return d;
 }
 

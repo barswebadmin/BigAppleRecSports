@@ -32,10 +32,10 @@ console.log('🚀 Testing file loading...');
 loadGasFile('config/constants.gs');
 loadGasFile('helpers/textUtils.gs');
 loadGasFile('helpers/normalizers.gs');
-loadGasFile('core/dateParser.gs');
-loadGasFile('core/flagsParser.gs');
-loadGasFile('core/notesParser.gs');
-loadGasFile('core/rowParser.gs');
+loadGasFile('parsers/dateParser.gs');
+loadGasFile('parsers/parseBFlags_.gs');
+loadGasFile('parsers/notesParser.gs');
+loadGasFile('parsers/_rowParser.gs');
 
 console.log('\n🧪 Testing function availability...');
 console.log('parseSourceRowEnhanced_ defined?', typeof parseSourceRowEnhanced_ !== 'undefined');

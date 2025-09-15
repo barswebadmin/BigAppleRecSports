@@ -60,13 +60,31 @@ function testSendProductInfoToBackendForCreation() {
     Logger.log('❌ Test 5 FAILED: Sport-specific validation rules');
   }
 
-  // Test 6: UI alert responses (success and error)
+  // Test 6: Mixed date type validation (string and Date objects)
+  totalTests++;
+  if (testMixedDateTypeValidation()) {
+    passedTests++;
+    Logger.log('✅ Test 6 PASSED: Mixed date type validation');
+  } else {
+    Logger.log('❌ Test 6 FAILED: Mixed date type validation');
+  }
+
+  // Test 7: String time field validation (leagueStartTime and leagueEndTime)
+  totalTests++;
+  if (testStringTimeFieldValidation()) {
+    passedTests++;
+    Logger.log('✅ Test 7 PASSED: String time field validation');
+  } else {
+    Logger.log('❌ Test 7 FAILED: String time field validation');
+  }
+
+  // Test 8: UI alert responses (success and error)
   totalTests++;
   if (testUIAlertResponses()) {
     passedTests++;
-    Logger.log('✅ Test 6 PASSED: UI alert responses');
+    Logger.log('✅ Test 8 PASSED: UI alert responses');
   } else {
-    Logger.log('❌ Test 6 FAILED: UI alert responses');
+    Logger.log('❌ Test 8 FAILED: UI alert responses');
   }
 
 
@@ -99,7 +117,7 @@ function testRequiredFieldsValidation() {
     // Test missing required fields
     const requiredFields = [
       'sportName', 'division', 'season', 'year', 'dayOfPlay', 'location',
-      'importantDates', 'seasonStartTime', 'seasonEndTime', 'inventoryInfo'
+      'importantDates', 'leagueStartTime', 'leagueEndTime', 'inventoryInfo'
     ];
 
     for (const field of requiredFields) {
@@ -360,8 +378,8 @@ function createValidTestPayload() {
       earlyRegistrationStartDateTime: new Date('2025-03-03T12:00:00'),
       openRegistrationStartDateTime: new Date('2025-03-05T12:00:00')
     },
-    seasonStartTime: new Date('2025-04-06T10:00:00'),
-    seasonEndTime: new Date('2025-04-06T13:00:00'),
+    leagueStartTime: '10:00 AM',
+    leagueEndTime: '1:00 PM',
     alternativeStartTime: new Date('2025-04-06T14:00:00'),
     alternativeEndTime: new Date('2025-04-06T17:00:00'),
     inventoryInfo: {
@@ -489,7 +507,239 @@ function testSportSpecificValidationRules() {
 }
 
 /**
- * Test #6: UI alert responses (success and error)
+ * Test #6: Mixed date type validation (string and Date objects)
+ * Tests that optional date fields can accept both string and Date object types
+ */
+function testMixedDateTypeValidation() {
+  try {
+    Logger.log('Test #6: Mixed date type validation - testing optional date fields with string and Date types');
+
+    const optionalDateFields = [
+      'newPlayerOrientationDateTime',
+      'scoutNightDateTime',
+      'openingPartyDate',
+      'rainDate',
+      'closingPartyDate'
+    ];
+
+    // Test 1: All optional date fields as Date objects - should be valid
+    const payloadWithDateObjects = createValidTestPayload();
+    payloadWithDateObjects.importantDates.newPlayerOrientationDateTime = new Date('2025-03-15T10:00:00');
+    payloadWithDateObjects.importantDates.scoutNightDateTime = new Date('2025-03-22T10:00:00');
+    payloadWithDateObjects.importantDates.openingPartyDate = new Date('2025-03-29');
+    payloadWithDateObjects.importantDates.rainDate = new Date('2025-06-01');
+    payloadWithDateObjects.importantDates.closingPartyDate = new Date('2025-06-08');
+
+    const dateObjectErrors = validateImportantDates(payloadWithDateObjects);
+    if (dateObjectErrors.length > 0) {
+      Logger.log(`Test #6a failed: Date objects should be valid. Errors: ${JSON.stringify(dateObjectErrors)}`);
+      return false;
+    }
+    Logger.log('  ✓ All optional date fields accept Date objects');
+
+    // Test 2: All optional date fields as strings - should be valid
+    const payloadWithStrings = createValidTestPayload();
+    payloadWithStrings.importantDates.newPlayerOrientationDateTime = '2025-03-15T10:00:00';
+    payloadWithStrings.importantDates.scoutNightDateTime = '2025-03-22T10:00:00';
+    payloadWithStrings.importantDates.openingPartyDate = '2025-03-29';
+    payloadWithStrings.importantDates.rainDate = '2025-06-01';
+    payloadWithStrings.importantDates.closingPartyDate = '2025-06-08';
+
+    const stringErrors = validateImportantDates(payloadWithStrings);
+    if (stringErrors.length > 0) {
+      Logger.log(`Test #6b failed: String dates should be valid. Errors: ${JSON.stringify(stringErrors)}`);
+      return false;
+    }
+    Logger.log('  ✓ All optional date fields accept string values');
+
+    // Test 3: Mixed types (some Date objects, some strings) - should be valid
+    const payloadWithMixed = createValidTestPayload();
+    payloadWithMixed.importantDates.newPlayerOrientationDateTime = new Date('2025-03-15T10:00:00'); // Date object
+    payloadWithMixed.importantDates.scoutNightDateTime = '2025-03-22T10:00:00'; // String
+    payloadWithMixed.importantDates.openingPartyDate = new Date('2025-03-29'); // Date object
+    payloadWithMixed.importantDates.rainDate = '2025-06-01'; // String
+    payloadWithMixed.importantDates.closingPartyDate = new Date('2025-06-08'); // Date object
+
+    const mixedErrors = validateImportantDates(payloadWithMixed);
+    if (mixedErrors.length > 0) {
+      Logger.log(`Test #6c failed: Mixed Date/string types should be valid. Errors: ${JSON.stringify(mixedErrors)}`);
+      return false;
+    }
+    Logger.log('  ✓ Mixed Date objects and strings are valid');
+
+    // Test 4: Invalid types (numbers) - should fail validation
+    const payloadWithInvalidTypes = createValidTestPayload();
+    payloadWithInvalidTypes.importantDates.newPlayerOrientationDateTime = 123456789; // Invalid number
+    payloadWithInvalidTypes.importantDates.scoutNightDateTime = true; // Invalid boolean
+    payloadWithInvalidTypes.importantDates.openingPartyDate = {}; // Invalid object
+
+    const invalidTypeErrors = validateImportantDates(payloadWithInvalidTypes);
+    if (invalidTypeErrors.length === 0) {
+      Logger.log('Test #6d failed: Invalid types should trigger validation errors');
+      return false;
+    }
+
+    // Check that specific error messages are present
+    const expectedErrors = [
+      'newPlayerOrientationDateTime must be a Date object or date string',
+      'scoutNightDateTime must be a Date object or date string',
+      'openingPartyDate must be a Date object or date string'
+    ];
+
+    for (const expectedError of expectedErrors) {
+      const hasError = invalidTypeErrors.some(error => error.includes(expectedError));
+      if (!hasError) {
+        Logger.log(`Test #6d failed: Expected error message not found: ${expectedError}`);
+        Logger.log(`Actual errors: ${JSON.stringify(invalidTypeErrors)}`);
+        return false;
+      }
+    }
+    Logger.log('  ✓ Invalid types correctly trigger validation errors');
+
+    // Test 5: Undefined/null values for optional fields - should be valid
+    const payloadWithUndefined = createValidTestPayload();
+    payloadWithUndefined.importantDates.newPlayerOrientationDateTime = undefined;
+    payloadWithUndefined.importantDates.scoutNightDateTime = null;
+    delete payloadWithUndefined.importantDates.openingPartyDate; // Missing field
+
+    const undefinedErrors = validateImportantDates(payloadWithUndefined);
+    if (undefinedErrors.length > 0) {
+      Logger.log(`Test #6e failed: Undefined/null optional fields should be valid. Errors: ${JSON.stringify(undefinedErrors)}`);
+      return false;
+    }
+    Logger.log('  ✓ Undefined/null values for optional fields are valid');
+
+    // Test 6: Different date string formats - should be valid
+    const payloadWithDifferentFormats = createValidTestPayload();
+    payloadWithDifferentFormats.importantDates.newPlayerOrientationDateTime = '2025-03-15'; // ISO date only
+    payloadWithDifferentFormats.importantDates.scoutNightDateTime = '03/22/2025 10:00 AM'; // US format with time
+    payloadWithDifferentFormats.importantDates.openingPartyDate = 'March 29, 2025'; // Long format
+    payloadWithDifferentFormats.importantDates.rainDate = '2025-06-01T08:00:00.000Z'; // ISO with timezone
+
+    const formatErrors = validateImportantDates(payloadWithDifferentFormats);
+    if (formatErrors.length > 0) {
+      Logger.log(`Test #6f failed: Different date string formats should be valid. Errors: ${JSON.stringify(formatErrors)}`);
+      return false;
+    }
+    Logger.log('  ✓ Various date string formats are accepted');
+
+    return true;
+
+  } catch (error) {
+    Logger.log(`Test #6 failed with error: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Test #7: String time field validation (leagueStartTime and leagueEndTime)
+ * Tests that league time fields accept string values and reject other types
+ */
+function testStringTimeFieldValidation() {
+  try {
+    Logger.log('Test #7: String time field validation - testing leagueStartTime and leagueEndTime as strings');
+
+    // Test 1: Valid string time formats - should be valid
+    const validTimeFormats = [
+      { leagueStartTime: '10:00 AM', leagueEndTime: '1:00 PM' },
+      { leagueStartTime: '19:00', leagueEndTime: '22:00' },  // 24-hour format
+      { leagueStartTime: '7:30 PM', leagueEndTime: '10:30 PM' },
+      { leagueStartTime: '9:00', leagueEndTime: '12:00' },  // Simple format
+      { leagueStartTime: '10:00am', leagueEndTime: '1:00pm' }  // No space
+    ];
+
+    for (let i = 0; i < validTimeFormats.length; i++) {
+      const payload = createValidTestPayload();
+      payload.leagueStartTime = validTimeFormats[i].leagueStartTime;
+      payload.leagueEndTime = validTimeFormats[i].leagueEndTime;
+
+      const timeErrors = validateTimeFields(payload);
+      if (timeErrors.length > 0) {
+        Logger.log(`Test #7a.${i+1} failed: Valid string time format should be accepted. Format: ${JSON.stringify(validTimeFormats[i])}`);
+        Logger.log(`Validation errors: ${JSON.stringify(timeErrors)}`);
+        return false;
+      }
+    }
+    Logger.log('  ✓ Various string time formats are accepted');
+
+    // Test 2: Invalid types for league time fields - should fail validation
+    const invalidTypes = [
+      { type: 'Date object', value: new Date('2025-04-06T10:00:00') },
+      { type: 'number', value: 1000 },
+      { type: 'boolean', value: true },
+      { type: 'object', value: { time: '10:00' } },
+      { type: 'array', value: ['10:00', 'AM'] },
+      { type: 'null', value: null }
+    ];
+
+    for (const invalidType of invalidTypes) {
+      const payload = createValidTestPayload();
+      payload.leagueStartTime = invalidType.value;
+
+      const timeErrors = validateTimeFields(payload);
+      if (timeErrors.length === 0) {
+        Logger.log(`Test #7b failed: Invalid type (${invalidType.type}) should trigger validation error for leagueStartTime`);
+        return false;
+      }
+
+      // Check that the error message is specific to string requirement
+      const hasStringError = timeErrors.some(error =>
+        error.includes('leagueStartTime must be a string')
+      );
+      if (!hasStringError) {
+        Logger.log(`Test #7b failed: Expected string validation error for leagueStartTime with ${invalidType.type}`);
+        Logger.log(`Actual errors: ${JSON.stringify(timeErrors)}`);
+        return false;
+      }
+    }
+    Logger.log('  ✓ Invalid types correctly trigger string validation errors');
+
+    // Test 3: Empty string should be valid (optional behavior)
+    const payloadWithEmptyStrings = createValidTestPayload();
+    payloadWithEmptyStrings.leagueStartTime = '';
+    payloadWithEmptyStrings.leagueEndTime = '';
+
+    const emptyStringErrors = validateTimeFields(payloadWithEmptyStrings);
+    if (emptyStringErrors.length > 0) {
+      Logger.log(`Test #7c failed: Empty strings should be valid. Errors: ${JSON.stringify(emptyStringErrors)}`);
+      return false;
+    }
+    Logger.log('  ✓ Empty strings are accepted for league time fields');
+
+    // Test 4: Alternative time fields still accept Date objects - should be valid
+    const payloadWithAlternativeTimes = createValidTestPayload();
+    payloadWithAlternativeTimes.alternativeStartTime = new Date('2025-04-06T14:00:00');
+    payloadWithAlternativeTimes.alternativeEndTime = new Date('2025-04-06T17:00:00');
+
+    const alternativeTimeErrors = validateTimeFields(payloadWithAlternativeTimes);
+    if (alternativeTimeErrors.length > 0) {
+      Logger.log(`Test #7d failed: Alternative time fields should still accept Date objects. Errors: ${JSON.stringify(alternativeTimeErrors)}`);
+      return false;
+    }
+    Logger.log('  ✓ Alternative time fields still accept Date objects');
+
+    // Test 5: Alternative time fields also accept strings - should be valid
+    const payloadWithAlternativeStrings = createValidTestPayload();
+    payloadWithAlternativeStrings.alternativeStartTime = '2:00 PM';
+    payloadWithAlternativeStrings.alternativeEndTime = '5:00 PM';
+
+    const alternativeStringErrors = validateTimeFields(payloadWithAlternativeStrings);
+    if (alternativeStringErrors.length > 0) {
+      Logger.log(`Test #7e failed: Alternative time fields should also accept strings. Errors: ${JSON.stringify(alternativeStringErrors)}`);
+      return false;
+    }
+    Logger.log('  ✓ Alternative time fields also accept string values');
+
+    return true;
+
+  } catch (error) {
+    Logger.log(`Test #7 failed with error: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Test #8: UI alert responses (success and error)
  */
 function testUIAlertResponses() {
   try {
@@ -559,7 +809,7 @@ function testUIAlertResponses() {
       }
     }
   } catch (error) {
-    Logger.log(`Test #6 error: ${error.message}`);
+    Logger.log(`Test #8 error: ${error.message}`);
     return false;
   }
 }
@@ -596,7 +846,7 @@ function setNestedProperty(obj, path, value) {
  */
 function validateRequiredFields(payload) {
   const errors = [];
-  const requiredFields = ['sportName', 'division', 'season', 'year', 'dayOfPlay', 'location', 'importantDates', 'seasonStartTime', 'seasonEndTime', 'inventoryInfo'];
+  const requiredFields = ['sportName', 'division', 'season', 'year', 'dayOfPlay', 'location', 'importantDates', 'leagueStartTime', 'leagueEndTime', 'inventoryInfo'];
 
   for (const field of requiredFields) {
     if (!(field in payload) || payload[field] === undefined || payload[field] === null) {
@@ -790,15 +1040,23 @@ function validateTimeFields(payload) {
   const errors = [];
 
   const timeFieldValidations = [
-    { field: 'seasonStartTime', type: 'date' },
-    { field: 'seasonEndTime', type: 'date' },
+    { field: 'leagueStartTime', type: 'string' },
+    { field: 'leagueEndTime', type: 'string' },
     { field: 'alternativeStartTime', type: 'date' },
     { field: 'alternativeEndTime', type: 'date' }
   ];
 
   for (const validation of timeFieldValidations) {
-    if (payload[validation.field] !== undefined && !(payload[validation.field] instanceof Date) && typeof payload[validation.field] !== 'string') {
-      errors.push(`${validation.field} must be a Date object or date string`);
+    if (payload[validation.field] !== undefined) {
+      if (validation.type === 'string') {
+        if (typeof payload[validation.field] !== 'string') {
+          errors.push(`${validation.field} must be a string`);
+        }
+      } else if (validation.type === 'date') {
+        if (!(payload[validation.field] instanceof Date) && typeof payload[validation.field] !== 'string') {
+          errors.push(`${validation.field} must be a Date object or date string`);
+        }
+      }
     }
   }
 

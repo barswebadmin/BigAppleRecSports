@@ -38,10 +38,10 @@ console.log('🚀 Loading GAS functions...');
 loadGasFile('config/constants.gs');
 loadGasFile('helpers/textUtils.gs');
 loadGasFile('helpers/normalizers.gs');
-loadGasFile('core/dateParser.gs');
-loadGasFile('core/flagsParser.gs');
-loadGasFile('core/notesParser.gs');
-loadGasFile('core/rowParser.gs');
+loadGasFile('parsers/dateParser.gs');
+loadGasFile('parsers/parseBFlags_.gs');
+loadGasFile('parsers/notesParser.gs');
+loadGasFile('parsers/_rowParser.gs');
 loadGasFile('core/portedFromProductCreateSheet/createShopifyProduct.gs');
 
 console.log('📋 Running comprehensive product creation tests...\n');

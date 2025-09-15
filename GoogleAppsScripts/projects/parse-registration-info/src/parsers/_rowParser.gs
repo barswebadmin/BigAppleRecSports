@@ -6,7 +6,7 @@
  * @requires ../config/constants.gs
  * @requires ../helpers/normalizers.gs
  * @requires ../helpers/textUtils.gs
- * @requires flagsParser.gs
+ * @requires bFlagsParser.gs
  * @requires timeParser.gs
  * @requires dateParser.gs
  * @requires priceParser.gs
@@ -17,11 +17,12 @@
 /// <reference path="../config/constants.gs" />
 /// <reference path="../helpers/normalizers.gs" />
 /// <reference path="../helpers/textUtils.gs" />
-/// <reference path="flagsParser.gs" />
+/// <reference path="parseBFlags_.gs" />
 /// <reference path="timeParser.gs" />
 /// <reference path="dateParser.gs" />
 /// <reference path="priceParser.gs" />
 /// <reference path="notesParser.gs" />
+
 
 /**
  * Parse a complete source row into structured data
@@ -37,42 +38,63 @@
  * @param {string} v.M - Veteran registration
  * @param {string} v.N - Early registration
  * @param {string} v.O - Open registration
- * @param {Array<string>} unresolved - Array to collect parsing issues
- * @returns {Object} Parsed and structured data object
+ * @returns {{parsed: Object, unresolved: Array<string>}} Parsed data object and unresolved fields array
  */
-function parseSourceRowEnhanced_(v, unresolved) {
-  // SPORT (A)
-  const sport = normalizeSport_(toTitleCase_(v.A.trim()), unresolved);
+function parseSourceRowEnhanced_(v) {
+  // Initialize empty product data object
+  const productCreateData = {};
 
-  // B-lines (day, flags)
-  const bLines = splitLines_(v.B);
-  const day = normalizeDay_(bLines[0] || '');
-  const { division, sportSubCategory, socialOrAdvanced, types } =
-    parseBFlags_(bLines, unresolved, v.C || '');
+  const sportName = normalizeSport_(capitalize(v.A.trim(), true));
+  const unresolved = initializeUnresolvedFields(sportName);
+
+  // Set sportName on productCreateData
+  productCreateData.sportName = sportName;
+
+  const { dayOfPlay, division, sportSubCategory, socialOrAdvanced, types } =
+    parseBFlags_(v.B, unresolved, sportName);
+
+  // Set fields returned by parseBFlags on productCreateData
+  productCreateData.dayOfPlay = dayOfPlay;
+  productCreateData.division = division;
+  productCreateData.sportSubCategory = sportSubCategory;
+  productCreateData.socialOrAdvanced = socialOrAdvanced;
+  productCreateData.types = types;
+
+  // TODO: Continue with rest of parsing
+  return { parsed: productCreateData, unresolved };
 
   // Time range (G)
-  const timeInfo = parseTimeRangeBothSessions_(v.G);
+  const timeInfo = parseTimeRangeBothSessions_(v.G, unresolved);
   const sportStartTime = timeInfo.primaryStartDateOnly;   // Date object with only time-of-day
   const sportEndTime   = timeInfo.primaryEndDateOnly;
   const alternativeStartTime = timeInfo.altStartDateOnly;
   const alternativeEndTime   = timeInfo.altEndDateOnly;
 
   // Dates (D/E)
-  const seasonStartDate = parseDateFlexibleDateOnly_(v.D, unresolved); // Date object (00:00:00)
-  const seasonEndDate   = parseDateFlexibleDateOnly_(v.E, unresolved);
+  const seasonStartDate = parseDateFlexibleDateOnly_(v.D, unresolved, "seasonStartDate"); // Date object (00:00:00)
+  const seasonEndDate   = parseDateFlexibleDateOnly_(v.E, unresolved, "seasonEndDate");
 
   const { season, year } = deriveSeasonYearFromDate_(seasonStartDate);
+
+  // If season and year were successfully derived, remove from unresolved
+  if (season && year && seasonStartDate) {
+    const seasonIndex = unresolved.indexOf("season");
+    if (seasonIndex > -1) unresolved.splice(seasonIndex, 1);
+
+    const yearIndex = unresolved.indexOf("year");
+    if (yearIndex > -1) unresolved.splice(yearIndex, 1);
+  }
 
   // Price (F) numeric
   const price = parsePriceNumber_(v.F, unresolved);
 
   // Location (H) canonicalized
-  const location = canonicalizeLocation_(v.H, unresolved);
+  const location = canonicalizeLocation_(v.H, sportName, unresolved);
 
   // Registration windows (M/N/O) -> Date objects with seconds
-  const earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(v.M, sportStartTime, unresolved);
-  const vetRegistrationStartDateTime   = parseDateFlexibleDateTime_(v.N, sportStartTime, unresolved);
-  const openRegistrationStartDateTime  = parseDateFlexibleDateTime_(v.O, sportStartTime, unresolved);
+  const earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(v.M, sportStartTime, unresolved, "earlyRegistrationStartDateTime");
+  const vetRegistrationStartDateTime   = parseDateFlexibleDateTime_(v.N, sportStartTime, unresolved, "vetRegistrationStartDateTime");
+  const openRegistrationStartDateTime  = parseDateFlexibleDateTime_(v.O, sportStartTime, unresolved, "openRegistrationStartDateTime");
 
   const notes = parseNotes_(v.C, sportStartTime, unresolved);
   const {
@@ -91,40 +113,59 @@ function parseSourceRowEnhanced_(v, unresolved) {
   const altStartFinal = altStartFromNotes || alternativeStartTime || '';
   const altEndFinal   = altEndFromNotes   || alternativeEndTime   || '';
 
+  // Remove alternative time fields from unresolved if found
+  if (altStartFinal) {
+    const startIndex = unresolved.indexOf("alternativeStartTime");
+    if (startIndex > -1) unresolved.splice(startIndex, 1);
+  }
+  if (altEndFinal) {
+    const endIndex = unresolved.indexOf("alternativeEndTime");
+    if (endIndex > -1) unresolved.splice(endIndex, 1);
+  }
+
   const offDatesFromText = extractOffDatesFromFreeText_(v.C, unresolved);
   const offDatesCombined = dedupeCsv_([...offDatesFromNotes, ...offDatesFromText]);
 
   // Total inventory from details (# of Players: N)
-  const totalInventory = extractPlayersFromDetails_(v.C);
+  const totalInventory = extractPlayersFromDetails_(v.C, unresolved);
 
-  return {
-    sport,
-    day,
-    sportSubCategory,
+  const parsed = {
+    sportName,
     division,
     season,
     year,
-    socialOrAdvanced,
-    types: dedupeCsv_([...types, ...(notes.typesFromNotes || [])]).join(', '),
-    newPlayerOrientationDateTime: orientationDate || '',
-    scoutNightDateTime: scoutNightDate || '',
-    openingPartyDate: openingPartyDate || '',
-    rainDate: rainDate || '',
-    closingPartyDate: closingPartyDate || '',
-    seasonStartDate,
-    seasonEndDate,
+    dayOfPlay: day,
+    location,
+    optionalLeagueInfo: {
+      socialOrAdvanced,
+      sportSubCategory,
+      types: dedupeCsv_([...types, ...(notes.typesFromNotes || [])]).join(', ')
+    },
+    importantDates: {
+      seasonStartDate,
+      seasonEndDate,
+      offDates: offDatesCombined, // Will be array of Date objects instead of comma-separated string
+      newPlayerOrientationDateTime: orientationDate || '',
+      scoutNightDateTime: scoutNightDate || '',
+      openingPartyDate: openingPartyDate || '',
+      rainDate: rainDate || '',
+      closingPartyDate: closingPartyDate || '',
+      vetRegistrationStartDateTime,
+      earlyRegistrationStartDateTime,
+      openRegistrationStartDateTime
+    },
+    leagueStartTime: sportStartTime,
+    leagueEndTime: sportEndTime,
     alternativeStartTime: altStartFinal,
     alternativeEndTime: altEndFinal,
-    offDatesCommaSeparated: offDatesCombined.join(', '),
-    sportStartTime,
-    sportEndTime,
-    location,
-    price,
-    vetRegistrationStartDateTime,
-    earlyRegistrationStartDateTime,
-    openRegistrationStartDateTime,
-    totalInventory,
+    inventoryInfo: {
+      price,
+      totalInventory,
+      numberVetSpotsToReleaseAtGoLive: null // Will be extracted from parsing logic later
+    }
   };
+
+  return { parsed, unresolved };
 }
 
 /**
