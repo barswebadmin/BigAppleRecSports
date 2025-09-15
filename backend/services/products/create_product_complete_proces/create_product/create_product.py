@@ -514,20 +514,9 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
         # Update variant settings (tax, shipping) - matching GAS updateVariantSettings
         if first_variant_gid:
             logger.info(f"🔧 Updating variant settings for {first_variant_gid}...")
-            variant_update_mutation = {
-                "query": f"""
-                    mutation {{
-                        productVariantUpdate(input: {{
-                            id: "{first_variant_gid}",
-                            taxable: false,
-                            requiresShipping: false
-                        }}) {{
-                            userErrors {{ field message }}
-                        }}
-                    }}"""
-            }
-            update_result = shopify_service._make_shopify_request(
-                variant_update_mutation
+            variant_update_data = {"taxable": False, "requires_shipping": False}
+            update_result = shopify_service.update_variant_rest(
+                first_variant_gid, variant_update_data
             )
             logger.info(f"📥 Variant update response: {update_result}")
 

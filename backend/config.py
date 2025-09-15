@@ -16,6 +16,7 @@ class Settings:
             self.shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
             self.shopify_token = os.getenv("SHOPIFY_TOKEN")
             self.shopify_location_id = os.getenv("SHOPIFY_LOCATION_ID")
+            self.shopify_rest_url = os.getenv("SHOPIFY_REST_URL")
         else:
             # Use dev/test Shopify credentials (if any) or fallback to production
             self.shopify_store = os.getenv(
@@ -27,6 +28,9 @@ class Settings:
             )
             self.shopify_location_id = os.getenv(
                 "SHOPIFY_DEV_LOCATION_ID", os.getenv("SHOPIFY_LOCATION_ID")
+            )
+            self.shopify_rest_url = os.getenv(
+                "SHOPIFY_DEV_REST_URL", os.getenv("SHOPIFY_REST_URL")
             )
 
         # Slack configuration (environment-aware)
@@ -87,6 +91,12 @@ class Settings:
     @property
     def graphql_url(self):
         return f"https://{self.shopify_store}/admin/api/2025-07/graphql.json"
+
+    @property
+    def rest_url(self):
+        return (
+            self.shopify_rest_url or f"https://{self.shopify_store}/admin/api/2025-07"
+        )
 
     @property
     def is_production_mode(self) -> bool:

@@ -57,6 +57,7 @@ class ShopifyService:
         self.shopify_customer_utils = ShopifyCustomerUtils(self._make_shopify_request)
         self.shopify_order_utils = ShopifyOrderUtils(self._make_shopify_request)
         self.graphql_url = settings.graphql_url
+        self.rest_url = settings.rest_url
         self.headers = {
             "Content-Type": "application/json",
             "X-Shopify-Access-Token": settings.shopify_token,
@@ -661,3 +662,234 @@ class ShopifyService:
         except Exception as e:
             logger.error(f"❌ Error fetching customer by email {email}: {str(e)}")
             return {"success": False, "message": str(e), "customer": None}
+
+    def _make_shopify_rest_request(
+        self, endpoint: str, method: str = "GET", data: Dict[str, Any] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Make a REST API request to Shopify"""
+        from config import settings
+
+        # For development/testing mode when Shopify credentials aren't available
+        should_use_mock = (
+            not settings.shopify_token
+            or settings.environment.lower() in ["dev", "test"]
+        )
+
+        if should_use_mock and not os.getenv("FORCE_REAL_API"):
+            logger.info("🎭 Using mock data for REST API dev/test environment")
+            # Return a mock successful response for variant update
+            if "variants" in endpoint and method == "PUT":
+                # Extract variant ID from endpoint for more realistic mock
+                variant_id = (
+                    endpoint.split("/")[1].split(".")[0] if "/" in endpoint else "12345"
+                )
+                return {
+                    "variant": {
+                        "id": int(variant_id) if variant_id.isdigit() else 12345,
+                        "taxable": data.get("variant", {}).get("taxable", False)
+                        if data
+                        else False,
+                        "requires_shipping": data.get("variant", {}).get(
+                            "requires_shipping", False
+                        )
+                        if data
+                        else False,
+                        "inventory_management": data.get("variant", {}).get(
+                            "inventory_management", "shopify"
+                        )
+                        if data
+                        else "shopify",
+                    }
+                }
+            return {"success": True, "message": "Mock REST response"}
+
+        # Build full URL
+        full_url = f"{self.rest_url}/{endpoint.lstrip('/')}"
+
+        logger.info(f"🚀 SHOPIFY REST API REQUEST - {method} {endpoint}")
+        logger.info(f"🔗 Endpoint: {full_url}")
+        logger.info(f"🔑 Headers: {self.headers}")
+        if data:
+            logger.info(f"📤 Request Data: {json.dumps(data, indent=2)}")
+
+        try:
+            # Use explicit SSL certificate bundle for production
+            cert_bundle = (
+                "/etc/ssl/certs/ca-certificates.crt"
+                if os.getenv("ENVIRONMENT") == "production"
+                else True
+            )
+
+            if method.upper() == "GET":
+                response = requests.get(
+                    full_url,
+                    headers=self.headers,
+                    timeout=30,
+                    verify=cert_bundle,
+                )
+            elif method.upper() == "PUT":
+                response = requests.put(
+                    full_url,
+                    headers=self.headers,
+                    json=data,
+                    timeout=30,
+                    verify=cert_bundle,
+                )
+            elif method.upper() == "POST":
+                response = requests.post(
+                    full_url,
+                    headers=self.headers,
+                    json=data,
+                    timeout=30,
+                    verify=cert_bundle,
+                )
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
+            # Enhanced response logging
+            logger.info(f"📥 SHOPIFY REST API RESPONSE - {method} {endpoint}")
+            logger.info(f"📊 Status Code: {response.status_code}")
+            logger.info(f"📈 Response Headers: {dict(response.headers)}")
+
+            # Log response size
+            content_length = response.headers.get("content-length", "unknown")
+            logger.info(f"📏 Response Size: {content_length} bytes")
+
+            # Handle different HTTP status codes
+            if response.status_code == 401:
+                logger.error("🚨 Shopify authentication error (401): Invalid API token")
+                return {
+                    "error": "authentication_error",
+                    "status_code": 401,
+                    "message": response.text,
+                }
+            elif response.status_code == 404:
+                logger.error("🚨 Resource not found (404)")
+                return {
+                    "error": "not_found",
+                    "status_code": 404,
+                    "message": response.text,
+                }
+            elif response.status_code >= 500:
+                logger.error(
+                    f"🚨 Shopify server error ({response.status_code}): {response.text}"
+                )
+                return {
+                    "error": "server_error",
+                    "status_code": response.status_code,
+                    "message": response.text,
+                }
+            elif response.status_code not in [200, 201]:
+                logger.error(
+                    f"🚨 Shopify REST API error ({response.status_code}): {response.text}"
+                )
+                return {
+                    "error": "api_error",
+                    "status_code": response.status_code,
+                    "message": response.text,
+                }
+
+            # Success - parse JSON response
+            result = response.json()
+
+            logger.info(f"✅ SHOPIFY REST API SUCCESS - {method} {endpoint}")
+            logger.info(f"📤 Full Response: {json.dumps(result, indent=2)}")
+            return result
+
+        except requests.exceptions.SSLError as ssl_error:
+            logger.error(f"🚨 SSL Error - trying without verification: {ssl_error}")
+            # Fallback: try without SSL verification (for development)
+            try:
+                logger.warning(
+                    "⚠️ Retrying Shopify REST request without SSL verification"
+                )
+                if method.upper() == "GET":
+                    response = requests.get(
+                        full_url, headers=self.headers, timeout=30, verify=False
+                    )
+                elif method.upper() == "PUT":
+                    response = requests.put(
+                        full_url,
+                        headers=self.headers,
+                        json=data,
+                        timeout=30,
+                        verify=False,
+                    )
+                elif method.upper() == "POST":
+                    response = requests.post(
+                        full_url,
+                        headers=self.headers,
+                        json=data,
+                        timeout=30,
+                        verify=False,
+                    )
+
+                if response.status_code in [200, 201]:
+                    result = response.json()
+                    logger.info(
+                        "✅ Shopify REST request successful (no SSL verification)"
+                    )
+                    return result
+                else:
+                    logger.error(
+                        f"❌ Shopify REST request failed: {response.status_code} - {response.text}"
+                    )
+                    return {
+                        "error": "request_failed",
+                        "status_code": response.status_code,
+                        "message": response.text,
+                    }
+            except Exception as retry_error:
+                logger.error(f"❌ Retry failed: {retry_error}")
+                return {"error": "ssl_and_retry_failed", "message": str(retry_error)}
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ Request exception: {e}")
+            return {"error": "request_exception", "message": str(e)}
+        except Exception as e:
+            logger.error(f"❌ Unexpected error in REST request: {e}")
+            return {"error": "unexpected_error", "message": str(e)}
+
+    def update_variant_rest(
+        self, variant_id: str, variant_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Update a product variant using Shopify REST API"""
+        # Extract numeric ID from GID if needed
+        if variant_id.startswith("gid://shopify/ProductVariant/"):
+            numeric_id = variant_id.split("/")[-1]
+        else:
+            numeric_id = variant_id
+
+        endpoint = f"variants/{numeric_id}.json"
+
+        # Wrap in the format Shopify REST API expects
+        payload = {"variant": variant_data}
+
+        logger.info(f"🔧 Updating variant {numeric_id} via REST API...")
+        logger.info(f"📦 Update data: {variant_data}")
+
+        response = self._make_shopify_rest_request(endpoint, "PUT", payload)
+
+        if response and "variant" in response:
+            logger.info(f"✅ Variant {numeric_id} updated successfully")
+            return {
+                "success": True,
+                "message": "Variant updated successfully",
+                "variant": response["variant"],
+            }
+        elif response and "error" in response:
+            logger.error(
+                f"❌ Variant update failed: {response.get('message', 'Unknown error')}"
+            )
+            return {
+                "success": False,
+                "error": response["error"],
+                "message": response.get("message", "Variant update failed"),
+            }
+        else:
+            logger.error("❌ Unexpected response format from variant update")
+            return {
+                "success": False,
+                "error": "unexpected_response",
+                "message": "Unexpected response format",
+            }

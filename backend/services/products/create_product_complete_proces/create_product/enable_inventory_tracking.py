@@ -29,59 +29,34 @@ def enable_inventory_tracking(
     logger.info(f"🔧 Enabling inventory tracking for variant {variant_gid}")
 
     try:
-        # Build GraphQL mutation to enable inventory management
-        # This is equivalent to the GAS REST API call setting inventory_management: "shopify"
-        inventory_mutation = {
-            "query": """
-                mutation productVariantUpdate($input: ProductVariantInput!) {
-                    productVariantUpdate(input: $input) {
-                        productVariant {
-                            id
-                            inventoryManagement
-                        }
-                        userErrors {
-                            field
-                            message
-                        }
-                    }
-                }
-            """,
-            "variables": {
-                "input": {"id": variant_gid, "inventoryManagement": "SHOPIFY"}
-            },
-        }
+        # Use REST API to enable inventory management
+        # This matches the GAS REST API call setting inventory_management: "shopify"
+        variant_update_data = {"inventory_management": "shopify"}
 
-        # Make the request
-        response = shopify_service._make_shopify_request(inventory_mutation)
+        # Make the REST API request
+        response = shopify_service.update_variant_rest(variant_gid, variant_update_data)
 
         if not response:
-            logger.error("❌ No response from Shopify productVariantUpdate mutation")
+            logger.error("❌ No response from Shopify variant update REST API")
             return {
                 "success": False,
-                "error": "No response from Shopify productVariantUpdate mutation",
+                "error": "No response from Shopify variant update REST API",
             }
 
         logger.info(f"📝 Inventory tracking response: {response}")
 
         # Check for errors in the response
-        variant_data = response.get("data", {}).get("productVariantUpdate", {})
-        user_errors = variant_data.get("userErrors", [])
-
-        if user_errors:
-            error_messages = [
-                f"{error.get('field', '')}: {error.get('message', '')}"
-                for error in user_errors
-            ]
-            logger.error(f"❌ Enable inventory tracking errors: {user_errors}")
+        if not response.get("success", False):
+            error_message = response.get("message", "Unknown error")
+            logger.error(f"❌ Enable inventory tracking failed: {error_message}")
             return {
                 "success": False,
-                "error": f"Enable inventory tracking errors: {', '.join(error_messages)}",
-                "userErrors": user_errors,
+                "error": f"Enable inventory tracking failed: {error_message}",
             }
 
         # Success
-        updated_variant = variant_data.get("productVariant", {})
-        inventory_management = updated_variant.get("inventoryManagement", "")
+        updated_variant = response.get("variant", {})
+        inventory_management = updated_variant.get("inventory_management", "")
 
         logger.info(f"✅ Successfully enabled inventory tracking for {variant_gid}")
         logger.info(f"📦 Inventory management set to: {inventory_management}")
