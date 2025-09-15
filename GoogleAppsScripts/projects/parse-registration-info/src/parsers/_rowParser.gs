@@ -50,7 +50,7 @@ function parseSourceRowEnhanced_(v) {
   // Set sportName on productCreateData
   productCreateData.sportName = sportName;
 
-  const { dayOfPlay, division, sportSubCategory, socialOrAdvanced, types } =
+  const { dayOfPlay, division, sportSubCategory, socialOrAdvanced, types, updatedUnresolved: updatedUnresolved1 } =
     parseColBLeagueDetails_(v.B, unresolved, sportName);
 
   // Set fields returned by parseColBLeagueDetails on productCreateData
@@ -61,39 +61,39 @@ function parseSourceRowEnhanced_(v) {
   productCreateData.types = types;
 
   // Time range (G)
-  const timeInfo = parseTimeRangeBothSessions_(v.G, unresolved);
+  const timeInfo = parseTimeRangeBothSessions_(v.G, updatedUnresolved1);
   const sportStartTime = timeInfo.primaryStartDateOnly;   // Date object with only time-of-day
   const sportEndTime   = timeInfo.primaryEndDateOnly;
   const alternativeStartTime = timeInfo.altStartDateOnly;
   const alternativeEndTime   = timeInfo.altEndDateOnly;
 
   // Dates (D/E)
-  const seasonStartDate = parseDateFlexibleDateOnly_(v.D, unresolved, "seasonStartDate"); // Date object (00:00:00)
-  const seasonEndDate   = parseDateFlexibleDateOnly_(v.E, unresolved, "seasonEndDate");
+  const seasonStartDate = parseDateFlexibleDateOnly_(v.D, updatedUnresolved1, "seasonStartDate"); // Date object (00:00:00)
+  const seasonEndDate   = parseDateFlexibleDateOnly_(v.E, updatedUnresolved1, "seasonEndDate");
 
   const { season, year } = deriveSeasonYearFromDate_(seasonStartDate);
 
   // If season and year were successfully derived, remove from unresolved
   if (season && year && seasonStartDate) {
-    const seasonIndex = unresolved.indexOf("season");
-    if (seasonIndex > -1) unresolved.splice(seasonIndex, 1);
+    const seasonIndex = updatedUnresolved1.indexOf("season");
+    if (seasonIndex > -1) updatedUnresolved1.splice(seasonIndex, 1);
 
-    const yearIndex = unresolved.indexOf("year");
-    if (yearIndex > -1) unresolved.splice(yearIndex, 1);
+    const yearIndex = updatedUnresolved1.indexOf("year");
+    if (yearIndex > -1) updatedUnresolved1.splice(yearIndex, 1);
   }
 
   // Price (F) numeric
-  const price = parsePriceNumber_(v.F, unresolved);
+  const price = parsePriceNumber_(v.F, updatedUnresolved1);
 
   // Location (H) canonicalized
-  const location = canonicalizeLocation_(v.H, sportName, unresolved);
+  const location = canonicalizeLocation_(v.H, sportName, updatedUnresolved1);
 
   // Registration windows (M/N/O) -> Date objects with seconds
-  const earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(v.M, sportStartTime, unresolved, "earlyRegistrationStartDateTime");
-  const vetRegistrationStartDateTime   = parseDateFlexibleDateTime_(v.N, sportStartTime, unresolved, "vetRegistrationStartDateTime");
-  const openRegistrationStartDateTime  = parseDateFlexibleDateTime_(v.O, sportStartTime, unresolved, "openRegistrationStartDateTime");
+  const earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(v.M, sportStartTime, updatedUnresolved1, "earlyRegistrationStartDateTime");
+  const vetRegistrationStartDateTime   = parseDateFlexibleDateTime_(v.N, sportStartTime, updatedUnresolved1, "vetRegistrationStartDateTime");
+  const openRegistrationStartDateTime  = parseDateFlexibleDateTime_(v.O, sportStartTime, updatedUnresolved1, "openRegistrationStartDateTime");
 
-  const notes = parseNotes_(v.C, sportStartTime, unresolved);
+  const notes = parseNotes_(v.C, sportStartTime, updatedUnresolved1);
   const {
     orientationDate,
     scoutNightDate,
@@ -112,19 +112,19 @@ function parseSourceRowEnhanced_(v) {
 
   // Remove alternative time fields from unresolved if found
   if (altStartFinal) {
-    const startIndex = unresolved.indexOf("alternativeStartTime");
-    if (startIndex > -1) unresolved.splice(startIndex, 1);
+    const startIndex = updatedUnresolved1.indexOf("alternativeStartTime");
+    if (startIndex > -1) updatedUnresolved1.splice(startIndex, 1);
   }
   if (altEndFinal) {
-    const endIndex = unresolved.indexOf("alternativeEndTime");
-    if (endIndex > -1) unresolved.splice(endIndex, 1);
+    const endIndex = updatedUnresolved1.indexOf("alternativeEndTime");
+    if (endIndex > -1) updatedUnresolved1.splice(endIndex, 1);
   }
 
-  const offDatesFromText = extractOffDatesFromFreeText_(v.C, unresolved);
+  const offDatesFromText = extractOffDatesFromFreeText_(v.C, updatedUnresolved1);
   const offDatesCombined = dedupeCsv_([...offDatesFromNotes, ...offDatesFromText]);
 
   // Total inventory from details (# of Players: N)
-  const totalInventory = extractPlayersFromDetails_(v.C, unresolved);
+  const totalInventory = extractPlayersFromDetails_(v.C, updatedUnresolved1);
 
   const parsed = {
     sportName,
@@ -162,7 +162,7 @@ function parseSourceRowEnhanced_(v) {
     }
   };
 
-  return { parsed, unresolved };
+  return { parsed, unresolved: updatedUnresolved1 };
 }
 
 /**
