@@ -11,7 +11,7 @@
 // Import references for editor support
 /// <reference path="../src/config/constants.gs" />
 /// <reference path="../src/helpers/normalizers.gs" />
-/// <reference path="../src/helpers/dateParsers.gs" />
+/// <reference path="../src/helpers/DateParsers.gs" />
 /// <reference path="../src/parsers/parseColMNORegistrationDates_.gs" />
 
 /**

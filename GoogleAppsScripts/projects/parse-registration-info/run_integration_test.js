@@ -141,8 +141,8 @@ try {
     safeEvalGasFile(`${basePath}/helpers/textUtils.gs`, 'textUtils.gs');
   }
 
-  if (fs.existsSync(`${basePath}/helpers/DateParsers.gs`)) {
-    safeEvalGasFile(`${basePath}/helpers/DateParsers.gs`, 'DateParsers.gs');
+  if (fs.existsSync(`${basePath}/helpers/dateParsers.gs`)) {
+    safeEvalGasFile(`${basePath}/helpers/dateParsers.gs`, 'dateParsers.gs');
   }
 
   // Load parsers in dependency order
