@@ -208,13 +208,8 @@ class ShopifyService:
         elif "productUpdate" in query_str:
             operation_name = "UPDATE_PRODUCT"
 
-        logger.info(f"🚀 SHOPIFY API REQUEST - {operation_name}")
-        logger.info(f"🔗 Endpoint: {self.graphql_url}")
-        logger.info(f"🔑 Headers: {self.headers}")
-        logger.info(f"📤 Request Query: {json.dumps(query, indent=2)}")
-        logger.info(
-            f"🔒 SSL Configuration - CERT_FILE: {os.getenv('SSL_CERT_FILE')}, CA_BUNDLE: {os.getenv('REQUESTS_CA_BUNDLE')}"
-        )
+        # Essential logging - operation only
+        logger.info(f"🚀 {operation_name}")
 
         try:
             # Use explicit SSL certificate bundle for production
@@ -232,15 +227,7 @@ class ShopifyService:
                 verify=cert_bundle,  # Use explicit certificate bundle
             )
 
-            # Enhanced response logging
-            logger.info(f"📥 SHOPIFY API RESPONSE - {operation_name}")
-            logger.info(f"📊 Status Code: {response.status_code}")
-            logger.info(f"📈 Response Headers: {dict(response.headers)}")
-
-            # Log response size and timing info if available
-            content_length = response.headers.get("content-length", "unknown")
-            logger.info(f"📏 Response Size: {content_length} bytes")
-
+            # Shopify always returns 200, so check actual response content for errors
             # Handle different HTTP status codes
             if response.status_code == 401:
                 logger.info(f"📥 Response text: {response.text}")
@@ -286,70 +273,58 @@ class ShopifyService:
                     "message": response.text,
                 }
 
-            # Success - parse JSON response
-            result = response.json()
+                # Success - parse JSON response
+                result = response.json()
 
-            # Enhanced success logging
-            logger.info(f"✅ SHOPIFY API SUCCESS - {operation_name}")
-            logger.info("📋 Response Summary:")
+                # Check for GraphQL errors first
+                if "errors" in result:
+                    logger.error(
+                        f"❌ {operation_name} failed - GraphQL errors: {result['errors']}"
+                    )
+                    return {"error": result["errors"]}
 
-            # Log key response details based on operation type
-            if "data" in result:
-                data = result["data"]
-                if operation_name == "CREATE_PRODUCT" and "productCreate" in data:
-                    product = data["productCreate"].get("product", {})
-                    logger.info(f"   🆔 Product ID: {product.get('id')}")
-                    logger.info(f"   📝 Product Title: {product.get('title')}")
-                    logger.info(f"   🔗 Product Handle: {product.get('handle')}")
-                elif (
-                    operation_name == "CREATE_VARIANTS_BULK"
-                    and "productVariantsBulkCreate" in data
-                ):
-                    variants = data["productVariantsBulkCreate"].get(
-                        "productVariants", []
-                    )
-                    logger.info(f"   🎯 Created Variants: {len(variants)}")
-                    for i, variant in enumerate(variants):
-                        logger.info(
-                            f"     Variant {i+1}: {variant.get('id')} - {variant.get('title', 'No title')}"
-                        )
-                elif (
-                    operation_name == "UPDATE_VARIANT"
-                    and "productVariantUpdate" in data
-                ):
-                    variant = data["productVariantUpdate"].get("productVariant", {})
-                    logger.info(f"   🎯 Updated Variant: {variant.get('id')}")
-                elif (
-                    operation_name == "ADJUST_INVENTORY"
-                    and "inventoryAdjustQuantities" in data
-                ):
-                    changes = (
-                        data["inventoryAdjustQuantities"]
-                        .get("inventoryAdjustmentGroup", {})
-                        .get("changes", [])
-                    )
-                    logger.info(f"   📦 Inventory Changes: {len(changes)}")
-                    for change in changes:
-                        logger.info(
-                            f"     {change.get('name')}: {change.get('delta', 0):+d}"
+                # Check for user errors in nested operations and determine success/failure
+                has_errors = False
+                if "data" in result and result["data"]:
+                    for key, value in result["data"].items():
+                        if (
+                            isinstance(value, dict)
+                            and "userErrors" in value
+                            and value["userErrors"]
+                        ):
+                            has_errors = True
+                            logger.error(
+                                f"❌ {operation_name} failed - User errors in {key}: {value['userErrors']}"
+                            )
+
+                # For CREATE_PRODUCT, also check if we actually got a product back
+                if operation_name == "CREATE_PRODUCT" and "data" in result:
+                    product_create = result["data"].get("productCreate", {})
+                    product = product_create.get("product", {})
+                    if not product or not product.get("id"):
+                        has_errors = True
+                        logger.error(
+                            f"❌ {operation_name} failed - No product returned from Shopify"
                         )
 
-            # Log any errors in the response
-            if "errors" in result:
-                logger.warning(f"⚠️ GraphQL Errors in Response: {result['errors']}")
+                # Log final result
+                if has_errors:
+                    logger.error(f"❌ {operation_name} failed")
+                else:
+                    logger.info(f"✅ {operation_name} successful")
 
-            # Check for userErrors in the data
-            if "data" in result:
-                for key, value in result["data"].items():
-                    if (
-                        isinstance(value, dict)
-                        and "userErrors" in value
-                        and value["userErrors"]
-                    ):
-                        logger.warning(f"⚠️ User Errors in {key}: {value['userErrors']}")
+                    # Log key success details for specific operations
+                    if operation_name == "CREATE_PRODUCT" and "data" in result:
+                        product = result["data"]["productCreate"].get("product", {})
+                        if product.get("id"):
+                            logger.info(f"   🆔 Product ID: {product.get('id')}")
+                    elif operation_name == "CREATE_VARIANTS_BULK" and "data" in result:
+                        variants = result["data"]["productVariantsBulkCreate"].get(
+                            "productVariants", []
+                        )
+                        logger.info(f"   🎯 Created {len(variants)} variants")
 
-            logger.info(f"📤 Full Response: {json.dumps(result, indent=2)}")
-            return result
+                return result
 
         except requests.exceptions.SSLError as ssl_error:
             logger.error(f"🚨 SSL Error - trying without verification: {ssl_error}")
@@ -664,7 +639,7 @@ class ShopifyService:
             return {"success": False, "message": str(e), "customer": None}
 
     def _make_shopify_rest_request(
-        self, endpoint: str, method: str = "GET", data: Dict[str, Any] = None
+        self, endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
         """Make a REST API request to Shopify"""
         from config import settings
@@ -706,11 +681,7 @@ class ShopifyService:
         # Build full URL
         full_url = f"{self.rest_url}/{endpoint.lstrip('/')}"
 
-        logger.info(f"🚀 SHOPIFY REST API REQUEST - {method} {endpoint}")
-        logger.info(f"🔗 Endpoint: {full_url}")
-        logger.info(f"🔑 Headers: {self.headers}")
-        if data:
-            logger.info(f"📤 Request Data: {json.dumps(data, indent=2)}")
+        logger.info(f"🚀 REST {method} {endpoint}")
 
         try:
             # Use explicit SSL certificate bundle for production
@@ -746,18 +717,10 @@ class ShopifyService:
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
-            # Enhanced response logging
-            logger.info(f"📥 SHOPIFY REST API RESPONSE - {method} {endpoint}")
-            logger.info(f"📊 Status Code: {response.status_code}")
-            logger.info(f"📈 Response Headers: {dict(response.headers)}")
-
-            # Log response size
-            content_length = response.headers.get("content-length", "unknown")
-            logger.info(f"📏 Response Size: {content_length} bytes")
-
             # Handle different HTTP status codes
             if response.status_code == 401:
-                logger.error("🚨 Shopify authentication error (401): Invalid API token")
+                logger.error(f"❌ REST {method} failed - authentication error (401)")
+                logger.error(f"📤 Error response: {response.text}")
                 return {
                     "error": "authentication_error",
                     "status_code": 401,
@@ -792,8 +755,14 @@ class ShopifyService:
             # Success - parse JSON response
             result = response.json()
 
-            logger.info(f"✅ SHOPIFY REST API SUCCESS - {method} {endpoint}")
-            logger.info(f"📤 Full Response: {json.dumps(result, indent=2)}")
+            # Check if the response indicates success or has errors
+            if "errors" in result:
+                logger.error(
+                    f"❌ REST {method} failed - Response errors: {result['errors']}"
+                )
+                return {"error": "shopify_errors", "message": result["errors"]}
+
+            logger.info(f"✅ REST {method} successful")
             return result
 
         except requests.exceptions.SSLError as ssl_error:
@@ -865,13 +834,9 @@ class ShopifyService:
         # Wrap in the format Shopify REST API expects
         payload = {"variant": variant_data}
 
-        logger.info(f"🔧 Updating variant {numeric_id} via REST API...")
-        logger.info(f"📦 Update data: {variant_data}")
-
         response = self._make_shopify_rest_request(endpoint, "PUT", payload)
 
         if response and "variant" in response:
-            logger.info(f"✅ Variant {numeric_id} updated successfully")
             return {
                 "success": True,
                 "message": "Variant updated successfully",

@@ -451,8 +451,6 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
             logger.error("Failed to get response from Shopify")
             return {"success": False, "error": "Failed to create product"}
 
-        logger.info(f"Full Shopify Response: {response}")
-
         # Check for GraphQL errors first
         if response.get("errors"):
             logger.error(f"Shopify GraphQL errors: {response['errors']}")
@@ -486,6 +484,10 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
             else ""
         )
 
+        logger.info(f"✅ Product created: {product_gid}")
+        if product.get("title"):
+            logger.info(f"📝 Title: {product.get('title')}")
+
         # Get first variant GID (auto-created with product)
         variant_query = {
             "query": f"""
@@ -498,9 +500,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
                 }}"""
         }
 
-        logger.info("🔍 Getting first variant GID...")
         variant_response = shopify_service._make_shopify_request(variant_query)
-        logger.info(f"📥 Variant query response: {variant_response}")
 
         first_variant_gid = None
         if variant_response and variant_response.get("data", {}).get("product", {}).get(
@@ -509,23 +509,32 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
             first_variant_gid = variant_response["data"]["product"]["variants"][
                 "nodes"
             ][0]["id"]
-            logger.info(f"✅ Found first variant GID: {first_variant_gid}")
 
         # Update variant settings (tax, shipping) - matching GAS updateVariantSettings
         if first_variant_gid:
-            logger.info(f"🔧 Updating variant settings for {first_variant_gid}...")
+            logger.info(f"🔧 Updating variant settings: {first_variant_gid}")
             variant_update_data = {"taxable": False, "requires_shipping": False}
             update_result = shopify_service.update_variant_rest(
                 first_variant_gid, variant_update_data
             )
-            logger.info(f"📥 Variant update response: {update_result}")
+
+            if update_result.get("success"):
+                logger.info("✅ Variant settings updated")
+            else:
+                logger.warning(f"⚠️ Variant update failed: {update_result.get('error')}")
 
             # Enable inventory tracking - matching GAS enableInventoryTracking
-            logger.info(f"📦 Enabling inventory tracking for {first_variant_gid}...")
+            logger.info("📦 Enabling inventory tracking")
             inventory_result = enable_inventory_tracking(
                 first_variant_gid, shopify_service
             )
-            logger.info(f"📥 Inventory tracking response: {inventory_result}")
+
+            if inventory_result.get("success"):
+                logger.info("✅ Inventory tracking enabled")
+            else:
+                logger.warning(
+                    f"⚠️ Inventory tracking failed: {inventory_result.get('error')}"
+                )
 
             if not inventory_result.get("success"):
                 logger.warning(

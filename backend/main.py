@@ -29,6 +29,16 @@ from version import get_version_info
 import logging
 import json
 
+# Configure logging for all modules
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+# Set specific loggers to INFO level to ensure they show up
+logging.getLogger("services.products").setLevel(logging.INFO)
+logging.getLogger("services.shopify").setLevel(logging.INFO)
+logging.getLogger("backend.services").setLevel(logging.INFO)
+
 app = FastAPI(
     title="Big Apple Rec Sports API",
     description="Backend API for Big Apple Rec Sports operations",

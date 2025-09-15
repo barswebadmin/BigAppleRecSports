@@ -26,8 +26,6 @@ def enable_inventory_tracking(
     if not shopify_service:
         shopify_service = ShopifyService()
 
-    logger.info(f"🔧 Enabling inventory tracking for variant {variant_gid}")
-
     try:
         # Use REST API to enable inventory management
         # This matches the GAS REST API call setting inventory_management: "shopify"
@@ -43,8 +41,6 @@ def enable_inventory_tracking(
                 "error": "No response from Shopify variant update REST API",
             }
 
-        logger.info(f"📝 Inventory tracking response: {response}")
-
         # Check for errors in the response
         if not response.get("success", False):
             error_message = response.get("message", "Unknown error")
@@ -57,9 +53,6 @@ def enable_inventory_tracking(
         # Success
         updated_variant = response.get("variant", {})
         inventory_management = updated_variant.get("inventory_management", "")
-
-        logger.info(f"✅ Successfully enabled inventory tracking for {variant_gid}")
-        logger.info(f"📦 Inventory management set to: {inventory_management}")
 
         return {
             "success": True,

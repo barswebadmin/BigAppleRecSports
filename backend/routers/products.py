@@ -41,7 +41,18 @@ async def create_product(
 
     # Create the product using the validated request object
     try:
+        logger.info("🚀 Starting product creation process in router...")
+        logger.info(
+            f"📝 Request summary: {validated_request.sportName} - {validated_request.regularSeasonBasicDetails.dayOfPlay} - {validated_request.regularSeasonBasicDetails.division}"
+        )
+
         result = ProductsService.create_product(validated_request)
+
+        logger.info(f"📥 Product creation result: {result.get('success', False)}")
+        if result.get("success"):
+            logger.info("🎉 Product creation completed successfully!")
+        else:
+            logger.warning(f"⚠️ Product creation failed: {result.get('error')}")
 
         if result["success"]:
             logger.info(

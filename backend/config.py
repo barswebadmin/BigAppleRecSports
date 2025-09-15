@@ -48,6 +48,15 @@ class Settings:
             "joe-test": {"channelId": "C092RU7R6PL", "name": "#joe-test"},
         }
 
+        # AWS Lambda URLs for scheduling
+        self.aws_schedule_product_changes_url = os.getenv(
+            "AWS_SCHEDULE_PRODUCT_CHANGES_URL"
+        )
+        self.aws_payment_assistance_url = os.getenv("AWS_PAYMENT_ASSISTANCE_URL")
+
+        # Generic AWS endpoint (fallback)
+        self.aws_create_product_endpoint = os.getenv("AWS_CREATE_PRODUCT_ENDPOINT")
+
         # Slack subgroups configuration
         self.slack_subgroups = {
             "kickball": "<!subteam^S08L2521XAM>",

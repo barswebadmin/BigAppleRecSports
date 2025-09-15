@@ -23,7 +23,7 @@
 
 // Configuration constants
 const ENVIRONMENT = 'dev'; // 'prod' or 'dev'
-const NGROK_URL = 'https://c9615d689596.ngrok-free.app';
+const NGROK_URL = 'https://7fb15046ba8a.ngrok-free.app';
 
 /***** MENU *****/
 function onOpen() {

@@ -4,12 +4,90 @@ Product scheduling and updates service - matching scheduleInventoryMoves.gs and 
 
 import json
 import logging
+import requests
+import os
 from typing import Dict, Any
 from datetime import datetime
 from models.products.product_creation_request import ProductCreationRequest
 from utils.date_utils import format_date_only
 
 logger = logging.getLogger(__name__)
+
+
+def send_aws_lambda_request(
+    request_data: Dict[str, Any], aws_url: str
+) -> Dict[str, Any]:
+    """
+    Send a request to AWS Lambda endpoint
+
+    Args:
+        request_data: The request payload to send
+        aws_url: The AWS Lambda URL to send to
+
+    Returns:
+        Dict with success status and response data
+    """
+    if not aws_url:
+        logger.warning("⚠️ AWS Lambda URL not configured, skipping request")
+        return {
+            "success": False,
+            "error": "aws_url_not_configured",
+            "message": "AWS Lambda URL not configured",
+        }
+
+    logger.info("🚀 SENDING AWS LAMBDA REQUEST")
+    logger.info(f"🔗 Endpoint: {aws_url}")
+    logger.info(f"📤 Request payload: {json.dumps(request_data, indent=2)}")
+
+    try:
+        # Send POST request to AWS Lambda
+        response = requests.post(
+            aws_url,
+            json=request_data,
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            timeout=30,
+            verify=os.getenv("ENVIRONMENT")
+            == "production",  # SSL verification for production only
+        )
+
+        logger.info("📥 AWS LAMBDA RESPONSE")
+        logger.info(f"📊 Status Code: {response.status_code}")
+        logger.info(f"📈 Response Headers: {dict(response.headers)}")
+
+        if response.status_code == 200:
+            try:
+                result = response.json()
+                logger.info("✅ AWS Lambda request successful")
+                logger.info(f"📤 Response: {json.dumps(result, indent=2)}")
+                return {
+                    "success": True,
+                    "response": result,
+                    "status_code": response.status_code,
+                }
+            except Exception as parse_error:
+                logger.warning(f"⚠️ Could not parse AWS response as JSON: {parse_error}")
+                return {
+                    "success": True,
+                    "response": response.text,
+                    "status_code": response.status_code,
+                }
+        else:
+            logger.error(f"❌ AWS Lambda request failed: {response.status_code}")
+            logger.error(f"📤 Error response: {response.text}")
+            return {
+                "success": False,
+                "error": "aws_request_failed",
+                "message": f"AWS request failed: {response.status_code} - {response.text}",
+                "status_code": response.status_code,
+            }
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"❌ AWS Lambda request exception: {e}")
+        return {
+            "success": False,
+            "error": "aws_request_exception",
+            "message": f"AWS request exception: {str(e)}",
+        }
 
 
 def format_date_to_iso(date_value) -> str:
@@ -22,6 +100,43 @@ def format_date_to_iso(date_value) -> str:
             return date_obj.isoformat().split(".")[0]
         except (ValueError, AttributeError):
             return str(date_value)
+    else:
+        return str(date_value) if date_value else ""
+
+
+def format_datetime_for_aws(date_value) -> str:
+    """
+    Format datetime for AWS Lambda in YYYY-MM-DDTHH:MM:SS format (no timezone)
+
+    AWS Lambda expects format: YYYY-MM-DDTHH:MM:SS
+    We need to strip timezone info and microseconds
+
+    Args:
+        date_value: datetime object or string
+
+    Returns:
+        String in format YYYY-MM-DDTHH:MM:SS
+    """
+    if isinstance(date_value, datetime):
+        # Remove timezone and microseconds, format as YYYY-MM-DDTHH:MM:SS
+        dt_naive = date_value.replace(tzinfo=None, microsecond=0)
+        return dt_naive.strftime("%Y-%m-%dT%H:%M:%S")
+    elif isinstance(date_value, str):
+        try:
+            # Parse the datetime string and convert to AWS format
+            dt = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+            # Remove timezone and microseconds
+            dt_naive = dt.replace(tzinfo=None, microsecond=0)
+            return dt_naive.strftime("%Y-%m-%dT%H:%M:%S")
+        except (ValueError, AttributeError):
+            # If parsing fails, try to extract just the date/time part
+            if "T" in date_value:
+                # Try to extract YYYY-MM-DDTHH:MM:SS from the string
+                base_part = date_value.split("+")[0].split("Z")[0]  # Remove timezone
+                if "." in base_part:
+                    base_part = base_part.split(".")[0]  # Remove microseconds
+                return base_part
+            return date_value
     else:
         return str(date_value) if date_value else ""
 
@@ -136,12 +251,16 @@ def schedule_product_updates(
         )
         open_date_time = getattr(important_dates, "openRegistrationStartDateTime", None)
 
-        # Format dates to ISO (matching GAS formatDateToIso)
-        vet_date_string = format_date_to_iso(vet_date_time) if vet_date_time else ""
-        early_date_string = (
-            format_date_to_iso(early_date_time) if early_date_time else ""
+        # Format dates for AWS (YYYY-MM-DDTHH:MM:SS without timezone)
+        vet_date_string = (
+            format_datetime_for_aws(vet_date_time) if vet_date_time else ""
         )
-        open_date_string = format_date_to_iso(open_date_time) if open_date_time else ""
+        early_date_string = (
+            format_datetime_for_aws(early_date_time) if early_date_time else ""
+        )
+        open_date_string = (
+            format_datetime_for_aws(open_date_time) if open_date_time else ""
+        )
 
         # Determine registration flow (exact GAS logic)
         reg1, reg2, time1, time2, gid1, gid2 = None, None, None, None, None, None
@@ -264,9 +383,13 @@ def schedule_product_updates(
             }
             requests.append(price_changes_request)
 
-        # Log all requests (matching GAS)
-        logger.info("🔮 AWS SCHEDULING REQUESTS GENERATED")
+        # Send requests to AWS Lambda
+        logger.info("🔮 SENDING AWS SCHEDULING REQUESTS")
         logger.info(f"📊 Total Requests: {len(requests)}")
+
+        aws_responses = []
+        successful_requests = 0
+        failed_requests = 0
 
         for i, request in enumerate(requests):
             action_type = request.get("actionType")
@@ -293,26 +416,78 @@ def schedule_product_updates(
                 )
                 logger.info(f"   📅 Season Start: {request.get('seasonStartDate')}")
 
-            logger.info(f"   📤 Full Request: {json.dumps(request, indent=4)}")
+            # Determine which AWS endpoint to use
+            aws_url = None
+            if settings.aws_schedule_product_changes_url:
+                aws_url = settings.aws_schedule_product_changes_url
+            elif settings.aws_create_product_endpoint:
+                aws_url = settings.aws_create_product_endpoint
+            else:
+                logger.warning(f"⚠️ No AWS URL configured for request {i+1}")
 
-        # Note: In current implementation, these requests are prepared but not sent to AWS
-        # They would be sent to AWS Lambda endpoints in a full integration
-        logger.info(
-            "📝 NOTE: Requests prepared for AWS integration (not yet implemented)"
-        )
-        logger.info(
-            "🔗 These would be sent to AWS Lambda URLs when integration is complete"
-        )
+            # Send the request to AWS Lambda
+            if aws_url:
+                logger.info(f"   🚀 Sending to AWS Lambda: {aws_url}")
+                aws_response = send_aws_lambda_request(request, aws_url)
+                aws_responses.append(
+                    {
+                        "request_index": i + 1,
+                        "action_type": action_type,
+                        "schedule_name": schedule_name,
+                        "aws_response": aws_response,
+                    }
+                )
+
+                if aws_response.get("success"):
+                    logger.info(f"   ✅ AWS request {i+1} successful")
+                    successful_requests += 1
+                else:
+                    logger.error(
+                        f"   ❌ AWS request {i+1} failed: {aws_response.get('message')}"
+                    )
+                    failed_requests += 1
+            else:
+                logger.warning(f"   ⚠️ Skipping AWS request {i+1} - no URL configured")
+                aws_responses.append(
+                    {
+                        "request_index": i + 1,
+                        "action_type": action_type,
+                        "schedule_name": schedule_name,
+                        "aws_response": {
+                            "success": False,
+                            "error": "no_aws_url",
+                            "message": "No AWS URL configured",
+                        },
+                    }
+                )
+                failed_requests += 1
+
+        # Log final summary
+        logger.info("🎯 AWS REQUESTS SUMMARY")
+        logger.info(f"   📊 Total Requests: {len(requests)}")
+        logger.info(f"   ✅ Successful: {successful_requests}")
+        logger.info(f"   ❌ Failed: {failed_requests}")
+
+        if failed_requests > 0:
+            logger.warning("⚠️ Some AWS requests failed - check logs above for details")
 
         # Success response (matching GAS success structure)
+        overall_success = failed_requests == 0
+        message = f"✅ {successful_requests}/{len(requests)} AWS scheduling requests successful"
+        if failed_requests > 0:
+            message += f" ({failed_requests} failed)"
+
         result = {
-            "success": True,
-            "message": f"✅ {len(requests)} scheduling requests created successfully",
+            "success": overall_success,
+            "message": message,
             "data": {
                 "product_id": product_id_digits_only,
                 "product_url": product_url,
                 "requests": requests,
+                "aws_responses": aws_responses,
                 "total_requests": len(requests),
+                "successful_aws_requests": successful_requests,
+                "failed_aws_requests": failed_requests,
                 "inventory_moves_scheduled": True,
                 "price_changes_scheduled": bool(open_gid and waitlist_gid),
                 "summary": {
