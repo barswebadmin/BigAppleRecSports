@@ -231,7 +231,7 @@ function testSeasonYearDerivation_(baseUnresolved) {
       { start: '12/10/25', expectedSeason: 'Winter', expectedYear: 2025 },
       { start: '3/15/26', expectedSeason: 'Spring', expectedYear: 2026 },
       { start: '6/20/26', expectedSeason: 'Summer', expectedYear: 2026 },
-      { start: 'October 15', expectedSeason: 'Fall', expectedYear: new Date().getFullYear() }
+      { start: 'October 15', expectedSeason: 'Fall', expectedYear: getExpectedYearForDate_(10, 15) }
     ];
 
     for (const testCase of testCases) {
@@ -304,6 +304,26 @@ function testEdgeCases_(baseUnresolved) {
 }
 
 /**
+ * Helper function to determine expected year for a date without year
+ * @param {number} month - Month (1-12)
+ * @param {number} day - Day of month
+ * @returns {number} Expected year (current or next)
+ */
+function getExpectedYearForDate_(month, day) {
+  const now = new Date();
+  let targetYear = now.getFullYear();
+
+  // Create test date to see if it has passed this year
+  const testDate = new Date(targetYear, month - 1, day);
+  if (testDate < now) {
+    // Date has passed this year, use next year
+    targetYear++;
+  }
+
+  return targetYear;
+}
+
+/**
  * Test UTC timestamp consistency (October 12th should return Date('2025-10-13T04:00:00Z'))
  * @param {Array<string>} baseUnresolved - Base unresolved fields array
  * @returns {boolean|string} true if passed, error message if failed
@@ -314,8 +334,8 @@ function testUTCTimestampConsistency_(baseUnresolved) {
     const unresolved = [...baseUnresolved];
     const result = parseSeasonDates_('October 12', '', unresolved);
 
-    const currentYear = new Date().getFullYear();
-    const expectedUTC = `${currentYear}-10-13T04:00:00.000Z`; // October 12th -> 13th at 4AM UTC
+    const expectedYear = getExpectedYearForDate_(10, 12);
+    const expectedUTC = `${expectedYear}-10-13T04:00:00.000Z`; // October 12th -> 13th at 4AM UTC
 
     if (!result.seasonStartDate || result.seasonStartDate.toISOString() !== expectedUTC) {
       return `UTC timestamp mismatch for "October 12": expected ${expectedUTC}, got ${result.seasonStartDate?.toISOString()}`;
