@@ -416,6 +416,11 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
 
               <p>Have questions? Email {get_sport_email_address(validated_request.sportName)}</p>"""
 
+    # Escape description for GraphQL
+    escaped_description = (
+        description_html.replace('"', '\\"').replace("\n", "\\n").replace("\r", "")
+    )
+
     # Build GraphQL query (exact match to GAS structure)
     query = {
         "query": f"""mutation {{
@@ -432,7 +437,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
               status: ACTIVE,
               category: "gid://shopify/TaxonomyCategory/sg-4",
               tags: ["{validated_request.sportName}", "{'WTNB' if basic_details.division == 'WTNB+' else basic_details.division} Division"],
-              descriptionHtml: "{description_html.replace('"', '\\"').replace('\n', '\\n').replace('\r', '')}"
+              descriptionHtml: "{escaped_description}"
             }}) {{
             product {{
               id
