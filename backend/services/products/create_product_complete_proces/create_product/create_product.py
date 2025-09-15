@@ -11,6 +11,7 @@ from utils.date_utils import (
     format_date_only,
     format_date_and_time,
     format_league_play_times,
+    calculate_weeks_between_dates,
 )
 from .enable_inventory_tracking import enable_inventory_tracking
 
@@ -212,7 +213,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
     handle = f"{basic_details.year}-{season_value.lower()}-{sport_name_value.lower()}-{day_of_play_value.lower()}-{division_value_for_handle}div"
 
     # Build product title (exact match to GAS)
-    title = f"Big Apple {sport_name_value} - {day_of_play_value} - {division_value} Division - {season_value} {basic_details.year} (*Registration Not Yet Open - Please scroll down to description for dates*)"
+    title = f"Big Apple {sport_name_value} - {day_of_play_value} - {division_value} Division - {season_value} {basic_details.year} (Registration Not Yet Open! Please scroll down to description for info)"
 
     # Build description HTML (matching GAS structure exactly)
     # Convert enum values to their string representations
@@ -295,9 +296,11 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
         else ""
     )
 
-    # Get off dates and weeks
+    # Get off dates and calculate weeks from season dates
     off_dates_str = getattr(important_dates, "offDatesCommaSeparated", "")
-    num_weeks = getattr(basic_details, "numOfWeeks", "")
+    num_weeks = calculate_weeks_between_dates(
+        important_dates.seasonStartDate, important_dates.seasonEndDate
+    )
 
     # WTNB+ and Social intro section (matching GAS logic)
     intro_section = ""

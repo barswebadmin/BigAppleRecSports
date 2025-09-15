@@ -383,6 +383,43 @@ def format_date_and_time(date) -> str:
     return f"{date_part} at {time_part}"
 
 
+def calculate_weeks_between_dates(start_date, end_date) -> int:
+    """
+    Calculate the number of weeks between two dates
+
+    Args:
+        start_date: datetime object, string, or other convertible type
+        end_date: datetime object, string, or other convertible type
+
+    Returns:
+        Number of weeks (rounded to nearest integer)
+    """
+    # Convert string dates to datetime objects if needed
+    if isinstance(start_date, str):
+        start_date = parse_shopify_datetime(start_date)
+        if start_date is None:
+            return 0
+
+    if isinstance(end_date, str):
+        end_date = parse_shopify_datetime(end_date)
+        if end_date is None:
+            return 0
+
+    # If either date is None or invalid, return 0
+    if not isinstance(start_date, datetime) or not isinstance(end_date, datetime):
+        return 0
+
+    # Calculate the difference in days
+    delta = end_date - start_date
+    days = delta.days
+
+    # Convert to weeks (7 days = 1 week)
+    weeks = round(days / 7)
+
+    # Ensure we return at least 1 week if there's any positive duration
+    return max(1, weeks) if days > 0 else 0
+
+
 def format_league_play_times(start_time: str, end_time: str) -> str:
     """
     Format league play times, stripping PM from start time if both times are PM
