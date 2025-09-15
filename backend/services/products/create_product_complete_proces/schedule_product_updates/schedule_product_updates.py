@@ -6,7 +6,7 @@ import json
 import logging
 import requests
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 from datetime import datetime
 from models.products.product_creation_request import ProductCreationRequest
 from utils.date_utils import format_date_only
@@ -107,37 +107,51 @@ def format_date_to_iso(date_value) -> str:
 
 def format_datetime_for_aws(date_value) -> str:
     """
-    Format datetime for AWS Lambda in YYYY-MM-DDTHH:MM:SS format (no timezone)
+    Format datetime for AWS Lambda in ISO 8601 UTC format
 
-    AWS Lambda expects format: YYYY-MM-DDTHH:MM:SS
-    We need to strip timezone info and microseconds
+    AWS Lambda expects ISO 8601 datetime strings in UTC with 'Z' suffix
+    Format: YYYY-MM-DDTHH:MM:SSZ (or YYYY-MM-DDTHH:MM:SS.sssZ with microseconds)
 
     Args:
         date_value: datetime object or string
 
     Returns:
-        String in format YYYY-MM-DDTHH:MM:SS
+        String in ISO 8601 UTC format (YYYY-MM-DDTHH:MM:SSZ)
     """
+    from datetime import timezone
+
     if isinstance(date_value, datetime):
-        # Remove timezone and microseconds, format as YYYY-MM-DDTHH:MM:SS
-        dt_naive = date_value.replace(tzinfo=None, microsecond=0)
-        return dt_naive.strftime("%Y-%m-%dT%H:%M:%S")
+        # Convert to UTC if timezone-aware, otherwise assume UTC
+        if date_value.tzinfo is not None:
+            utc_dt = date_value.astimezone(timezone.utc)
+        else:
+            # Assume naive datetime is already UTC
+            utc_dt = date_value.replace(tzinfo=timezone.utc)
+
+        # Return ISO format with 'Z' suffix for UTC (remove microseconds for cleaner format)
+        return utc_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
     elif isinstance(date_value, str):
         try:
-            # Parse the datetime string and convert to AWS format
-            dt = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
-            # Remove timezone and microseconds
-            dt_naive = dt.replace(tzinfo=None, microsecond=0)
-            return dt_naive.strftime("%Y-%m-%dT%H:%M:%S")
+            # Parse the datetime string and convert to UTC
+            if date_value.endswith("Z"):
+                dt = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+            else:
+                dt = datetime.fromisoformat(date_value)
+
+            # Convert to UTC
+            if dt.tzinfo is not None:
+                utc_dt = dt.astimezone(timezone.utc)
+            else:
+                # Assume naive datetime is already UTC
+                utc_dt = dt.replace(tzinfo=timezone.utc)
+
+            # Return ISO format with 'Z' suffix for UTC (remove microseconds for cleaner format)
+            return utc_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
         except (ValueError, AttributeError):
-            # If parsing fails, try to extract just the date/time part
-            if "T" in date_value:
-                # Try to extract YYYY-MM-DDTHH:MM:SS from the string
-                base_part = date_value.split("+")[0].split("Z")[0]  # Remove timezone
-                if "." in base_part:
-                    base_part = base_part.split(".")[0]  # Remove microseconds
-                return base_part
-            return date_value
+            # If parsing fails completely, return as-is
+            return str(date_value)
     else:
         return str(date_value) if date_value else ""
 
@@ -161,6 +175,263 @@ def format_time_only(time_value) -> str:
         return str(time_value)
     else:
         return str(time_value) if time_value else ""
+
+
+def format_date_for_lambda(date_value) -> str:
+    """
+    Format date for Lambda in YYYY-MM-DD format
+
+    AWS Lambda price scheduling expects dates in YYYY-MM-DD format, not MM/DD/YY
+
+    Args:
+        date_value: datetime object or string
+
+    Returns:
+        String in format YYYY-MM-DD
+    """
+    if isinstance(date_value, datetime):
+        return date_value.strftime("%Y-%m-%d")
+    elif isinstance(date_value, str):
+        try:
+            # Parse the datetime string and convert to date format
+            dt = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+            return dt.strftime("%Y-%m-%d")
+        except (ValueError, AttributeError):
+            return str(date_value)
+    else:
+        return str(date_value) if date_value else ""
+
+
+def create_product_aws_requests(
+    validated_request: ProductCreationRequest,
+    product_data: Dict[str, Any],
+    variants_data: Dict[str, Any],
+) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Generate all AWS Lambda requests for product scheduling
+
+    Returns:
+        Dict with keys for each action type containing list of requests:
+        - inventory_movements: List of create-scheduled-inventory-movements requests
+        - price_changes: List of create-scheduled-price-changes requests
+        - initial_inventory: List of create-initial-inventory-addition-and-title-change requests
+        - add_inventory: List of add-inventory-to-live-product requests
+    """
+    basic_details = validated_request.regularSeasonBasicDetails
+    important_dates = validated_request.importantDates
+    inventory_info = validated_request.inventoryInfo
+
+    product_url = product_data.get("productUrl") or product_data.get("product_url")
+    product_gid = product_data.get("product_gid")
+
+    if not product_url:
+        raise ValueError("productUrl is required for scheduling")
+
+    # Extract variant mapping
+    variant_mapping = variants_data.get("data", {}).get("variant_mapping", {})
+    vet_gid = variant_mapping.get("vet")
+    early_gid = variant_mapping.get("early")
+    open_gid = variant_mapping.get("open")
+    waitlist_gid = variant_mapping.get("waitlist")
+
+    # Generate slugs and IDs
+    sport_slug = map_sport_to_abbreviation(validated_request.sportName)
+    day_slug = basic_details.dayOfPlay.value.lower()  # Convert enum to string
+    division_slug = (
+        basic_details.division.value.lower().split("+")[0] + "Div"
+    )  # Convert enum to string
+    product_id_digits_only = product_url.split("/")[-1]
+
+    # Registration date strings for schedule names
+    reg1 = "vet-to-early"
+    reg2 = "early"
+
+    # Format dates for AWS (YYYY-MM-DD format)
+    early_date_string = format_datetime_for_aws(
+        important_dates.earlyRegistrationStartDateTime
+    )
+    open_date_string = format_datetime_for_aws(
+        important_dates.openRegistrationStartDateTime
+    )
+
+    # Initialize request collections
+    inventory_movements = []
+    price_changes = []
+    initial_inventory = []
+    add_inventory = []
+
+    # 1. Inventory Movement Requests
+    if vet_gid and early_gid:
+        inventory_move_request = {
+            "actionType": "create-scheduled-inventory-movements",
+            "scheduleName": f"auto-move-{sport_slug}-{day_slug}-{product_id_digits_only}-{reg1}-to-{reg2}",
+            "groupName": f"move-inventory-between-variants-{sport_slug}",
+            "productUrl": product_url,
+            "sourceVariant": {
+                "type": "vet",
+                "name": "Vet Registration",
+                "gid": vet_gid,
+            },
+            "destinationVariant": {
+                "type": "early",
+                "name": "Early Registration",
+                "gid": early_gid,
+            },
+            "newDatetime": early_date_string,
+            "note": "newDateTime is in UTC (ET is 4 hours earlier than what this says)",
+            "totalInventory": inventory_info.totalInventory,
+            "numberVetSpotsToReleaseAtGoLive": inventory_info.numberVetSpotsToReleaseAtGoLive,
+        }
+        inventory_movements.append(inventory_move_request)
+
+    if early_gid and open_gid:
+        inventory_move_to_open = {
+            "actionType": "create-scheduled-inventory-movements",
+            "scheduleName": f"auto-move-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}-{reg2}-to-open",
+            "groupName": f"move-inventory-between-variants-{sport_slug}",
+            "productUrl": product_url,
+            "sourceVariant": {
+                "type": "early",
+                "name": "Early Registration",
+                "gid": early_gid,
+            },
+            "destinationVariant": {
+                "type": "open",
+                "name": "Open Registration",
+                "gid": open_gid,
+            },
+            "newDatetime": open_date_string,
+            "note": "newDateTime is in UTC (ET is 4 hours earlier than what this says)",
+            "totalInventory": inventory_info.totalInventory,
+            "numberVetSpotsToReleaseAtGoLive": inventory_info.numberVetSpotsToReleaseAtGoLive,
+        }
+        inventory_movements.append(inventory_move_to_open)
+
+    # 2. Initial Inventory Addition Request
+    if vet_gid:
+        initial_inventory_request = {
+            "actionType": "create-initial-inventory-addition-and-title-change",
+            "scheduleName": f"auto-set-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}-live",
+            "groupName": "set-product-live",
+            "productUrl": product_url,
+            "productTitle": f"Big Apple {validated_request.sportName} - {basic_details.dayOfPlay.value} - {basic_details.division.value} Division - {basic_details.season.value} {basic_details.year}",
+            "variantGid": vet_gid,
+            "newDatetime": format_datetime_for_aws(
+                important_dates.vetRegistrationStartDateTime
+            ),
+            "note": "newDateTime is in UTC (ET is 4 hours earlier than what this says)",
+            "totalInventory": inventory_info.totalInventory,
+            "numberVetSpotsToReleaseAtGoLive": inventory_info.numberVetSpotsToReleaseAtGoLive,
+        }
+        initial_inventory.append(initial_inventory_request)
+
+    # 3. Add Remaining Inventory Request (if applicable)
+    if inventory_info.totalInventory > inventory_info.numberVetSpotsToReleaseAtGoLive:
+        remaining_inventory = (
+            inventory_info.totalInventory
+            - inventory_info.numberVetSpotsToReleaseAtGoLive
+        )
+
+        add_remaining_inventory_request = {
+            "actionType": "add-inventory-to-live-product",
+            "scheduleName": f"auto-add-remaining-inventory-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}",
+            "groupName": "add-remaining-inventory-to-live-product",
+            "productUrl": product_url,
+            "productTitle": f"Big Apple {validated_request.sportName} - {basic_details.dayOfPlay.value} - {basic_details.division.value} Division - {basic_details.season.value} {basic_details.year}",
+            "variantGid": early_gid,
+            "newDatetime": early_date_string,
+            "note": "newDateTime is in UTC (ET is 4 hours earlier than what this says)",
+            "totalInventory": inventory_info.totalInventory,
+            "numberVetSpotsToReleaseAtGoLive": inventory_info.numberVetSpotsToReleaseAtGoLive,
+            "inventoryToAdd": remaining_inventory,
+        }
+        add_inventory.append(add_remaining_inventory_request)
+
+    # 4. Price Changes Request
+    if open_gid and waitlist_gid:
+        # Format off dates (matching GAS logic)
+        # Try offDatesCommaSeparated first (from GAS), then fall back to offDates list
+        off_dates_raw = getattr(important_dates, "offDatesCommaSeparated", None)
+        if off_dates_raw is None:
+            # Handle offDates list format
+            off_dates_list = getattr(important_dates, "offDates", None)
+            if off_dates_list and isinstance(off_dates_list, list):
+                # Convert list of dates to comma-separated string
+                formatted_dates = []
+                for date_item in off_dates_list:
+                    if isinstance(date_item, datetime):
+                        formatted_dates.append(format_date_for_lambda(date_item))
+                    elif isinstance(date_item, str):
+                        formatted_dates.append(date_item.strip())
+                off_dates_comma_separated = ",".join(formatted_dates)
+            else:
+                off_dates_comma_separated = ""
+        else:
+            # Handle string format
+            if isinstance(off_dates_raw, datetime):
+                off_dates_comma_separated = format_date_for_lambda(off_dates_raw) or ""
+            elif isinstance(off_dates_raw, str):
+                off_dates_comma_separated = off_dates_raw.strip()
+            else:
+                off_dates_comma_separated = ""
+
+        # Convert time format from "6:30 PM" to "18:30"
+        sport_start_time = format_time_for_lambda(basic_details.leagueStartTime)
+
+        price_changes_request = {
+            "actionType": "create-scheduled-price-changes",
+            "sport": validated_request.sportName,
+            "day": basic_details.dayOfPlay.value,  # Convert enum to string
+            "division": basic_details.division.value,  # Convert enum to string
+            "productGid": product_gid,
+            "productUrl": product_url,
+            "openVariantGid": open_gid,
+            "waitlistVariantGid": waitlist_gid,
+            "price": float(inventory_info.price),
+            "seasonStartDate": format_date_for_lambda(important_dates.seasonStartDate),
+            "sportStartTime": sport_start_time,
+            "offDatesCommaSeparated": off_dates_comma_separated,
+            "totalInventory": inventory_info.totalInventory,
+            "numberVetSpotsToReleaseAtGoLive": inventory_info.numberVetSpotsToReleaseAtGoLive,
+        }
+        price_changes.append(price_changes_request)
+
+    return {
+        "inventory_movements": inventory_movements,
+        "price_changes": price_changes,
+        "initial_inventory": initial_inventory,
+        "add_inventory": add_inventory,
+    }
+
+
+def format_time_for_lambda(time_str: str) -> str:
+    """
+    Convert time from "6:30 PM" format to "18:30" (24-hour) format for Lambda
+
+    Args:
+        time_str: Time string like "6:30 PM" or "9:30 AM"
+
+    Returns:
+        Time string in 24-hour format like "18:30"
+    """
+    from datetime import datetime
+
+    if not time_str:
+        return ""
+
+    # Try to parse the time
+    try:
+        # Handle formats like "6:30 PM", "9:30 AM", etc.
+        time_obj = datetime.strptime(time_str.strip(), "%I:%M %p")
+        return time_obj.strftime("%H:%M")
+    except ValueError:
+        try:
+            # Handle 24-hour format already
+            time_obj = datetime.strptime(time_str.strip(), "%H:%M")
+            return time_obj.strftime("%H:%M")
+        except ValueError:
+            # Return as-is if we can't parse it
+            return time_str
 
 
 def schedule_product_updates(
@@ -408,7 +679,9 @@ def schedule_product_updates(
                 "openVariantGid": open_gid,
                 "waitlistVariantGid": waitlist_gid,
                 "price": float(inventory_info.price),
-                "seasonStartDate": format_date_only(important_dates.seasonStartDate)
+                "seasonStartDate": format_date_for_lambda(
+                    important_dates.seasonStartDate
+                )
                 or "",
                 "sportStartTime": format_time_only(basic_details.leagueStartTime),
                 "offDatesCommaSeparated": off_dates_comma_separated,
