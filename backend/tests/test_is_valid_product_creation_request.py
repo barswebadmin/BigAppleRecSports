@@ -17,19 +17,24 @@ class TestIsValidProductCreationRequest:
         """Test validation with complete valid product data"""
         valid_data = {
             "sportName": "Dodgeball",
-            "division": "Open",
-            "season": "Fall",
-            "year": "2025",
-            "dayOfPlay": "Tuesday",
-            "location": "Elliott Center (26th St & 9th Ave)",
-            "leagueStartTime": "8:00 PM",
-            "leagueEndTime": "11:00 PM",
+            "regularSeasonBasicDetails": {
+                "year": "2025",
+                "season": "Fall",
+                "dayOfPlay": "Tuesday",
+                "division": "Open",
+                "location": "Elliott Center (26th St & 9th Ave)",
+                "leagueAssignmentTypes": ["Buddy Sign-up"],
+                "sportSubCategory": "Foam",
+                "socialOrAdvanced": "Social",
+                "leagueStartTime": "8:00 PM",
+                "leagueEndTime": "11:00 PM",
+            },
             "alternativeStartTime": None,
             "alternativeEndTime": None,
             "optionalLeagueInfo": {
-                "socialOrAdvanced": "Social",
-                "sportSubCategory": "Foam",
-                "types": ["Buddy Sign-up"],
+                "socialOrAdvanced": None,
+                "sportSubCategory": None,
+                "types": None,
             },
             "importantDates": {
                 "seasonStartDate": "2025-10-15T04:00:00.000Z",
@@ -55,7 +60,10 @@ class TestIsValidProductCreationRequest:
 
         assert isinstance(result, ProductCreationRequest)
         assert result.sportName == "Dodgeball"
-        assert result.location == "Elliott Center (26th St & 9th Ave)"
+        assert (
+            result.regularSeasonBasicDetails.location
+            == "Elliott Center (26th St & 9th Ave)"
+        )
 
     def test_missing_required_fields_raises_validation_error(self):
         """Test that missing required fields raises ProductCreationRequestValidationError"""

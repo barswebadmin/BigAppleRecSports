@@ -19,8 +19,10 @@ def create_product(product_data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dict with success status and any relevant data
     """
+    # Extract basic details for logging
+    basic_details = product_data.get("regularSeasonBasicDetails", {})
     logger.info(
-        f"Creating product: {product_data.get('sportName')} - {product_data.get('dayOfPlay')} - {product_data.get('division')}"
+        f"Creating product: {product_data.get('sportName')} - {basic_details.get('dayOfPlay')} - {basic_details.get('division')}"
     )
 
     try:
@@ -38,10 +40,10 @@ def create_product(product_data: Dict[str, Any]) -> Dict[str, Any]:
             "product_id": f"temp_{datetime.now().timestamp()}",  # Temporary ID
             "data": {
                 "sport": product_data.get("sportName"),
-                "day": product_data.get("dayOfPlay"),
-                "division": product_data.get("division"),
-                "season": f"{product_data.get('season')} {product_data.get('year')}",
-                "location": product_data.get("location"),
+                "day": basic_details.get("dayOfPlay"),
+                "division": basic_details.get("division"),
+                "season": f"{basic_details.get('season')} {basic_details.get('year')}",
+                "location": basic_details.get("location"),
                 "price": product_data.get("inventoryInfo", {}).get("price"),
                 "inventory": product_data.get("inventoryInfo", {}).get(
                     "totalInventory"
