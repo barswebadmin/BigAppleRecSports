@@ -207,6 +207,10 @@ class ShopifyService:
             operation_name = "GET_INVENTORY_ITEM"
         elif "productUpdate" in query_str:
             operation_name = "UPDATE_PRODUCT"
+        elif "product(id:" in query_str and "variants" in query_str:
+            operation_name = "GET_PRODUCT_VARIANTS"
+        elif "shop" in query_str and "name" in query_str:
+            operation_name = "GET_SHOP_INFO"
 
         # Essential logging - operation only
         logger.info(f"🚀 {operation_name}")
@@ -398,17 +402,32 @@ class ShopifyService:
             logger.error(f"🚨 Network connection failed: {conn_error}")
             logger.error(f"🔍 Connection error type: {type(conn_error).__name__}")
             logger.error(f"🔍 Connection error details: {str(conn_error)}")
-            return None  # True connection error
+            return {
+                "error": "connection_error",
+                "error_type": "network_failure",
+                "message": f"Failed to connect to Shopify: {str(conn_error)}",
+                "engineering_note": "Check network connectivity, DNS resolution, and Shopify endpoint availability",
+            }
         except requests.exceptions.Timeout as timeout_error:
             logger.error(f"🚨 Request timeout: {timeout_error}")
             logger.error(f"🔍 Timeout error type: {type(timeout_error).__name__}")
             logger.error(f"🔍 Timeout error details: {str(timeout_error)}")
-            return None  # True connection error
+            return {
+                "error": "timeout_error",
+                "error_type": "request_timeout",
+                "message": f"Request to Shopify timed out after 30 seconds: {str(timeout_error)}",
+                "engineering_note": "Check network latency, Shopify API performance, or increase timeout",
+            }
         except requests.RequestException as e:
             logger.error(f"🚨 Request failed: {e}")
             logger.error(f"🔍 Request exception type: {type(e).__name__}")
             logger.error(f"🔍 Request exception details: {str(e)}")
-            return None  # True connection error
+            return {
+                "error": "request_exception",
+                "error_type": "unknown_request_failure",
+                "message": f"Unexpected request error: {str(e)}",
+                "engineering_note": "Investigate request configuration, SSL issues, or Shopify API changes",
+            }
 
     # Forwarding from ShopifyCustomerUtils
     def get_customer_with_tags(self, email: str) -> Optional[Dict[str, Any]]:

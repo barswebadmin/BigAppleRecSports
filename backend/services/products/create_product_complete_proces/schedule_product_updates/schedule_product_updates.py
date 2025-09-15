@@ -54,7 +54,8 @@ def send_aws_lambda_request(
         logger.info(f"📊 Status Code: {response.status_code}")
         logger.info(f"📈 Response Headers: {dict(response.headers)}")
 
-        if response.status_code == 200:
+        # AWS Lambda can return 200 (OK) or 201 (Created) for success
+        if 200 <= response.status_code <= 299:
             try:
                 result = response.json()
                 logger.info("✅ AWS Lambda request successful")

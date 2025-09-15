@@ -449,7 +449,31 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
 
         if response is None:
             logger.error("❌ No response received from Shopify")
-            return {"success": False, "error": "Failed to create product"}
+            return {
+                "success": False,
+                "error": "Failed to create product",
+                "step_failed": "shopify_request",
+                "details": "No response received from Shopify API",
+            }
+
+        # Check if response contains engineering error information
+        if isinstance(response, dict) and "error" in response:
+            error_type = response.get("error_type", "unknown")
+            engineering_note = response.get("engineering_note", "")
+
+            logger.error(
+                f"❌ Shopify request failed: {response.get('message', 'Unknown error')}"
+            )
+            if engineering_note:
+                logger.error(f"🔧 Engineering note: {engineering_note}")
+
+            return {
+                "success": False,
+                "error": f"Shopify API error: {response.get('message', 'Unknown error')}",
+                "step_failed": "shopify_request",
+                "details": f"Error type: {error_type}. {engineering_note}",
+                "error_type": error_type,
+            }
 
         # Log the actual response for debugging
         logger.info(
