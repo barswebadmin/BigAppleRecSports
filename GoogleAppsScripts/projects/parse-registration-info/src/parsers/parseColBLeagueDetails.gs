@@ -208,6 +208,6 @@ function parseColBLeagueDetails_(bColumnData, unresolved, sportName) {
     sportSubCategory,
     socialOrAdvanced,
     types,
-    updatedUnresolved: unresolved
+    updatedUnresolved1: unresolved
   };
 }
