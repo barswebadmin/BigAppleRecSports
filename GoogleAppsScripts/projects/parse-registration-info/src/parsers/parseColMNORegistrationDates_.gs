@@ -87,14 +87,36 @@ function cleanRegistrationString_(rawString) {
 
 /**
  * Extracts veteran spots number from registration string.
+ * Looks for lines containing 'spot', 'inventory', or 'vet' keywords.
  * @param {string} rawString - The raw registration string.
  * @returns {number|null} Extracted number or null if not found.
  */
 function extractVetSpots_(rawString) {
-  // Look for patterns like "20 spots", "15 through", etc.
+  if (!rawString || typeof rawString !== 'string') {
+    return null;
+  }
+
+  // Split into lines and look for lines with the specified keywords
+  const lines = rawString.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+
+    // Check if line contains any of the keywords: spot, inventory, vet
+    if (lowerLine.includes('spot') || lowerLine.includes('inventory') || lowerLine.includes('vet')) {
+      // Extract number from this line
+      const numberMatch = line.match(/(\d+)/);
+      if (numberMatch) {
+        return parseInt(numberMatch[1]);
+      }
+    }
+  }
+
+  // Fallback: Look for original patterns like "20 spots", "15 through", etc.
   const numberMatch = rawString.match(/(\d+)\s*(?:spots?|through|until)/i);
   if (numberMatch) {
     return parseInt(numberMatch[1]);
   }
+
   return null;
 }

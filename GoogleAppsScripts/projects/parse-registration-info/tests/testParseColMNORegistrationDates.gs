@@ -180,6 +180,9 @@ function testVetSpotsCalculation_(baseUnresolved) {
     { input: "Veteran registration: 20 spots available", totalInventory: 100, expected: 20, description: "20 spots" },
     { input: "Vet reg: 15 through Oct 1st", totalInventory: 100, expected: 15, description: "15 through" },
     { input: "30 spots until further notice", totalInventory: 100, expected: 30, description: "30 until" },
+    { input: "Sept 15th 7PM\n\nOnly holding 40 vet spots ", totalInventory: 100, expected: 40, description: "Multi-line with vet keyword" },
+    { input: "Registration\n\nHolding 25 inventory spots", totalInventory: 100, expected: 25, description: "Multi-line with inventory keyword" },
+    { input: "Early reg\n\n30 spot limit", totalInventory: 100, expected: 30, description: "Multi-line with spot keyword" },
     { input: "Veteran registration Wed Sept 3rd", totalInventory: 100, expected: 100, description: "No number found - use total inventory" },
     { input: "", totalInventory: 50, expected: 50, description: "Empty string - use total inventory" }
   ];
