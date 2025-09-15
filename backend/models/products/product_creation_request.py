@@ -1,7 +1,25 @@
-from pydantic import BaseModel, field_validator, model_validator, ConfigDict
+from pydantic import (
+    BaseModel,
+    field_validator,
+    model_validator,
+    ConfigDict,
+    ValidationError,
+)
 from typing import List, Optional, Union
 from datetime import datetime
 from enum import Enum
+
+
+class ProductCreationRequestValidationError(Exception):
+    """Custom exception for product creation request validation errors"""
+
+    def __init__(self, errors: List[str]):
+        self.errors = errors
+        super().__init__(f"Product creation validation failed: {', '.join(errors)}")
+
+    def get_errors(self) -> List[str]:
+        """Return list of validation error messages"""
+        return self.errors
 
 
 class SportName(str, Enum):
@@ -135,7 +153,7 @@ class InventoryInfo(BaseModel):
         return inventory_int
 
 
-class CreateProductRequest(BaseModel):
+class ProductCreationRequest(BaseModel):
     sportName: SportName
     division: Division
     season: Season
@@ -191,10 +209,48 @@ class CreateProductRequest(BaseModel):
         # Sport-specific required field validation
         if sport_name in ["Dodgeball", "Kickball"]:
             if optional_info.socialOrAdvanced is None:
-                raise ValueError(f"socialOrAdvanced is required for {sport_name}")
+                raise ValueError(
+                    f"socialOrAdvanced is required for {sport_name} (Social, Advanced, or Mixed Social/Advanced)"
+                )
 
         if sport_name == "Dodgeball":
             if optional_info.sportSubCategory is None:
-                raise ValueError("sportSubCategory is required for Dodgeball")
+                raise ValueError(
+                    "sportSubCategory is required for Dodgeball (Big Ball, Small Ball, or Foam)"
+                )
 
         return self
+
+    @classmethod
+    def validate_request_data(cls, data: dict) -> "ProductCreationRequest":
+        """
+        Validate product creation request data and return all validation errors
+
+        Args:
+            data: Raw product data dictionary
+
+        Returns:
+            ProductCreationRequest instance if valid
+
+        Raises:
+            ProductCreationRequestValidationError: If validation fails with all error details
+        """
+        try:
+            return cls(**data)
+        except ValidationError as e:
+            # Extract all error messages from Pydantic
+            errors = []
+            for error in e.errors():
+                # Build field path
+                field_path = ".".join(str(loc) for loc in error["loc"])
+
+                # Get error message
+                msg = error["msg"]
+
+                # Format the error message
+                if field_path:
+                    errors.append(f"{field_path}: {msg}")
+                else:
+                    errors.append(msg)
+
+            raise ProductCreationRequestValidationError(errors)
