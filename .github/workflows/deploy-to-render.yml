@@ -1,9 +1,5 @@
 name: Deploy to Render
 
-# Prevent duplicate runs: use branch name for consistency across push/PR events
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
 
 on:
   push:
