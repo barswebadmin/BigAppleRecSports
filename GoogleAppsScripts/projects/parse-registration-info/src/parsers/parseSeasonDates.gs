@@ -28,16 +28,16 @@ function parseSeasonDates_(startDateStr, endDateStr, unresolved) {
   let seasonEndDate = null;
 
   try {
-      // Parse start date using dateParsers with UTC support
-      seasonStartDate = parseFlexibleDate_(startDateStr?.trim(), true);
+    // Parse start date using dateParsers with UTC support
+    seasonStartDate = parseFlexibleDate_(startDateStr?.trim(), true);
     if (seasonStartDate) {
       // Remove seasonStartDate from unresolved
       const startIndex = updatedUnresolved.indexOf("seasonStartDate");
       if (startIndex > -1) updatedUnresolved.splice(startIndex, 1);
     }
 
-      // Parse end date using dateParsers with UTC support
-      seasonEndDate = parseFlexibleDate_(endDateStr?.trim(), true);
+    // Parse end date using dateParsers with UTC support
+    seasonEndDate = parseFlexibleDate_(endDateStr?.trim(), true);
     if (seasonEndDate) {
       // Remove seasonEndDate from unresolved
       const endIndex = updatedUnresolved.indexOf("seasonEndDate");
