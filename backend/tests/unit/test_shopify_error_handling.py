@@ -37,9 +37,9 @@ class TestShopifyErrorHandling:
         with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
             shopify_service = ShopifyService()
 
-            # Mock Shopify response - Shopify returns 200 even for auth errors
+            # Mock Shopify 401 response - bad token returns real 401
             mock_response = Mock()
-            mock_response.status_code = 200
+            mock_response.status_code = 401
             mock_response.text = '{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"}'
             mock_response.json.return_value = {
                 "errors": "[API] Invalid API key or access token (unrecognized login or wrong password)"
@@ -52,8 +52,41 @@ class TestShopifyErrorHandling:
 
                 assert result is not None
                 assert result["error"] == "authentication_error"
-                assert result["status_code"] == 200
+                assert result["status_code"] == 401
                 assert "[API] Invalid API key" in result["shopify_errors"]
+
+    def test_shopify_service_handles_graphql_errors(self):
+        """Test ShopifyService properly handles GraphQL errors in 200 response"""
+        # Force real API calls for testing
+        with patch.dict(os.environ, {"FORCE_REAL_API": "true"}):
+            shopify_service = ShopifyService()
+
+            # Mock Shopify 200 response with GraphQL errors - bad query but valid auth/url
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.text = '{"errors":[{"message":"Field \'nonExistentField\' doesn\'t exist on type \'Product\'","locations":[{"line":3,"column":5}]}]}'
+            mock_response.json.return_value = {
+                "errors": [
+                    {
+                        "message": "Field 'nonExistentField' doesn't exist on type 'Product'",
+                        "locations": [{"line": 3, "column": 5}],
+                    }
+                ]
+            }
+
+            with patch("requests.post") as mock_post:
+                mock_post.return_value = mock_response
+
+                result = shopify_service._make_shopify_request({"query": "test"})
+
+                assert result is not None
+                assert "error" in result
+                assert result["error"] == [
+                    {
+                        "message": "Field 'nonExistentField' doesn't exist on type 'Product'",
+                        "locations": [{"line": 3, "column": 5}],
+                    }
+                ]
 
     def test_shopify_service_handles_404_invalid_store(self):
         """Test ShopifyService properly handles 404 store not found errors"""
