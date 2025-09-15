@@ -22,12 +22,101 @@ def format_date_for_display(date_value: Union[str, datetime, None]) -> str:
     if not date_value:
         return "TBD"
 
+    # If it's already a string that looks like a placeholder, return it as-is
+    if isinstance(date_value, str):
+        # Common placeholder strings that should be preserved
+        placeholder_strings = ["TBD", "tbd", "unknown", "n/a", "na", "pending", ""]
+        if date_value.lower().strip() in placeholder_strings:
+            return "TBD"
+
+        # If it looks like a user-friendly date string (not ISO), preserve it
+        # Only try to format if it looks like a proper ISO datetime
+        if not ("T" in date_value or "Z" in date_value or "+" in date_value[-6:]):
+            logger.warning(f"Preserving user-provided date string: {date_value}")
+            return date_value
+
     # Use the date_utils function which handles timezone conversion to ET
     try:
-        return format_date_and_time(date_value).replace(" at ", " at ")
-    except Exception:
+        formatted_result = format_date_and_time(date_value)
+        # Check if the formatting failed and returned the error message
+        if formatted_result == "Unknown Date/Time":
+            logger.warning(
+                f"Date formatting failed for: {date_value}, preserving original"
+            )
+            return str(date_value) if date_value else "TBD"
+        return formatted_result.replace(" at ", " at ")
+    except Exception as e:
+        logger.warning(
+            f"Exception formatting date {date_value}: {e}, preserving original"
+        )
         # Fallback to string representation if formatting fails
         return str(date_value) if date_value else "TBD"
+
+
+def validate_important_dates(important_dates) -> Dict[str, Any]:
+    """Validate important dates for proper formatting and detect problematic values"""
+    issues = []
+    warnings = []
+
+    date_fields = [
+        ("seasonStartDate", important_dates.seasonStartDate),
+        ("seasonEndDate", important_dates.seasonEndDate),
+        ("vetRegistrationStartDateTime", important_dates.vetRegistrationStartDateTime),
+        (
+            "earlyRegistrationStartDateTime",
+            important_dates.earlyRegistrationStartDateTime,
+        ),
+        (
+            "openRegistrationStartDateTime",
+            important_dates.openRegistrationStartDateTime,
+        ),
+        (
+            "newPlayerOrientationDateTime",
+            getattr(important_dates, "newPlayerOrientationDateTime", None),
+        ),
+        ("scoutNightDateTime", getattr(important_dates, "scoutNightDateTime", None)),
+        ("openingPartyDate", getattr(important_dates, "openingPartyDate", None)),
+        ("rainDate", getattr(important_dates, "rainDate", None)),
+        ("closingPartyDate", getattr(important_dates, "closingPartyDate", None)),
+    ]
+
+    for field_name, field_value in date_fields:
+        if field_value is not None:
+            if isinstance(field_value, str):
+                # Check for problematic string values
+                if field_value.lower().strip() in [
+                    "tbd",
+                    "unknown",
+                    "n/a",
+                    "na",
+                    "pending",
+                ]:
+                    warnings.append(
+                        f"{field_name}: '{field_value}' will be displayed as 'TBD'"
+                    )
+                elif not (
+                    "T" in field_value or "Z" in field_value or "+" in field_value[-6:]
+                ):
+                    # It's a non-ISO string - might be a user-friendly format or error
+                    warnings.append(
+                        f"{field_name}: '{field_value}' is not in ISO format and will be preserved as-is"
+                    )
+                else:
+                    # Try to validate it can be parsed
+                    try:
+                        from utils.date_utils import parse_shopify_datetime
+
+                        parsed = parse_shopify_datetime(field_value)
+                        if parsed is None:
+                            issues.append(
+                                f"{field_name}: '{field_value}' cannot be parsed as a valid date"
+                            )
+                    except Exception as e:
+                        issues.append(
+                            f"{field_name}: '{field_value}' parsing failed: {str(e)}"
+                        )
+
+    return {"has_issues": len(issues) > 0, "issues": issues, "warnings": warnings}
 
 
 def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
@@ -41,6 +130,25 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
     basic_details = validated_request.regularSeasonBasicDetails
     important_dates = validated_request.importantDates
     optional_league_info = getattr(validated_request, "optionalLeagueInfo", None)
+
+    # Validate important dates before creating the product
+    date_validation = validate_important_dates(important_dates)
+    if date_validation["has_issues"]:
+        logger.error(f"Date validation failed: {date_validation['issues']}")
+        return {
+            "success": False,
+            "error": "Invalid date format(s) detected",
+            "message": f"Date validation failed: {'; '.join(date_validation['issues'])}",
+            "details": {
+                "issues": date_validation["issues"],
+                "warnings": date_validation["warnings"],
+            },
+        }
+
+    # Log warnings but continue if only warnings exist
+    if date_validation["warnings"]:
+        for warning in date_validation["warnings"]:
+            logger.warning(f"Date validation warning: {warning}")
 
     # For development/testing mode when Shopify credentials aren't available
     if not settings.shopify_token:

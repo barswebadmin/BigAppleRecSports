@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start tunnel dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
 
 # Default target
 help:
@@ -10,7 +10,9 @@ help:
 	@echo "🔧 Backend Development:"
 	@echo "  make start               - Start backend server (uvicorn)"
 	@echo "  make tunnel              - Start ngrok tunnel"
-	@echo "  make dev                 - Start server + tunnel (opens new terminal)"
+	@echo "  make tunnel-and-update   - Start ngrok tunnel and update GAS URLs"
+	@echo "  make dev                 - Start server + tunnel with auto URL updates"
+	@echo "  make update-gas-ngrok    - Update NGROK_URL in Google Apps Scripts"
 	@echo "  make stop                - Stop all processes"
 	@echo "  make install             - Install all dependencies from unified requirements.txt"
 	@echo "  make install-prod        - Install production dependencies only"
@@ -286,6 +288,30 @@ tunnel:
 	@sleep 1
 	@ngrok http 8000
 
+tunnel-and-update:
+	@echo "🌐 Starting ngrok tunnel with automatic URL updates..."
+	@pkill -f ngrok || true
+	@sleep 1
+	@echo "🚀 Starting ngrok in background..."
+	@ngrok http 8000 > /dev/null 2>&1 &
+	@echo "⏳ Waiting for ngrok to initialize..."
+	@sleep 5
+	@echo "📝 Updating Google Apps Scripts with new ngrok URL..."
+	@if [ -f .venv/bin/python ]; then \
+		.venv/bin/python scripts/update_ngrok_urls.py; \
+	else \
+		python3 scripts/update_ngrok_urls.py; \
+	fi
+	@echo "🌐 Ngrok tunnel ready! Bringing to foreground..."
+	@sleep 2
+	@pkill -f ngrok || true
+	@sleep 1
+	@ngrok http 8000
+
+update-gas-ngrok:
+	@echo "📝 Updating NGROK_URL in Google Apps Scripts..."
+	@python3 scripts/update_ngrok_urls.py
+
 dev:
 	@echo "🔧 Starting development environment..."
 	@pkill -f ngrok || true
@@ -298,14 +324,14 @@ dev:
 		osascript -e 'tell application "Cursor" to activate' \
 			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
 			-e 'delay 1' \
-			-e 'tell application "System Events" to keystroke "make tunnel"' \
+			-e 'tell application "System Events" to keystroke "make tunnel-and-update"' \
 			-e 'tell application "System Events" to key code 36' & \
 	elif command -v code >/dev/null 2>&1 && pgrep -x "Code" >/dev/null 2>&1; then \
 		echo "📱 Detected VS Code - opening system terminal..."; \
-		osascript -e 'tell application "Terminal" to do script "make tunnel"' & \
+		osascript -e 'tell application "Terminal" to do script "make tunnel-and-update"' & \
 	else \
 		echo "🖥️  Opening system terminal..."; \
-		osascript -e 'tell application "Terminal" to do script "make tunnel"' & \
+		osascript -e 'tell application "Terminal" to do script "make tunnel-and-update"' & \
 	fi
 	@sleep 3
 	@echo "✅ Starting server now (tunnel will start in new terminal)..."

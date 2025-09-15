@@ -44,18 +44,40 @@ async def create_product(
         result = ProductsService.create_product(validated_request)
 
         if result["success"]:
-            logger.info(f"Product created successfully: {result.get('product_id')}")
+            logger.info(
+                f"Product created successfully: {result.get('data', {}).get('product', {}).get('id')}"
+            )
             return result
         else:
             logger.error(f"Product creation failed: {result.get('message')}")
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "message": result.get("message", "Product creation failed"),
-                    "error": result.get("error"),
-                },
+
+            # Determine appropriate HTTP status code based on the error type
+            status_code = (
+                422
+                if "validation" in result.get("error", "").lower()
+                or "invalid" in result.get("error", "").lower()
+                else 500
             )
 
+            # Build detailed error response
+            error_detail = {
+                "message": result.get("message", "Product creation failed"),
+                "error": result.get("error"),
+                "step_failed": result.get("step_failed"),
+            }
+
+            # Include additional details if available
+            if "details" in result:
+                error_detail["details"] = result["details"]
+
+            raise HTTPException(
+                status_code=status_code,
+                detail=error_detail,
+            )
+
+    except HTTPException:
+        # Re-raise HTTPExceptions (including our validation errors above)
+        raise
     except Exception as e:
         logger.error(f"Unexpected error during product creation: {e}")
         raise HTTPException(
@@ -63,5 +85,6 @@ async def create_product(
             detail={
                 "message": "Internal server error during product creation",
                 "error": str(e),
+                "step_failed": "unexpected_exception",
             },
         )
