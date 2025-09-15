@@ -9,6 +9,7 @@ import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Dict, Any
+from bars_common_utils.date_utils import parse_iso_datetime
 
 
 def create_scheduled_inventory_movements(event_body: Dict[str, Any]) -> Dict[str, Any]:
@@ -57,17 +58,13 @@ def create_scheduled_inventory_movements(event_body: Dict[str, Any]) -> Dict[str
 
     # Validate datetime format and convert timezone
     try:
-        utc_dt = datetime.strptime(str(new_datetime), "%Y-%m-%dT%H:%M:%S").replace(
-            tzinfo=ZoneInfo("UTC")
-        )
+        utc_dt = parse_iso_datetime(str(new_datetime))
         eastern_dt = utc_dt.astimezone(ZoneInfo("America/New_York")) - timedelta(
             minutes=1
         )
         formatted_datetime = eastern_dt.strftime("%Y-%m-%dT%H:%M:%S")
-    except ValueError:
-        raise ValueError(
-            f"❌ Invalid datetime format. Expected YYYY-MM-DDTHH:MM:SS, received: {new_datetime}"
-        )
+    except ValueError as e:
+        raise ValueError(f"❌ {str(e)}")
 
     # Extract inventory information for logging
     total_inventory = event_body.get("totalInventory")
