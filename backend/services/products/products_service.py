@@ -4,8 +4,8 @@ Products Service for validating and processing product creation requests
 
 import logging
 from typing import Dict, Any
-from models.products.product_creation_request import (
-    ProductCreationRequest,
+from models.products.product_creation_request import ProductCreationRequest
+from models.products.product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )
 

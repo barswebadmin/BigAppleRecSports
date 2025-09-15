@@ -15,18 +15,9 @@ from .regular_season_basic_details import (
     SocialOrAdvanced,
     LeagueAssignmentTypes,
 )
-
-
-class ProductCreationRequestValidationError(Exception):
-    """Custom exception for product creation request validation errors"""
-
-    def __init__(self, errors: List[str]):
-        self.errors = errors
-        super().__init__(f"Product creation validation failed: {', '.join(errors)}")
-
-    def get_errors(self) -> List[str]:
-        """Return list of validation error messages"""
-        return self.errors
+from .product_creation_request_validation_error import (
+    ProductCreationRequestValidationError,
+)
 
 
 class SportName(str, Enum):
@@ -158,19 +149,5 @@ class ProductCreationRequest(BaseModel):
         try:
             return cls(**data)
         except ValidationError as e:
-            # Extract all error messages from Pydantic
-            errors = []
-            for error in e.errors():
-                # Build field path
-                field_path = ".".join(str(loc) for loc in error["loc"])
-
-                # Get error message
-                msg = error["msg"]
-
-                # Format the error message
-                if field_path:
-                    errors.append(f"{field_path}: {msg}")
-                else:
-                    errors.append(msg)
-
-            raise ProductCreationRequestValidationError(errors)
+            # Convert to our custom error class while preserving all error details
+            raise ProductCreationRequestValidationError(e.errors())
