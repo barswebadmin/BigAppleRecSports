@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 from typing import List, Optional, Union
 from datetime import datetime
 from enum import Enum
@@ -14,8 +14,6 @@ class SportName(str, Enum):
 class Division(str, Enum):
     OPEN = "Open"
     WTNB_PLUS = "WTNB+"
-    SOCIAL = "Social"
-    ADVANCED = "Advanced"
 
 
 class Season(str, Enum):
@@ -35,10 +33,56 @@ class DayOfPlay(str, Enum):
     SUNDAY = "Sunday"
 
 
+class SportSubCategory(str, Enum):
+    BIG_BALL = "Big Ball"
+    SMALL_BALL = "Small Ball"
+    FOAM = "Foam"
+
+
+class SocialOrAdvanced(str, Enum):
+    SOCIAL = "Social"
+    ADVANCED = "Advanced"
+    MIXED = "Mixed Social/Advanced"
+    COMPETITIVE_ADVANCED = "Competitive/Advanced"
+    INTERMEDIATE_ADVANCED = "Intermediate/Advanced"
+
+
+class LeagueTypes(str, Enum):
+    DRAFT = "Draft"
+    RANDOMIZED_TEAMS = "Randomized Teams"
+    BUDDY_SIGNUP = "Buddy Sign-up"
+    NEWBIE_SIGNUP = "Sign up with a newbie (randomized otherwise)"
+
+
+# Sport-specific valid locations
+VALID_LOCATIONS = {
+    "Dodgeball": [
+        "Elliott Center (26th St & 9th Ave)",
+        "PS3 Charrette School (Grove St & Hudson St)",
+        "Village Community School (10th St & Greenwich St)",
+        "Hartley House (46th St & 9th Ave)",
+        "Dewitt Clinton Park (52nd St & 11th Ave)",
+    ],
+    "Kickball": [
+        "Gansevoort Peninsula Athletic Park, Pier 53 (Gansevoort St & 11th)",
+        "Chelsea Park (27th St & 9th Ave)",
+        "Dewitt Clinton Park (52nd St & 11th Ave)",
+    ],
+    "Pickleball": [
+        "Gotham Pickleball (46th and Vernon in LIC)",
+        "Pickle1 (7 Hanover Square in LIC)",
+    ],
+    "Bowling": [
+        "Frames Bowling Lounge (40th St and 9th Ave)",
+        "Bowlero Chelsea Piers (60 Chelsea Piers)",
+    ],
+}
+
+
 class OptionalLeagueInfo(BaseModel):
-    socialOrAdvanced: Optional[str] = None
-    sportSubCategory: Optional[str] = None
-    types: Optional[List[str]] = None
+    socialOrAdvanced: Optional[SocialOrAdvanced] = None
+    sportSubCategory: Optional[SportSubCategory] = None
+    types: Optional[List[LeagueTypes]] = None
 
 
 class ImportantDates(BaseModel):
@@ -122,3 +166,35 @@ class CreateProductRequest(BaseModel):
         if year_int < 2024 or year_int > 2030:
             raise ValueError("Year must be between 2024 and 2030")
         return str(year_int)
+
+    @field_validator("location")
+    @classmethod
+    def validate_location_for_sport(cls, v, info):
+        """Validate location is valid for the sport"""
+        # Note: This will be validated at model level where we have access to sportName
+        return v
+
+    @model_validator(mode="after")
+    def validate_sport_specific_requirements(self):
+        """Validate sport-specific required fields and location constraints"""
+        sport_name = self.sportName
+        location = self.location
+        optional_info = self.optionalLeagueInfo
+
+        # Validate location is valid for the sport
+        valid_locations = VALID_LOCATIONS.get(sport_name, [])
+        if location not in valid_locations:
+            raise ValueError(
+                f"Location '{location}' is not valid for {sport_name}. Valid locations: {', '.join(valid_locations)}"
+            )
+
+        # Sport-specific required field validation
+        if sport_name in ["Dodgeball", "Kickball"]:
+            if optional_info.socialOrAdvanced is None:
+                raise ValueError(f"socialOrAdvanced is required for {sport_name}")
+
+        if sport_name == "Dodgeball":
+            if optional_info.sportSubCategory is None:
+                raise ValueError("sportSubCategory is required for Dodgeball")
+
+        return self
