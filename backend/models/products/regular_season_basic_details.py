@@ -111,3 +111,41 @@ class RegularSeasonBasicDetails(BaseModel):
         if year_int < 2024 or year_int > 2030:
             raise ValueError("Year must be between 2024 and 2030")
         return year_int
+
+    def validate_sport_specific_requirements(self, sport_name: str, optional_info=None):
+        """
+        Validate sport-specific required fields and location constraints
+
+        Args:
+            sport_name: The sport name for validation
+            optional_info: Optional league info object for additional field sources
+        """
+        location = self.location
+
+        # Access sport-specific fields from self or optional_info
+        social_or_advanced = self.socialOrAdvanced
+        sport_sub_category = self.sportSubCategory
+
+        if optional_info:
+            social_or_advanced = social_or_advanced or optional_info.socialOrAdvanced
+            sport_sub_category = sport_sub_category or optional_info.sportSubCategory
+
+        # Validate location is valid for the sport
+        valid_locations = VALID_LOCATIONS.get(sport_name, [])
+        if location not in valid_locations:
+            raise ValueError(
+                f"Location '{location}' is not valid for {sport_name}. Valid locations: {', '.join(valid_locations)}"
+            )
+
+        # Sport-specific required field validation
+        if sport_name in ["Dodgeball", "Kickball"]:
+            if social_or_advanced is None:
+                raise ValueError(
+                    f"socialOrAdvanced is required for {sport_name} (Social, Advanced, or Mixed Social/Advanced)"
+                )
+
+        if sport_name == "Dodgeball":
+            if sport_sub_category is None:
+                raise ValueError(
+                    "sportSubCategory is required for Dodgeball (Big Ball, Small Ball, or Foam)"
+                )
