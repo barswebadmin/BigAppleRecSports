@@ -212,19 +212,12 @@ class ShopifyService:
         logger.info(f"🚀 {operation_name}")
 
         try:
-            # Use explicit SSL certificate bundle for production
-            cert_bundle = (
-                "/etc/ssl/certs/ca-certificates.crt"
-                if os.getenv("ENVIRONMENT") == "production"
-                else True
-            )
-
             response = requests.post(
                 self.graphql_url,
                 headers=self.headers,
                 json=query,
                 timeout=30,
-                verify=cert_bundle,  # Use explicit certificate bundle
+                verify=True,  # Use system certificates
             )
 
             # Shopify always returns 200, so check actual response content for errors
@@ -273,61 +266,63 @@ class ShopifyService:
                     "message": response.text,
                 }
 
-                # Success - parse JSON response
-                result = response.json()
+            # Success - parse JSON response (for status 200)
+            result = response.json()
 
-                # Check for GraphQL errors first
-                if "errors" in result:
-                    logger.error(
-                        f"❌ {operation_name} failed - GraphQL errors: {result['errors']}"
-                    )
-                    return {"error": result["errors"]}
+            # Check for GraphQL errors first
+            if "errors" in result:
+                logger.error(
+                    f"❌ {operation_name} failed - GraphQL errors: {result['errors']}"
+                )
+                return {"error": result["errors"]}
 
-                # Check for user errors in nested operations and determine success/failure
-                has_errors = False
-                if "data" in result and result["data"]:
-                    for key, value in result["data"].items():
-                        if (
-                            isinstance(value, dict)
-                            and "userErrors" in value
-                            and value["userErrors"]
-                        ):
-                            has_errors = True
-                            logger.error(
-                                f"❌ {operation_name} failed - User errors in {key}: {value['userErrors']}"
-                            )
-
-                # For CREATE_PRODUCT, also check if we actually got a product back
-                if operation_name == "CREATE_PRODUCT" and "data" in result:
-                    product_create = result["data"].get("productCreate", {})
-                    product = product_create.get("product", {})
-                    if not product or not product.get("id"):
+            # Check for user errors in nested operations and determine success/failure
+            has_errors = False
+            if "data" in result and result["data"]:
+                for key, value in result["data"].items():
+                    if (
+                        isinstance(value, dict)
+                        and "userErrors" in value
+                        and value["userErrors"]
+                    ):
                         has_errors = True
                         logger.error(
-                            f"❌ {operation_name} failed - No product returned from Shopify"
+                            f"❌ {operation_name} failed - User errors in {key}: {value['userErrors']}"
                         )
 
-                # Log final result
-                if has_errors:
-                    logger.error(f"❌ {operation_name} failed")
-                else:
-                    logger.info(f"✅ {operation_name} successful")
+            # For CREATE_PRODUCT, also check if we actually got a product back
+            if operation_name == "CREATE_PRODUCT" and "data" in result:
+                product_create = result["data"].get("productCreate", {})
+                product = product_create.get("product", {})
+                if not product or not product.get("id"):
+                    has_errors = True
+                    logger.error(
+                        f"❌ {operation_name} failed - No product returned from Shopify"
+                    )
 
-                    # Log key success details for specific operations
-                    if operation_name == "CREATE_PRODUCT" and "data" in result:
-                        product = result["data"]["productCreate"].get("product", {})
-                        if product.get("id"):
-                            logger.info(f"   🆔 Product ID: {product.get('id')}")
-                    elif operation_name == "CREATE_VARIANTS_BULK" and "data" in result:
-                        variants = result["data"]["productVariantsBulkCreate"].get(
-                            "productVariants", []
-                        )
-                        logger.info(f"   🎯 Created {len(variants)} variants")
+            # Log final result
+            if has_errors:
+                logger.error(f"❌ {operation_name} failed")
+            else:
+                logger.info(f"✅ {operation_name} successful")
 
-                return result
+                # Log key success details for specific operations
+                if operation_name == "CREATE_PRODUCT" and "data" in result:
+                    product = result["data"]["productCreate"].get("product", {})
+                    if product.get("id"):
+                        logger.info(f"   🆔 Product ID: {product.get('id')}")
+                elif operation_name == "CREATE_VARIANTS_BULK" and "data" in result:
+                    variants = result["data"]["productVariantsBulkCreate"].get(
+                        "productVariants", []
+                    )
+                    logger.info(f"   🎯 Created {len(variants)} variants")
+
+            return result
 
         except requests.exceptions.SSLError as ssl_error:
             logger.error(f"🚨 SSL Error - trying without verification: {ssl_error}")
+            logger.error(f"🔍 SSL Error type: {type(ssl_error).__name__}")
+            logger.error(f"🔍 SSL Error details: {str(ssl_error)}")
             # Fallback: try without SSL verification (for development)
             try:
                 logger.warning("⚠️ Retrying Shopify request without SSL verification")
@@ -401,12 +396,18 @@ class ShopifyService:
 
         except requests.exceptions.ConnectionError as conn_error:
             logger.error(f"🚨 Network connection failed: {conn_error}")
+            logger.error(f"🔍 Connection error type: {type(conn_error).__name__}")
+            logger.error(f"🔍 Connection error details: {str(conn_error)}")
             return None  # True connection error
         except requests.exceptions.Timeout as timeout_error:
             logger.error(f"🚨 Request timeout: {timeout_error}")
+            logger.error(f"🔍 Timeout error type: {type(timeout_error).__name__}")
+            logger.error(f"🔍 Timeout error details: {str(timeout_error)}")
             return None  # True connection error
         except requests.RequestException as e:
             logger.error(f"🚨 Request failed: {e}")
+            logger.error(f"🔍 Request exception type: {type(e).__name__}")
+            logger.error(f"🔍 Request exception details: {str(e)}")
             return None  # True connection error
 
     # Forwarding from ShopifyCustomerUtils

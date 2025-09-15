@@ -444,12 +444,17 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
     }
 
     try:
-        logger.info(f"Making Shopify request with mutation: {query}")
+        logger.info("🚀 Sending product creation request to Shopify")
         response = shopify_service._make_shopify_request(query)
 
-        if not response:
-            logger.error("Failed to get response from Shopify")
+        if response is None:
+            logger.error("❌ No response received from Shopify")
             return {"success": False, "error": "Failed to create product"}
+
+        # Log the actual response for debugging
+        logger.info(
+            f"📥 Shopify response received: {type(response)} with keys: {list(response.keys()) if isinstance(response, dict) else 'Not a dict'}"
+        )
 
         # Check for GraphQL errors first
         if response.get("errors"):
