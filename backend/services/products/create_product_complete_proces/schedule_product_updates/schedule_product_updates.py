@@ -264,6 +264,9 @@ def create_product_aws_requests(
     if vet_gid and early_gid:
         inventory_move_request = {
             "actionType": "create-scheduled-inventory-movements",
+            "sport": validated_request.sportName,
+            "day": basic_details.dayOfPlay.value,
+            "division": basic_details.division.value,
             "scheduleName": f"auto-move-{sport_slug}-{day_slug}-{product_id_digits_only}-{reg1}-to-{reg2}",
             "groupName": f"move-inventory-between-variants-{sport_slug}",
             "productUrl": product_url,
@@ -287,6 +290,9 @@ def create_product_aws_requests(
     if early_gid and open_gid:
         inventory_move_to_open = {
             "actionType": "create-scheduled-inventory-movements",
+            "sport": validated_request.sportName,
+            "day": basic_details.dayOfPlay.value,
+            "division": basic_details.division.value,
             "scheduleName": f"auto-move-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}-{reg2}-to-open",
             "groupName": f"move-inventory-between-variants-{sport_slug}",
             "productUrl": product_url,
@@ -311,6 +317,9 @@ def create_product_aws_requests(
     if vet_gid:
         initial_inventory_request = {
             "actionType": "create-initial-inventory-addition-and-title-change",
+            "sport": validated_request.sportName,
+            "day": basic_details.dayOfPlay.value,
+            "division": basic_details.division.value,
             "scheduleName": f"auto-set-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}-live",
             "groupName": "set-product-live",
             "productUrl": product_url,
@@ -334,6 +343,9 @@ def create_product_aws_requests(
 
         add_remaining_inventory_request = {
             "actionType": "add-inventory-to-live-product",
+            "sport": validated_request.sportName,
+            "day": basic_details.dayOfPlay.value,
+            "division": basic_details.division.value,
             "scheduleName": f"auto-add-remaining-inventory-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}",
             "groupName": "add-remaining-inventory-to-live-product",
             "productUrl": product_url,
@@ -562,6 +574,9 @@ def schedule_product_updates(
         if vet_gid and vet_date_time:
             inventory_move_request = {
                 "actionType": "create-scheduled-inventory-movements",
+                "sport": validated_request.sportName,
+                "day": basic_details.dayOfPlay,
+                "division": basic_details.division,
                 "scheduleName": f"auto-move-{sport_slug}-{day_slug}-{product_id_digits_only}-{reg1}-to-{reg2}",
                 "groupName": f"move-inventory-between-variants-{sport_slug}",
                 "productUrl": product_url,
@@ -585,6 +600,9 @@ def schedule_product_updates(
         # Second inventory move (reg2 to open)
         inventory_move_to_open = {
             "actionType": "create-scheduled-inventory-movements",
+            "sport": validated_request.sportName,
+            "day": basic_details.dayOfPlay,
+            "division": basic_details.division,
             "scheduleName": f"auto-move-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}-{reg2}-to-open",
             "groupName": f"move-inventory-between-variants-{sport_slug}",
             "productUrl": product_url,
@@ -613,6 +631,9 @@ def schedule_product_updates(
 
         initial_inventory_request = {
             "actionType": "create-initial-inventory-addition-and-title-change",
+            "sport": validated_request.sportName,
+            "day": basic_details.dayOfPlay,
+            "division": basic_details.division,
             "scheduleName": f"auto-set-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}-live",
             "groupName": "set-product-live",
             "productUrl": product_url,
@@ -637,6 +658,9 @@ def schedule_product_updates(
 
             add_remaining_inventory_request = {
                 "actionType": "add-inventory-to-live-product",
+                "sport": validated_request.sportName,
+                "day": basic_details.dayOfPlay,
+                "division": basic_details.division,
                 "scheduleName": f"auto-add-remaining-inventory-{product_id_digits_only}-{sport_slug}-{day_slug}-{division_slug}",
                 "groupName": "add-remaining-inventory-to-live-product",
                 "productUrl": product_url,
