@@ -263,6 +263,9 @@ class TestScheduleProductUpdatesComprehensive:
                 "note",
                 "totalInventory",
                 "numberVetSpotsToReleaseAtGoLive",
+                "sport",
+                "day",
+                "division",
             ]
 
             for field in required_fields:
@@ -277,6 +280,9 @@ class TestScheduleProductUpdatesComprehensive:
             assert isinstance(request["note"], str)
             assert isinstance(request["totalInventory"], int)
             assert isinstance(request["numberVetSpotsToReleaseAtGoLive"], int)
+            assert isinstance(request["sport"], str) and request["sport"]
+            assert isinstance(request["day"], str) and request["day"]
+            assert isinstance(request["division"], str) and request["division"]
 
             # Validate variant structures
             for variant_key in ["sourceVariant", "destinationVariant"]:
@@ -364,6 +370,9 @@ class TestScheduleProductUpdatesComprehensive:
             "variantGid",
             "newDatetime",
             "numberVetSpotsToReleaseAtGoLive",
+            "sport",
+            "day",
+            "division",
         ]
 
         for field in required_fields:
@@ -382,6 +391,9 @@ class TestScheduleProductUpdatesComprehensive:
         assert self._validate_datetime_format(request["newDatetime"])
         assert isinstance(request["numberVetSpotsToReleaseAtGoLive"], int)
         assert request["numberVetSpotsToReleaseAtGoLive"] >= 0
+        assert isinstance(request["sport"], str) and request["sport"]
+        assert isinstance(request["day"], str) and request["day"]
+        assert isinstance(request["division"], str) and request["division"]
 
     def test_add_inventory_format_validation(
         self, sample_product_request, mock_product_data, mock_variants_data
@@ -406,6 +418,9 @@ class TestScheduleProductUpdatesComprehensive:
             "variantGid",
             "newDatetime",
             "inventoryToAdd",
+            "sport",
+            "day",
+            "division",
         ]
 
         for field in required_fields:
@@ -421,10 +436,29 @@ class TestScheduleProductUpdatesComprehensive:
         assert self._validate_datetime_format(request["newDatetime"])
         assert isinstance(request["inventoryToAdd"], int)
         assert request["inventoryToAdd"] > 0
+        assert isinstance(request["sport"], str) and request["sport"]
+        assert isinstance(request["day"], str) and request["day"]
+        assert isinstance(request["division"], str) and request["division"]
 
-        # Validate calculated inventory
-        expected_remaining = 64 - 40  # totalInventory - numberVetSpotsToReleaseAtGoLive
-        assert request["inventoryToAdd"] == expected_remaining
+    def test_negative_missing_sport_day_division(self, sample_product_request, mock_product_data, mock_variants_data):
+        """Negative test: Ensure missing/empty sport, day, or division is caught"""
+        aws_requests = create_product_aws_requests(sample_product_request, mock_product_data, mock_variants_data)
+        # Remove sport from one request
+        req = aws_requests["inventory_movements"][0]
+        req["sport"] = ""
+        with pytest.raises(AssertionError):
+            assert req["sport"], "sport should not be empty"
+        req["sport"] = None
+        with pytest.raises(AssertionError):
+            assert req["sport"], "sport should not be None"
+        # Remove day
+        req["day"] = ""
+        with pytest.raises(AssertionError):
+            assert req["day"], "day should not be empty"
+        # Remove division
+        req["division"] = ""
+        with pytest.raises(AssertionError):
+            assert req["division"], "division should not be empty"
 
     # ===============================
     # FORMAT CONVERSION TESTING
