@@ -10,8 +10,9 @@
  * @requires parseRowC.gs
  * @requires parseSeasonDates.gs
  * @requires timeParser.gs
- * @requires ../helpers/DateParsers.gs
- * @requires priceParser.gs
+ * @requires ../helpers/dateParsers.gs
+ * @requires parseColFPrice_.gs
+ * @requires parseColHLocation_.gs
  * @requires notesParser.gs
  */
 
@@ -23,8 +24,9 @@
 /// <reference path="parseRowC.gs" />
 /// <reference path="parseSeasonDates.gs" />
 /// <reference path="timeParser.gs" />
-/// <reference path="../helpers/DateParsers.gs" />
-/// <reference path="priceParser.gs" />
+/// <reference path="../helpers/dateParsers.gs" />
+/// <reference path="parseColFPrice_.gs" />
+/// <reference path="parseColHLocation_.gs" />
 /// <reference path="notesParser.gs" />
 
 
@@ -54,7 +56,7 @@ function parseSourceRowEnhanced_(v) {
   // Set sportName on productCreateData
   productCreateData.sportName = sportName;
 
-  const { dayOfPlay, division, sportSubCategory, socialOrAdvanced, types, updatedUnresolved: updatedUnresolved1 } =
+  const { dayOfPlay, division, sportSubCategory, socialOrAdvanced, types, updatedUnresolved1 } =
     parseColBLeagueDetails_(v.B, unresolved, sportName);
 
   // Set fields returned by parseColBLeagueDetails on productCreateData
@@ -65,31 +67,46 @@ function parseSourceRowEnhanced_(v) {
   productCreateData.types = types;
 
   // Column C parsing (notes, details, etc.)
-  const { updatedUnresolved: updatedUnresolved2 } = parseRowC_(v.C, updatedUnresolved1);
-
-  // Time range (G)
-  const timeInfo = parseTimeRangeBothSessions_(v.G, updatedUnresolved2);
-  const sportStartTime = timeInfo.primaryStartDateOnly;   // Date object with only time-of-day
-  const sportEndTime   = timeInfo.primaryEndDateOnly;
-  const alternativeStartTime = timeInfo.altStartDateOnly;
-  const alternativeEndTime   = timeInfo.altEndDateOnly;
+  const { updatedUnresolved2 } = parseColC_(v.C, updatedUnresolved1);
 
   // Season dates (D/E)
-  const { season, year, seasonStartDate, seasonEndDate, updatedUnresolved: updatedUnresolved3 } =
+  const { season, year, seasonStartDate, seasonEndDate, updatedUnresolved3 } =
     parseSeasonDates_(v.D, v.E, updatedUnresolved2);
+  productCreateData.season = season;
+  productCreateData.year = year;
+  productCreateData.seasonStartDate = seasonStartDate;
+  productCreateData.seasonEndDate = seasonEndDate;
 
   // Price (F) numeric
-  const price = parsePriceNumber_(v.F, updatedUnresolved3);
+  const { price, updatedUnresolved4 } = parseColFPrice_(v.F, updatedUnresolved3);
+  productCreateData.price = price;
 
-  // Location (H) canonicalized
-  const location = canonicalizeLocation_(v.H, sportName, updatedUnresolved3);
+  // Time range (G)
+  // const timeInfo = parseTimeRangeBothSessions_(v.G, updatedUnresolved4);
+  // const sportStartTime = timeInfo.primaryStartDateOnly;   // Date object with only time-of-day
+  // const sportEndTime   = timeInfo.primaryEndDateOnly;
+  // const alternativeStartTime = timeInfo.altStartDateOnly;
+  // const alternativeEndTime   = timeInfo.altEndDateOnly;
+  const { leagueStartTime, leagueEndTime, alternativeStartTime, alternativeEndTime, updatedUnresolved5 } = parseColGLeagueTimes_(v.G, updatedUnresolved4);
+  productCreateData.leagueStartTime = leagueStartTime;
+  productCreateData.leagueEndTime = leagueEndTime;
+  productCreateData.alternativeStartTime = alternativeStartTime;
+  productCreateData.alternativeEndTime = alternativeEndTime;
+
+
+
+  // Location (H) parsed
+  const { location, updatedUnresolved6 } = parseColHLocation_(v.H, sportName, updatedUnresolved5);
+  productCreateData.location = location;
 
   // Registration windows (M/N/O) -> Date objects with seconds
-  const earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(v.M, sportStartTime, updatedUnresolved3, "earlyRegistrationStartDateTime");
-  const vetRegistrationStartDateTime   = parseDateFlexibleDateTime_(v.N, sportStartTime, updatedUnresolved3, "vetRegistrationStartDateTime");
-  const openRegistrationStartDateTime  = parseDateFlexibleDateTime_(v.O, sportStartTime, updatedUnresolved3, "openRegistrationStartDateTime");
+  const earlyRegistrationStartDateTime = parseDateFlexibleDateTime_(v.M, sportStartTime, updatedUnresolved4, "earlyRegistrationStartDateTime");
+  const vetRegistrationStartDateTime   = parseDateFlexibleDateTime_(v.N, sportStartTime, updatedUnresolved4, "vetRegistrationStartDateTime");
+  const openRegistrationStartDateTime  = parseDateFlexibleDateTime_(v.O, sportStartTime, updatedUnresolved4, "openRegistrationStartDateTime");
 
-  const notes = parseNotes_(v.C, sportStartTime, updatedUnresolved3);
+  const {earlyRegistrationStartDateTime, vetRegistrationStartDateTime, openRegistrationStartDateTime, updatedUnresolved7} = parseColMNORegistrationDates_(v.M, v.N, v.O, updatedUnresolved6);
+  const { updatedUnresolved7 } = parseColMNORegistrationDates_(v.C, updatedUnresolved6);
+  const notes = parseNotes_(v.C, sportStartTime, updatedUnresolved4);
   const {
     orientationDate,
     scoutNightDate,
@@ -158,7 +175,7 @@ function parseSourceRowEnhanced_(v) {
     }
   };
 
-  return { parsed, unresolved: updatedUnresolved3 };
+  return { parsed, unresolved: updatedUnresolved4 };
 }
 
 /**
