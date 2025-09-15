@@ -73,10 +73,10 @@ run_test "parsePriceNumber_ function exists" \
     "grep -q 'function parsePriceNumber_' '$PROJECT_DIR/src/parsers/priceParser.gs'"
 
 run_test "parseDateFlexibleDateOnly_ function exists" \
-    "grep -q 'function parseDateFlexibleDateOnly_' '$PROJECT_DIR/src/parsers/dateParser.gs'"
+    "grep -q 'parseDateFlexibleDateOnly_' '$PROJECT_DIR/src/helpers/DateParsers.gs'"
 
 run_test "parseDateFlexibleDateTime_ function exists" \
-    "grep -q 'function parseDateFlexibleDateTime_' '$PROJECT_DIR/src/parsers/dateParser.gs'"
+    "grep -q 'parseDateFlexibleDateTime_' '$PROJECT_DIR/src/helpers/DateParsers.gs'"
 
 # Test 4: Migration functions exist
 # migrateRowToTarget_ function removed - only creating products, not migrating
@@ -106,7 +106,7 @@ run_test "deriveSeasonYearFromDate_ function exists" \
     "grep -q 'deriveSeasonYearFromDate_\\|function.*deriveSeasonYear' '$PROJECT_DIR/src/helpers/normalizers.gs'"
 
 run_test "parseFlexible_ function exists" \
-    "grep -q 'function parseFlexible_' '$PROJECT_DIR/src/parsers/dateParser.gs'"
+    "grep -q 'parseFlexible_' '$PROJECT_DIR/src/helpers/DateParsers.gs'"
 
 # Test 8: Location and price parsing
 run_test "canonicalizeLocation_ function exists" \

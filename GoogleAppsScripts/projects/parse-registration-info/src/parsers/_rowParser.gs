@@ -10,7 +10,7 @@
  * @requires parseRowC.gs
  * @requires parseSeasonDates.gs
  * @requires timeParser.gs
- * @requires dateParser.gs
+ * @requires ../helpers/DateParsers.gs
  * @requires priceParser.gs
  * @requires notesParser.gs
  */
@@ -23,7 +23,7 @@
 /// <reference path="parseRowC.gs" />
 /// <reference path="parseSeasonDates.gs" />
 /// <reference path="timeParser.gs" />
-/// <reference path="dateParser.gs" />
+/// <reference path="../helpers/DateParsers.gs" />
 /// <reference path="priceParser.gs" />
 /// <reference path="notesParser.gs" />
 

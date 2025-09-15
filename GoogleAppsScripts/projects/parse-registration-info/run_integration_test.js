@@ -141,12 +141,17 @@ try {
     safeEvalGasFile(`${basePath}/helpers/textUtils.gs`, 'textUtils.gs');
   }
 
+  if (fs.existsSync(`${basePath}/helpers/DateParsers.gs`)) {
+    safeEvalGasFile(`${basePath}/helpers/DateParsers.gs`, 'DateParsers.gs');
+  }
+
   // Load parsers in dependency order
   const parsers = [
-    'dateParser.gs',
     'timeParser.gs',
     'priceParser.gs',
     'parseColBLeagueDetails.gs',
+    'parseRowC.gs',
+    'parseSeasonDates.gs',
     'notesParser.gs',
     '_rowParser.gs'  // Main parser last
   ];
