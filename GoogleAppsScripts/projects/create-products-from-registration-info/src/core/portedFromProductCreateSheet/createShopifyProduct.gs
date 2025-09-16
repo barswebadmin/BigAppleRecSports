@@ -589,11 +589,12 @@ function buildErrorDisplay_(productData, missingFields) {
  */
 function getEditableFieldsList_(productData) {
   const editableFields = getEditableFieldsMeta_();
+  const flat = flattenProductData_(productData);
 
   const fields = [];
   for (let i = 0; i < editableFields.length; i++) {
     const field = editableFields[i];
-    const value = productData[field.key];
+    const value = flat[field.key];
     let displayValue;
 
     // Handle TBD values specially
