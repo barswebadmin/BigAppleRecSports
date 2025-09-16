@@ -144,7 +144,11 @@ class TestShopifyErrorHandling:
 
                 result = shopify_service._make_shopify_request({"query": "test"})
 
-                assert result is None  # Connection errors return None
+                # Service returns structured error details for connection failures
+                assert result is not None
+                assert result["error"] == "connection_error"
+                assert result["error_type"] == "network_failure"
+                assert "Failed to connect to Shopify" in result["message"]
 
     def test_shopify_service_handles_timeout_error(self):
         """Test ShopifyService properly handles timeout errors"""
@@ -157,7 +161,11 @@ class TestShopifyErrorHandling:
 
                 result = shopify_service._make_shopify_request({"query": "test"})
 
-                assert result is None  # Timeout errors return None
+                # Service returns structured error details for timeouts
+                assert result is not None
+                assert result["error"] == "timeout_error"
+                assert result["error_type"] == "request_timeout"
+                assert "timed out" in result["message"] or "Request to Shopify timed out" in result["message"]
 
     def test_shopify_service_ssl_fallback_with_401_error(self):
         """Test SSL fallback also handles status code errors correctly"""

@@ -43,6 +43,8 @@ coverage_html/
 .env
 .env.local
 .env.production
+.envrc
+.direnv/
 *.log
 
 # Lambda layer symlinks (for local development only)
