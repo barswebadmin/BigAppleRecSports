@@ -110,7 +110,7 @@ def format_datetime_for_aws(date_value) -> str:
     Format datetime for AWS Lambda in ISO 8601 UTC format
 
     AWS Lambda expects ISO 8601 datetime strings in UTC with 'Z' suffix
-    Format: YYYY-MM-DDTHH:MM:SSZ (or YYYY-MM-DDTHH:MM:SS.sssZ with microseconds)
+    Format: YYYY-MM-DDTHH:MM:SS (or YYYY-MM-DDTHH:MM:SS.sssZ with microseconds)
 
     Args:
         date_value: datetime object or string

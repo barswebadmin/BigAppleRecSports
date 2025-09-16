@@ -1,5 +1,5 @@
 from datetime import datetime
-from bars_common_utils.date_utils import parse_date, parse_time, parse_off_dates, calculate_discounted_schedule
+from bars_common_utils.date_utils import parse_date, parse_time, parse_off_dates, calculate_discounted_schedule, parse_iso_datetime
 
 def get_discount_dates_and_prices(season_start_date, off_dates_comma_separated, sport_start_time, price):
     """
@@ -9,9 +9,15 @@ def get_discount_dates_and_prices(season_start_date, off_dates_comma_separated, 
     print(f"🔎 Inputs:\n- season_start_date: {season_start_date}\n- off_dates_comma_separated: {off_dates_comma_separated}\n- sport_start_time: {sport_start_time}\n- price: {price}")
 
     try:
-        # Parse season start date
-        season_date = parse_date(season_start_date)
-        print(f"✅ Parsed season start date: {season_date}")
+        # Parse season start date - handle both YYYY-MM-DD and MM/DD/YY formats
+        try:
+            # Try YYYY-MM-DD format first (what backend sends)
+            season_date = datetime.strptime(season_start_date, "%Y-%m-%d").date()
+            print(f"✅ Parsed season start date (YYYY-MM-DD): {season_date}")
+        except ValueError:
+            # Fallback to MM/DD/YY format
+            season_date = parse_date(season_start_date)
+            print(f"✅ Parsed season start date (MM/DD/YY): {season_date}")
 
         # Parse sport start time
         sport_start_time_parsed = parse_time(sport_start_time)

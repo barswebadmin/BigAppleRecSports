@@ -1,15 +1,16 @@
 name: Compilation Check
 
 on:
-  push:
-    branches-ignore: [ main ]
+  # Only run on PRs targeting main, and on direct pushes to main
   pull_request:
     branches: [ main ]
     types: [opened, synchronize, reopened]
+  push:
+    branches: [ main ]
 
 # Prevent duplicate runs: use branch name for consistency across push/PR events
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
