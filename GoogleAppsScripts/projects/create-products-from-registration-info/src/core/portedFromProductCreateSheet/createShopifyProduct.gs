@@ -796,7 +796,7 @@ function buildConfirmationDisplay_(productData) {
     }
 
     if (value === null || value === undefined || value === '') {
-      return `${label}: (empty)`;
+      return `${label}: [Not Found]`;
     }
 
     switch (formatType) {
@@ -824,7 +824,7 @@ function buildConfirmationDisplay_(productData) {
         } else if (typeof value === 'string' && value.trim()) {
           return `${label}: ${value}`;
         }
-        return `${label}: (empty)`;
+        return `${label}: [Not Found]`;
       case 'date':
         if (value instanceof Date) {
           return `${label}: ${value.toLocaleDateString('en-US')}`;
@@ -924,7 +924,7 @@ function showSimpleConfirmationPrompt_(productData) {
     }
 
     if (value === null || value === undefined || value === '') {
-      return `${label}: (empty)`;
+      return `${label}: [Not Found]`;
     }
 
     switch (formatType) {
@@ -953,7 +953,7 @@ function showSimpleConfirmationPrompt_(productData) {
         } else if (typeof value === 'string' && value.trim()) {
           return `${label}: ${value}`;
         }
-        return `${label}: (empty)`;
+        return `${label}: [Not Found]`;
       case 'date':
         if (value instanceof Date) {
           return `${label}: ${value.toLocaleDateString('en-US')}`;
