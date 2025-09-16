@@ -612,8 +612,9 @@ function buildErrorDisplay_(productData, missingFields) {
  * Get numbered list of editable fields
  */
 function getEditableFieldsList_(productData) {
-  const editableFields = getEditableFieldsMeta_();
   const flat = flattenProductData_(productData);
+  const sportName = flat.sportName;
+  const editableFields = getEditableFieldsMeta_(sportName);
 
   const fields = [];
   for (let i = 0; i < editableFields.length; i++) {
@@ -652,7 +653,9 @@ function getEditableFieldsList_(productData) {
  * Update a specific field value
  */
 function updateFieldValue_(productData, fieldNumber, newValue) {
-  const editableFields = getEditableFieldsMeta_().map(m => m.key);
+  const flat = flattenProductData_(productData);
+  const sportName = flat.sportName;
+  const editableFields = getEditableFieldsMeta_(sportName).map(m => m.key);
 
   if (fieldNumber < 1 || fieldNumber > editableFields.length) {
     throw new Error(`Invalid field number: ${fieldNumber}`);
@@ -767,7 +770,9 @@ function showFieldEditingFlow_(productData) {
     }
 
     // Get current field info
-    const meta = getEditableFieldsMeta_();
+    const flat = flattenProductData_(canonical);
+    const sportName = flat.sportName;
+    const meta = getEditableFieldsMeta_(sportName);
     const fieldName = meta[fieldNumber - 1] ? meta[fieldNumber - 1].name : `Field #${fieldNumber}`;
     const currentValue = editableFields[fieldNumber - 1].split(': ').slice(1).join(': ');
 
