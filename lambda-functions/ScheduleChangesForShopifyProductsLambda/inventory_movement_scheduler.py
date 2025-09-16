@@ -10,9 +10,14 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Dict, Any
 from bars_common_utils.date_utils import parse_iso_datetime
+from bars_common_utils.response_utils import (
+    standardize_scheduler_result,
+    standardize_scheduler_error,
+)
+from aws_clients import get_scheduler_client
 
 
-def create_scheduled_inventory_movements(event_body: Dict[str, Any]) -> Dict[str, Any]:
+def create_scheduled_inventory_movements(event_body: Dict[str, Any], *, scheduler_client=None) -> Dict[str, Any]:
     """
     Create an EventBridge schedule for moving inventory between variants
 
@@ -41,10 +46,8 @@ def create_scheduled_inventory_movements(event_body: Dict[str, Any]) -> Dict[str
     print("📦 Creating scheduled inventory movement")
     print(f"🔍 Event data: {json.dumps(event_body, indent=2)}")
 
-    # Initialize EventBridge Scheduler client
-    scheduler_client = boto3.client(
-        "scheduler", region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-    )
+    # Initialize EventBridge Scheduler client (injectable for tests)
+    scheduler_client = scheduler_client or get_scheduler_client()
 
     # Extract required fields
     schedule_name = event_body.get("scheduleName")
@@ -78,27 +81,37 @@ def create_scheduled_inventory_movements(event_body: Dict[str, Any]) -> Dict[str
     print(f"🎖️ Vet spots to release: {number_vet_spots}")
 
     # Create the EventBridge schedule
-    response = scheduler_client.create_schedule(
-        Name=schedule_name,
-        GroupName=group_name,
-        ScheduleExpression=f"at({formatted_datetime})",
-        ScheduleExpressionTimezone="America/New_York",
-        FlexibleTimeWindow={"Mode": "OFF"},
-        Target={
-            "Arn": "arn:aws:lambda:us-east-1:084375563770:function:MoveInventoryLambda",
-            "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
-            "Input": updated_input,
-        },
-        ActionAfterCompletion="DELETE",
-        State="ENABLED",
-        Description="",
-    )
+    try:
+        response = scheduler_client.create_schedule(
+            Name=schedule_name,
+            GroupName=group_name,
+            ScheduleExpression=f"at({formatted_datetime})",
+            ScheduleExpressionTimezone="America/New_York",
+            FlexibleTimeWindow={"Mode": "OFF"},
+            Target={
+                "Arn": "arn:aws:lambda:us-east-1:084375563770:function:MoveInventoryLambda",
+                "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
+                "Input": updated_input,
+            },
+            ActionAfterCompletion="DELETE",
+            State="ENABLED",
+            Description="",
+        )
+    except Exception as e:
+        print(f"❌ Failed to create schedule: {e}")
+        status, body = standardize_scheduler_error(
+            schedule_name=schedule_name,
+            reason="Failed to create EventBridge schedule",
+            details={"exception": str(e)},
+        )
+        # For inner scheduler function, return normalized error body (caller wraps)
+        return body
 
     print("✅ Created new inventory movement schedule:")
     print(json.dumps(response, indent=2, default=str))
 
-    return {
-        "message": f"✅ Schedule '{schedule_name}' created successfully!",
-        "new_expression": f"at({formatted_datetime})",
-        "aws_response": response,
-    }
+    return standardize_scheduler_result(
+        schedule_name=schedule_name,
+        expression=f"at({formatted_datetime})",
+        aws_response=response,
+    )
