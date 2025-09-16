@@ -3,7 +3,6 @@ Inventory addition and title change scheduling logic
 Handles creating EventBridge schedules for setting products live with inventory and title updates
 """
 
-import boto3  # type: ignore
 import json
 import os
 from datetime import datetime, timedelta

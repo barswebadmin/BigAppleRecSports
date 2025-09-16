@@ -5,13 +5,10 @@ import traceback
 from typing import Dict, Any
 
 from bars_common_utils.event_utils import parse_event_body
-from bars_common_utils.response_utils import format_response, format_error, map_exception_to_http_status
-from inventory_movement_scheduler import create_scheduled_inventory_movements
-from price_change_scheduler import create_scheduled_price_changes
-from inventory_addition_scheduler import (
-    create_initial_inventory_addition_and_title_change,
-    create_remaining_inventory_addition_schedule,
-)
+from bars_common_utils.response_utils import format_response, format_error
+import inventory_movement_scheduler as inv_sched
+import price_change_scheduler as price_sched
+import inventory_addition_scheduler as add_sched
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -32,95 +29,64 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         event_body = parse_event_body(event)
         print(f"📋 Parsed event body: {json.dumps(event_body, indent=2)}")
 
-        # Orchestrated flow: set-live -> add-remaining (optional) -> schedule-moves -> price-changes
-        # Require actionType of the orchestrated entry point
+        # Route by action type (single-step). Orchestration can be added behind a feature flag later.
         action_type = event_body.get("actionType")
         if not action_type:
-            return format_error(400, "Missing required field: actionType")
+            return format_response(400, json.dumps({"message": "Missing required field: actionType"}))
 
-        steps = []
-        # Entry can be any of the four; construct ordered steps accordingly
-        # Use presence of fields/groupName to determine which functions apply
-        # 1) set-live (create_initial_inventory_addition_and_title_change)
-        if action_type == "create-initial-inventory-addition-and-title-change":
-            steps.append(("set-live", create_initial_inventory_addition_and_title_change))
-            # If group indicates remaining-inventory path call that instead
-            if event_body.get("groupName") == "add-remaining-inventory-to-live-product":
-                steps[-1] = ("add-remaining-inventory", create_remaining_inventory_addition_schedule)
-
-            # 2) optional add-remaining-inventory if explicit inventoryToAdd present and not already chosen
-            if (
-                event_body.get("inventoryToAdd")
-                and steps[-1][0] != "add-remaining-inventory"
-            ):
-                steps.append(("add-remaining-inventory", create_remaining_inventory_addition_schedule))
-
-            # 3) schedule inventory moves if variants provided
-            steps.append(("schedule-inventory-moves", create_scheduled_inventory_movements))
-            # 4) schedule price changes
-            steps.append(("schedule-price-changes", create_scheduled_price_changes))
-
-        elif action_type == "add-inventory-to-live-product":
-            steps.append(("add-remaining-inventory", create_remaining_inventory_addition_schedule))
-            steps.append(("schedule-inventory-moves", create_scheduled_inventory_movements))
-            steps.append(("schedule-price-changes", create_scheduled_price_changes))
-
-        elif action_type == "create-scheduled-inventory-movements":
-            steps.append(("schedule-inventory-moves", create_scheduled_inventory_movements))
-            steps.append(("schedule-price-changes", create_scheduled_price_changes))
+        if action_type == "create-scheduled-inventory-movements":
+            result = inv_sched.create_scheduled_inventory_movements(event_body)
+            return format_response(201, json.dumps({"success": True, "data": result}, default=str))
 
         elif action_type == "create-scheduled-price-changes":
-            steps.append(("schedule-price-changes", create_scheduled_price_changes))
+            result = price_sched.create_scheduled_price_changes(event_body)
+            return format_response(200, json.dumps({"success": True, "data": result}, default=str))
+
+        elif action_type == "create-initial-inventory-addition-and-title-change":
+            # Determine which of the two inventory-addition flows to call based on groupName
+            if event_body.get("groupName") == "add-remaining-inventory-to-live-product":
+                result = add_sched.create_remaining_inventory_addition_schedule(event_body)
+            else:
+                result = add_sched.create_initial_inventory_addition_and_title_change(event_body)
+            return format_response(201, json.dumps({"success": True, "data": result}, default=str))
+
+        elif action_type == "add-inventory-to-live-product":
+            result = add_sched.create_remaining_inventory_addition_schedule(event_body)
+            return format_response(201, json.dumps({"success": True, "data": result}, default=str))
 
         else:
-            return format_error(
+            return format_response(
                 422,
-                f"Unsupported actionType: '{action_type}'",
-                {
-                    "supported_action_types": [
-                        "create-scheduled-inventory-movements",
-                        "create-scheduled-price-changes",
-                        "create-initial-inventory-addition-and-title-change",
-                        "add-inventory-to-live-product",
-                    ],
-                    "received": action_type,
-                },
+                json.dumps(
+                    {
+                        "message": f"Unsupported actionType: '{action_type}'",
+                        "details": {
+                            "supported_action_types": [
+                                "create-scheduled-inventory-movements",
+                                "create-scheduled-price-changes",
+                                "create-initial-inventory-addition-and-title-change",
+                            ],
+                            "received": action_type,
+                        },
+                    }
+                ),
             )
-
-        results = []
-        for step_name, func in steps:
-            print(f"➡️ Running step: {step_name}")
-            try:
-                data = func(event_body)
-                # Success envelope per step
-                results.append({
-                    "step": step_name,
-                    "success": True,
-                    "data": data,
-                })
-            except Exception as e:
-                status, body = map_exception_to_http_status(e)
-                body["step"] = step_name
-                return format_response(status, body)
-
-        # Final success: return the list of step results
-        http_status = 200 if action_type in {"create-scheduled-inventory-movements", "create-scheduled-price-changes"} else 201
-        return format_response(http_status, {
-            "success": True,
-            "steps": results,
-        })
 
     except ValueError as e:
         print(f"❌ Validation error: {str(e)}")
-        return format_error(400, str(e))
+        return format_response(400, json.dumps({"message": str(e)}))
 
     except Exception as e:
         error_message = str(e)
         stack_trace = traceback.format_exc()
         print(f"❌ Unexpected error: {error_message}")
         print(stack_trace)
-        return format_error(
+        return format_response(
             500,
-            "❌ Internal server error",
-            {"error": error_message, "traceback": stack_trace},
+            json.dumps(
+                {
+                    "message": "Internal server error",
+                    "details": {"error": error_message, "traceback": stack_trace},
+                }
+            ),
         )

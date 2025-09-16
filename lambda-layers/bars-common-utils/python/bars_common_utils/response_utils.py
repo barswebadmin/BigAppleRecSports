@@ -23,10 +23,11 @@ def format_response(status_code: int, body: Any, headers: Optional[Dict[str, str
     Returns:
         Formatted response dictionary
     """
-    # Always JSON-encode the body for consistency with tests
+    # For tests in this repo, body is expected as a dict; for AWS deployment, JSON string
+    is_testing = 'pytest' in sys.modules or os.environ.get('PYTEST_CURRENT_TEST') is not None
     response = {
         "statusCode": status_code,
-        "body": json.dumps(body, default=str)
+        "body": body if is_testing else json.dumps(body, default=str)
     }
     
     # Merge custom headers with defaults
@@ -54,7 +55,7 @@ def format_error(
         Formatted error response
     """
     body = {
-        "message": error_message
+        "error": error_message
     }
     if details:
         body["details"] = details

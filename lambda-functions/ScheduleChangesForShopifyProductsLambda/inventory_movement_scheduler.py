@@ -3,7 +3,6 @@ Inventory movement scheduling logic
 Handles creating EventBridge schedules for moving inventory between variants
 """
 
-import boto3  # type: ignore
 import json
 import os
 from datetime import datetime, timedelta
