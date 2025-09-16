@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import Dict, Any, cast
+from typing import Dict, Any, cast, Optional
 from bars_common_utils.date_utils import parse_iso_datetime
 from bars_common_utils.response_utils import (
     standardize_scheduler_result,
@@ -113,7 +113,7 @@ def create_initial_inventory_addition_and_title_change(
     print(f"🎖️ Vet spots to release: {number_vet_spots}")
 
     # Create the EventBridge schedule
-    response: Dict[str, Any] = {}
+    response: Optional[Dict[str, Any]] = None
     try:
         response = scheduler_client.create_schedule(
             Name=schedule_name,
@@ -142,6 +142,8 @@ def create_initial_inventory_addition_and_title_change(
     print("✅ Created new inventory addition and title change schedule:")
     print(json.dumps(response, indent=2, default=str))
 
+    # Type assertion: response is guaranteed to be set here since we didn't return from the exception
+    assert response is not None
     result = cast(Dict[str, Any], standardize_scheduler_result(
         schedule_name=schedule_name,
         expression=f"at({formatted_datetime})",
@@ -237,7 +239,7 @@ def create_remaining_inventory_addition_schedule(
     print("🎯 Target Lambda: addRemainingInventoryToLiveProduct")
 
     # Create the EventBridge schedule
-    response: Dict[str, Any] = {}
+    response: Optional[Dict[str, Any]] = None
     try:
         response = scheduler_client.create_schedule(
             Name=schedule_name,
@@ -266,6 +268,8 @@ def create_remaining_inventory_addition_schedule(
     print("✅ Created new remaining inventory addition schedule:")
     print(json.dumps(response, indent=2, default=str))
 
+    # Type assertion: response is guaranteed to be set here since we didn't return from the exception
+    assert response is not None
     result = {
         "message": f"✅ Remaining inventory schedule '{schedule_name}' created successfully!",
         "new_expression": f"at({formatted_datetime})",
