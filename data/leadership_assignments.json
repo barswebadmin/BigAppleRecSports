@@ -1,0 +1,90 @@
+{
+  "bowling-sunday": {
+    "director": [
+      "Stephen Swartz (he/him)"
+    ],
+    "ops": [
+      "Philip Mutz (he/him)"
+    ]
+  },
+  "bowling-monday": {
+    "director": [
+      "Patrick Murphy (he/him)"
+    ],
+    "ops": [
+      "Matthew Connelly (he/him)"
+    ]
+  },
+  "dodgeball-monday-big ball": {
+    "director": [
+      "Chance Hamlin (he/him)"
+    ],
+    "ops": []
+  },
+  "dodgeball-thursday-foam ball": {
+    "director": [
+      "Chris Bonet (he/him)"
+    ],
+    "ops": []
+  },
+  "dodgeball-sunday-small ball": {
+    "director": [
+      "Ryan Maher (he/him)"
+    ],
+    "ops": []
+  },
+  "dodgeball-tuesday-small ball social": {
+    "director": [
+      "Gabe Braden (he/him)"
+    ],
+    "ops": []
+  },
+  "kickball-sunday-kickball": {
+    "director": [
+      "Richard Taylor (he/him)"
+    ],
+    "ops": []
+  },
+  "kickball-kickball": {
+    "director": [
+      "Arturo Almazan (he/him)"
+    ],
+    "ops": []
+  },
+  "kickball-tuesday-kickball": {
+    "director": [
+      "John Lynch (he/him)"
+    ],
+    "ops": []
+  },
+  "kickball-wednesday-kickball": {
+    "director": [
+      "TJ Brune (he/him)"
+    ],
+    "ops": []
+  },
+  "pickleball-advanced league": {
+    "director": [
+      "Eduardo Garza Santos (he/him)"
+    ],
+    "ops": []
+  },
+  "pickleball-social league": {
+    "director": [
+      "Tyler La Fronz (he/him)"
+    ],
+    "ops": []
+  },
+  "pickleball-wtnb+ league": {
+    "director": [
+      "Corina Vernon (she/her)"
+    ],
+    "ops": []
+  },
+  "pickleball-advanced pickleball": {
+    "director": [],
+    "ops": [
+      "Robert Johnsen (he/him)"
+    ]
+  }
+}
