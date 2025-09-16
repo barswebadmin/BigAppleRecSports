@@ -28,4 +28,13 @@ function test_update_one_field_does_not_mutate_others_() {
   if (after.sportName !== before.sportName) throw new Error('sportName should not change');
 }
 
+function test_edit_rejects_invalid_social_or_advanced_() {
+  const meta = getEditableFieldsMeta_();
+  const idx = meta.findIndex(m => m.key === 'socialOrAdvanced');
+  if (idx < 0) throw new Error('socialOrAdvanced not found in editable meta');
+
+  const res = validateFieldInput_('socialOrAdvanced', 'poop', {});
+  if (res.ok) throw new Error('Expected invalid socialOrAdvanced to be rejected');
+}
+
 

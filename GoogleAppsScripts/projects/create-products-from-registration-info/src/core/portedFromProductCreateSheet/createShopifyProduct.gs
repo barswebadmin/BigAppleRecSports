@@ -729,15 +729,110 @@ function showFieldEditingFlow_(productData) {
       continue; // Back to field selection
     }
 
-    const newValue = valueResponse.getResponseText().trim();
+    const newValueRaw = valueResponse.getResponseText();
+    const newValue = (newValueRaw != null ? newValueRaw.trim() : '');
     if (newValue) {
       try {
-        productData = updateFieldValue_(productData, fieldNumber, newValue);
+        // Validate input before applying
+        const fieldKey = meta[fieldNumber - 1] ? meta[fieldNumber - 1].key : undefined;
+        const v = validateFieldInput_(fieldKey, newValue, productData);
+        if (!v.ok) {
+          ui.alert('Invalid Value', v.message || 'The value is not allowed for this field.', ui.ButtonSet.OK);
+          continue;
+        }
+        const normalizedValue = v.normalizedValue != null ? v.normalizedValue : newValue;
+        productData = updateFieldValue_(productData, fieldNumber, normalizedValue);
         ui.alert('Success', `Updated ${fieldName} to: ${newValue}`, ui.ButtonSet.OK);
       } catch (error) {
         ui.alert('Error', `Failed to update field: ${error.message}`, ui.ButtonSet.OK);
       }
     }
+  }
+}
+
+/**
+ * Validate and normalize a proposed field update.
+ * Returns { ok: boolean, message?: string, normalizedValue?: any }
+ */
+function validateFieldInput_(fieldKey, value, productData) {
+  try {
+    const str = String(value || '').trim();
+    const lower = str.toLowerCase();
+
+    function coerceEnumValue_(val, allowed) {
+      if (!Array.isArray(allowed)) return null;
+      const idx = allowed.findIndex(a => String(a).toLowerCase() === String(val).toLowerCase());
+      return idx >= 0 ? allowed[idx] : null;
+    }
+
+    // Basic numeric validations
+    if (fieldKey === 'price') {
+      const n = Number(str);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, message: 'Price must be a non-negative number.' };
+      return { ok: true, normalizedValue: n };
+    }
+    if (fieldKey === 'totalInventory') {
+      const n = Number(str);
+      if (!Number.isInteger(n) || n <= 0) return { ok: false, message: 'Total Inventory must be a positive integer.' };
+      return { ok: true, normalizedValue: n };
+    }
+    if (fieldKey === 'year') {
+      const n = Number(str);
+      if (!Number.isInteger(n) || n < 2024 || n > 2035) return { ok: false, message: 'Year must be an integer between 2024 and 2035.' };
+      return { ok: true, normalizedValue: n };
+    }
+
+    // Enum validations
+    if (fieldKey === 'division') {
+      const allowed = ['Open', 'WTNB+'];
+      const coerced = coerceEnumValue_(str, allowed);
+      if (!coerced) return { ok: false, message: 'Division must be Open or WTNB+.' };
+      return { ok: true, normalizedValue: coerced };
+    }
+    if (fieldKey === 'season') {
+      const allowed = ['Spring', 'Summer', 'Fall', 'Winter'];
+      const coerced = coerceEnumValue_(str, allowed);
+      if (!coerced) return { ok: false, message: 'Season must be Spring, Summer, Fall, or Winter.' };
+      return { ok: true, normalizedValue: coerced };
+    }
+    if (fieldKey === 'socialOrAdvanced') {
+      const allowed = (typeof productFieldEnums !== 'undefined' && productFieldEnums && productFieldEnums.socialOrAdvanced) || ['Social', 'Advanced', 'Mixed Social/Advanced', 'Competitive/Advanced', 'Intermediate/Advanced'];
+      const coerced = coerceEnumValue_(str, allowed);
+      if (!coerced) return { ok: false, message: `Social or Advanced must be one of: ${allowed.join(', ')}.` };
+      return { ok: true, normalizedValue: coerced };
+    }
+
+    // Time validations
+    if (fieldKey === 'leagueStartTime' || fieldKey === 'leagueEndTime' || fieldKey === 'alternativeStartTime' || fieldKey === 'alternativeEndTime') {
+      if (str.toUpperCase() === 'TBD') return { ok: true, normalizedValue: 'TBD' };
+      if (typeof isTime12h_ === 'function' && !isTime12h_(str)) {
+        return { ok: false, message: 'Time must be in the format HH:MM AM/PM (e.g., 8:00 PM).' };
+      }
+      return { ok: true };
+    }
+
+    // Datetime validations
+    if (fieldKey === 'vetRegistrationStartDateTime' || fieldKey === 'earlyRegistrationStartDateTime' || fieldKey === 'openRegistrationStartDateTime' || fieldKey === 'newPlayerOrientationDateTime' || fieldKey === 'scoutNightDateTime') {
+      if (str.toUpperCase() === 'TBD') return { ok: true, normalizedValue: 'TBD' };
+      if (typeof isDateTimeAllowed_ === 'function' && !isDateTimeAllowed_(str)) {
+        return { ok: false, message: 'Use ISO (YYYY-MM-DDTHH:MM:SSZ) or MM/DD/YYYY HH:MM AM/PM.' };
+      }
+      return { ok: true };
+    }
+
+    // Date validations
+    if (fieldKey === 'seasonStartDate' || fieldKey === 'seasonEndDate' || fieldKey === 'openingPartyDate' || fieldKey === 'rainDate' || fieldKey === 'closingPartyDate') {
+      if (str.toUpperCase() === 'TBD' || str === '') return { ok: true };
+      if (typeof isDateMMDDYYYY_ === 'function' && !isDateMMDDYYYY_(str)) {
+        return { ok: false, message: 'Date must be in MM/DD/YYYY format.' };
+      }
+      return { ok: true };
+    }
+
+    // Default accept
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: 'Unexpected error validating input.' };
   }
 }
 
