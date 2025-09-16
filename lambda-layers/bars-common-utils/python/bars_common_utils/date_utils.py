@@ -5,6 +5,30 @@ Date handling utilities for Lambda functions
 from datetime import datetime, timedelta
 from datetime import time as dt_time
 from typing import List, Dict, Optional
+from zoneinfo import ZoneInfo
+
+def parse_iso_datetime(datetime_str: str) -> datetime:
+    """
+    Parse an ISO 8601 datetime string with optional 'Z' suffix
+    
+    Args:
+        datetime_str: ISO datetime string (e.g., "2025-09-18T23:00:00Z" or "2025-09-18T23:00:00")
+        
+    Returns:
+        datetime object with timezone info
+        
+    Raises:
+        ValueError: If datetime string is invalid
+    """
+    try:
+        # Handle ISO 8601 format with 'Z' suffix (UTC)
+        if datetime_str.endswith('Z'):
+            return datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+        else:
+            # Handle format without timezone info (assume UTC)
+            return datetime.fromisoformat(datetime_str).replace(tzinfo=ZoneInfo("UTC"))
+    except Exception:
+        raise ValueError(f"Invalid ISO datetime format. Expected YYYY-MM-DDTHH:MM:SS or YYYY-MM-DDTHH:MM:SSZ, got: {datetime_str}")
 
 def parse_date(date_str: str, default_century: int = 2000) -> datetime:
     """
@@ -51,7 +75,7 @@ def parse_off_dates(dates_str: Optional[str], sport_time: dt_time) -> List[datet
     Parse a comma-separated list of dates and combine with sport time
 
     Args:
-        dates_str: Comma-separated dates in MM/DD/YY format
+        dates_str: Comma-separated dates in MM/DD/YY or YYYY-MM-DD format
         sport_time: Time object to combine with dates
 
     Returns:
@@ -63,7 +87,13 @@ def parse_off_dates(dates_str: Optional[str], sport_time: dt_time) -> List[datet
             date_str = date_str.strip()
             if not date_str:
                 continue
-            date = parse_date(date_str)
+            
+            # Try YYYY-MM-DD format first, then fallback to MM/DD/YY
+            try:
+                date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                date = parse_date(date_str)
+            
             off_dates.append(
                 datetime.combine(date, sport_time)
             )

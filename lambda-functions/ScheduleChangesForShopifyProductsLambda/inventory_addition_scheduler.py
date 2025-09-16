@@ -197,7 +197,7 @@ def create_remaining_inventory_addition_schedule(
         # Parse the datetime and add 1 minute buffer
         parsed_dt = parse_iso_datetime(str(new_datetime))
         eastern_dt = parsed_dt.astimezone(ZoneInfo("America/New_York")) + timedelta(
-            minutes=1
+            minutes=-1
         )
         formatted_datetime = eastern_dt.strftime("%Y-%m-%dT%H:%M:%S")
     except ValueError as e:
