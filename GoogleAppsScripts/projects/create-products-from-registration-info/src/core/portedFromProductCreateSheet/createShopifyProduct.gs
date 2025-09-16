@@ -614,7 +614,17 @@ function buildErrorDisplay_(productData, missingFields) {
 function getEditableFieldsList_(productData) {
   const flat = flattenProductData_(productData);
   const sportName = flat.sportName;
-  const editableFields = getEditableFieldsMeta_(sportName);
+  let editableFields = getEditableFieldsMeta_(sportName);
+
+  // Filter out numberVetSpotsToReleaseAtGoLive if it's not truthy or equals totalInventory
+  editableFields = editableFields.filter(field => {
+    if (field.key === 'numberVetSpotsToReleaseAtGoLive') {
+      const vetSpots = parseInt(flat[field.key]) || 0;
+      const totalInv = parseInt(flat.totalInventory) || 0;
+      return vetSpots > 0 && vetSpots !== totalInv;
+    }
+    return true;
+  });
 
   const fields = [];
   for (let i = 0; i < editableFields.length; i++) {
@@ -775,10 +785,15 @@ function showFieldEditingFlow_(productData) {
     const meta = getEditableFieldsMeta_(sportName);
     const fieldName = meta[fieldNumber - 1] ? meta[fieldNumber - 1].name : `Field #${fieldNumber}`;
     const currentValue = editableFields[fieldNumber - 1].split(': ').slice(1).join(': ');
+    const fieldKey = meta[fieldNumber - 1] ? meta[fieldNumber - 1].key : null;
+
+    // Get enum options for this field
+    const enumOptions = getEnumOptionsForField_(fieldKey, sportName);
+    const enumText = enumOptions ? `\n\nValid options: ${enumOptions.join(', ')}` : '';
 
     const valueResponse = ui.prompt(
       'Edit Field',
-      `Enter new value for ${fieldName}:\n\nCurrent: ${currentValue}`,
+      `Enter new value for ${fieldName}:\n\nCurrent: ${currentValue}${enumText}`,
       ui.ButtonSet.OK
     );
 
@@ -841,24 +856,15 @@ function validateFieldInput_(fieldKey, value, productData) {
       return { ok: true, normalizedValue: n };
     }
 
-    // Enum validations
-    if (fieldKey === 'division') {
-      const allowed = ['Open', 'WTNB+'];
-      const coerced = coerceEnumValue_(str, allowed);
-      if (!coerced) return { ok: false, message: 'Division must be Open or WTNB+.' };
-      return { ok: true, normalizedValue: coerced };
+    // Enum validations using the centralized enum system
+    const flat = flattenProductData_(productData);
+    const sportName = flat.sportName;
+    const enumValidation = validateEnumValue_(fieldKey, str, sportName);
+    if (!enumValidation.valid) {
+      return { ok: false, message: enumValidation.message };
     }
-    if (fieldKey === 'season') {
-      const allowed = ['Spring', 'Summer', 'Fall', 'Winter'];
-      const coerced = coerceEnumValue_(str, allowed);
-      if (!coerced) return { ok: false, message: 'Season must be Spring, Summer, Fall, or Winter.' };
-      return { ok: true, normalizedValue: coerced };
-    }
-    if (fieldKey === 'socialOrAdvanced') {
-      const allowed = (typeof productFieldEnums !== 'undefined' && productFieldEnums && productFieldEnums.socialOrAdvanced) || ['Social', 'Advanced', 'Mixed Social/Advanced', 'Competitive/Advanced', 'Intermediate/Advanced'];
-      const coerced = coerceEnumValue_(str, allowed);
-      if (!coerced) return { ok: false, message: `Social or Advanced must be one of: ${allowed.join(', ')}.` };
-      return { ok: true, normalizedValue: coerced };
+    if (enumValidation.normalizedValue) {
+      return { ok: true, normalizedValue: enumValidation.normalizedValue };
     }
 
     // Time validations
@@ -896,6 +902,55 @@ function validateFieldInput_(fieldKey, value, productData) {
 }
 
 /**
+ * Get enum options for a field, considering sport-specific options
+ */
+function getEnumOptionsForField_(fieldKey, sportName) {
+  if (!fieldKey || !productFieldEnums[fieldKey]) {
+    return null;
+  }
+
+  const enumValue = productFieldEnums[fieldKey];
+  
+  // Handle sport-specific enums (like location)
+  if (typeof enumValue === 'object' && !Array.isArray(enumValue)) {
+    return enumValue[sportName] || null;
+  }
+  
+  // Handle regular arrays
+  if (Array.isArray(enumValue)) {
+    return enumValue;
+  }
+  
+  return null;
+}
+
+/**
+ * Validate enum field value, ignoring case, whitespace, and special characters
+ */
+function validateEnumValue_(fieldKey, value, sportName) {
+  const enumOptions = getEnumOptionsForField_(fieldKey, sportName);
+  if (!enumOptions) {
+    return { valid: true }; // No enum to validate against
+  }
+
+  // Normalize the input value
+  const normalizedInput = value.toString().toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+  
+  // Check against each enum option
+  for (const option of enumOptions) {
+    const normalizedOption = option.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+    if (normalizedInput === normalizedOption) {
+      return { valid: true, normalizedValue: option };
+    }
+  }
+  
+  return { 
+    valid: false, 
+    message: `Invalid value. Valid options are: ${enumOptions.join(', ')}` 
+  };
+}
+
+/**
  * Shared editable fields metadata (single source of truth for ordering and labels)
  * Uses irrelevantFieldsForSport from constants.gs for sport-specific filtering
  */
@@ -926,7 +981,8 @@ function getEditableFieldsMeta_(sportName = null) {
     { key: 'vetRegistrationStartDateTime', name: 'Veteran Registration Start Date/Time\n(Leave Blank if No Vet Registration Applies for This Season)', format: 'datetime' },
     { key: 'earlyRegistrationStartDateTime', name: 'Early Registration Start Date/Time', format: 'datetime' },
     { key: 'openRegistrationStartDateTime', name: 'Open Registration Start Date/Time', format: 'datetime' },
-    { key: 'totalInventory', name: 'Total Inventory', format: 'default' }
+    { key: 'totalInventory', name: 'Total Inventory', format: 'default' },
+    { key: 'numberVetSpotsToReleaseAtGoLive', name: 'Number of Vet Spots Held', format: 'default' }
   ];
 
   if (!sportName) return allFields;

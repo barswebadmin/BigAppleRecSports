@@ -156,6 +156,8 @@ function parseFlexibleDate_(dateStr, useUTC = false) {
     return null;
   }
 
+  Logger.log(`parseFlexibleDate_ input: "${dateStr}" (type: ${typeof dateStr}), cleanStr: "${cleanStr}", useUTC: ${useUTC}`);
+
   // Handle various date formats
   try {
     // Try numeric formats first: M/d/yy, M/d/yyyy, M-d-yy, M-d-yyyy
@@ -163,10 +165,40 @@ function parseFlexibleDate_(dateStr, useUTC = false) {
     if (numericMatch) {
       const [, month, day, year] = numericMatch;
       const normalizedYear = normalizeYear_(parseInt(year));
+      Logger.log(`numericMatch found: month=${month}, day=${day}, year=${year}, normalizedYear=${normalizedYear}`);
       if (useUTC) {
-        return createUTCDate_(parseInt(month), parseInt(day), normalizedYear);
+        const result = createUTCDate_(parseInt(month), parseInt(day), normalizedYear);
+        Logger.log(`createUTCDate_ result: ${result}, toISOString: ${result.toISOString()}`);
+        return result;
       } else {
-        return new Date(normalizedYear, parseInt(month) - 1, parseInt(day));
+        const result = new Date(normalizedYear, parseInt(month) - 1, parseInt(day));
+        Logger.log(`new Date result: ${result}, toISOString: ${result.toISOString()}`);
+        return result;
+      }
+    }
+
+    // Try MM/DD format (no year) - infer year based on current context
+    const mmddMatch = cleanStr.match(/^(\d{1,2})[\/-](\d{1,2})$/);
+    if (mmddMatch) {
+      const [, month, day] = mmddMatch;
+      const currentYear = new Date().getFullYear();
+      const testDate = new Date(currentYear, parseInt(month) - 1, parseInt(day));
+      const now = new Date();
+      
+      let targetYear = currentYear;
+      if (testDate < now) {
+        targetYear = currentYear + 1;
+      }
+      
+      Logger.log(`mmddMatch found: month=${month}, day=${day}, targetYear=${targetYear}`);
+      if (useUTC) {
+        const result = createUTCDate_(parseInt(month), parseInt(day), targetYear);
+        Logger.log(`createUTCDate_ (MM/DD) result: ${result}, toISOString: ${result.toISOString()}`);
+        return result;
+      } else {
+        const result = new Date(targetYear, parseInt(month) - 1, parseInt(day));
+        Logger.log(`new Date (MM/DD) result: ${result}, toISOString: ${result.toISOString()}`);
+        return result;
       }
     }
 
