@@ -1,4 +1,4 @@
-import boto3
+import boto3  # pyright: ignore[reportMissingImports]
 import json
 import os
 
