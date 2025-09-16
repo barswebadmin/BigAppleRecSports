@@ -638,7 +638,7 @@ function showInteractiveProductCreationPrompt_(productData) {
       const action = ui.prompt(
         'Product Creation',
         'Required fields are missing. Type "update" to edit fields or "cancel" to abort:',
-        ui.ButtonSet.OK_CANCEL
+        ui.ButtonSet.OK
       );
 
       if (action.getSelectedButton() !== ui.Button.OK) {
@@ -663,7 +663,7 @@ function showInteractiveProductCreationPrompt_(productData) {
     const action = ui.prompt(
       'Confirm Product Creation',
       confirmDisplay + '\n\nType "create" to proceed or "update" to edit fields:',
-      ui.ButtonSet.OK_CANCEL
+      ui.ButtonSet.OK
     );
 
     if (action.getSelectedButton() !== ui.Button.OK) {
@@ -698,7 +698,7 @@ function showFieldEditingFlow_(productData) {
     const fieldResponse = ui.prompt(
       'Edit Fields',
       `Select a field to edit (enter the number):\n\n${fieldsList}\n\nType "create" to proceed to creation, or click Cancel to abort.`,
-      ui.ButtonSet.OK_CANCEL
+      ui.ButtonSet.OK
     );
 
     if (fieldResponse.getSelectedButton() !== ui.Button.OK) {
@@ -721,7 +721,7 @@ function showFieldEditingFlow_(productData) {
     const valueResponse = ui.prompt(
       'Edit Field',
       `Enter new value for ${fieldName}:\n\nCurrent: ${currentValue}`,
-      ui.ButtonSet.OK_CANCEL
+      ui.ButtonSet.OK
     );
 
     if (valueResponse.getSelectedButton() !== ui.Button.OK) {
