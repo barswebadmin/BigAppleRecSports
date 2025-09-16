@@ -41,6 +41,27 @@ function parseFlexibleDate(dateString) {
     if (ddmmyyyy && isNaN(date.getTime())) {
       date = new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
     }
+
+    // Try MM/DD format (2-digit year) - infer year based on current context
+    const mmdd = dateString.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (mmdd && isNaN(date.getTime())) {
+      const month = parseInt(mmdd[1]);
+      const day = parseInt(mmdd[2]);
+      const currentYear = new Date().getFullYear();
+      
+      // For off dates, assume it's in the current season year (2025)
+      // If the date has already passed this year, use next year
+      const testDate = new Date(currentYear, month - 1, day);
+      const now = new Date();
+      
+      if (testDate < now) {
+        // Date has passed this year, use next year
+        date = new Date(currentYear + 1, month - 1, day);
+      } else {
+        // Use current year
+        date = new Date(currentYear, month - 1, day);
+      }
+    }
   }
 
   if (isNaN(date.getTime())) {
