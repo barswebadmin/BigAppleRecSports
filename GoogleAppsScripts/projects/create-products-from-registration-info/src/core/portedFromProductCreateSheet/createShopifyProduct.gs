@@ -572,34 +572,7 @@ function buildErrorDisplay_(productData, missingFields) {
  * Get numbered list of editable fields
  */
 function getEditableFieldsList_(productData) {
-  const editableFields = [
-    { key: 'sportName', name: 'Sport', format: 'default' },
-    { key: 'dayOfPlay', name: 'Day', format: 'default' },
-    { key: 'sportSubCategory', name: 'Sport Sub-Category', format: 'default' },
-    { key: 'division', name: 'Division', format: 'default' },
-    { key: 'season', name: 'Season', format: 'default' },
-    { key: 'year', name: 'Year', format: 'default' },
-    { key: 'socialOrAdvanced', name: 'Social or Advanced', format: 'default' },
-    { key: 'types', name: 'Type(s)', format: 'default' },
-    { key: 'newPlayerOrientationDateTime', name: 'New Player Orientation Date/Time', format: 'datetime' },
-    { key: 'scoutNightDateTime', name: 'Scout Night Date/Time', format: 'datetime' },
-    { key: 'openingPartyDate', name: 'Opening Party Date', format: 'date' },
-    { key: 'seasonStartDate', name: 'Season Start Date', format: 'date' },
-    { key: 'seasonEndDate', name: 'Season End Date', format: 'date' },
-    { key: 'alternativeStartTime', name: 'Alternative Start Time\n(Optional)', format: 'time' },
-    { key: 'alternativeEndTime', name: 'Alternative End Time\n(Optional)', format: 'time' },
-    { key: 'offDatesCommaSeparated', name: 'Off Dates, Separated by Comma (Leave Blank if None)\n\nMake Sure This is in the Format M/D/YY', format: 'default' },
-    { key: 'rainDate', name: 'Rain Date', format: 'date' },
-    { key: 'closingPartyDate', name: 'Closing Party Date', format: 'date' },
-    { key: 'leagueStartTime', name: 'Sport Start Time', format: 'time' },
-    { key: 'leagueEndTime', name: 'Sport End Time', format: 'time' },
-    { key: 'location', name: 'Location', format: 'default' },
-    { key: 'price', name: 'Price', format: 'price' },
-    { key: 'vetRegistrationStartDateTime', name: 'Veteran Registration Start Date/Time\n(Leave Blank if No Vet Registration Applies for This Season)', format: 'datetime' },
-    { key: 'earlyRegistrationStartDateTime', name: 'Early Registration Start Date/Time', format: 'datetime' },
-    { key: 'openRegistrationStartDateTime', name: 'Open Registration Start Date/Time', format: 'datetime' },
-    { key: 'totalInventory', name: 'Total Inventory', format: 'default' }
-  ];
+  const editableFields = getEditableFieldsMeta_();
 
   const fields = [];
   for (let i = 0; i < editableFields.length; i++) {
@@ -628,14 +601,7 @@ function getEditableFieldsList_(productData) {
  * Update a specific field value
  */
 function updateFieldValue_(productData, fieldNumber, newValue) {
-  const editableFields = [
-    'sportName', 'dayOfPlay', 'sportSubCategory', 'division', 'season', 'year',
-    'socialOrAdvanced', 'types', 'newPlayerOrientationDateTime', 'scoutNightDateTime',
-    'openingPartyDate', 'seasonStartDate', 'seasonEndDate', 'alternativeStartTime',
-    'alternativeEndTime', 'offDatesCommaSeparated', 'rainDate', 'closingPartyDate',
-    'leagueStartTime', 'leagueEndTime', 'location', 'price', 'vetRegistrationStartDateTime',
-    'earlyRegistrationStartDateTime', 'openRegistrationStartDateTime', 'totalInventory'
-  ];
+  const editableFields = getEditableFieldsMeta_().map(m => m.key);
 
   if (fieldNumber < 1 || fieldNumber > editableFields.length) {
     throw new Error(`Invalid field number: ${fieldNumber}`);
@@ -725,12 +691,13 @@ function showFieldEditingFlow_(productData) {
   const ui = SpreadsheetApp.getUi();
 
   while (true) {
+    const meta = getEditableFieldsMeta_();
     const editableFields = getEditableFieldsList_(productData);
     const fieldsList = editableFields.join('\n');
 
     const fieldResponse = ui.prompt(
       'Edit Fields',
-      `Select a field to edit (enter the number):\n\n${fieldsList}\n\nOr type "done" to finish editing:`,
+      `Select a field to edit (enter the number):\n\n${fieldsList}\n\nLeave blank to finish editing and return to confirmation.`,
       ui.ButtonSet.OK_CANCEL
     );
 
@@ -739,7 +706,7 @@ function showFieldEditingFlow_(productData) {
     }
 
     const input = fieldResponse.getResponseText().trim();
-    if (input.toLowerCase() === 'done') {
+    if (input === '') {
       return productData;
     }
 
@@ -750,15 +717,8 @@ function showFieldEditingFlow_(productData) {
     }
 
     // Get current field info
-    const fieldNames = [
-      'Sport', 'Day', 'Division', 'Season', 'Year', 'Social or Advanced', 'Type(s)',
-      'Season Start Date', 'Season End Date', 'Sport Start Time', 'Sport End Time',
-      'Location', 'Price', 'Total Inventory', 'Veteran Registration Start',
-      'Early Registration Start', 'Open Registration Start'
-    ];
-
-    const fieldName = fieldNames[fieldNumber - 1];
-    const currentValue = editableFields[fieldNumber - 1].split(': ')[1];
+    const fieldName = meta[fieldNumber - 1] ? meta[fieldNumber - 1].name : `Field #${fieldNumber}`;
+    const currentValue = editableFields[fieldNumber - 1].split(': ').slice(1).join(': ');
 
     const valueResponse = ui.prompt(
       'Edit Field',
@@ -780,6 +740,40 @@ function showFieldEditingFlow_(productData) {
       }
     }
   }
+}
+
+/**
+ * Shared editable fields metadata (single source of truth for ordering and labels)
+ */
+function getEditableFieldsMeta_() {
+  return [
+    { key: 'sportName', name: 'Sport', format: 'default' },
+    { key: 'dayOfPlay', name: 'Day', format: 'default' },
+    { key: 'sportSubCategory', name: 'Sport Sub-Category', format: 'default' },
+    { key: 'division', name: 'Division', format: 'default' },
+    { key: 'season', name: 'Season', format: 'default' },
+    { key: 'year', name: 'Year', format: 'default' },
+    { key: 'socialOrAdvanced', name: 'Social or Advanced', format: 'default' },
+    { key: 'types', name: 'Type(s)', format: 'default' },
+    { key: 'newPlayerOrientationDateTime', name: 'New Player Orientation Date/Time', format: 'datetime' },
+    { key: 'scoutNightDateTime', name: 'Scout Night Date/Time', format: 'datetime' },
+    { key: 'openingPartyDate', name: 'Opening Party Date', format: 'date' },
+    { key: 'seasonStartDate', name: 'Season Start Date', format: 'date' },
+    { key: 'seasonEndDate', name: 'Season End Date', format: 'date' },
+    { key: 'alternativeStartTime', name: 'Alternative Start Time\n(Optional)', format: 'time' },
+    { key: 'alternativeEndTime', name: 'Alternative End Time\n(Optional)', format: 'time' },
+    { key: 'offDatesCommaSeparated', name: 'Off Dates, Separated by Comma (Leave Blank if None)\n\nMake Sure This is in the Format M/D/YY', format: 'default' },
+    { key: 'rainDate', name: 'Rain Date', format: 'date' },
+    { key: 'closingPartyDate', name: 'Closing Party Date', format: 'date' },
+    { key: 'leagueStartTime', name: 'Sport Start Time', format: 'time' },
+    { key: 'leagueEndTime', name: 'Sport End Time', format: 'time' },
+    { key: 'location', name: 'Location', format: 'default' },
+    { key: 'price', name: 'Price', format: 'price' },
+    { key: 'vetRegistrationStartDateTime', name: 'Veteran Registration Start Date/Time\n(Leave Blank if No Vet Registration Applies for This Season)', format: 'datetime' },
+    { key: 'earlyRegistrationStartDateTime', name: 'Early Registration Start Date/Time', format: 'datetime' },
+    { key: 'openRegistrationStartDateTime', name: 'Open Registration Start Date/Time', format: 'datetime' },
+    { key: 'totalInventory', name: 'Total Inventory', format: 'default' }
+  ];
 }
 
 /**
