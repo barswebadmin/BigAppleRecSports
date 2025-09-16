@@ -1,0 +1,16 @@
+{
+  "actionType": "add-inventory-to-live-product",
+  "sport": "Kickball",
+  "day": "Monday",
+  "division": "Social",
+  "scheduleName": "auto-add-remaining-inventory-123456789-kb-monday-socialdiv",
+  "groupName": "add-remaining-inventory-to-live-product",
+  "productUrl": "https://09fe59-3.myshopify.com/admin/products/123456789",
+  "productTitle": "Big Apple Kickball - Monday - Social Division - Spring 2025",
+  "variantGid": "gid://shopify/ProductVariant/222222222",
+  "newDatetime": "2025-01-15T14:00:00",
+  "note": "newDatetime is UTC; ET is earlier",
+  "inventoryToAdd": 60,
+  "totalInventory": 100,
+  "numberVetSpotsToReleaseAtGoLive": 40
+}

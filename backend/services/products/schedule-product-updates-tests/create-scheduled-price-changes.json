@@ -1,0 +1,14 @@
+{
+  "actionType": "create-scheduled-price-changes",
+  "sport": "Kickball",
+  "day": "Monday",
+  "division": "Social",
+  "productGid": "gid://shopify/Product/123456789",
+  "productUrl": "https://09fe59-3.myshopify.com/admin/products/123456789",
+  "openVariantGid": "gid://shopify/ProductVariant/333333333",
+  "waitlistVariantGid": "gid://shopify/ProductVariant/444444444",
+  "price": 115,
+  "seasonStartDate": "2025-02-03",
+  "sportStartTime": "21:00:00",
+  "offDatesCommaSeparated": "2025-02-17,2025-03-24"
+}
