@@ -6,11 +6,6 @@ on:
     paths:
       - 'lambda-functions/shopifyProductUpdateHandler/**'
       - 'shared-utilities/**'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'lambda-functions/shopifyProductUpdateHandler/**'
-      - 'shared-utilities/**'
   workflow_dispatch:
 
 jobs:
