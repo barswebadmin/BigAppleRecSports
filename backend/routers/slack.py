@@ -4,12 +4,17 @@ import json
 
 from services.orders import OrdersService
 from services.slack import SlackService
+from services.slack.usergroup_client import SlackUsergroupClient
+from services.slack.users_client import SlackUsersClient
+from config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/slack", tags=["slack"])
 
 orders_service = OrdersService()
 slack_service = SlackService()
+usergroup_client = SlackUsergroupClient(settings.active_slack_bot_token or "")
+users_client = SlackUsersClient(settings.active_slack_bot_token or "")
 
 
 # Note: parse_original_message_data function removed - data now preserved in button values
@@ -553,6 +558,93 @@ async def handle_slack_webhook(request: Request):
     except Exception as e:
         logger.error(f"Error handling Slack webhook: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/commands")
+async def handle_slash_commands(request: Request):
+    """
+    Minimal slash command endpoint to trigger CSV sync via URL:
+    e.g. /sync-groups csv_url=https://.../groups.csv apply=true
+    """
+    try:
+        form = await request.form()
+        text = (form.get("text") or "").strip()
+        # naive parse: key=value pairs
+        args = {}
+        for token in text.split():
+            if "=" in token:
+                k, v = token.split("=", 1)
+                args[k.strip()] = v.strip()
+
+        csv_url = args.get("csv_url")
+        apply_flag = (args.get("apply", "false").lower() in ("1", "true", "yes"))
+        if not csv_url:
+            return {"response_type": "ephemeral", "text": "Usage: /sync-groups csv_url=https://... apply=true|false"}
+
+        # Download CSV
+        import requests as rq
+        r = rq.get(csv_url, timeout=30)
+        if r.status_code != 200:
+            return {"response_type": "ephemeral", "text": f"Failed to fetch CSV: {r.status_code}"}
+
+        # Write to temp file
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+        tmp.write(r.content)
+        tmp.flush()
+
+        # Run CSV sync CLI (dry-run or apply)
+        from services.leadership.leadership_csv_sync_cli import main as csv_sync_main
+        import sys
+        sys.argv = ["csv_sync", "--csv", tmp.name]
+        if apply_flag:
+            sys.argv.append("--apply")
+        code = csv_sync_main()
+
+        return {"response_type": "ephemeral", "text": "CSV sync completed" if code == 0 else "CSV sync failed"}
+    except Exception as e:
+        logger.error(f"Slash command error: {e}")
+        return {"response_type": "ephemeral", "text": f"Error: {e}"}
+
+
+@router.post("/file-uploaded")
+async def handle_file_uploaded(request: Request):
+    """
+    Basic file upload event handler: expects Slack event payload with file URL
+    (You will configure Events API to send file_shared and files events)
+    """
+    try:
+        body = await request.json()
+        event = body.get("event", {})
+        file_info = (event.get("file") or {})
+        csv_url = file_info.get("url_private_download")
+        if not csv_url:
+            return {"ok": True}
+
+        # Use bot token to download private file
+        import requests as rq
+        headers = {"Authorization": f"Bearer {settings.active_slack_bot_token}"}
+        resp = rq.get(csv_url, headers=headers)
+        if resp.status_code != 200:
+            return {"ok": False, "error": f"download_failed:{resp.status_code}"}
+
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+        tmp.write(resp.content)
+        tmp.flush()
+
+        from services.leadership.leadership_csv_sync_cli import main as csv_sync_main
+        import sys
+        sys.argv = ["csv_sync", "--csv", tmp.name]
+        # Default to dry-run when uploaded via DM; you can add apply=true in file title to apply
+        title = (file_info.get("title") or "").lower()
+        if "apply=true" in title:
+            sys.argv.append("--apply")
+        code = csv_sync_main()
+        return {"ok": code == 0}
+    except Exception as e:
+        logger.error(f"File uploaded handler error: {e}")
+        return {"ok": False, "error": str(e)}
 
 
 @router.get("/health")
