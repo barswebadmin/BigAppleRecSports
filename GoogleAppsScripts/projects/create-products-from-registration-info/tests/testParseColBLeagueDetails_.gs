@@ -1,4 +1,15 @@
 /**
+ * Tests for parseColBLeagueBasicInfo_
+ */
+/// <reference path="../src/parsers/parseColBLeagueBasicInfo_.gs" />
+
+function test_b_col_types_randomized_() {
+  const b = 'SATURDAY\nOpen\nRandomized';
+  const r = parseColBLeagueBasicInfo_(b, 'Kickball');
+  if (r.types.join(',').indexOf('Randomized') === -1) throw new Error('types should include Randomized');
+}
+
+/**
  * Focused tests for parseColBLeagueBasicInfo_ function
  * Tests each of the 5 fields individually for correct parsing and unresolved tracking
  *

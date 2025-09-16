@@ -104,11 +104,24 @@ function parseColCLeagueDetails_(columnCData) {
         const val = Number.parseInt(playersMatch[1], 10);
         if (!Number.isNaN(val)) totalInventory = val;
       }
+      // Single pattern without label: e.g., "192 players"
+      const simplePlayers = line.match(/(^|\b)(\d{2,4})\s*players\b/i);
+      if (simplePlayers) {
+        const val2 = Number.parseInt(simplePlayers[2], 10);
+        if (!Number.isNaN(val2)) {
+          totalInventory = totalInventory != null ? Math.max(totalInventory, val2) : val2;
+        }
+      }
     }
 
     // Detect buddy sign-up capability to hint types
     if (lowerLine.includes('buddy')) {
       if (typesHint.indexOf('Buddy Sign-up') === -1) typesHint.push('Buddy Sign-up');
+    }
+
+    // Detect randomized teams hint
+    if (lowerLine.includes('random')) {
+      if (typesHint.indexOf('Randomized Teams') === -1) typesHint.push('Randomized Teams');
     }
   }
 
