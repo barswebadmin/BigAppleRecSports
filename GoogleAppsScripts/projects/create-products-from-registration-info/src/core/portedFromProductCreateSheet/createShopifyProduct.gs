@@ -634,52 +634,33 @@ function showInteractiveProductCreationPrompt_(productData) {
       const errorDisplay = buildErrorDisplay_(productData, validation.missingFields);
       ui.alert('Missing Required Fields', errorDisplay, ui.ButtonSet.OK);
 
-      // Ask user what to do
-      const action = ui.prompt(
+      // Ask user via buttons
+      const editChoice = ui.alert(
         'Product Creation',
-        'Required fields are missing. Type "update" to edit fields or "cancel" to abort:',
-        ui.ButtonSet.OK_CANCEL
+        'Required fields are missing. Do you want to edit fields now?',
+        ui.ButtonSet.YES_NO
       );
 
-      if (action.getSelectedButton() !== ui.Button.OK) {
-        return null; // User cancelled
-      }
-
-      const userAction = action.getResponseText().trim().toLowerCase();
-      if (userAction === 'cancel') {
-        return null;
-      } else if (userAction === 'update') {
+      if (editChoice === ui.Button.YES) {
         productData = showFieldEditingFlow_(productData);
         if (!productData) return null; // User cancelled editing
         continue; // Re-validate
       } else {
-        ui.alert('Invalid Input', 'Please type "update" or "cancel"', ui.ButtonSet.OK);
-        continue;
+        return null; // User chose not to edit
       }
     }
 
-    // All required fields present - show confirmation
+    // All required fields present - show confirmation with buttons
     const confirmDisplay = buildConfirmationDisplay_(productData);
-    const action = ui.prompt(
-      'Confirm Product Creation',
-      confirmDisplay + '\n\nType "create" to proceed or "update" to edit fields:',
-      ui.ButtonSet.OK_CANCEL
-    );
+    const confirm = ui.alert('Confirm Product Creation', confirmDisplay, ui.ButtonSet.YES_NO);
 
-    if (action.getSelectedButton() !== ui.Button.OK) {
-      return null; // User cancelled
-    }
-
-    const userAction = action.getResponseText().trim().toLowerCase();
-    if (userAction === 'create') {
+    if (confirm === ui.Button.YES) {
       return productData; // Ready to create
-    } else if (userAction === 'update') {
+    } else {
+      // Edit again
       productData = showFieldEditingFlow_(productData);
       if (!productData) return null; // User cancelled editing
       continue; // Re-validate and show confirmation again
-    } else {
-      ui.alert('Invalid Input', 'Please type "create" or "update"', ui.ButtonSet.OK);
-      continue;
     }
   }
 }
