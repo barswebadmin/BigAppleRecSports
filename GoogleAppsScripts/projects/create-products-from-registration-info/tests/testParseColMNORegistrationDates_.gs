@@ -1,4 +1,25 @@
 /**
+ * Tests for parseColMNORegistrationDates_
+ */
+/// <reference path="../src/parsers/parseColMNORegistrationDates_.gs" />
+/// <reference path="../src/helpers/dateParsers.gs" />
+
+function test_mno_row5_expected_utc_() {
+  const m = 'SECOND REGISTRATION\n\nWeds, Sept. 3rd, 6pm\n(through 5pm on 9/4)';
+  const n = 'FIRST\nREGISTRATION\n\nTues, Sept. 2nd, 6pm\n(through 5pm on 5/3)';
+  const o = 'THIRD\nREGISTRATION\n\nThurs, Sept. 4th, 6pm';
+  const total = 364;
+  const r = parseColMNORegistrationDates_(m, n, o, total);
+
+  // Expect 6pm ET in early Sept → UTC-4, so 22:00Z
+  function iso(d){ return d && typeof d.toISOString==='function' ? d.toISOString() : String(d); }
+  if (!iso(r.vetRegistrationStartDateTime).includes('T22:00:00')) throw new Error('vet should be 22:00Z');
+  if (!iso(r.earlyRegistrationStartDateTime).includes('T22:00:00')) throw new Error('early should be 22:00Z');
+  if (!iso(r.openRegistrationStartDateTime).includes('T22:00:00')) throw new Error('open should be 22:00Z');
+  if (r.numberVetSpotsToReleaseAtGoLive !== total) throw new Error('vet spots should default to total inventory');
+}
+
+/**
  * Comprehensive tests for parseColMNORegistrationDates_ function
  *
  * @fileoverview Test suite for registration dates parsing

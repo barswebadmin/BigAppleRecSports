@@ -51,6 +51,11 @@ function parseColMNORegistrationDates_(mColumnData, nColumnData, oColumnData, to
     }
   }
 
+  // Coerce invalid "" results to null to ensure these are either Date or null
+  if (earlyRegistrationStartDateTime === '') earlyRegistrationStartDateTime = null;
+  if (vetRegistrationStartDateTime === '') vetRegistrationStartDateTime = null;
+  if (openRegistrationStartDateTime === '') openRegistrationStartDateTime = null;
+
   return {
     earlyRegistrationStartDateTime,
     vetRegistrationStartDateTime,
