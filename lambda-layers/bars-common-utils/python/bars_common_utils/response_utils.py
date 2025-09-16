@@ -61,6 +61,17 @@ def format_error(
         body["details"] = details
     return format_response(status_code, body) 
 
+def _require_str(d: Dict[str, Any], key: str) -> str:
+    v = d.get(key)
+    if not isinstance(v, str) or not v:
+        raise ValueError(f"❌ '{key}' must be a non-empty string")
+    return v
+
+def _require_int(d: Dict[str, Any], key: str) -> int:
+    v = d.get(key)
+    if not isinstance(v, int):
+        raise ValueError(f"❌ '{key}' must be an integer")
+    return v
 
 def standardize_scheduler_result(
     *,
