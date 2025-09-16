@@ -191,11 +191,11 @@ function parseFlexibleDate_(dateStr, useUTC = false) {
     const fallbackDate = new Date(cleanStr);
     if (!isNaN(fallbackDate.getTime())) {
       if (useUTC) {
-        // Convert to UTC midnight on the next day (EST -> UTC conversion)
+        // Convert to UTC 04:00 of the same local date (represents 00:00 ET during DST)
         return new Date(Date.UTC(
           fallbackDate.getFullYear(),
           fallbackDate.getMonth(),
-          fallbackDate.getDate() + 1,
+          fallbackDate.getDate(),
           4, 0, 0
         ));
       } else {
@@ -498,7 +498,7 @@ function parseMonthName_(monthName) {
  * @returns {Date} UTC Date object
  */
 function createUTCDate_(month, day, year) {
-  // Create date at 4:00 AM UTC on the next day
-  // This converts local EST date to UTC: Oct 12 EST -> Oct 13 4:00 AM UTC
-  return new Date(Date.UTC(year, month - 1, day + 1, 4, 0, 0));
+  // Create date at 4:00 AM UTC on the same calendar day
+  // During DST this represents 00:00 ET for that date; in winter it's 23:00 previous day ET
+  return new Date(Date.UTC(year, month - 1, day, 4, 0, 0));
 }

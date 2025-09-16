@@ -604,6 +604,16 @@ function getEditableFieldsList_(productData) {
       displayValue = '[Not Found]';
     } else if (field.format === 'price' && value) {
       displayValue = `$${value}`;
+    } else if (field.format === 'date') {
+      displayValue = formatDateMdYY_(value) || '[Not Found]';
+    } else if (field.format === 'datetime') {
+      displayValue = formatDateTimeMdYYhm_(value) || '[Not Found]';
+    } else if (field.format === 'time') {
+      if (value instanceof Date) {
+        displayValue = Utilities.formatDate(value, 'America/New_York', 'h:mm a');
+      } else {
+        displayValue = value.toString();
+      }
     } else {
       displayValue = value.toString();
     }
