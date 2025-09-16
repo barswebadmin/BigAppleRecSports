@@ -18,7 +18,7 @@
 /**
  * Parse column C content for league details and special information
  * @param {string} columnCData - Raw column C content
- * @returns {{closingPartyDate: Date|string|null, offDates: Array<Date>, tournamentDate: Date|null, totalInventory: number|null}} Parsed league details
+ * @returns {{closingPartyDate: Date|string|null, offDates: Array<Date>, tournamentDate: Date|null, totalInventory: number|null, typesHint: Array<string>}} Parsed league details
  */
 function parseColCLeagueDetails_(columnCData) {
   // Initialize return values
@@ -26,6 +26,7 @@ function parseColCLeagueDetails_(columnCData) {
   let offDates = [];
   let tournamentDate = null;
   let totalInventory = null;
+  let typesHint = [];
 
   // Handle null, undefined, or empty input
   if (!columnCData || typeof columnCData !== 'string' || !columnCData.trim()) {
@@ -87,12 +88,27 @@ function parseColCLeagueDetails_(columnCData) {
       }
     }
 
-    // Parse total inventory (# of Players: N)
-    if (lowerLine.includes('# of players') || lowerLine.includes('#of players') || lowerLine.includes('players:')) {
-      const playersMatch = line.match(/(?:#\s*of\s*players|players):\s*(\d+)/i);
-      if (playersMatch) {
-        totalInventory = parseInt(playersMatch[1]);
+    // Parse total inventory: handle patterns like "# of Players: N" and ranges like "350-364 players"
+    if (lowerLine.includes('players')) {
+      // Range pattern: e.g., 350-364 players
+      const rangeMatch = line.match(/(\d+)\s*-\s*(\d+)\s*players/i);
+      if (rangeMatch) {
+        const a = Number.parseInt(rangeMatch[1], 10);
+        const b = Number.parseInt(rangeMatch[2], 10);
+        const maxVal = Math.max(a, b);
+        if (!Number.isNaN(maxVal)) totalInventory = maxVal;
       }
+      // Single pattern with label: # of Players: N  OR  players: N
+      const playersMatch = line.match(/(?:#\s*of\s*players|players)\s*[:\-]?\s*(\d+)/i);
+      if (playersMatch) {
+        const val = Number.parseInt(playersMatch[1], 10);
+        if (!Number.isNaN(val)) totalInventory = val;
+      }
+    }
+
+    // Detect buddy sign-up capability to hint types
+    if (lowerLine.includes('buddy')) {
+      if (typesHint.indexOf('Buddy Sign-up') === -1) typesHint.push('Buddy Sign-up');
     }
   }
 
@@ -100,6 +116,7 @@ function parseColCLeagueDetails_(columnCData) {
     closingPartyDate,
     offDates,
     tournamentDate,
-    totalInventory
+    totalInventory,
+    typesHint
   };
 }

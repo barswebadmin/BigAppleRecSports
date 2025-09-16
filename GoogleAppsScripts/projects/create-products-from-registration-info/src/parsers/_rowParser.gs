@@ -63,7 +63,7 @@ function parseSourceRowEnhanced_(v) {
   productCreateData.types = types;
 
   // Column C parsing (league details, etc.)
-  const { closingPartyDate, offDates, tournamentDate, totalInventory } = parseColCLeagueDetails_(v.C);
+  const { closingPartyDate, offDates, tournamentDate, totalInventory, typesHint } = parseColCLeagueDetails_(v.C);
 
   // Set additional variables for the parsed structure
   const newPlayerOrientationDateTime = null; // TODO: Implement orientation parsing
@@ -112,7 +112,7 @@ function parseSourceRowEnhanced_(v) {
     optionalLeagueInfo: {
       socialOrAdvanced,
       sportSubCategory,
-      types
+      types: Array.isArray(types) && types.length ? types : (typesHint || [])
     },
     importantDates: {
       seasonStartDate,

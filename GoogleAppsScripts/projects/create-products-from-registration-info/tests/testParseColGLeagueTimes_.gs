@@ -1,4 +1,18 @@
 /**
+ * Tests for parseColGLeagueTimes_
+ */
+/// <reference path="../src/parsers/parseColGLeagueTimes_.gs" />
+
+function test_times_double_range_row5_() {
+  const s = 'Times: 12:45-2:45PM & 3:00-5:00PM';
+  const r = parseColGLeagueTimes_(s);
+  if (r.leagueStartTime !== '12:45 PM') throw new Error('start should be 12:45 PM');
+  if (r.leagueEndTime !== '2:45 PM') throw new Error('end should be 2:45 PM');
+  if (r.alternativeStartTime !== '3:00 PM') throw new Error('alt start should be 3:00 PM');
+  if (r.alternativeEndTime !== '5:00 PM') throw new Error('alt end should be 5:00 PM');
+}
+
+/**
  * Tests for parseColGLeagueTimes_ function
  *
  * @fileoverview Test suite for league time parsing functionality

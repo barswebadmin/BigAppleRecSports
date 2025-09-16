@@ -113,6 +113,21 @@ All teams play two 45 min matches per night`;
     return `FAIL: Expected totalInventory to be 64, got ${result.totalInventory}`;
   }
 
+  // New: verify we capture Buddy Sign-up hint when present
+  const row5Sample = `2 sessions; 350-364 players, 50-52 teams, 7 players max
+Teams are randomly assigned
+Players are able to sign-up with one buddy
+Times: 12:45-2:45PM & 3:00-5:00PM
+
+NOTE: SKIPPING 11/9 to accommodate for all sports charity awards event.`;
+  const row5Res = parseColCLeagueDetails_(row5Sample);
+  if (row5Res.totalInventory !== 364) {
+    return `FAIL: Expected 364 inventory from range, got ${row5Res.totalInventory}`;
+  }
+  if (!Array.isArray(row5Res.typesHint) || row5Res.typesHint.indexOf('Buddy Sign-up') === -1) {
+    return 'FAIL: Expected typesHint to include Buddy Sign-up';
+  }
+
   return true;
 }
 
