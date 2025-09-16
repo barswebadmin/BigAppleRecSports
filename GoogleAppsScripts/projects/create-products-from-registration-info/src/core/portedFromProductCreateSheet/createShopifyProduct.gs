@@ -650,17 +650,20 @@ function showInteractiveProductCreationPrompt_(productData) {
       }
     }
 
-    // All required fields present - show confirmation with buttons
+    // All required fields present - show confirmation with explicit choices
     const confirmDisplay = buildConfirmationDisplay_(productData);
-    const confirm = ui.alert('Confirm Product Creation', confirmDisplay, ui.ButtonSet.YES_NO);
+    const message = confirmDisplay + '\n\nChoose: Yes = Create, No = Edit Fields, Cancel = Abort';
+    const choice = ui.alert('Confirm Product Creation', message, ui.ButtonSet.YES_NO_CANCEL);
 
-    if (confirm === ui.Button.YES) {
+    if (choice === ui.Button.YES) {
       return productData; // Ready to create
-    } else {
+    } else if (choice === ui.Button.NO) {
       // Edit again
       productData = showFieldEditingFlow_(productData);
       if (!productData) return null; // User cancelled editing
       continue; // Re-validate and show confirmation again
+    } else {
+      return null; // Cancel
     }
   }
 }
