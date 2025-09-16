@@ -790,10 +790,16 @@ function showFieldEditingFlow_(productData) {
     // Get enum options for this field
     const enumOptions = getEnumOptionsForField_(fieldKey, sportName);
     const enumText = enumOptions ? `\n\nValid options: ${enumOptions.join(', ')}` : '';
+    
+    // Add format instructions for specific fields
+    let formatText = '';
+    if (fieldKey === 'offDatesCommaSeparated') {
+      formatText = '\n\nMake sure this is in the format M/D/YY (or leave blank if none)';
+    }
 
     const valueResponse = ui.prompt(
       'Edit Field',
-      `Enter new value for ${fieldName}:\n\nCurrent: ${currentValue}${enumText}`,
+      `Enter new value for ${fieldName}:\n\nCurrent: ${currentValue}${enumText}${formatText}`,
       ui.ButtonSet.OK
     );
 
@@ -971,7 +977,7 @@ function getEditableFieldsMeta_(sportName = null) {
     { key: 'seasonEndDate', name: 'Season End Date', format: 'date' },
     { key: 'alternativeStartTime', name: 'Alternative Start Time\n(Optional)', format: 'time' },
     { key: 'alternativeEndTime', name: 'Alternative End Time\n(Optional)', format: 'time' },
-    { key: 'offDatesCommaSeparated', name: 'Off Dates, Separated by Comma (Leave Blank if None)\n\nMake Sure This is in the Format M/D/YY', format: 'default' },
+    { key: 'offDatesCommaSeparated', name: 'Off Dates, Separated by Comma', format: 'default' },
     { key: 'rainDate', name: 'Rain Date', format: 'date' },
     { key: 'closingPartyDate', name: 'Closing Party Date', format: 'date' },
     { key: 'leagueStartTime', name: 'Sport Start Time', format: 'time' },
