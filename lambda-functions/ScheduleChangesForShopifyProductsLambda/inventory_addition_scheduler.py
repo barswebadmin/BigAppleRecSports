@@ -139,13 +139,14 @@ def create_initial_inventory_addition_and_title_change(
     print("✅ Created new inventory addition and title change schedule:")
     print(json.dumps(response, indent=2, default=str))
 
-    result = standardize_scheduler_result(
-        schedule_name=schedule_name,
-        expression=f"at({formatted_datetime})",
-        aws_response=response,
-    )
-    result["lambda_input"] = lambda_input
-    return result
+    return {
+        **standardize_scheduler_result(
+            schedule_name=schedule_name,
+            expression=f"at({formatted_datetime})",
+            aws_response=response,
+        ),
+        "lambda_input": lambda_input,
+    }
 
 
 def create_remaining_inventory_addition_schedule(
