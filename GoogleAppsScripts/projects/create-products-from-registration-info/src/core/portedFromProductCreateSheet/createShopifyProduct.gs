@@ -49,12 +49,32 @@ function formatValue(value, label, formatType = 'default') {
       if (value instanceof Date) {
         return `${label}: ${formatDateTimeMdYYhm_(value)}`;
       } else if (typeof value === 'string' && value.trim()) {
+        // Try to parse ISO date strings
+        if (value.includes('T') && (value.includes('Z') || value.includes('+'))) {
+          try {
+            const dateObj = new Date(value);
+            return `${label}: ${formatDateTimeMdYYhm_(dateObj)}`;
+          } catch {
+            return `${label}: ${value}`;
+          }
+        }
         return `${label}: ${value}`;
       }
       return `${label}: [Not Found]`;
     case 'date':
       if (value instanceof Date) {
         return `${label}: ${formatDateMdYY_(value)}`;
+      } else if (typeof value === 'string' && value.trim()) {
+        // Try to parse ISO date strings
+        if (value.includes('T') && (value.includes('Z') || value.includes('+'))) {
+          try {
+            const dateObj = new Date(value);
+            return `${label}: ${formatDateMdYY_(dateObj)}`;
+          } catch {
+            return `${label}: ${value}`;
+          }
+        }
+        return `${label}: ${value}`;
       }
       return `${label}: ${value}`;
     default:
@@ -873,25 +893,25 @@ function validateFieldInput_(fieldKey, value, productData) {
 /**
  * Shared editable fields metadata (single source of truth for ordering and labels)
  */
-function getEditableFieldsMeta_() {
-  return [
+function getEditableFieldsMeta_(sportName = null) {
+  const allFields = [
     { key: 'sportName', name: 'Sport', format: 'default' },
     { key: 'dayOfPlay', name: 'Day', format: 'default' },
-    { key: 'sportSubCategory', name: 'Sport Sub-Category', format: 'default' },
+    { key: 'sportSubCategory', name: 'Sport Sub-Category', format: 'default', sports: ['dodgeball'] },
     { key: 'division', name: 'Division', format: 'default' },
     { key: 'season', name: 'Season', format: 'default' },
     { key: 'year', name: 'Year', format: 'default' },
-    { key: 'socialOrAdvanced', name: 'Social or Advanced', format: 'default' },
+    { key: 'socialOrAdvanced', name: 'Social or Advanced', format: 'default', excludeSports: ['bowling'] },
     { key: 'types', name: 'Type(s)', format: 'default' },
-    { key: 'newPlayerOrientationDateTime', name: 'New Player Orientation Date/Time', format: 'datetime' },
-    { key: 'scoutNightDateTime', name: 'Scout Night Date/Time', format: 'datetime' },
+    { key: 'newPlayerOrientationDateTime', name: 'New Player Orientation Date/Time', format: 'datetime', excludeSports: ['bowling'] },
+    { key: 'scoutNightDateTime', name: 'Scout Night Date/Time', format: 'datetime', sports: ['kickball'] },
     { key: 'openingPartyDate', name: 'Opening Party Date', format: 'date' },
     { key: 'seasonStartDate', name: 'Season Start Date', format: 'date' },
     { key: 'seasonEndDate', name: 'Season End Date', format: 'date' },
     { key: 'alternativeStartTime', name: 'Alternative Start Time\n(Optional)', format: 'time' },
     { key: 'alternativeEndTime', name: 'Alternative End Time\n(Optional)', format: 'time' },
     { key: 'offDatesCommaSeparated', name: 'Off Dates, Separated by Comma (Leave Blank if None)\n\nMake Sure This is in the Format M/D/YY', format: 'default' },
-    { key: 'rainDate', name: 'Rain Date', format: 'date' },
+    { key: 'rainDate', name: 'Rain Date', format: 'date', sports: ['kickball'] },
     { key: 'closingPartyDate', name: 'Closing Party Date', format: 'date' },
     { key: 'leagueStartTime', name: 'Sport Start Time', format: 'time' },
     { key: 'leagueEndTime', name: 'Sport End Time', format: 'time' },
@@ -902,6 +922,21 @@ function getEditableFieldsMeta_() {
     { key: 'openRegistrationStartDateTime', name: 'Open Registration Start Date/Time', format: 'datetime' },
     { key: 'totalInventory', name: 'Total Inventory', format: 'default' }
   ];
+
+  if (!sportName) return allFields;
+
+  const lowerSportName = sportName.toLowerCase();
+  return allFields.filter(field => {
+    // If field has specific sports requirement, only show for those sports
+    if (field.sports && !field.sports.includes(lowerSportName)) {
+      return false;
+    }
+    // If field is excluded for certain sports, hide for those sports
+    if (field.excludeSports && field.excludeSports.includes(lowerSportName)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 /**
