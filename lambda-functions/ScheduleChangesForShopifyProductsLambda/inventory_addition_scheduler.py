@@ -3,17 +3,23 @@ Inventory addition and title change scheduling logic
 Handles creating EventBridge schedules for setting products live with inventory and title updates
 """
 
-import boto3  # type: ignore
 import json
 import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import Dict, Any
+from typing import Dict, Any, cast, Optional
 from bars_common_utils.date_utils import parse_iso_datetime
+from bars_common_utils.response_utils import (
+    standardize_scheduler_result,
+    standardize_scheduler_error,
+    _require_str,
+    _require_int,
+)
+from aws_clients import get_scheduler_client
 
 
 def create_initial_inventory_addition_and_title_change(
-    event_body: Dict[str, Any],
+    event_body: Dict[str, Any], *, scheduler_client=None
 ) -> Dict[str, Any]:
     """
     Create an EventBridge schedule for adding inventory and updating product title
@@ -37,22 +43,20 @@ def create_initial_inventory_addition_and_title_change(
     print("🚀 Creating scheduled inventory addition and title change")
     print(f"🔍 Event data: {json.dumps(event_body, indent=2)}")
 
-    # Initialize EventBridge Scheduler client
-    scheduler_client = boto3.client(
-        "scheduler", region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-    )
+    # Initialize EventBridge Scheduler client (injectable for tests)
+    scheduler_client = scheduler_client or get_scheduler_client()
 
     # Extract required fields
-    schedule_name = event_body.get("scheduleName")
-    group_name = event_body.get("groupName")
-    new_datetime = event_body.get("newDatetime")
-    product_url = event_body.get("productUrl")
-    product_title = event_body.get("productTitle")
-    variant_gid = event_body.get("variantGid")
+    schedule_name = _require_str(event_body, "scheduleName")
+    group_name = _require_str(event_body, "groupName")
+    new_datetime = _require_str(event_body, "newDatetime")
+    product_url = _require_str(event_body, "productUrl")
+    product_title = _require_str(event_body, "productTitle")
+    variant_gid = _require_str(event_body, "variantGid")
 
     # Extract inventory fields
     total_inventory = event_body.get("totalInventory")
-    number_vet_spots = event_body.get("numberVetSpotsToReleaseAtGoLive")
+    number_vet_spots = _require_int(event_body, "numberVetSpotsToReleaseAtGoLive")
 
     # Use numberVetSpotsToReleaseAtGoLive as the inventory to add
     inventory_to_add = number_vet_spots
@@ -109,35 +113,48 @@ def create_initial_inventory_addition_and_title_change(
     print(f"🎖️ Vet spots to release: {number_vet_spots}")
 
     # Create the EventBridge schedule
-    response = scheduler_client.create_schedule(
-        Name=schedule_name,
-        GroupName=group_name,
-        ScheduleExpression=f"at({formatted_datetime})",
-        ScheduleExpressionTimezone="America/New_York",
-        FlexibleTimeWindow={"Mode": "OFF"},
-        Target={
-            "Arn": "arn:aws:lambda:us-east-1:084375563770:function:setProductLiveByAddingInventory",
-            "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
-            "Input": updated_input,
-        },
-        ActionAfterCompletion="DELETE",
-        State="ENABLED",
-        Description="Schedule to set product live by adding inventory and updating title",
-    )
+    response: Optional[Dict[str, Any]] = None
+    try:
+        response = scheduler_client.create_schedule(
+            Name=schedule_name,
+            GroupName=group_name,
+            ScheduleExpression=f"at({formatted_datetime})",
+            ScheduleExpressionTimezone="America/New_York",
+            FlexibleTimeWindow={"Mode": "OFF"},
+            Target={
+                "Arn": "arn:aws:lambda:us-east-1:084375563770:function:setProductLiveByAddingInventory",
+                "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
+                "Input": updated_input,
+            },
+            ActionAfterCompletion="DELETE",
+            State="ENABLED",
+            Description="Schedule to set product live by adding inventory and updating title",
+        )
+    except Exception as e:
+        print(f"❌ Failed to create schedule: {e}")
+        status, body = standardize_scheduler_error(
+            schedule_name=schedule_name,
+            reason="Failed to create EventBridge schedule",
+            details={"exception": str(e)},
+        )
+        return body
 
     print("✅ Created new inventory addition and title change schedule:")
     print(json.dumps(response, indent=2, default=str))
 
-    return {
-        "message": f"✅ Schedule '{schedule_name}' created successfully!",
-        "new_expression": f"at({formatted_datetime})",
-        "lambda_input": lambda_input,
-        "aws_response": response,
-    }
+    # Type assertion: response is guaranteed to be set here since we didn't return from the exception
+    assert response is not None
+    result = cast(Dict[str, Any], standardize_scheduler_result(
+        schedule_name=schedule_name,
+        expression=f"at({formatted_datetime})",
+        aws_response=response,
+    ))
+    result["lambda_input"] = lambda_input
+    return result
 
 
 def create_remaining_inventory_addition_schedule(
-    event_body: Dict[str, Any],
+    event_body: Dict[str, Any], *, scheduler_client=None
 ) -> Dict[str, Any]:
     """
     Create an EventBridge schedule for adding remaining inventory to live products
@@ -163,19 +180,17 @@ def create_remaining_inventory_addition_schedule(
     print("🚀 Creating scheduled remaining inventory addition")
     print(f"🔍 Event data: {json.dumps(event_body, indent=2)}")
 
-    # Initialize EventBridge Scheduler client
-    scheduler_client = boto3.client(
-        "scheduler", region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-    )
+    # Initialize EventBridge Scheduler client (injectable for tests)
+    scheduler_client = scheduler_client or get_scheduler_client()
 
     # Extract required fields
-    schedule_name = event_body.get("scheduleName")
-    group_name = event_body.get("groupName")
-    new_datetime = event_body.get("newDatetime")
-    product_url = event_body.get("productUrl")
-    product_title = event_body.get("productTitle")
-    variant_gid = event_body.get("variantGid")
-    inventory_to_add = event_body.get("inventoryToAdd")
+    schedule_name = _require_str(event_body, "scheduleName")
+    group_name = _require_str(event_body, "groupName")
+    new_datetime = _require_str(event_body, "newDatetime")
+    product_url = _require_str(event_body, "productUrl")
+    product_title = _require_str(event_body, "productTitle")
+    variant_gid = _require_str(event_body, "variantGid")
+    inventory_to_add = _require_int(event_body, "inventoryToAdd")
 
     # Validate required fields
     required_fields = [
@@ -224,28 +239,41 @@ def create_remaining_inventory_addition_schedule(
     print("🎯 Target Lambda: addRemainingInventoryToLiveProduct")
 
     # Create the EventBridge schedule
-    response = scheduler_client.create_schedule(
-        Name=schedule_name,
-        GroupName=group_name,
-        ScheduleExpression=f"at({formatted_datetime})",
-        ScheduleExpressionTimezone="America/New_York",
-        FlexibleTimeWindow={"Mode": "OFF"},
-        Target={
-            "Arn": "arn:aws:lambda:us-east-1:084375563770:function:addRemainingInventoryToLiveProduct",
-            "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
-            "Input": updated_input,
-        },
-        ActionAfterCompletion="DELETE",
-        State="ENABLED",
-        Description="Schedule to add remaining inventory to live product",
-    )
+    response: Optional[Dict[str, Any]] = None
+    try:
+        response = scheduler_client.create_schedule(
+            Name=schedule_name,
+            GroupName=group_name,
+            ScheduleExpression=f"at({formatted_datetime})",
+            ScheduleExpressionTimezone="America/New_York",
+            FlexibleTimeWindow={"Mode": "OFF"},
+            Target={
+                "Arn": "arn:aws:lambda:us-east-1:084375563770:function:addRemainingInventoryToLiveProduct",
+                "RoleArn": "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c",
+                "Input": updated_input,
+            },
+            ActionAfterCompletion="DELETE",
+            State="ENABLED",
+            Description="Schedule to add remaining inventory to live product",
+        )
+    except Exception as e:
+        print(f"❌ Failed to create schedule: {e}")
+        status, body = standardize_scheduler_error(
+            schedule_name=schedule_name,
+            reason="Failed to create EventBridge schedule",
+            details={"exception": str(e)},
+        )
+        return body
 
     print("✅ Created new remaining inventory addition schedule:")
     print(json.dumps(response, indent=2, default=str))
 
-    return {
+    # Type assertion: response is guaranteed to be set here since we didn't return from the exception
+    assert response is not None
+    result = {
         "message": f"✅ Remaining inventory schedule '{schedule_name}' created successfully!",
         "new_expression": f"at({formatted_datetime})",
         "lambda_input": lambda_input,
         "aws_response": response,
     }
+    return result
