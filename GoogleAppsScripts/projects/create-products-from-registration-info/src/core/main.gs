@@ -5,8 +5,7 @@
  * @fileoverview Main controller for parse-registration-info
  * @requires config/constants.gs
  * @requires ../parsers/bFlagsParser.gs
- * @requires core/portedFromProductCreateSheet/createShopifyProduct.gs
- * @requires core/portedFromProductCreateSheet/shopifyProductCreation.gs
+ * @requires core/productCreationOrchestrator.gs
  * @requires helpers/textUtils.gs
  * @requires validators/fieldValidation.gs
  */
@@ -15,15 +14,14 @@
 // Import references for editor support
 /// <reference path="../config/constants.gs" />
 /// <reference path="../parsers/parseColBLeagueBasicInfo_.gs" />
-/// <reference path="./portedFromProductCreateSheet/createShopifyProduct.gs" />
-/// <reference path="./portedFromProductCreateSheet/shopifyProductCreation.gs" />
+/// <reference path="./productCreationOrchestrator.gs" />
 /// <reference path="../helpers/textUtils.gs" />
 /// <reference path="../validators/fieldValidation.gs" />
 /// <reference path="./instructions.gs" />
 
 // Configuration constants
 const ENVIRONMENT = 'dev'; // 'prod' or 'dev'
-const NGROK_URL = 'https://7fb15046ba8a.ngrok-free.app';
+const NGROK_URL = 'https://56d6dd03ac9d.ngrok-free.app';
 
 /***** MENU *****/
 function onOpen() {
