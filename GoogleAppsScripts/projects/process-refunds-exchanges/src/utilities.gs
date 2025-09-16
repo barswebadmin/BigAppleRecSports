@@ -7,15 +7,6 @@
  * Only includes functions that are actively used by the application.
  */
 
-/**
- * Normalize order number to include # prefix
- * @param {string|number} orderNumber - Raw order number
- * @returns {string} Normalized order number with # prefix
- */
-function normalizeOrderNumber(orderNumber) {
-  const str = String(orderNumber || "").trim();
-  return str.startsWith("#") ? str : `#${str}`;
-}
 
 /**
  * Get sheet data from the main refunds spreadsheet
