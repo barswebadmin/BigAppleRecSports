@@ -122,7 +122,8 @@ def map_exception_to_http_status(e: Exception) -> Tuple[int, Dict[str, Any]]:
 
     # botocore client errors
     if ClientError and isinstance(e, ClientError):  # type: ignore
-        resp = e.response or {}
+        # ClientError has a response attribute, but type checker doesn't know this
+        resp = getattr(e, 'response', {}) or {}
         err = resp.get("Error", {})
         code = err.get("Code", "")
         http_status = resp.get("ResponseMetadata", {}).get("HTTPStatusCode")
