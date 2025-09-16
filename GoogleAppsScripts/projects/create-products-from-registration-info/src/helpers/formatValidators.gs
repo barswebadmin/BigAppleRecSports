@@ -45,6 +45,9 @@ function formatDateMdYY_(v) {
     if (!v) return '';
     const d = v instanceof Date ? v : new Date(v);
     if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+    if (typeof Utilities !== 'undefined' && Utilities.formatDate) {
+      return Utilities.formatDate(d, 'America/New_York', 'M/d/yy');
+    }
     const m = d.getMonth()+1;
     const day = d.getDate();
     const yy = String(d.getFullYear()).slice(-2);
@@ -60,6 +63,9 @@ function formatDateTimeMdYYhm_(v) {
     if (!v) return '';
     const d = v instanceof Date ? v : new Date(v);
     if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+    if (typeof Utilities !== 'undefined' && Utilities.formatDate) {
+      return Utilities.formatDate(d, 'America/New_York', 'M/d/yy h:mm a');
+    }
     const m = d.getMonth()+1;
     const day = d.getDate();
     const yy = String(d.getFullYear()).slice(-2);

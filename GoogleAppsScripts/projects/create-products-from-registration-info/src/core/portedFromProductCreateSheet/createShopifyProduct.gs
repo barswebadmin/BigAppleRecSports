@@ -300,8 +300,10 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields) {
     .setHeight(700);
 
   // Canonicalize for display so confirmation uses nested values if present
-  const canonicalForDisplay = canonicalizeForDisplay_(productData);
-  return showInteractiveProductCreationPrompt_(canonicalForDisplay);
+  // Keep a canonical working copy that we pass through the flow so values persist
+  let working = canonicalizeForDisplay_(productData);
+  // Run the interactive flow with the working object and persist edits within it
+  return showInteractiveProductCreationPrompt_(working);
 }
 
 /**
@@ -705,8 +707,9 @@ function showFieldEditingFlow_(productData) {
   const ui = SpreadsheetApp.getUi();
 
   while (true) {
-    const meta = getEditableFieldsMeta_();
-    const editableFields = getEditableFieldsList_(productData);
+    // Re-canonicalize to ensure keys are in expected nested places, then flatten for display
+    const canonical = canonicalizeForDisplay_(productData);
+    const editableFields = getEditableFieldsList_(canonical);
     const fieldsList = editableFields.join('\n');
 
     const fieldResponse = ui.prompt(
@@ -720,7 +723,7 @@ function showFieldEditingFlow_(productData) {
     }
 
     const input = fieldResponse.getResponseText().trim();
-    if (input.toLowerCase() === 'create') return productData;
+    if (input.toLowerCase() === 'create') return canonical;
 
     const fieldNumber = parseInt(input);
     if (isNaN(fieldNumber) || fieldNumber < 1 || fieldNumber > editableFields.length) {
@@ -729,6 +732,7 @@ function showFieldEditingFlow_(productData) {
     }
 
     // Get current field info
+    const meta = getEditableFieldsMeta_();
     const fieldName = meta[fieldNumber - 1] ? meta[fieldNumber - 1].name : `Field #${fieldNumber}`;
     const currentValue = editableFields[fieldNumber - 1].split(': ').slice(1).join(': ');
 
@@ -748,13 +752,15 @@ function showFieldEditingFlow_(productData) {
       try {
         // Validate input before applying
         const fieldKey = meta[fieldNumber - 1] ? meta[fieldNumber - 1].key : undefined;
-        const v = validateFieldInput_(fieldKey, newValue, productData);
+        const v = validateFieldInput_(fieldKey, newValue, canonical);
         if (!v.ok) {
           ui.alert('Invalid Value', v.message || 'The value is not allowed for this field.', ui.ButtonSet.OK);
           continue;
         }
         const normalizedValue = v.normalizedValue != null ? v.normalizedValue : newValue;
-        productData = updateFieldValue_(productData, fieldNumber, normalizedValue);
+        // Apply update on canonical object and continue loop
+        const updated = updateFieldValue_(canonical, fieldNumber, normalizedValue);
+        productData = canonicalizeForDisplay_(updated);
         ui.alert('Success', `Updated ${fieldName} to: ${newValue}`, ui.ButtonSet.OK);
       } catch (error) {
         ui.alert('Error', `Failed to update field: ${error.message}`, ui.ButtonSet.OK);
