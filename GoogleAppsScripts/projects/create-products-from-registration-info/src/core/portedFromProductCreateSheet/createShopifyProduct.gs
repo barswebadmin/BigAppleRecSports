@@ -13,6 +13,59 @@
 /// <reference path="../../validators/fieldValidation.gs" />
 
 /**
+ * Helper function to format values for display with specific formatting rules
+ */
+function formatValue(value, label, formatType = 'default') {
+  // Handle TBD values specially first, before checking for empty
+  if (value === 'TBD' || (typeof value === 'string' && value.trim().toUpperCase() === 'TBD')) {
+    return `${label}: TBD`;
+  }
+
+  if (value === null || value === undefined || value === '') {
+    return `${label}: [Not Found]`;
+  }
+
+  switch (formatType) {
+    case 'price':
+      return `${label}: $${value}`;
+    case 'time':
+      if (value instanceof Date) {
+        return `${label}: ${value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+      } else if (typeof value === 'string' && value.includes(':')) {
+        // Try to parse time string
+        try {
+          const [hours, minutes] = value.split(':');
+          const hour = parseInt(hours);
+          const min = parseInt(minutes);
+          const period = hour >= 12 ? 'PM' : 'AM';
+          const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+          return `${label}: ${displayHour}:${min.toString().padStart(2, '0')} ${period}`;
+        } catch {
+          return `${label}: ${value}`;
+        }
+      }
+      return `${label}: ${value}`;
+    case 'datetime':
+      if (value instanceof Date) {
+        return `${label}: ${formatDateTimeMdYYhm_(value)}`;
+      } else if (typeof value === 'string' && value.trim()) {
+        return `${label}: ${value}`;
+      }
+      return `${label}: [Not Found]`;
+    case 'date':
+      if (value instanceof Date) {
+        return `${label}: ${formatDateMdYY_(value)}`;
+      }
+      return `${label}: ${value}`;
+    default:
+      if (value instanceof Date) {
+        return `${label}: ${value.toLocaleDateString('en-US')}`;
+      }
+      return `${label}: ${value}`;
+  }
+}
+
+/**
  * Main function to create Shopify product from a row in parse-registration-info
  */
 
@@ -442,7 +495,7 @@ function flattenProductData_(obj, result = {}) {
       // Add the field to the flattened result
       const isEmpty = (v) => v == null || v === '';
       if (isEmpty(result[key])) {
-        result[key] = value;
+      result[key] = value;
       }
     }
   }
@@ -453,7 +506,7 @@ function flattenProductData_(obj, result = {}) {
       const parts = result.offDates.map(d => formatDateMdYY_(d)).filter(Boolean);
       result.offDatesCommaSeparated = parts.join(', ');
     } catch (_) {
-      result.offDatesCommaSeparated = result.offDates.join(', ');
+    result.offDatesCommaSeparated = result.offDates.join(', ');
     }
   }
 
@@ -468,55 +521,6 @@ function buildErrorDisplay_(productData, missingFields) {
   const flatData = flattenProductData_(productData);
   flatData.sportNameStartTime = flatData.leagueStartTime || flatData.sportNameStartTime;
   flatData.sportNameEndTime = flatData.leagueEndTime || flatData.sportNameEndTime;
-  // Helper function to format values for display with specific formatting rules
-  function formatValue(value, label, formatType = 'default') {
-    // Handle TBD values specially first, before checking for empty
-    if (value === 'TBD' || (typeof value === 'string' && value.trim().toUpperCase() === 'TBD')) {
-      return `${label}: TBD`;
-    }
-
-    if (value === null || value === undefined || value === '') {
-      return `${label}: [Not Found]`;
-    }
-
-    switch (formatType) {
-      case 'price':
-        return `${label}: $${value}`;
-      case 'time':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-        } else if (typeof value === 'string' && value.includes(':')) {
-          try {
-            const [hours, minutes] = value.split(':');
-            const hour = parseInt(hours);
-            const min = parseInt(minutes);
-            const period = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            return `${label}: ${displayHour}:${min.toString().padStart(2, '0')} ${period}`;
-          } catch {
-            return `${label}: ${value}`;
-          }
-        }
-        return `${label}: ${value}`;
-      case 'datetime':
-        if (value instanceof Date || (typeof value === 'string' && value.trim())) {
-          const disp = formatDateTimeMdYYhm_(value);
-          return `${label}: ${disp || '[Not Found]'}${disp ? '' : ''}`;
-        }
-        return `${label}: [Not Found]`;
-      case 'date':
-        if (value instanceof Date || (typeof value === 'string' && value.trim())) {
-          const disp = formatDateMdYY_(value);
-          return `${label}: ${disp || '[Not Found]'}${disp ? '' : ''}`;
-        }
-        return `${label}: [Not Found]`;
-      default:
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')}`;
-        }
-        return `${label}: ${value}`;
-    }
-  }
 
   let summary = `Cannot Create Shopify Product - Not all Required Fields are Present. Parsed Info Found:\n\n` +
     `=== BASIC INFO ===\n` +
@@ -908,55 +912,6 @@ function buildConfirmationDisplay_(productData) {
   const flatData = flattenProductData_(productData);
   flatData.sportNameStartTime = flatData.leagueStartTime || flatData.sportNameStartTime;
   flatData.sportNameEndTime = flatData.leagueEndTime || flatData.sportNameEndTime;
-  // Helper function to format values for display with specific formatting rules
-  function formatValue(value, label, formatType = 'default') {
-    // Handle TBD values specially first, before checking for empty
-    if (value === 'TBD' || (typeof value === 'string' && value.trim().toUpperCase() === 'TBD')) {
-      return `${label}: TBD`;
-    }
-
-    if (value === null || value === undefined || value === '') {
-      return `${label}: [Not Found]`;
-    }
-
-    switch (formatType) {
-      case 'price':
-        return `${label}: $${value}`;
-      case 'time':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-        } else if (typeof value === 'string' && value.includes(':')) {
-          try {
-            const [hours, minutes] = value.split(':');
-            const hour = parseInt(hours);
-            const min = parseInt(minutes);
-            const period = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            return `${label}: ${displayHour}:${min.toString().padStart(2, '0')} ${period}`;
-          } catch {
-            return `${label}: ${value}`;
-          }
-        }
-        return `${label}: ${value}`;
-      case 'datetime':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')} ${value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-        } else if (typeof value === 'string' && value.trim()) {
-          return `${label}: ${value}`;
-        }
-        return `${label}: [Not Found]`;
-      case 'date':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')}`;
-        }
-        return `${label}: ${value}`;
-      default:
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')}`;
-        }
-        return `${label}: ${value}`;
-    }
-  }
 
   // Only show fields that should be displayed based on sport type and presence
   let summary = `🛍️ Create Shopify Product - All Parsed Fields\n\n` +
@@ -1036,56 +991,6 @@ function showSimpleConfirmationPrompt_(productData) {
   // Flatten the nested data for easier access
   const flatData = flattenProductData_(productData);
 
-  // Helper function to format values for display with specific formatting rules
-  function formatValue(value, label, formatType = 'default') {
-    // Handle TBD values specially first, before checking for empty
-    if (value === 'TBD' || (typeof value === 'string' && value.trim().toUpperCase() === 'TBD')) {
-      return `${label}: TBD`;
-    }
-
-    if (value === null || value === undefined || value === '') {
-      return `${label}: [Not Found]`;
-    }
-
-    switch (formatType) {
-      case 'price':
-        return `${label}: $${value}`;
-      case 'time':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-        } else if (typeof value === 'string' && value.includes(':')) {
-          // Try to parse time string
-          try {
-            const [hours, minutes] = value.split(':');
-            const hour = parseInt(hours);
-            const min = parseInt(minutes);
-            const period = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            return `${label}: ${displayHour}:${min.toString().padStart(2, '0')} ${period}`;
-          } catch {
-            return `${label}: ${value}`;
-          }
-        }
-        return `${label}: ${value}`;
-      case 'datetime':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')} ${value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-        } else if (typeof value === 'string' && value.trim()) {
-          return `${label}: ${value}`;
-        }
-        return `${label}: [Not Found]`;
-      case 'date':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')}`;
-        }
-        return `${label}: ${value}`;
-      default:
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')}`;
-        }
-        return `${label}: ${value}`;
-    }
-  }
 
   // Only show fields that should be displayed based on sport type and presence
   let summary = `🛍️ Create Shopify Product - All Parsed Fields\n\n` +
