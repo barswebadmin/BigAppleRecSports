@@ -6,12 +6,9 @@ from typing import Dict, Any
 
 from bars_common_utils.event_utils import parse_event_body
 from bars_common_utils.response_utils import format_response, format_error
-from inventory_movement_scheduler import create_scheduled_inventory_movements
-from price_change_scheduler import create_scheduled_price_changes
-from inventory_addition_scheduler import (
-    create_initial_inventory_addition_and_title_change,
-    create_remaining_inventory_addition_schedule,
-)
+import inventory_movement_scheduler as inv_sched
+import price_change_scheduler as price_sched
+import inventory_addition_scheduler as add_sched
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -32,55 +29,64 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         event_body = parse_event_body(event)
         print(f"📋 Parsed event body: {json.dumps(event_body, indent=2)}")
 
-        # Get action type
+        # Route by action type (single-step). Orchestration can be added behind a feature flag later.
         action_type = event_body.get("actionType")
         if not action_type:
-            return format_error(400, "❌ Missing required field: actionType")
+            return format_response(400, json.dumps({"message": "Missing required field: actionType"}))
 
-        # Route to appropriate handler based on action type
         if action_type == "create-scheduled-inventory-movements":
-            result = create_scheduled_inventory_movements(event_body)
-            return format_response(200, result)
+            result = inv_sched.create_scheduled_inventory_movements(event_body)
+            return format_response(201, json.dumps({"success": True, "data": result}, default=str))
 
         elif action_type == "create-scheduled-price-changes":
-            result = create_scheduled_price_changes(event_body)
-            return format_response(201, result)
+            result = price_sched.create_scheduled_price_changes(event_body)
+            return format_response(200, json.dumps({"success": True, "data": result}, default=str))
 
         elif action_type == "create-initial-inventory-addition-and-title-change":
-            result = create_initial_inventory_addition_and_title_change(event_body)
-            return format_response(202, result)
+            # Determine which of the two inventory-addition flows to call based on groupName
+            if event_body.get("groupName") == "add-remaining-inventory-to-live-product":
+                result = add_sched.create_remaining_inventory_addition_schedule(event_body)
+            else:
+                result = add_sched.create_initial_inventory_addition_and_title_change(event_body)
+            return format_response(201, json.dumps({"success": True, "data": result}, default=str))
 
         elif action_type == "add-inventory-to-live-product":
-            result = create_remaining_inventory_addition_schedule(event_body)
-            return format_response(203, result)
+            result = add_sched.create_remaining_inventory_addition_schedule(event_body)
+            return format_response(201, json.dumps({"success": True, "data": result}, default=str))
 
         else:
-            # Return 422 Unprocessable Entity for unsupported action types
-            return format_error(
+            return format_response(
                 422,
-                f"❌ Unsupported actionType: '{action_type}'",
-                {
-                    "supported_action_types": [
-                        "create-scheduled-inventory-movements",
-                        "create-scheduled-price-changes",
-                        "create-initial-inventory-addition-and-title-change",
-                        "add-inventory-to-live-product",
-                    ],
-                    "received": action_type,
-                },
+                json.dumps(
+                    {
+                        "message": f"Unsupported actionType: '{action_type}'",
+                        "details": {
+                            "supported_action_types": [
+                                "create-scheduled-inventory-movements",
+                                "create-scheduled-price-changes",
+                                "create-initial-inventory-addition-and-title-change",
+                            ],
+                            "received": action_type,
+                        },
+                    }
+                ),
             )
 
     except ValueError as e:
         print(f"❌ Validation error: {str(e)}")
-        return format_error(400, str(e))
+        return format_response(400, json.dumps({"message": str(e)}))
 
     except Exception as e:
         error_message = str(e)
         stack_trace = traceback.format_exc()
         print(f"❌ Unexpected error: {error_message}")
         print(stack_trace)
-        return format_error(
+        return format_response(
             500,
-            "❌ Internal server error",
-            {"error": error_message, "traceback": stack_trace},
+            json.dumps(
+                {
+                    "message": "Internal server error",
+                    "details": {"error": error_message, "traceback": stack_trace},
+                }
+            ),
         )

@@ -1,11 +1,12 @@
-import boto3  # pyright: ignore[reportMissingImports]
 import json
 import os
+from aws_clients import get_scheduler_client
 
 def send_scheduled_price_updates(action, updated_price_schedule, product_gid, open_variant_gid, waitlist_variant_gid, sport, day, division, season_start_date, off_dates_comma_separated):
     print("📍 Entered send_scheduled_price_updates()")
 
-    scheduler_client = boto3.client("scheduler", region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+    # Lazily construct scheduler client (avoids boto3 import at module import time)
+    scheduler_client = get_scheduler_client()
 
     sport_slug_map = {
         "bowling": "bowl",
