@@ -634,36 +634,52 @@ function showInteractiveProductCreationPrompt_(productData) {
       const errorDisplay = buildErrorDisplay_(productData, validation.missingFields);
       ui.alert('Missing Required Fields', errorDisplay, ui.ButtonSet.OK);
 
-      // Ask user via buttons
-      const editChoice = ui.alert(
+      // Ask user using text commands
+      const action = ui.prompt(
         'Product Creation',
-        'Required fields are missing. Do you want to edit fields now?',
-        ui.ButtonSet.YES_NO
+        'Required fields are missing. Type "update" to edit fields or "cancel" to abort:',
+        ui.ButtonSet.OK_CANCEL
       );
 
-      if (editChoice === ui.Button.YES) {
+      if (action.getSelectedButton() !== ui.Button.OK) {
+        return null; // User cancelled
+      }
+
+      const userAction = action.getResponseText().trim().toLowerCase();
+      if (userAction === 'cancel') {
+        return null;
+      } else if (userAction === 'update') {
         productData = showFieldEditingFlow_(productData);
         if (!productData) return null; // User cancelled editing
         continue; // Re-validate
       } else {
-        return null; // User chose not to edit
+        ui.alert('Invalid Input', 'Please type "update" or "cancel"', ui.ButtonSet.OK);
+        continue;
       }
     }
 
-    // All required fields present - show confirmation with explicit choices
+    // All required fields present - text-based confirmation
     const confirmDisplay = buildConfirmationDisplay_(productData);
-    const message = confirmDisplay + '\n\nChoose: Yes = Create, No = Edit Fields, Cancel = Abort';
-    const choice = ui.alert('Confirm Product Creation', message, ui.ButtonSet.YES_NO_CANCEL);
+    const action = ui.prompt(
+      'Confirm Product Creation',
+      confirmDisplay + '\n\nType "create" to proceed or "update" to edit fields:',
+      ui.ButtonSet.OK_CANCEL
+    );
 
-    if (choice === ui.Button.YES) {
+    if (action.getSelectedButton() !== ui.Button.OK) {
+      return null; // User cancelled
+    }
+
+    const userAction = action.getResponseText().trim().toLowerCase();
+    if (userAction === 'create') {
       return productData; // Ready to create
-    } else if (choice === ui.Button.NO) {
-      // Edit again
+    } else if (userAction === 'update') {
       productData = showFieldEditingFlow_(productData);
       if (!productData) return null; // User cancelled editing
       continue; // Re-validate and show confirmation again
     } else {
-      return null; // Cancel
+      ui.alert('Invalid Input', 'Please type "create" or "update"', ui.ButtonSet.OK);
+      continue;
     }
   }
 }
@@ -681,7 +697,7 @@ function showFieldEditingFlow_(productData) {
 
     const fieldResponse = ui.prompt(
       'Edit Fields',
-      `Select a field to edit (enter the number):\n\n${fieldsList}\n\nLeave blank to finish editing and return to confirmation.`,
+      `Select a field to edit (enter the number):\n\n${fieldsList}\n\nType "create" to proceed to creation, or click Cancel to abort.`,
       ui.ButtonSet.OK_CANCEL
     );
 
@@ -690,13 +706,11 @@ function showFieldEditingFlow_(productData) {
     }
 
     const input = fieldResponse.getResponseText().trim();
-    if (input === '') {
-      return productData;
-    }
+    if (input.toLowerCase() === 'create') return productData;
 
     const fieldNumber = parseInt(input);
     if (isNaN(fieldNumber) || fieldNumber < 1 || fieldNumber > editableFields.length) {
-      ui.alert('Invalid Input', 'Please enter a valid field number or "done"', ui.ButtonSet.OK);
+      ui.alert('Invalid Input', 'Please enter a valid field number or "create"', ui.ButtonSet.OK);
       continue;
     }
 
