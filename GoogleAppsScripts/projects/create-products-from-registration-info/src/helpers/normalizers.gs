@@ -148,3 +148,47 @@ function validProductCreateRequest_(data) {
 
   return out; // canonical nested, validated
 }
+
+/**
+ * Canonicalize product data into backend-like nested shape for display only.
+ * Same field moves as validProductCreateRequest_ but without validation/throws.
+ */
+// biome-ignore lint/correctness/noUnusedVariables: <used for display before confirm>
+function canonicalizeForDisplay_(data) {
+  const IN = data || {};
+  const out = JSON.parse(JSON.stringify(IN));
+
+  out.regularSeasonBasicDetails = out.regularSeasonBasicDetails || {};
+  out.optionalLeagueInfo = out.optionalLeagueInfo || {};
+  out.importantDates = out.importantDates || {};
+  out.inventoryInfo = out.inventoryInfo || {};
+
+  if (out.year != null && out.regularSeasonBasicDetails.year == null) out.regularSeasonBasicDetails.year = out.year;
+  if (out.season != null && out.regularSeasonBasicDetails.season == null) out.regularSeasonBasicDetails.season = out.season;
+  if (out.dayOfPlay != null && out.regularSeasonBasicDetails.dayOfPlay == null) out.regularSeasonBasicDetails.dayOfPlay = out.dayOfPlay;
+  if (out.division != null && out.regularSeasonBasicDetails.division == null) out.regularSeasonBasicDetails.division = out.division;
+  if (out.location != null && out.regularSeasonBasicDetails.location == null) out.regularSeasonBasicDetails.location = out.location;
+  if (out.leagueStartTime != null && out.regularSeasonBasicDetails.leagueStartTime == null) out.regularSeasonBasicDetails.leagueStartTime = out.leagueStartTime;
+  if (out.leagueEndTime != null && out.regularSeasonBasicDetails.leagueEndTime == null) out.regularSeasonBasicDetails.leagueEndTime = out.leagueEndTime;
+  if (out.alternativeStartTime != null && out.regularSeasonBasicDetails.alternativeStartTime == null) out.regularSeasonBasicDetails.alternativeStartTime = out.alternativeStartTime;
+  if (out.alternativeEndTime != null && out.regularSeasonBasicDetails.alternativeEndTime == null) out.regularSeasonBasicDetails.alternativeEndTime = out.alternativeEndTime;
+
+  if (out.socialOrAdvanced != null && out.optionalLeagueInfo.socialOrAdvanced == null) out.optionalLeagueInfo.socialOrAdvanced = out.socialOrAdvanced;
+  if (out.sportSubCategory != null && out.optionalLeagueInfo.sportSubCategory == null) out.optionalLeagueInfo.sportSubCategory = out.sportSubCategory;
+  if (out.types != null && out.optionalLeagueInfo.types == null) out.optionalLeagueInfo.types = out.types;
+
+  const dateKeys = [
+    'seasonStartDate','seasonEndDate','vetRegistrationStartDateTime','earlyRegistrationStartDateTime','openRegistrationStartDateTime',
+    'newPlayerOrientationDateTime','scoutNightDateTime','openingPartyDate','rainDate','closingPartyDate','offDates'
+  ];
+  for (var i=0;i<dateKeys.length;i++) {
+    var k = dateKeys[i];
+    if (out[k] != null && out.importantDates[k] == null) out.importantDates[k] = out[k];
+  }
+
+  if (out.price != null && out.inventoryInfo.price == null) out.inventoryInfo.price = out.price;
+  if (out.totalInventory != null && out.inventoryInfo.totalInventory == null) out.inventoryInfo.totalInventory = out.totalInventory;
+  if (out.numberVetSpotsToReleaseAtGoLive != null && out.inventoryInfo.numberVetSpotsToReleaseAtGoLive == null) out.inventoryInfo.numberVetSpotsToReleaseAtGoLive = out.numberVetSpotsToReleaseAtGoLive;
+
+  return out;
+}

@@ -296,8 +296,9 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields) {
     .setWidth(500)
     .setHeight(700);
 
-  // Use the new interactive prompt with validation and editing
-  return showInteractiveProductCreationPrompt_(productData);
+  // Canonicalize for display so confirmation uses nested values if present
+  const canonicalForDisplay = canonicalizeForDisplay_(productData);
+  return showInteractiveProductCreationPrompt_(canonicalForDisplay);
 }
 
 /**
