@@ -46,6 +46,11 @@ function parseColBLeagueBasicInfo_(bColumnData, sportName) {
     bLines.splice(divisionElementIndex, 1);
   }
 
+  // Enforce allowed divisions only
+  if (division && division !== 'Open' && division !== 'WTNB+') {
+    division = '';
+  }
+
   // ---------- Social or Advanced ----------
   let socialOrAdvanced = '';
   let socialAdvancedElementIndex = -1;

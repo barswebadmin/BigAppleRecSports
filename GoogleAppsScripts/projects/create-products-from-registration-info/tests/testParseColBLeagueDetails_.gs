@@ -9,6 +9,12 @@ function test_b_col_types_randomized_() {
   if (r.types.join(',').indexOf('Randomized') === -1) throw new Error('types should include Randomized');
 }
 
+function test_b_col_division_enforced_() {
+  const b = 'SATURDAY\nAdvanced\nRandomized';
+  const r = parseColBLeagueBasicInfo_(b, 'Kickball');
+  if (r.division !== '') throw new Error('division must only be Open or WTNB+');
+}
+
 /**
  * Focused tests for parseColBLeagueBasicInfo_ function
  * Tests each of the 5 fields individually for correct parsing and unresolved tracking
