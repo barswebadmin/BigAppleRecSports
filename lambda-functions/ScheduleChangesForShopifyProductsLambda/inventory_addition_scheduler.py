@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import Dict, Any
+from typing import Dict, Any, cast
 from bars_common_utils.date_utils import parse_iso_datetime
 from bars_common_utils.response_utils import (
     standardize_scheduler_result,
@@ -139,14 +139,16 @@ def create_initial_inventory_addition_and_title_change(
     print("✅ Created new inventory addition and title change schedule:")
     print(json.dumps(response, indent=2, default=str))
 
-    return {
-        **standardize_scheduler_result(
+    result: Dict[str, Any] = cast(
+        Dict[str, Any],
+        standardize_scheduler_result(
             schedule_name=schedule_name,
             expression=f"at({formatted_datetime})",
             aws_response=response,
         ),
-        "lambda_input": lambda_input,
-    }
+    )
+    result["lambda_input"] = lambda_input
+    return result
 
 
 def create_remaining_inventory_addition_schedule(
