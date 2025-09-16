@@ -64,6 +64,7 @@ echo ""
 # General tests (cross-project)
 run_test_suite "Instructions Tests" "./test_instructions.sh"
 run_test_suite "Clasp Helpers Tests" "./test_clasp_helpers.sh"
+run_test_suite "Duplicate Function Signatures" "./test_duplicate_functions.sh"
 
 # Project-specific tests (now in their respective project directories)
 run_test_suite "Leadership Discount Codes Tests" "../projects/leadership-discount-codes/tests/test_leadership_discount_codes.sh"
