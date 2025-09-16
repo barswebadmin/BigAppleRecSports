@@ -438,13 +438,21 @@ function flattenProductData_(obj, result = {}) {
       flattenProductData_(value, result);
     } else {
       // Add the field to the flattened result
-      result[key] = value;
+      const isEmpty = (v) => v == null || v === '';
+      if (isEmpty(result[key])) {
+        result[key] = value;
+      }
     }
   }
 
   // Special handling for offDatesCommaSeparated
   if (result.offDates && Array.isArray(result.offDates)) {
-    result.offDatesCommaSeparated = result.offDates.join(', ');
+    try {
+      const parts = result.offDates.map(d => formatDateMdYY_(d)).filter(Boolean);
+      result.offDatesCommaSeparated = parts.join(', ');
+    } catch (_) {
+      result.offDatesCommaSeparated = result.offDates.join(', ');
+    }
   }
 
   return result;
