@@ -1087,15 +1087,35 @@ function sendGoLiveRequest_(productUrl, goLiveTime) {
     Logger.log(`Go-live API response code: ${responseCode}`);
     Logger.log(`Go-live API response: ${responseText}`);
     
+    // Parse response body to extract message
+    let responseMessage = 'No message provided';
+    try {
+      if (responseText && responseText.trim()) {
+        const responseData = JSON.parse(responseText);
+        responseMessage = responseData.message || responseMessage;
+      }
+    } catch (parseError) {
+      Logger.log(`Warning: Could not parse response as JSON: ${parseError.message}`);
+      responseMessage = responseText || responseMessage;
+    }
+    
     if (responseCode >= 200 && responseCode < 300) {
-      SpreadsheetApp.getUi().alert('Success!', 'Product has been scheduled for go-live successfully.', SpreadsheetApp.getUi().ButtonSet.OK);
-    } else {
-      // Uncheck the checkbox on error
+      // Success response
+      SpreadsheetApp.getUi().alert('Success!', responseMessage, SpreadsheetApp.getUi().ButtonSet.OK);
+    } else if (responseCode >= 400) {
+      // Error response - uncheck checkbox and show error
       const sheet = SpreadsheetApp.getActiveSheet();
       const range = sheet.getActiveRange();
       range.setValue(false);
       
-      SpreadsheetApp.getUi().alert('Error', `Failed to schedule product for go-live. Response: ${responseText}`, SpreadsheetApp.getUi().ButtonSet.OK);
+      SpreadsheetApp.getUi().alert('Error', responseMessage, SpreadsheetApp.getUi().ButtonSet.OK);
+    } else {
+      // Other response codes (300-399) - treat as error
+      const sheet = SpreadsheetApp.getActiveSheet();
+      const range = sheet.getActiveRange();
+      range.setValue(false);
+      
+      SpreadsheetApp.getUi().alert('Error', `Unexpected response code ${responseCode}: ${responseMessage}`, SpreadsheetApp.getUi().ButtonSet.OK);
     }
     
   } catch (error) {

@@ -251,4 +251,63 @@ try {
   console.log('❌ Dodgeball test failed:', error.message);
 }
 
+// Test 5: Go-Live Request Response Handling
+console.log('🧪 TEST 5: Go-Live Request Response Handling');
+try {
+  // Test successful response parsing
+  const successResponse = parseGoLiveResponse_(200, '{"message": "Product successfully scheduled for go-live"}');
+  console.log('✅ Success response parsing:', successResponse.success === true && successResponse.message === 'Product successfully scheduled for go-live');
+  
+  // Test error response parsing
+  const errorResponse = parseGoLiveResponse_(400, '{"message": "Invalid product URL"}');
+  console.log('✅ Error response parsing:', errorResponse.success === false && errorResponse.shouldUncheckCheckbox === true);
+  
+  // Test payload construction
+  const testDate = new Date('2025-01-15T10:00:00Z');
+  const payload = constructGoLivePayload_('https://shop.example.com/products/test', testDate);
+  console.log('✅ Payload construction:', payload.productUrl === 'https://shop.example.com/products/test' && payload.goLiveTime === '2025-01-15T10:00:00.000Z');
+  
+  // Test validation logic
+  const valid = validateGoLiveRequirements_('https://shop.example.com/products/test', 'variant1', 'variant2');
+  const invalid = validateGoLiveRequirements_('', 'variant1', 'variant2');
+  console.log('✅ Validation logic:', valid === true && invalid === false);
+  
+  console.log('✅ Go-live request tests completed\n');
+} catch (error) {
+  console.log('❌ Go-live request tests failed:', error.message);
+}
+
+// Test 6: Backend Response Handling
+console.log('🧪 TEST 6: Backend Response Handling');
+try {
+  // Mock successful result with all fields
+  const mockResult = {
+    success: true,
+    data: {
+      productUrl: 'https://shop.example.com/products/test-product',
+      veteranVariantGid: 'gid://shopify/ProductVariant/123456789',
+      earlyVariantGid: 'gid://shopify/ProductVariant/123456790',
+      openVariantGid: 'gid://shopify/ProductVariant/123456791',
+      waitlistVariantGid: 'gid://shopify/ProductVariant/123456792'
+    }
+  };
+  
+  // Mock sheet
+  const mockSheet = {
+    getRange: function(cellRef) {
+      return {
+        setValue: function(value) {
+          console.log(`Mock: Setting cell ${cellRef} to ${value}`);
+        }
+      };
+    }
+  };
+  
+  // Test the function
+  writeProductCreationResults_(mockSheet, 5, mockResult);
+  console.log('✅ Backend response handling test completed\n');
+} catch (error) {
+  console.log('❌ Backend response handling test failed:', error.message);
+}
+
 console.log('🎯 All tests completed!');
