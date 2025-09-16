@@ -98,6 +98,9 @@ function validProductCreateRequest_(data) {
   if (out.location != null && out.regularSeasonBasicDetails.location == null) out.regularSeasonBasicDetails.location = out.location;
   if (out.leagueStartTime != null && out.regularSeasonBasicDetails.leagueStartTime == null) out.regularSeasonBasicDetails.leagueStartTime = out.leagueStartTime;
   if (out.leagueEndTime != null && out.regularSeasonBasicDetails.leagueEndTime == null) out.regularSeasonBasicDetails.leagueEndTime = out.leagueEndTime;
+  // Map legacy aliases used by some parsers/UI
+  if (out.sportNameStartTime != null && out.regularSeasonBasicDetails.leagueStartTime == null) out.regularSeasonBasicDetails.leagueStartTime = out.sportNameStartTime;
+  if (out.sportNameEndTime != null && out.regularSeasonBasicDetails.leagueEndTime == null) out.regularSeasonBasicDetails.leagueEndTime = out.sportNameEndTime;
   if (out.alternativeStartTime != null && out.regularSeasonBasicDetails.alternativeStartTime == null) out.regularSeasonBasicDetails.alternativeStartTime = out.alternativeStartTime;
   if (out.alternativeEndTime != null && out.regularSeasonBasicDetails.alternativeEndTime == null) out.regularSeasonBasicDetails.alternativeEndTime = out.alternativeEndTime;
 
@@ -170,6 +173,8 @@ function canonicalizeForDisplay_(data) {
   if (out.location != null && out.regularSeasonBasicDetails.location == null) out.regularSeasonBasicDetails.location = out.location;
   if (out.leagueStartTime != null && out.regularSeasonBasicDetails.leagueStartTime == null) out.regularSeasonBasicDetails.leagueStartTime = out.leagueStartTime;
   if (out.leagueEndTime != null && out.regularSeasonBasicDetails.leagueEndTime == null) out.regularSeasonBasicDetails.leagueEndTime = out.leagueEndTime;
+  if (out.sportNameStartTime != null && out.regularSeasonBasicDetails.leagueStartTime == null) out.regularSeasonBasicDetails.leagueStartTime = out.sportNameStartTime;
+  if (out.sportNameEndTime != null && out.regularSeasonBasicDetails.leagueEndTime == null) out.regularSeasonBasicDetails.leagueEndTime = out.sportNameEndTime;
   if (out.alternativeStartTime != null && out.regularSeasonBasicDetails.alternativeStartTime == null) out.regularSeasonBasicDetails.alternativeStartTime = out.alternativeStartTime;
   if (out.alternativeEndTime != null && out.regularSeasonBasicDetails.alternativeEndTime == null) out.regularSeasonBasicDetails.alternativeEndTime = out.alternativeEndTime;
 

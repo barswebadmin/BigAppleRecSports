@@ -37,3 +37,39 @@ function isDateTimeAllowed_(s) {
 }
 
 
+
+// Format helpers
+// biome-ignore lint/correctness/noUnusedVariables: exported for UI formatting
+function formatDateMdYY_(v) {
+  try {
+    if (!v) return '';
+    const d = v instanceof Date ? v : new Date(v);
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+    const m = d.getMonth()+1;
+    const day = d.getDate();
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${m}/${day}/${yy}`;
+  } catch (_) {
+    return '';
+  }
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: exported for UI formatting
+function formatDateTimeMdYYhm_(v) {
+  try {
+    if (!v) return '';
+    const d = v instanceof Date ? v : new Date(v);
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+    const m = d.getMonth()+1;
+    const day = d.getDate();
+    const yy = String(d.getFullYear()).slice(-2);
+    let h = d.getHours();
+    const min = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hr12 = h % 12 === 0 ? 12 : h % 12;
+    const mm = String(min).padStart(2, '0');
+    return `${m}/${day}/${yy} ${hr12}:${mm} ${ampm}`;
+  } catch (_) {
+    return '';
+  }
+}

@@ -253,6 +253,9 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields) {
 
   // Set template variables - flatten nested structure for template access
   const flatData = flattenProductData_(productData);
+  // Prefer canonical time keys for display
+  flatData.sportNameStartTime = flatData.leagueStartTime || flatData.sportNameStartTime;
+  flatData.sportNameEndTime = flatData.leagueEndTime || flatData.sportNameEndTime;
   Logger.log(`Template flatData: ${JSON.stringify(flatData, null, 2)}`);
 
   // First set all top-level fields from original productData
@@ -453,6 +456,8 @@ function flattenProductData_(obj, result = {}) {
 function buildErrorDisplay_(productData, missingFields) {
   // Flatten the nested data for easier access
   const flatData = flattenProductData_(productData);
+  flatData.sportNameStartTime = flatData.leagueStartTime || flatData.sportNameStartTime;
+  flatData.sportNameEndTime = flatData.leagueEndTime || flatData.sportNameEndTime;
   // Helper function to format values for display with specific formatting rules
   function formatValue(value, label, formatType = 'default') {
     // Handle TBD values specially first, before checking for empty
@@ -484,17 +489,17 @@ function buildErrorDisplay_(productData, missingFields) {
         }
         return `${label}: ${value}`;
       case 'datetime':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')} ${value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-        } else if (typeof value === 'string' && value.trim()) {
-          return `${label}: ${value}`;
+        if (value instanceof Date || (typeof value === 'string' && value.trim())) {
+          const disp = formatDateTimeMdYYhm_(value);
+          return `${label}: ${disp || '[Not Found]'}${disp ? '' : ''}`;
         }
         return `${label}: [Not Found]`;
       case 'date':
-        if (value instanceof Date) {
-          return `${label}: ${value.toLocaleDateString('en-US')}`;
+        if (value instanceof Date || (typeof value === 'string' && value.trim())) {
+          const disp = formatDateMdYY_(value);
+          return `${label}: ${disp || '[Not Found]'}${disp ? '' : ''}`;
         }
-        return `${label}: ${value}`;
+        return `${label}: [Not Found]`;
       default:
         if (value instanceof Date) {
           return `${label}: ${value.toLocaleDateString('en-US')}`;
@@ -876,6 +881,8 @@ function getEditableFieldsMeta_() {
 function buildConfirmationDisplay_(productData) {
   // Flatten the nested data for easier access
   const flatData = flattenProductData_(productData);
+  flatData.sportNameStartTime = flatData.leagueStartTime || flatData.sportNameStartTime;
+  flatData.sportNameEndTime = flatData.leagueEndTime || flatData.sportNameEndTime;
   // Helper function to format values for display with specific formatting rules
   function formatValue(value, label, formatType = 'default') {
     // Handle TBD values specially first, before checking for empty
