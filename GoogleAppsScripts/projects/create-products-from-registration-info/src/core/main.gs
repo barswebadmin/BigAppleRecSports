@@ -62,6 +62,104 @@ function  onEdit(e) {
   }
 
   // TODO: add warnings to force users to put dates in a consistent format
+
+  // Lightweight format helpers
+  // Use shared validators
+  const isDateMMDDYYYY = isDateMMDDYYYY_;
+  const isTimeRange12h = isTimeRange12h_;
+  const isDateTimeAllowed = isDateTimeAllowed_;
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const editedValue = range.getDisplayValue();
+  const emptyLike = (s) => String(s || '').trim() === '' || String(s).trim().toUpperCase() === 'TBD';
+
+  // Season Start/End: D(4), E(5) expect MM/DD/YYYY
+  if ((column === 4 || column === 5) && !emptyLike(editedValue) && !isDateMMDDYYYY(editedValue)) {
+    ss.toast('Please use MM/DD/YYYY for Season Start/End (e.g., 10/15/2025).', 'Date format warning', 8);
+  }
+
+  // Price: F(6) numeric
+  if (column === 6 && !emptyLike(editedValue)) {
+    const n = Number(editedValue);
+    if (!Number.isFinite(n) || n < 0) {
+      ss.toast('Price should be a non-negative number (e.g., 150).', 'Price format warning', 8);
+    }
+  }
+
+  // Play Times: G(7) prefer "HH:MM AM/PM - HH:MM AM/PM"
+  if (column === 7 && !emptyLike(editedValue)) {
+    if (!isTimeRange12h(editedValue)) {
+      ss.toast('Play Times should look like "8:00 PM - 11:00 PM".', 'Time format warning', 8);
+    }
+  }
+
+  // Registration windows: M(13), N(14), O(15) allow ISO 8601 or MM/DD/YYYY HH:MM AM/PM
+  if ((column === 13 || column === 14 || column === 15) && !emptyLike(editedValue)) {
+    if (!isDateTimeAllowed(editedValue)) {
+      ss.toast('Use ISO (YYYY-MM-DDTHH:MM:SSZ) or MM/DD/YYYY HH:MM AM/PM for registration dates.', 'Datetime format warning', 10);
+    }
+  }
+
+  // Real-time parse check with debounce (throttle alerts per cell ~3s)
+  maybeWarnUnparseableCell_(e);
+}
+
+/**
+ * Warn if edited cell content doesn't match expected parsable format for that column.
+ * Debounced via CacheService (no repeated alerts for same cell within 3s).
+ */
+function maybeWarnUnparseableCell_(e) {
+  try {
+    const range = e.range;
+    const value = range.getDisplayValue();
+    const col = range.getColumn();
+    const sheet = range.getSheet();
+    const key = `editwarn:${sheet.getSheetId()}:${range.getRow()}:${col}`;
+    const cache = CacheService.getScriptCache();
+
+    // Throttle repeated alerts per cell
+    if (cache.get(key)) return;
+
+    const v = String(value || '').trim();
+    if (!v || v.toUpperCase() === 'TBD') return; // allow empty/TBD
+
+    // Expected per-column parsers
+    let ok = true;
+    let help = '';
+    switch (col) {
+      case 4: // Season Start
+      case 5: // Season End
+        ok = isDateMMDDYYYY_(v);
+        help = 'Examples: 10/15/2025 or 1/5/2025';
+        break;
+      case 6: // Price
+        ok = Number.isFinite(Number(v)) && Number(v) >= 0;
+        help = 'Examples: 150 or 85.00';
+        break;
+      case 7: // Play Times
+        ok = isTimeRange12h_(v);
+        help = 'Example: 8:00 PM - 11:00 PM';
+        break;
+      case 13: // Early/WTNB/BIPOC/TNB register
+      case 14: // Vet register
+      case 15: // Open register
+        ok = isDateTimeAllowed_(v);
+        help = 'Examples: 2025-09-17T23:00:00Z or 09/17/2025 11:00 PM';
+        break;
+      default:
+        ok = true; // no strict check for other columns yet
+    }
+
+    if (!ok) {
+      // Set throttle (3 seconds)
+      cache.put(key, '1', 3);
+      const ui = SpreadsheetApp.getUi();
+      ui.alert('Parse warning', `The product creation script cannot parse this cell.\n\nValue: "${v}"\n\nExpected format. ${help}`, ui.ButtonSet.OK);
+    }
+  } catch (err) {
+    // best-effort; do not block edits
+    console.log('maybeWarnUnparseableCell_ error: ' + err);
+  }
 }
 
 /***** ENTRY POINTS *****/

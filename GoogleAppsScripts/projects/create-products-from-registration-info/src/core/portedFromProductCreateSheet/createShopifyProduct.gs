@@ -29,8 +29,10 @@ function  createShopifyProductFromRow_(sourceSheet, selectedRow) {
 
   const unresolvedFields = calculateUnresolvedFieldsForParsedData(parsedData);
 
+  // After user confirms, we will validate+canonize nested shape; for now keep parsed
+
   // Show confirmation dialog with editable fields
-  Logger.log(`About to show confirmation dialog with parsedData: ${JSON.stringify(parsedData, null, 2)}`);
+  Logger.log(`About to show confirmation dialog with product data: ${JSON.stringify(parsedData, null, 2)}`);
   const confirmedData = showProductCreationConfirmationDialog_(parsedData, unresolvedFields);
   if (!confirmedData) {
     return; // User cancelled
@@ -38,8 +40,10 @@ function  createShopifyProductFromRow_(sourceSheet, selectedRow) {
 
   // Create the product and variants
   try {
-    Logger.log(`About to send confirmed data to backend: ${JSON.stringify(confirmedData, null, 2)}`);
-    const result = sendProductInfoToBackendForCreation(confirmedData);
+    // Validate and canonicalize nested request structure just before sending
+    const validNested = validProductCreateRequest_(confirmedData);
+    Logger.log(`About to send confirmed data to backend (nested): ${JSON.stringify(validNested, null, 2)}`);
+    const result = sendProductInfoToBackendForCreation(validNested);
 
     console.log('done!')
 
