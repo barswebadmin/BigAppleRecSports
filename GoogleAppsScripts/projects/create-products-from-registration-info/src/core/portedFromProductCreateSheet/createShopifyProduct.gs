@@ -789,12 +789,22 @@ function showFieldEditingFlow_(productData) {
 
     // Get enum options for this field
     const enumOptions = getEnumOptionsForField_(fieldKey, sportName);
-    const enumText = enumOptions ? `\n\nValid options: ${enumOptions.join(', ')}` : '';
+    let enumText = '';
+    if (enumOptions) {
+      enumText = '\n\nValid options:\n' + enumOptions.join('\n');
+      
+      // Add multi-value instructions for fields that accept multiple values
+      if (fieldKey === 'types') {
+        enumText += '\n\nYou can enter multiple values separated by commas (e.g., "Draft, Buddy Sign-up")';
+      }
+    }
     
     // Add format instructions for specific fields
     let formatText = '';
     if (fieldKey === 'offDatesCommaSeparated') {
       formatText = '\n\nMake sure this is in the format M/D/YY (or leave blank if none)';
+    } else if (fieldKey === 'vetRegistrationStartDateTime') {
+      formatText = '\n\nLeave blank if no vet registration applies for this season';
     }
 
     const valueResponse = ui.prompt(
@@ -822,7 +832,6 @@ function showFieldEditingFlow_(productData) {
         // Apply update on canonical object and continue loop
         const updated = updateFieldValue_(canonical, fieldNumber, normalizedValue);
         productData = canonicalizeForDisplay_(updated);
-        ui.alert('Success', `Updated ${fieldName} to: ${newValue}`, ui.ButtonSet.OK);
       } catch (error) {
         ui.alert('Error', `Failed to update field: ${error.message}`, ui.ButtonSet.OK);
       }
@@ -932,6 +941,7 @@ function getEnumOptionsForField_(fieldKey, sportName) {
 
 /**
  * Validate enum field value, ignoring case, whitespace, and special characters
+ * Handles comma-separated values for multi-value fields like 'types'
  */
 function validateEnumValue_(fieldKey, value, sportName) {
   const enumOptions = getEnumOptionsForField_(fieldKey, sportName);
@@ -939,7 +949,36 @@ function validateEnumValue_(fieldKey, value, sportName) {
     return { valid: true }; // No enum to validate against
   }
 
-  // Normalize the input value
+  // Handle comma-separated values for multi-value fields
+  if (fieldKey === 'types') {
+    const values = value.toString().split(',').map(v => v.trim()).filter(v => v);
+    const normalizedValues = [];
+    
+    for (const val of values) {
+      const normalizedInput = val.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+      let found = false;
+      
+      for (const option of enumOptions) {
+        const normalizedOption = option.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+        if (normalizedInput === normalizedOption) {
+          normalizedValues.push(option);
+          found = true;
+          break;
+        }
+      }
+      
+      if (!found) {
+        return { 
+          valid: false, 
+          message: `Invalid value "${val}". Valid options are: ${enumOptions.join(', ')}` 
+        };
+      }
+    }
+    
+    return { valid: true, normalizedValue: normalizedValues.join(', ') };
+  }
+
+  // Single value validation
   const normalizedInput = value.toString().toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
   
   // Check against each enum option
@@ -984,7 +1023,7 @@ function getEditableFieldsMeta_(sportName = null) {
     { key: 'leagueEndTime', name: 'Sport End Time', format: 'time' },
     { key: 'location', name: 'Location', format: 'default' },
     { key: 'price', name: 'Price', format: 'price' },
-    { key: 'vetRegistrationStartDateTime', name: 'Veteran Registration Start Date/Time\n(Leave Blank if No Vet Registration Applies for This Season)', format: 'datetime' },
+    { key: 'vetRegistrationStartDateTime', name: 'Veteran Registration Start Date/Time', format: 'datetime' },
     { key: 'earlyRegistrationStartDateTime', name: 'Early Registration Start Date/Time', format: 'datetime' },
     { key: 'openRegistrationStartDateTime', name: 'Open Registration Start Date/Time', format: 'datetime' },
     { key: 'totalInventory', name: 'Total Inventory', format: 'default' },
