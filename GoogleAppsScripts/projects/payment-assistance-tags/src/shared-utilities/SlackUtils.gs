@@ -192,45 +192,6 @@ function sendSlackMessage(destination, message) {
   }
 }
 
-/**
- * Update an existing Slack message
- * @param {Object} destination - Channel configuration {bearerToken}
- * @param {Object} updatedPayload - Updated message payload
- * @returns {Object} - Response object {ok, data?, error?}
- */
-function updateSlackMessage(destination, updatedPayload) {
-  const slackApiUrl = "https://slack.com/api/chat.update";
-
-  const options = {
-    method: "post",
-    headers: { Authorization: `Bearer ${destination.bearerToken}` },
-    contentType: "application/json",
-    payload: JSON.stringify(updatedPayload)
-  };
-
-  try {
-    const response = UrlFetchApp.fetch(slackApiUrl, options);
-    const responseText = response.getContentText();
-    const responseJson = JSON.parse(responseText);
-
-    if (!responseJson.ok) {
-      throw new Error(`Slack API Error: ${responseJson.error}`);
-    }
-
-    return {ok: true, data: responseJson};
-
-  } catch (error) {
-    // ❌ If an error occurs, send an email with the error message
-    if (typeof DEBUG_EMAIL !== 'undefined') {
-      MailApp.sendEmail({
-        to: DEBUG_EMAIL,
-        subject: "❌ Debug: Error Updating Slack Message",
-        body: `Error message: ${error.message}\n\nSlack API Response:\n\n Updated Payload: ${JSON.stringify(updatedPayload, null, 2)}`
-      });
-    }
-    return { ok: false, error: error.message };
-  }
-}
 
 // =============================================================================
 // REFUND-SPECIFIC BUTTON BUILDERS
