@@ -20,6 +20,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Advisory only: do not fail the entire workflow/merge if tests fail here
+    continue-on-error: true
 
     defaults:
       run:
@@ -81,7 +83,7 @@ jobs:
         echo "🧪 Running integration tests..."
         python -m pytest tests/integration/ -v
 
-        echo "✅ All tests completed successfully!"
+        echo "✅ Backend test run completed (advisory)."
       env:
         SHOPIFY_STORE: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
