@@ -100,10 +100,10 @@ jobs:
             const content = fs.readFileSync(filePath, 'utf8');
             // Basic syntax check - try to parse as function body
             new Function(content);
-            console.log(\`✅ \${filePath} syntax OK\`);
+            console.log(`✅ ${filePath} syntax OK`);
             return true;
           } catch (error) {
-            console.log(\`❌ \${filePath} syntax error: \${error.message}\`);
+            console.log(`❌ ${filePath} syntax error: ${error.message}`);
             return false;
           }
         }
@@ -314,8 +314,6 @@ jobs:
     - name: Run Lambda Tests
       run: |
         cd lambda-functions
-        python -m pip install --upgrade pip
-        pip install boto3 botocore
         echo "🧪 Running Lambda tests..."
         python3 tests/run_tests.py unit
         echo "✅ Lambda tests completed!"
