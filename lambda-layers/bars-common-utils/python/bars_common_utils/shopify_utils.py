@@ -5,8 +5,40 @@ import urllib.request
 from datetime import datetime
 from typing import Dict, Optional
 
-SHOPIFY_ACCESS_TOKEN = os.environ.get("SHOPIFY_ACCESS_TOKEN", "your_shopify_token")
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
+
+# Token source now defaults to SSM Parameter Store, with env override for local/tests
+_CACHED_SHOPIFY_TOKEN: Optional[str] = None
 SHOPIFY_API_URL = "https://09fe59-3.myshopify.com/admin/api/2025-04/graphql.json"
+
+def _get_shopify_access_token() -> str:
+    """Resolve Shopify token from env or SSM Parameter Store (with decryption).
+
+    Caches on first successful fetch per execution environment to avoid repeated SSM calls.
+    """
+    global _CACHED_SHOPIFY_TOKEN
+
+    # Allow explicit env override (useful in tests and local dev)
+    env_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
+    if env_token:
+        return env_token
+
+    if _CACHED_SHOPIFY_TOKEN:
+        return _CACHED_SHOPIFY_TOKEN
+
+    name = os.environ.get("SHOPIFY_TOKEN_PARAM_NAME", "/shopify/api/web-admin-token")
+
+    try:
+        ssm = boto3.client("ssm")
+        resp = ssm.get_parameter(Name=name, WithDecryption=True)
+        token = resp["Parameter"]["Value"]
+        _CACHED_SHOPIFY_TOKEN = token
+        return token
+    except (BotoCoreError, ClientError, KeyError) as e:
+        # Provide actionable logs; fall back to raising a clear error
+        print(f"❌ Failed to load Shopify token from SSM parameter '{name}': {e}")
+        raise
 
 # GraphQL Queries
 GET_INVENTORY_ITEM_AND_QUANTITY = """
@@ -80,7 +112,7 @@ def fetch_shopify(query: str, variables: Optional[Dict] = None) -> Dict:
 
     headers = {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
+        "X-Shopify-Access-Token": _get_shopify_access_token()
     }
 
     req = urllib.request.Request(SHOPIFY_API_URL, data=payload, headers=headers, method="POST")

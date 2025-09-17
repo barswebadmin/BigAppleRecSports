@@ -29,14 +29,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         print("📦 setProductLiveByAddingInventory invoked with event:", json.dumps(event, indent=2))
         
-        # Check environment variables first
+        # Resolve required configuration
         import os
-        shopify_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
         shopify_location = os.environ.get("SHOPIFY_LOCATION_ID")
-        print(f"🔑 Environment check - Token exists: {bool(shopify_token)}, Location exists: {bool(shopify_location)}")
-        
-        if not shopify_token:
-            raise ValueError("SHOPIFY_ACCESS_TOKEN environment variable is missing")
+        # Token now resolved in bars_common_utils.shopify_utils via SSM; we only need location here
+        print(f"🔑 Configuration check - Location exists: {bool(shopify_location)}")
         if not shopify_location:
             raise ValueError("SHOPIFY_LOCATION_ID environment variable is missing")
 

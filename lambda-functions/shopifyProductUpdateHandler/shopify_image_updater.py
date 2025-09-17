@@ -7,6 +7,8 @@ import os
 import urllib.request
 import urllib.error
 from typing import Dict, List, Optional
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 # Configuration
 SHOP_DOMAIN = "09fe59-3.myshopify.com"
@@ -15,8 +17,20 @@ class ShopifyImageUpdater:
     """Handles Shopify product image updates via REST and GraphQL APIs"""
     
     def __init__(self):
-        self.access_token = os.environ.get("SHOPIFY_ACCESS_TOKEN", "dummy_token_for_local_development")
+        self.access_token = self._resolve_access_token()
         self.shop_domain = SHOP_DOMAIN
+    def _resolve_access_token(self) -> str:
+        env_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
+        if env_token:
+            return env_token
+        name = os.environ.get("SHOPIFY_TOKEN_PARAM_NAME", "/shopify/api/web-admin-token")
+        try:
+            ssm = boto3.client("ssm")
+            resp = ssm.get_parameter(Name=name, WithDecryption=True)
+            return resp["Parameter"]["Value"]
+        except (BotoCoreError, ClientError, KeyError) as e:
+            print(f"❌ Failed to load Shopify token from SSM parameter '{name}': {e}")
+            raise
     
     def update_product_image(self, product_id: str, product_gid: str, image_url: str, sport: str, original_image: Optional[str] = None) -> bool:
         """
