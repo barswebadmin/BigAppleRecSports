@@ -109,7 +109,7 @@ jobs:
         }
 
         let allValid = true;
-        const projects = ['process-refunds-exchanges', 'parse-registration-info', 'leadership-discount-codes'];
+        const projects = ['process-refunds-exchanges', 'create-products-from-registration-info', 'leadership-discount-codes'];
 
         for (const project of projects) {
           const srcDir = path.join('projects', project, 'src');
@@ -288,9 +288,11 @@ jobs:
         ./tests/test_instructions.sh
         ./tests/test_sync_utilities.sh
         ./tests/test_clasp_helpers.sh
-        # Run project-specific tests from their new locations
-        ./projects/parse-registration-info/tests/test_parse_registration_functions.sh
-        ./projects/parse-registration-info/tests/test_parse_registration_comprehensive.sh
+        # Run consolidated product creation tests
+        cd projects/create-products-from-registration-info/tests
+        node run_consolidated_tests.js
+        cd -
+        # Other projects
         ./projects/leadership-discount-codes/tests/test_leadership_discount_codes.sh
         ./projects/process-refunds-exchanges/tests/run_tests.sh
         echo "✅ GAS tests completed!"
@@ -312,6 +314,8 @@ jobs:
     - name: Run Lambda Tests
       run: |
         cd lambda-functions
+        python -m pip install --upgrade pip
+        pip install boto3 botocore
         echo "🧪 Running Lambda tests..."
         python3 tests/run_tests.py unit
         echo "✅ Lambda tests completed!"
