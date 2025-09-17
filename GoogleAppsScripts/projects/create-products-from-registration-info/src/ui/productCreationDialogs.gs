@@ -17,12 +17,39 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields, c
   Logger.log(`showProductCreationConfirmationDialog_ called with productData: ${JSON.stringify(productData, null, 2)}`);
   Logger.log(`Unresolved fields: ${JSON.stringify(unresolvedFields)}`);
 
-  // Check if there are unresolved fields and ask user for confirmation
-  if (unresolvedFields && unresolvedFields.length > 0) {
-    const errorDisplay = buildErrorDisplay_(productData, unresolvedFields);
+  while (true) {
+    // Check if there are unresolved fields and ask user for confirmation
+    if (unresolvedFields && unresolvedFields.length > 0) {
+      const errorDisplay = buildErrorDisplay_(productData, unresolvedFields);
+      const action = ui.alert(
+        '🛍️ Create Shopify Product - Missing Required Fields',
+        errorDisplay,
+        ui.ButtonSet.OK_CANCEL
+      );
+
+      if (action === ui.Button.CANCEL) {
+        return null; // User cancelled
+      }
+
+      const userAction = action.getResponseText().trim().toLowerCase();
+      if (userAction === 'cancel') {
+        return null;
+      } else if (userAction === 'update') {
+        productData = showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber);
+        if (!productData) return null; // User cancelled editing
+        // After editing, unresolvedFields may have changed; recompute if needed upstream
+        continue; // Re-validate
+      } else {
+        ui.alert('Invalid Input', 'Please type "update" or "cancel"', ui.ButtonSet.OK);
+        continue;
+      }
+    }
+
+    // All required fields present - text-based confirmation
+    const confirmationDisplay = buildConfirmationDisplay_(productData);
     const action = ui.alert(
-      '🛍️ Create Shopify Product - Missing Required Fields',
-      errorDisplay,
+      '🛍️ Create Shopify Product - All Parsed Fields',
+      confirmationDisplay,
       ui.ButtonSet.OK_CANCEL
     );
 
@@ -31,40 +58,16 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields, c
     }
 
     const userAction = action.getResponseText().trim().toLowerCase();
-    if (userAction === 'cancel') {
-      return null;
+    if (userAction === 'create') {
+      return productData; // Ready to create
     } else if (userAction === 'update') {
       productData = showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber);
       if (!productData) return null; // User cancelled editing
-      continue; // Re-validate
+      continue; // Re-validate and show confirmation again
     } else {
-      ui.alert('Invalid Input', 'Please type "update" or "cancel"', ui.ButtonSet.OK);
+      ui.alert('Invalid Input', 'Please type "create" or "update"', ui.ButtonSet.OK);
       continue;
     }
-  }
-
-  // All required fields present - text-based confirmation
-  const confirmationDisplay = buildConfirmationDisplay_(productData);
-  const action = ui.alert(
-    '🛍️ Create Shopify Product - All Parsed Fields',
-    confirmationDisplay,
-    ui.ButtonSet.OK_CANCEL
-  );
-
-  if (action === ui.Button.CANCEL) {
-    return null; // User cancelled
-  }
-
-  const userAction = action.getResponseText().trim().toLowerCase();
-  if (userAction === 'create') {
-    return productData; // Ready to create
-  } else if (userAction === 'update') {
-    productData = showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber);
-    if (!productData) return null; // User cancelled editing
-    continue; // Re-validate and show confirmation again
-  } else {
-    ui.alert('Invalid Input', 'Please type "create" or "update"', ui.ButtonSet.OK);
-    continue;
   }
 }
 
@@ -96,8 +99,8 @@ function showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber)
       return canonical; // Ready to create
     }
 
-    const fieldNumber = parseInt(fieldInput);
-    if (isNaN(fieldNumber) || fieldNumber < 1 || fieldNumber > editableFields.length) {
+    const fieldNumber = parseInt(fieldInput, 10);
+    if (Number.isNaN(fieldNumber) || fieldNumber < 1 || fieldNumber > editableFields.length) {
       ui.alert('Invalid Input', 'Please enter a valid field number or "create"', ui.ButtonSet.OK);
       continue;
     }
@@ -114,7 +117,7 @@ function showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber)
     const enumOptions = getEnumOptionsForField_(fieldKey, sportName);
     let enumText = '';
     if (enumOptions) {
-      enumText = '\n\nValid options:\n' + enumOptions.join('\n');
+      enumText = `\n\nValid options:\n${enumOptions.join('\n')}`;
       
       // Add multi-value instructions for fields that accept multiple values
       if (fieldKey === 'types') {

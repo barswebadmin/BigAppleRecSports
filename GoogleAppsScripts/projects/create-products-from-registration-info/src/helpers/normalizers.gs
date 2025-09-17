@@ -145,8 +145,8 @@ function validProductCreateRequest_(data) {
   req(inv.totalInventory, 'inventoryInfo.totalInventory');
 
   if (missing.length) {
-    SpreadsheetApp.getUi().alert('Missing required fields before send to backend:\n\n' + missing.join('\n'));
-    throw new Error('Invalid product request: missing ' + missing.join(', '));
+    SpreadsheetApp.getUi().alert(`Missing required fields before send to backend:\n\n${missing.join('\n')}`);
+    throw new Error(`Invalid product request: missing ${missing.join(', ')}`);
   }
 
   return out; // canonical nested, validated

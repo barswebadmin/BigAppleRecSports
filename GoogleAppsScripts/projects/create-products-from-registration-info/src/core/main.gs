@@ -156,7 +156,7 @@ function maybeWarnUnparseableCell_(e) {
     }
   } catch (err) {
     // best-effort; do not block edits
-    console.log('maybeWarnUnparseableCell_ error: ' + err);
+    console.log(`maybeWarnUnparseableCell_ error: ${err}`);
   }
 }
 
