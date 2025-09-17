@@ -1,8 +1,8 @@
 name: Compilation Check
 
 on:
-  # Only run on PRs targeting main, and on direct pushes to main
-  pull_request:
+  # Only run on PRs targeting main (use pull_request_target to ensure base workflow is used), and on direct pushes to main
+  pull_request_target:
     branches: [ main ]
     types: [opened, synchronize, reopened]
   push:
@@ -24,6 +24,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        # Ensure we test the PR code, not base, when using pull_request_target
+        ref: ${{ github.event.pull_request.head.sha }}
 
     # Backend Compilation Check
     - name: Check Backend Compilation
