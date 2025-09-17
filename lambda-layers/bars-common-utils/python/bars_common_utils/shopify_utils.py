@@ -5,10 +5,7 @@ import urllib.request
 from datetime import datetime
 from typing import Dict, Optional
 
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
-
-# Token source now defaults to SSM Parameter Store, with env override for local/tests
+# Token source: SSM Parameter Store only (no env fallback in production)
 _CACHED_SHOPIFY_TOKEN: Optional[str] = None
 SHOPIFY_API_URL = "https://09fe59-3.myshopify.com/admin/api/2025-04/graphql.json"
 
@@ -19,23 +16,25 @@ def _get_shopify_access_token() -> str:
     """
     global _CACHED_SHOPIFY_TOKEN
 
-    # Allow explicit env override (useful in tests and local dev)
-    env_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
-    if env_token:
-        return env_token
-
     if _CACHED_SHOPIFY_TOKEN:
         return _CACHED_SHOPIFY_TOKEN
 
     name = os.environ.get("SHOPIFY_TOKEN_PARAM_NAME", "/shopify/api/web-admin-token")
 
     try:
+        # Lazy import to avoid hard dependency during unit tests without boto3 installed
+        import boto3  # type: ignore
+        from botocore.exceptions import BotoCoreError, ClientError  # type: ignore
+
         ssm = boto3.client("ssm")
         resp = ssm.get_parameter(Name=name, WithDecryption=True)
         token = resp["Parameter"]["Value"]
         _CACHED_SHOPIFY_TOKEN = token
         return token
-    except (BotoCoreError, ClientError, KeyError) as e:
+    except (NameError, ModuleNotFoundError) as e:
+        # boto3 not available in unit test environment
+        raise RuntimeError("boto3 is required at runtime to fetch Shopify token from SSM") from e
+    except (Exception,) as e:
         # Provide actionable logs; fall back to raising a clear error
         print(f"❌ Failed to load Shopify token from SSM parameter '{name}': {e}")
         raise
