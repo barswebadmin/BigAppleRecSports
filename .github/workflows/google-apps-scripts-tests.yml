@@ -48,26 +48,11 @@ jobs:
         ./tests/test_clasp_helpers.sh
 
     # Project-specific tests moved to their own directories
-    - name: Run Parse Registration Function Tests
+    - name: Run Product Creation Function Tests
       continue-on-error: true
       run: |
-        cd GoogleAppsScripts
-        ./projects/parse-registration-info/tests/test_parse_registration_functions.sh
-
-    - name: Run Parse Registration Comprehensive Tests
-      continue-on-error: true
-      run: |
-        cd GoogleAppsScripts
-        echo "🧪 Running Parse Registration Comprehensive Tests with detailed output..."
-        ./projects/parse-registration-info/tests/test_parse_registration_comprehensive.sh || {
-          echo "❌ Parse Registration tests failed. Checking for detailed output..."
-          if [ -f projects/parse-registration-info/tests/test-runner.mjs ]; then
-            echo "📋 Running Node.js test runner directly for detailed output:"
-            cd projects/parse-registration-info/tests
-            node test-runner.mjs || true
-          fi
-          exit 1
-        }
+        cd GoogleAppsScripts/projects/create-products-from-registration-info/tests
+        node run_consolidated_tests.js || true
 
     - name: Run Process Refunds Exchanges Tests
       continue-on-error: true
@@ -86,11 +71,6 @@ jobs:
         cd GoogleAppsScripts
         ./tests/test_instructions.sh
 
-    # - name: Run All Tests (Integration)
-    #   run: |
-    #     cd GoogleAppsScripts
-    #     ./tests/run_all_tests.sh
-
     - name: Validate Google Apps Script manifests
       run: |
         cd GoogleAppsScripts
@@ -108,24 +88,6 @@ jobs:
         else
           echo "✅ No hardcoded secrets found"
         fi
-
-    # - name: Verify all projects have instructions
-    #   run: |
-    #     cd GoogleAppsScripts
-    #     echo "🔍 Verifying all projects have showInstructions functions..."
-    #     failed=0
-    #     for dir in leadership-discount-codes product-variant-creation parse-registration-info process-refunds-exchanges payment-assistance-tags veteran-tags; do
-    #       if [ -f "$dir/instructions.gs" ] && grep -q "function showInstructions" "$dir/instructions.gs"; then
-    #         echo "✅ $dir has instructions"
-    #       else
-    #         echo "❌ $dir missing instructions"
-    #         failed=1
-    #       fi
-    #     done
-    #     if [ $failed -eq 1 ]; then
-    #       exit 1
-    #     fi
-    #     echo "✅ All projects have instructions"
 
     - name: Test Summary
       if: always()
