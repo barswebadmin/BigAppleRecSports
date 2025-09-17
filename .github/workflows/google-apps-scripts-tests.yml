@@ -49,10 +49,9 @@ jobs:
 
     # Project-specific tests moved to their own directories
     - name: Run Product Creation Function Tests
-      continue-on-error: true
       run: |
         cd GoogleAppsScripts/projects/create-products-from-registration-info/tests
-        node run_consolidated_tests.js || true
+        node run_consolidated_tests.js
 
     - name: Run Process Refunds Exchanges Tests
       continue-on-error: true

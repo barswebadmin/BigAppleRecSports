@@ -50,7 +50,17 @@ loadGasFile('parsers/parseColFPrice_.gs');
 loadGasFile('parsers/parseColGLeagueTimes_.gs');
 loadGasFile('parsers/parseColMNORegistrationDates_.gs');
 loadGasFile('parsers/parseColHLocation_.gs');
-loadGasFile('shared-utilities/dateUtils.gs');
+// dateUtils moved to top-level GoogleAppsScripts/shared-utilities in repo root
+// For the consolidated runner, we can skip this or load the shared utils if needed
+const sharedUtilsPath = path.resolve(__dirname, '../../shared-utilities/dateUtils.gs');
+if (fs.existsSync(sharedUtilsPath)) {
+  const content = fs.readFileSync(sharedUtilsPath, 'utf8');
+  // biome-ignore lint/security/noGlobalEval: safe in test harness
+  eval(content);
+  console.log('✅ Loaded: shared-utilities/dateUtils.gs (top-level)');
+} else {
+  console.log('ℹ️  Skipping shared-utilities/dateUtils.gs (not found)');
+}
 loadGasFile('validators/fieldValidation.gs');
 
 // New modular files
@@ -60,6 +70,27 @@ loadGasFile('sheet/cellMapping.gs');
 loadGasFile('utils/formatting.gs');
 loadGasFile('api/backendCommunication.gs');
 loadGasFile('core/portedFromProductCreateSheet/shopifyProductCreation.gs');
+
+// Load consolidated test files to define test entrypoints
+function loadTestFile(filePath) {
+  const fullPath = path.resolve(__dirname, filePath);
+  if (fs.existsSync(fullPath)) {
+    let content = fs.readFileSync(fullPath, 'utf8');
+    // Ensure test-defined functions are attached to global for invocation below
+    content = content.replace(/function\s+(\w+)\s*\(/g, 'global.$1 = function(');
+    // biome-ignore lint/security/noGlobalEval: test harness
+    eval(content);
+    console.log(`✅ Loaded test: ${filePath}`);
+  } else {
+    console.log(`❌ Test not found: ${filePath}`);
+  }
+}
+
+loadTestFile('test_parsers.gs');
+loadTestFile('test_ui_and_workflow.gs');
+loadTestFile('test_utilities.gs');
+loadTestFile('test_backend_response_handling.gs');
+loadTestFile('test_go_live_request.gs');
 
 console.log('\n🧪 Running consolidated tests...\n');
 
