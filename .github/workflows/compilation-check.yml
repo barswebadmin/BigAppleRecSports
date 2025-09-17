@@ -8,6 +8,11 @@ on:
   push:
     branches: [ main ]
 
+# Minimal permissions for safety with pull_request_target
+permissions:
+  contents: read
+  pull-requests: read
+
 # Prevent duplicate runs: use branch name for consistency across push/PR events
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
