@@ -7,6 +7,17 @@ import os
 import urllib.request
 import urllib.error
 from typing import Dict, List, Optional
+def _get_ssm_param(name: str) -> str:
+    try:
+        import boto3  # type: ignore
+        from botocore.exceptions import BotoCoreError, ClientError  # type: ignore
+        ssm = boto3.client("ssm")
+        return ssm.get_parameter(Name=name, WithDecryption=True)["Parameter"]["Value"]
+    except (NameError, ModuleNotFoundError) as e:
+        raise RuntimeError("boto3 is required at runtime to fetch Shopify token from SSM") from e
+    except Exception as e:  # pylint: disable=broad-except
+        print(f"❌ Failed to load Shopify token from SSM parameter '{name}': {e}")
+        raise
 
 # Configuration
 SHOP_DOMAIN = "09fe59-3.myshopify.com"
@@ -15,8 +26,14 @@ class ShopifyImageUpdater:
     """Handles Shopify product image updates via REST and GraphQL APIs"""
     
     def __init__(self):
-        self.access_token = os.environ.get("SHOPIFY_ACCESS_TOKEN", "dummy_token_for_local_development")
+        self.access_token = self._resolve_access_token()
         self.shop_domain = SHOP_DOMAIN
+    def _resolve_access_token(self) -> str:
+        env_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
+        if env_token:
+            return env_token
+        name = os.environ.get("SHOPIFY_TOKEN_PARAM_NAME", "/shopify/api/web-admin-token")
+        return _get_ssm_param(name)
     
     def update_product_image(self, product_id: str, product_gid: str, image_url: str, sport: str, original_image: Optional[str] = None) -> bool:
         """

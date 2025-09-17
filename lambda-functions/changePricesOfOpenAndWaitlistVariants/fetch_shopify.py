@@ -3,8 +3,32 @@ import json
 import urllib.request
 
 
-SHOPIFY_ACCESS_TOKEN = os.environ.get("SHOPIFY_ACCESS_TOKEN", "your_shopify_token")
 SHOPIFY_API_URL = "https://09fe59-3.myshopify.com/admin/api/2025-04/graphql.json"
+
+_CACHED_SHOPIFY_TOKEN = None
+
+def _get_shopify_access_token():
+    global _CACHED_SHOPIFY_TOKEN
+    env_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
+    if env_token:
+        return env_token
+    if _CACHED_SHOPIFY_TOKEN:
+        return _CACHED_SHOPIFY_TOKEN
+    name = os.environ.get("SHOPIFY_TOKEN_PARAM_NAME", "/shopify/api/web-admin-token")
+    try:
+        # Lazy import to avoid test dependency on boto3
+        import boto3  # type: ignore
+        from botocore.exceptions import BotoCoreError, ClientError  # type: ignore
+        ssm = boto3.client("ssm")
+        resp = ssm.get_parameter(Name=name, WithDecryption=True)
+        token = resp["Parameter"]["Value"]
+        _CACHED_SHOPIFY_TOKEN = token
+        return token
+    except (NameError, ModuleNotFoundError) as e:
+        raise RuntimeError("boto3 is required at runtime to fetch Shopify token from SSM") from e
+    except Exception as e:
+        print(f"❌ Failed to load Shopify token from SSM parameter '{name}': {e}")
+        raise
 
 def fetch_shopify(query, variables=None):
     payload = json.dumps({
@@ -14,7 +38,7 @@ def fetch_shopify(query, variables=None):
 
     headers = {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
+        "X-Shopify-Access-Token": _get_shopify_access_token()
     }
 
     req = urllib.request.Request(SHOPIFY_API_URL, data=payload, headers=headers, method="POST")

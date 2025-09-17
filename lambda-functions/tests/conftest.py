@@ -24,15 +24,35 @@ def aws_credentials():
                 'AWS_SECURITY_TOKEN', 'AWS_SESSION_TOKEN']:
         os.environ.pop(key, None)
 
+@pytest.fixture(autouse=True)
+def mock_shopify_env_and_token():
+    """Provide location ID and patch token resolver to avoid boto3/SSM in unit tests."""
+    os.environ['SHOPIFY_LOCATION_ID'] = 'test_location_id'
+    # Patch both shared layer and any local copy
+    patches = [
+        patch('bars_common_utils.shopify_utils._get_shopify_access_token', return_value='test_token'),
+        patch('MoveInventoryLambda.bars_common_utils.shopify_utils._get_shopify_access_token', return_value='test_token'),
+        patch('shopify_image_updater._get_ssm_param', return_value='test_token'),
+    ]
+    actives = []
+    for p in patches:
+        try:
+            actives.append(p.start())
+        except Exception:
+            pass
+    yield
+    for p in patches:
+        try:
+            p.stop()
+        except Exception:
+            pass
+    os.environ.pop('SHOPIFY_LOCATION_ID', None)
+
 @pytest.fixture
 def mock_shopify_env():
-    """Mock Shopify environment variables"""
-    os.environ['SHOPIFY_ACCESS_TOKEN'] = 'test_token'
-    os.environ['SHOPIFY_LOCATION_ID'] = 'test_location_id'
+    """Backwards-compatible alias for tests expecting mock_shopify_env."""
+    # No-op: token is patched by mock_shopify_env_and_token; just ensure fixture exists
     yield
-    # Cleanup
-    os.environ.pop('SHOPIFY_ACCESS_TOKEN', None)
-    os.environ.pop('SHOPIFY_LOCATION_ID', None)
 
 @pytest.fixture
 def mock_boto3_client(aws_credentials):

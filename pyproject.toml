@@ -9,7 +9,6 @@ extraPaths = [
     "./lambda-functions/changePricesOfOpenAndWaitlistVariants"
 ]
 
-pythonPath = "python3"
 typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]

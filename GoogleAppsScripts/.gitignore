@@ -15,3 +15,6 @@ test_deploy_temp/
 
 # macOS
 .DS_Store
+
+# Compiled JavaScript files (build artifacts)
+**/src/**/*.js

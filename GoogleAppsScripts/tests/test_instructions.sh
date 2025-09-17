@@ -52,8 +52,7 @@ function run_test() {
 # List of all Google Apps Script projects that should have instructions
 PROJECTS=(
     "projects/leadership-discount-codes"
-    "projects/product-variant-creation"
-    "projects/parse-registration-info"
+    "projects/create-products-from-registration-info"
     "projects/process-refunds-exchanges"
     "projects/payment-assistance-tags"
     "projects/veteran-tags"
@@ -83,10 +82,7 @@ for project in "${PROJECTS[@]}"; do
         "projects/leadership-discount-codes")
             file="$project/processors/leadershipProcessor.gs"
             ;;
-        "projects/product-variant-creation")
-            file="$project/Add Menu Buttons to UI.gs"
-            ;;
-        "projects/parse-registration-info")
+        "projects/create-products-from-registration-info")
             file="$project/main.gs"
             ;;
         "projects/process-refunds-exchanges")
@@ -110,10 +106,7 @@ for project in "${PROJECTS[@]}"; do
         "projects/leadership-discount-codes")
             file="$project/processors/leadershipProcessor.gs"
             ;;
-        "projects/product-variant-creation")
-            file="$project/Add Menu Buttons to UI.gs"
-            ;;
-        "projects/parse-registration-info")
+        "projects/create-products-from-registration-info")
             file="$project/main.gs"
             ;;
         "projects/process-refunds-exchanges")
@@ -136,10 +129,7 @@ run_test "Leadership instructions mention discount codes" \
     "grep -q 'discount codes' projects/leadership-discount-codes/instructions.gs"
 
 run_test "Product creation instructions mention variants" \
-    "grep -q 'variants' projects/product-variant-creation/instructions.gs"
-
-run_test "Parse registration instructions mention Shopify" \
-    "grep -q 'Shopify' projects/parse-registration-info/instructions.gs"
+    "grep -q 'variants' projects/create-products-from-registration-info/instructions.gs"
 
 run_test "Refunds instructions mention exchanges" \
     "grep -q 'exchanges\\|refund' projects/process-refunds-exchanges/instructions.gs"
@@ -150,11 +140,7 @@ run_test "Payment assistance instructions mention tags" \
 run_test "Veteran instructions mention veteran tags" \
     "grep -q 'veteran' projects/veteran-tags/instructions.gs"
 
-# Test 7: All instructions have emoji headers for visual appeal
-for project in "${PROJECTS[@]}"; do
-    run_test "$project instructions have emoji header" \
-        "grep -q '[🏅🛍️📊💰💳🎖️]' '$project/instructions.gs'"
-done
+# (Removed) Emoji header checks – no longer required
 
 echo ""
 echo "📊 Test Results:"

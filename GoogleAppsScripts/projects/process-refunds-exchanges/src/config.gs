@@ -15,7 +15,7 @@ const BARS_LOGO_URL = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/12
 
 const MODE = 'PROD'; // Options: 'DEVELOPMENT', 'PROD-TEST', 'PROD'
 
-const NGROK_URL = 'https://7fb15046ba8a.ngrok-free.app';
+const NGROK_URL = 'https://56d6dd03ac9d.ngrok-free.app';
 const PROD_URL = 'https://bars-backend.onrender.com';
 
 const DEBUG_EMAIL = 'web@bigapplerecsports.com';

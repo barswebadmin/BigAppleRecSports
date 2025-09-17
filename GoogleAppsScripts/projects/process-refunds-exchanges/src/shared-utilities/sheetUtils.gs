@@ -19,7 +19,7 @@ function getSheet() {
  * Get all data from the active sheet
  * @returns {Array<Array>} 2D array of sheet data
  */
-function getSheetData() {
+function getActiveSheetData() {
   return getSheet().getDataRange().getValues();
 }
 
@@ -27,8 +27,8 @@ function getSheetData() {
  * Get headers from the active sheet (first row)
  * @returns {Array} Array of header strings
  */
-function getSheetHeaders() {
-  const data = getSheetData();
+function getActiveSheetHeaders() {
+  const data = getActiveSheetData();
   return data[0];
 }
 
@@ -128,8 +128,8 @@ function findRowByColumnValue(data, columnName, searchValue, normalizeFunc = nul
  * @returns {Object|null} Parsed request data or null if not found
  */
 function getRequestDetailsFromOrderNumber(rawOrderNumber) {
-  const data = getSheetData();
-  const sheetHeaders = getSheetHeaders();
+  const data = getActiveSheetData();
+  const sheetHeaders = getActiveSheetHeaders();
 
   const orderIdColIndex = sheetHeaders.findIndex(h => h.toLowerCase().includes("order number"));
   const timestampColIndex = sheetHeaders.findIndex(h => h.toLowerCase().includes("timestamp"));
@@ -180,9 +180,9 @@ function getSheetRowLink(sheetId, sheetGid, rowNumber) {
  * @param {string} sheetGid - Sheet GID
  * @returns {string} Link to the row or empty string if not found
  */
-function getRowLink(orderNumber, sheetId = null, sheetGid = null) {
-  const data = getSheetData();
-  const sheetHeaders = getSheetHeaders();
+function getActiveSheetRowLink(orderNumber, sheetId = null, sheetGid = null) {
+  const data = getActiveSheetData();
+  const sheetHeaders = getActiveSheetHeaders();
 
   const orderIdColIndex = sheetHeaders.findIndex(h => h.toLowerCase().includes("order number"));
 

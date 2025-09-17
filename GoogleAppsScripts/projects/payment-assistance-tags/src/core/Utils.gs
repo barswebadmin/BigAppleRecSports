@@ -11,47 +11,6 @@ function generateUid() {
     return id;
 }
 
-function sendSlackMessage(destination, message) {
-  const channelId = destination.channelId
-  const threadTs = destination.threadTs
-  const slackApiUrl = "https://slack.com/api/chat.postMessage";
-
-  const payload = {
-    channel: channelId,
-    text: message.text,
-    blocks: message.blocks,
-    thread_ts: threadTs // Reply in the same thread
-  };
-
-  const botToken = destination.bearerToken || slackExecChannel.bearerToken;
-
-  const options = {
-    method: "post",
-    headers: { Authorization: `Bearer ${botToken}` },
-    contentType: "application/json",
-    payload: JSON.stringify(payload)
-  };
-
-  try {
-    const response = UrlFetchApp.fetch(slackApiUrl, options);
-    const responseCode = response.getResponseCode(); // Get HTTP status code
-    const responseText = response.getContentText(); // Get response as text
-    const responseJson = JSON.parse(responseText); // Parse response
-
-    if (responseCode >= 200 && responseCode < 300 && responseJson.ok) {
-      Logger.log(`✅ Message sent via Slack to ${destination.name}! Response: ${responseText}`);
-      return;
-    }
-
-    // Log Slack API error messages if any
-    const slackError = responseJson.error || "Unknown Slack API error";
-    throw new Error(`❌ Failed to send Slack message to ${destination.name}. Slack Error: ${slackError}`);
-
-  } catch (error) {
-    Logger.log(`❌ Error sending message to Slack: ${error.message}`);
-    throw new Error(`⚠️ The 'Process Payment Assistance and Payment Plans' workflow failed to send a Slack message: ${error.message}`);
-  }
-}
 
 
 function updateSlackMessage(updatedMessage) {

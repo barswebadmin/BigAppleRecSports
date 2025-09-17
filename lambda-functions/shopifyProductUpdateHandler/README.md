@@ -1,5 +1,27 @@
 # Shopify Product Update Handler
 
+## Configuration
+
+This function now resolves the Shopify access token primarily from AWS SSM Parameter Store with decryption.
+
+- Parameter name (default): `/shopify/api/web-admin-token`
+- Override via env for tests/local: `SHOPIFY_ACCESS_TOKEN`
+- Optional param name override: `SHOPIFY_TOKEN_PARAM_NAME`
+
+### Required environment variables
+
+- `SHOPIFY_LOCATION_ID` (still required for inventory adjustments)
+
+### IAM Permissions needed by the Lambda execution role
+
+Grant permission to read the SecureString parameter:
+
+- Action: `ssm:GetParameter`
+- Resource: `arn:aws:ssm:<region>:<account-id>:parameter/shopify/api/web-admin-token`
+- If using a KMS CMK for the parameter, also include:
+  - Action: `kms:Decrypt`
+  - Resource: the CMK ARN used to encrypt that parameter
+
 > 📚 **Documentation**: See [README.md](../../README.md#lambda-functions) for Lambda overview and [README_EXT/2_DEPLOYMENT.md#lambda-functions-deployment](../../README_EXT/2_DEPLOYMENT.md#lambda-functions-deployment) for deployment
 
 Automatically updates product images to "sold out" versions when all relevant variants are out of stock.
