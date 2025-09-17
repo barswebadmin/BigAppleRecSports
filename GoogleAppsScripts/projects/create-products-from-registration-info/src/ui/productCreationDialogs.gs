@@ -21,17 +21,17 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields, c
     // Check if there are unresolved fields and ask user for confirmation
     if (unresolvedFields && unresolvedFields.length > 0) {
       const errorDisplay = buildErrorDisplay_(productData, unresolvedFields);
-      const response = ui.prompt(
+      const action = ui.alert(
         '🛍️ Create Shopify Product - Missing Required Fields',
-        `${errorDisplay}`,
-        ui.ButtonSet.OK
+        errorDisplay,
+        ui.ButtonSet.OK_CANCEL
       );
 
-      if (response.getSelectedButton() !== ui.Button.OK) {
-        return null; // User closed dialog
+      if (action === ui.Button.CANCEL) {
+        return null; // User cancelled
       }
 
-      const userAction = (response.getResponseText() || '').trim().toLowerCase();
+      const userAction = action.getResponseText().trim().toLowerCase();
       if (userAction === 'cancel') {
         return null;
       } else if (userAction === 'update') {
@@ -47,17 +47,17 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields, c
 
     // All required fields present - text-based confirmation
     const confirmationDisplay = buildConfirmationDisplay_(productData);
-    const response = ui.prompt(
+    const action = ui.alert(
       '🛍️ Create Shopify Product - All Parsed Fields',
-      `${confirmationDisplay}`,
-      ui.ButtonSet.OK
+      confirmationDisplay,
+      ui.ButtonSet.OK_CANCEL
     );
 
-    if (response.getSelectedButton() !== ui.Button.OK) {
-      return null; // User closed dialog
+    if (action === ui.Button.CANCEL) {
+      return null; // User cancelled
     }
 
-    const userAction = (response.getResponseText() || '').trim().toLowerCase();
+    const userAction = action.getResponseText().trim().toLowerCase();
     if (userAction === 'create') {
       return productData; // Ready to create
     } else if (userAction === 'update') {
