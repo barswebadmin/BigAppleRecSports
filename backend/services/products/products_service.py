@@ -8,7 +8,7 @@ from models.products.product_creation_request import ProductCreationRequest
 from models.products.product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )
-from .create_product_complete_proces.create_product_complete_process import (
+from .create_product_complete_process.create_product_complete_process import (
     create_product_complete_process,
 )
 

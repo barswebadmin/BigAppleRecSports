@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
 
 # Default target
 help:
@@ -8,17 +8,17 @@ help:
 	@echo "=========================="
 	@echo ""
 	@echo "🔧 Backend Development:"
-	@echo "  make start               - Start backend server (uvicorn)"
-	@echo "  make tunnel              - Start ngrok tunnel"
-	@echo "  make tunnel-and-update   - Start ngrok tunnel and update GAS URLs"
-	@echo "  make dev                 - Start server + tunnel with auto URL updates"
-	@echo "  make update-gas-ngrok    - Update NGROK_URL in Google Apps Scripts"
+	@echo "  make start               - Start backend server (uvicorn) in dev mode"
+	@echo "  make prod                - Start server + tunnel in production mode"
+	@echo "  make tunnel              - Start localtunnel with auto-restart (persistent)"
+	@echo "  make tunnel-daemon       - Start localtunnel as background daemon (survives restarts)"
+	@echo "  make dev                 - Start server + tunnel with auto URL updates (dev mode)"
 	@echo "  make stop                - Stop all processes"
 	@echo "  make install             - Install all dependencies from unified requirements.txt"
 	@echo "  make install-prod        - Install production dependencies only"
 	@echo "  make clean               - Clean up processes and cache files"
 	@echo "  make status              - Show running processes"
-	@echo "  make url                 - Show ngrok URL"
+	@echo "  make url                 - Show localtunnel URL"
 	@echo "  make version             - Show backend version info"
 	@echo ""
 	@echo "🔍 Compilation Commands:"
@@ -272,53 +272,23 @@ endef
 start:
 	@echo "🚀 Starting backend server..."
 	@if [ -f backend/.venv/bin/python ]; then \
-		cd backend && ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	elif [ -f .venv/bin/python ]; then \
-		cd backend && ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	elif [ -f backend/venv/bin/python ]; then \
-		cd backend && ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	else \
 		echo "❌ Virtual environment not found. Trying system python..."; \
-		cd backend && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	fi
 
-tunnel:
-	@echo "🌐 Starting ngrok tunnel..."
-	@pkill -f ngrok || true
-	@sleep 1
-	@ngrok http 8000
-
-tunnel-and-update:
-	@echo "🌐 Starting ngrok tunnel with automatic URL updates..."
-	@pkill -f ngrok || true
-	@sleep 1
-	@echo "🚀 Starting ngrok in background..."
-	@ngrok http 8000 > /dev/null 2>&1 &
-	@echo "⏳ Waiting for ngrok to initialize..."
-	@sleep 5
-	@echo "📝 Updating Google Apps Scripts with new ngrok URL..."
-	@if [ -f .venv/bin/python ]; then \
-		.venv/bin/python scripts/update_ngrok_urls.py; \
-	else \
-		python3 scripts/update_ngrok_urls.py; \
-	fi
-	@echo "🌐 Ngrok tunnel ready! Bringing to foreground..."
-	@sleep 2
-	@pkill -f ngrok || true
-	@sleep 1
-	@ngrok http 8000
-
-update-gas-ngrok:
-	@echo "📝 Updating NGROK_URL in Google Apps Scripts..."
-	@python3 scripts/update_ngrok_urls.py
-
-dev:
-	@echo "🔧 Starting development environment..."
-	@pkill -f ngrok || true
+prod:
+	@echo "🔧 Starting production environment..."
+	@pkill -f "lt -p 8000" || true
 	@pkill -f uvicorn || true
 	@sleep 1
 	@echo "🚀 Starting backend server in current terminal..."
-	@echo "🌐 Opening new terminal for ngrok tunnel..."
+	@echo "🌐 Opening new terminal for localtunnel..."
 	@if command -v cursor >/dev/null 2>&1 && pgrep -f "Cursor.app" >/dev/null 2>&1; then \
 		echo "📱 Detected Cursor - opening new Cursor terminal..."; \
 		osascript -e 'tell application "Cursor" to activate' \
@@ -336,20 +306,96 @@ dev:
 	@sleep 3
 	@echo "✅ Starting server now (tunnel will start in new terminal)..."
 	@if [ -f backend/.venv/bin/python ]; then \
-		cd backend && ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=production SHOPIFY_TOKEN=test_token ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	elif [ -f .venv/bin/python ]; then \
-		cd backend && ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=production SHOPIFY_TOKEN=test_token ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	elif [ -f backend/venv/bin/python ]; then \
-		cd backend && ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=production SHOPIFY_TOKEN=test_token ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	else \
 		echo "❌ Virtual environment not found. Trying system python..."; \
-		cd backend && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=production SHOPIFY_TOKEN=test_token python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	fi
+
+tunnel:
+	@echo "🌐 Starting localtunnel..."
+	@pkill -f "lt -p 8000" || true
+	@sleep 1
+	@echo "🔄 Starting persistent localtunnel (will auto-restart on failure)..."
+	@while true; do \
+		echo "📡 Connecting to localtunnel..."; \
+		lt -p 8000 -s bars-back-local || { \
+			echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; \
+			sleep 3; \
+		}; \
+	done
+
+tunnel-and-update:
+	@echo "🌐 Starting persistent localtunnel with auto-restart..."
+	@pkill -f "lt -p 8000" || true
+	@sleep 1
+	@echo "🔄 Starting robust localtunnel (will survive server restarts)..."
+	@while true; do \
+		echo "📡 Connecting to localtunnel..."; \
+		echo "🌐 URL: https://bars-back-local.loca.lt"; \
+		lt -p 8000 -s bars-back-local || { \
+			echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; \
+			sleep 3; \
+		}; \
+	done
+
+tunnel-daemon:
+	@echo "🌐 Starting localtunnel as background daemon..."
+	@pkill -f "lt -p 8000" || true
+	@sleep 1
+	@nohup sh -c 'while true; do echo "📡 Connecting to localtunnel..."; echo "🌐 URL: https://bars-back-local.loca.lt"; lt -p 8000 -s bars-back-local || { echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; sleep 3; }; done' > tunnel.log 2>&1 &
+	@echo "✅ Localtunnel daemon started in background"
+	@echo "🌐 URL: https://bars-back-local.loca.lt"
+	@echo "📋 Check tunnel.log for status updates"
+
+update-gas-ngrok:
+	@echo "📝 Updating NGROK_URL in Google Apps Scripts..."
+	@python3 scripts/update_ngrok_urls.py
+
+dev:
+	@echo "🔧 Starting development environment..."
+	@pkill -f "lt -p 8000" || true
+	@pkill -f uvicorn || true
+	@sleep 1
+	@echo "🚀 Starting backend server in current terminal..."
+	@echo "🌐 Opening new terminal for localtunnel..."
+	@if command -v cursor >/dev/null 2>&1 && pgrep -f "Cursor.app" >/dev/null 2>&1; then \
+		echo "📱 Detected Cursor - opening new Cursor terminal..."; \
+		osascript -e 'tell application "Cursor" to activate' \
+			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
+			-e 'delay 1' \
+			-e 'tell application "System Events" to keystroke "make tunnel-and-update"' \
+			-e 'tell application "System Events" to key code 36' & \
+	elif command -v code >/dev/null 2>&1 && pgrep -x "Code" >/dev/null 2>&1; then \
+		echo "📱 Detected VS Code - opening system terminal..."; \
+		osascript -e 'tell application "Terminal" to do script "make tunnel-and-update"' & \
+	else \
+		echo "🖥️  Opening system terminal..."; \
+		osascript -e 'tell application "Terminal" to do script "make tunnel-and-update"' & \
+	fi
+	@sleep 3
+	@echo "✅ Starting server now (tunnel will start in new terminal)..."
+	@if [ -f backend/.venv/bin/python ]; then \
+		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	elif [ -f .venv/bin/python ]; then \
+		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	elif [ -f backend/venv/bin/python ]; then \
+		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+	else \
+		echo "❌ Virtual environment not found. Trying system python..."; \
+		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	fi
 
 stop:
 	@echo "🛑 Stopping all processes..."
-	@pkill -f ngrok || true
+	@pkill -f "lt -p 8000" || true
 	@pkill -f uvicorn || true
+	@pkill -f "while true; do echo" || true
+	@rm -f tunnel.log
 	@echo "✅ All processes stopped"
 
 install:
@@ -378,17 +424,27 @@ clean: stop
 
 status:
 	@echo "📊 Process Status:"
-	@echo "Backend Server:"
+	@echo "=================="
+	@echo ""
+	@echo "🖥️  Backend Server:"
 	@ps aux | grep uvicorn | grep -v grep || echo "❌ Backend server not running"
 	@echo ""
-	@echo "Ngrok Tunnel:"
-	@ps aux | grep ngrok | grep -v grep || echo "❌ Ngrok tunnel not running"
+	@echo "🌐 Localtunnel:"
+	@ps aux | grep "lt -p 8000" | grep -v grep || echo "❌ Localtunnel not running"
 	@echo ""
-	@echo "Ngrok URL (if running):"
-	@curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['tunnels'][0]['public_url'] if data.get('tunnels') else '❌ No tunnels')" 2>/dev/null || echo "❌ Ngrok not accessible"
+	@echo "🌐 Localtunnel URL:"
+	@echo "https://bars-back-local.loca.lt"
+	@echo ""
+	@echo "📋 Recent tunnel logs (if daemon is running):"
+	@if [ -f tunnel.log ]; then \
+		echo "Last 5 lines from tunnel.log:"; \
+		tail -5 tunnel.log; \
+	else \
+		echo "No tunnel.log found (daemon not started)"; \
+	fi
 
 url:
-	@curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; data=json.load(sys.stdin); print('🌐 Ngrok URL:', data['tunnels'][0]['public_url']) if data.get('tunnels') else print('❌ No ngrok tunnel running')" 2>/dev/null || echo "❌ Ngrok not accessible"
+	@echo "🌐 Localtunnel URL: https://bars-back-local.loca.lt"
 
 version:
 	@echo "📈 Backend Version Information:"

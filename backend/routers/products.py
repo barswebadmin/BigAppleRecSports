@@ -3,9 +3,11 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
 from services.products.products_service import ProductsService
+from services.leadership import LeadershipService
 from models.products.product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )
+from models.slack import Slack
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/products", tags=["products"])
@@ -99,3 +101,28 @@ async def create_product(
                 "step_failed": "unexpected_exception",
             },
         )
+
+
+@router.post("/addLeadershipTags")
+async def add_leadership_tags(request: Slack.ProcessLeadershipCSV) -> Dict[str, Any]:
+    """
+    Add leadership tags by processing CSV data - extracts emails and handles everything
+    This endpoint converts CSV data to objects and extracts emails for processing
+    """
+    try:
+        leadership_service = LeadershipService()
+        result = leadership_service.process_leadership_csv(
+            csv_data=request.csv_data,
+            spreadsheet_title=request.spreadsheet_title,
+            year=request.year
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error processing leadership CSV: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process CSV: {str(e)}")
+
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint for the products service"""
+    return {"status": "healthy", "service": "products"}

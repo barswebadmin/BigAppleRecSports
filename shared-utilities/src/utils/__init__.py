@@ -133,8 +133,6 @@ __all__ = [
     "validate_secret_format",
     # Slack utilities
     "SlackClient",
-    "get_slack_refunds_channel",
-    "get_joe_test_channel",
     "get_order_url",
     "get_product_url",
     "get_slack_group_id",
