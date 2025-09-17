@@ -114,8 +114,8 @@ function validProductCreateRequest_(data) {
     'seasonStartDate','seasonEndDate','vetRegistrationStartDateTime','earlyRegistrationStartDateTime','openRegistrationStartDateTime',
     'newPlayerOrientationDateTime','scoutNightDateTime','openingPartyDate','rainDate','closingPartyDate','offDates'
   ];
-  for (var i=0;i<dateKeys.length;i++) {
-    var k = dateKeys[i];
+  for (let i = 0; i < dateKeys.length; i++) {
+    const k = dateKeys[i];
     if (out[k] != null && out.importantDates[k] == null) out.importantDates[k] = out[k];
   }
 
@@ -125,10 +125,10 @@ function validProductCreateRequest_(data) {
   if (out.numberVetSpotsToReleaseAtGoLive != null && out.inventoryInfo.numberVetSpotsToReleaseAtGoLive == null) out.inventoryInfo.numberVetSpotsToReleaseAtGoLive = out.numberVetSpotsToReleaseAtGoLive;
 
   // Minimal shape validation (frontend preflight)
-  var missing = [];
-  function req(val, label){ if (val == null || val === '' || (typeof val==='string' && val.trim()==='')) missing.push(label); }
+  const missing = [];
+  function req(val, label) { if (val == null || val === '' || (typeof val === 'string' && val.trim() === '')) missing.push(label); }
   req(out.sportName, 'sportName');
-  var r = out.regularSeasonBasicDetails || {};
+  const r = out.regularSeasonBasicDetails || {};
   req(r.year, 'regularSeasonBasicDetails.year');
   req(r.season, 'regularSeasonBasicDetails.season');
   req(r.dayOfPlay, 'regularSeasonBasicDetails.dayOfPlay');
@@ -136,11 +136,11 @@ function validProductCreateRequest_(data) {
   req(r.location, 'regularSeasonBasicDetails.location');
   req(r.leagueStartTime, 'regularSeasonBasicDetails.leagueStartTime');
   req(r.leagueEndTime, 'regularSeasonBasicDetails.leagueEndTime');
-  var d = out.importantDates || {};
+  const d = out.importantDates || {};
   req(d.seasonStartDate, 'importantDates.seasonStartDate');
   req(d.seasonEndDate, 'importantDates.seasonEndDate');
   req(d.openRegistrationStartDateTime, 'importantDates.openRegistrationStartDateTime');
-  var inv = out.inventoryInfo || {};
+  const inv = out.inventoryInfo || {};
   req(inv.price, 'inventoryInfo.price');
   req(inv.totalInventory, 'inventoryInfo.totalInventory');
 
@@ -186,8 +186,8 @@ function canonicalizeForDisplay_(data) {
     'seasonStartDate','seasonEndDate','vetRegistrationStartDateTime','earlyRegistrationStartDateTime','openRegistrationStartDateTime',
     'newPlayerOrientationDateTime','scoutNightDateTime','openingPartyDate','rainDate','closingPartyDate','offDates'
   ];
-  for (var i=0;i<dateKeys.length;i++) {
-    var k = dateKeys[i];
+  for (let i = 0; i < dateKeys.length; i++) {
+    const k = dateKeys[i];
     if (out[k] != null && out.importantDates[k] == null) out.importantDates[k] = out[k];
   }
 
