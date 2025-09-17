@@ -98,3 +98,5 @@ class Config:
 
 
 config = Config()
+# Backwards-compat alias expected by CI/scripts
+settings = config
