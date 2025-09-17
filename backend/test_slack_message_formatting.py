@@ -346,14 +346,14 @@ class TestSlackMessageFormatting:
         """Test that order URLs are correctly formatted for Slack"""
         # Test with full GID
         order_id = "gid://shopify/Order/12345"
-        order_name = "#40192"
+        order_number = "#40192"
         expected_url = "<https://admin.shopify.com/store/09fe59-3/orders/12345|#40192>"
-        assert slack_service.get_order_url(order_id, order_name) == expected_url
+        assert slack_service.get_order_url(order_id, order_number) == expected_url
 
         # Test with order name that doesn't have #
-        order_name = "40192"
+        order_number = "40192"
         expected_url = "<https://admin.shopify.com/store/09fe59-3/orders/12345|#40192>"
-        assert slack_service.get_order_url(order_id, order_name) == expected_url
+        assert slack_service.get_order_url(order_id, order_number) == expected_url
 
     def test_product_url_formatting(self, slack_service):
         """Test that product URLs are correctly formatted"""

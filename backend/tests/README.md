@@ -125,7 +125,7 @@ python -m pytest tests/unit/test_order_fetching.py -v -s
 
 ### Run Single Test with Full Output
 ```bash
-python -m pytest tests/unit/test_order_fetching.py::TestOrderFetching::test_orders_service_fetch_by_order_name_success -v -s --tb=long
+python -m pytest tests/unit/test_order_fetching.py::TestOrderFetching::test_orders_service_fetch_by_order_number_success -v -s --tb=long
 ```
 
 ### Skip Integration Tests (for faster development)

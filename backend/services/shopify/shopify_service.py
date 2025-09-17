@@ -5,16 +5,16 @@ import sys
 import os
 import logging
 from .shopify_customer_utils import ShopifyCustomerUtils
-from .shopify_order_utils import ShopifyOrderUtils
+from . import shopify_order_utils
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Handle imports for both direct execution and module import
 try:
-    from config import settings
+    from config import config
 except ImportError:
-    from backend.config import settings
+    from backend.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +55,11 @@ mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
 class ShopifyService:
     def __init__(self):
         self.shopify_customer_utils = ShopifyCustomerUtils(self._make_shopify_request)
-        self.shopify_order_utils = ShopifyOrderUtils(self._make_shopify_request)
-        self.graphql_url = settings.graphql_url
-        self.rest_url = settings.rest_url
+        self.graphql_url = config.graphql_url
+        self.rest_url = config.rest_url
         self.headers = {
             "Content-Type": "application/json",
-            "X-Shopify-Access-Token": settings.shopify_token,
+            "X-Shopify-Access-Token": config.shopify_token,
         }
 
     def _get_mock_response(self, query: Dict[str, Any]) -> Dict[str, Any]:
@@ -461,16 +460,16 @@ class ShopifyService:
 
     # Forwarding from ShopifyOrderUtils
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
-        return self.shopify_order_utils.cancel_order(order_id)
+        return shopify_order_utils.cancel_order(order_id, self._make_shopify_request)
 
     def get_order_details(self, order_id: str) -> Dict[str, Any]:
-        return self.shopify_order_utils.get_order_details(order_id)
+        return shopify_order_utils.get_order_details(order_id, self._make_shopify_request)
 
     def create_refund(
         self, order_id: str, refund_amount: float, refund_type: str = "refund"
     ) -> Dict[str, Any]:
-        return self.shopify_order_utils.create_refund(
-            order_id, refund_amount, refund_type
+        return shopify_order_utils.create_refund(
+            order_id, refund_amount, refund_type, self._make_shopify_request
         )
 
     # Inventory management methods
@@ -518,7 +517,7 @@ class ShopifyService:
         try:
             # Use default location if not provided
             if not location_id:
-                location_id = getattr(settings, "shopify_location_id", None)
+                location_id = getattr(config, "shopify_location_id", None)
                 if not location_id:
                     raise ValueError(
                         "SHOPIFY_LOCATION_ID is required for inventory adjustments"
@@ -662,12 +661,12 @@ class ShopifyService:
         self, endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
         """Make a REST API request to Shopify"""
-        from config import settings
+        from config import config
 
         # For development/testing mode when Shopify credentials aren't available
         should_use_mock = (
-            not settings.shopify_token
-            or settings.environment.lower() in ["dev", "test"]
+            not config.shopify_token
+            or config.environment.lower() in ["dev", "test"]
         )
 
         if should_use_mock and not os.getenv("FORCE_REAL_API"):

@@ -88,16 +88,7 @@ async def create_product(
     #             detail=error_detail,
     #         )
 
-    # except HTTPException:
-    #     # Re-raise HTTPExceptions (including our validation errors above)
-    #     raise
-    # except Exception as e:
-    #     logger.error(f"Unexpected error during product creation: {e}")
-    #     raise HTTPException(
-    #         status_code=500,
-    #         detail={
-    #             "message": "Internal server error during product creation",
-    #             "error": str(e),
-    #             "step_failed": "unexpected_exception",
-    #         },
-    #     )
+@router.get("/health")
+async def health_check():
+    """Health check endpoint for the products service"""
+    return {"status": "healthy", "service": "products"}
