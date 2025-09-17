@@ -1,1 +1,3 @@
-# Backend utilities package
+"""
+General utility modules for the backend.
+"""

@@ -20,7 +20,7 @@ class SlackClient:
     """Slack API client for sending messages and managing channels"""
 
     def __init__(
-        self, bot_token: Optional[str] = None, default_channel: Optional[str] = None
+        self, bot_token: Optional[str] = None
     ):
         """
         Initialize Slack client
@@ -30,7 +30,6 @@ class SlackClient:
             default_channel: Default channel ID for messages
         """
         self.bot_token = bot_token or self._get_slack_bot_token("general")
-        self.default_channel = default_channel
         self.api_base_url = "https://slack.com/api"
 
     def _get_slack_bot_token(self, purpose: str = "general") -> str:
@@ -59,7 +58,7 @@ class SlackClient:
                     f"Secret '{secret_key}' not found. Using fallback SLACK_BOT_TOKEN."
                 )
                 token = get_secret("SLACK_BOT_TOKEN")
-            return token
+            return token or ""
         except Exception as e:
             logger.error(f"Error getting Slack token: {e}")
             raise ValueError(f"Could not retrieve Slack token for purpose: {purpose}")
@@ -85,8 +84,6 @@ class SlackClient:
         Returns:
             API response
         """
-        if not channel:
-            channel = self.default_channel
 
         if not channel:
             raise ValueError("Channel is required")
@@ -149,79 +146,19 @@ class SlackClient:
         )
 
 
-def get_slack_refunds_channel(mode: Optional[str] = None) -> Dict[str, str]:
-    """
-    Get Slack refunds channel configuration (MODE-aware)
-
-    Args:
-        mode: Deployment mode (prod/dev)
-
-    Returns:
-        Channel configuration {name, channel_id, bearer_token}
-    """
-    try:
-        if mode and "prod" in mode.lower():
-            return {
-                "name": "#refunds",
-                "channel_id": get_secret("SLACK_CHANNEL_REFUNDS_PROD"),
-                "bearer_token": get_secret(
-                    "SLACK_BOT_TOKEN_REFUNDS", get_secret("SLACK_BOT_TOKEN")
-                ),
-            }
-        else:
-            return {
-                "name": "#joe-test",
-                "channel_id": get_secret("SLACK_CHANNEL_JOE_TEST"),
-                "bearer_token": get_secret(
-                    "SLACK_BOT_TOKEN_REFUNDS", get_secret("SLACK_BOT_TOKEN")
-                ),
-            }
-    except Exception as e:
-        logger.error(f"Error getting refunds channel config: {e}")
-        raise
-
-
-def get_joe_test_channel() -> Dict[str, str]:
-    """
-    Get joe-test channel configuration
-
-    Returns:
-        Channel configuration
-    """
-    try:
-        channel_id = get_secret("SLACK_CHANNEL_JOE_TEST")
-        bearer_token = get_secret(
-            "SLACK_BOT_TOKEN_WAITLIST", get_secret("SLACK_BOT_TOKEN")
-        )
-
-        return {
-            "name": "#joe-test",
-            "channel_id": channel_id,
-            "bearer_token": bearer_token,
-        }
-    except Exception as e:
-        logger.error(f"Error getting joe-test channel config: {e}")
-        # Fallback configuration
-        return {
-            "name": "#joe-test",
-            "channel_id": "C08EXAMPLE",  # Replace with actual channel ID
-            "bearer_token": get_secret("SLACK_BOT_TOKEN", ""),
-        }
-
-
-def get_order_url(order_id: str, order_name: str) -> str:
+def get_order_url(order_id: str, order_number: str) -> str:
     """
     Get formatted order URL for Slack messages
 
     Args:
         order_id: Order ID from Shopify
-        order_name: Order name/number
+        order_number: Order name/number
 
     Returns:
         Formatted Slack link
     """
     order_id_digits = order_id.split("/")[-1] if "/" in order_id else order_id
-    normalized_order = normalize_order_number(order_name)
+    normalized_order = normalize_order_number(order_number)
     return f"<https://admin.shopify.com/store/09fe59-3/orders/{order_id_digits}|{normalized_order}>"
 
 
@@ -349,7 +286,7 @@ def create_deny_button(raw_order_number: str) -> Dict[str, Any]:
 
 def create_refund_different_amount_button(
     order_id: str,
-    order_name: str,
+    order_number: str,
     requestor_name: Dict[str, str],
     requestor_email: str,
     refund_or_credit: str,
@@ -510,7 +447,12 @@ def send_waitlist_validation_error(
         if not slack_client:
             slack_client = SlackClient()
 
-        channel_config = get_joe_test_channel()
+        # Hardcoded joe-test channel config (shared utilities don't have access to backend config)
+        channel_config = {
+            "name": "#joe-test",
+            "channel_id": get_secret("SLACK_CHANNEL_JOE_TEST"),
+            "bearer_token": get_secret("SLACK_BOT_TOKEN_WAITLIST", get_secret("SLACK_BOT_TOKEN", "")),
+        }
 
         error_icon = "🚫" if "No product found" in reason else "📦"
         title = (

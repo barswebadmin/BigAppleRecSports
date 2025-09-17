@@ -8,7 +8,7 @@ by checking configuration, API connectivity, and workflow components.
 
 import sys
 from datetime import datetime
-from config import settings
+from config import config
 from services.orders import OrdersService
 from services.slack.slack_service import SlackService
 
@@ -33,9 +33,9 @@ def validate_environment():
     print_header("ENVIRONMENT CONFIGURATION")
 
     # Check environment setting
-    env_is_production = settings.environment.lower() == "production"
+    env_is_production = config.environment.lower() == "production"
     print_check(
-        f"Environment: {settings.environment}",
+        f"Environment: {config.environment}",
         env_is_production,
         "Ready for production"
         if env_is_production
@@ -43,8 +43,8 @@ def validate_environment():
     )
 
     # Check debug vs production mode
-    is_debug = settings.environment.lower() in ["development", "debug", "test"]
-    is_prod = settings.is_production_mode
+    is_debug = config.environment.lower() in ["development", "debug", "test"]
+    is_prod = config.is_production_mode
     print_check(
         f"Debug Mode: {is_debug}",
         not is_debug if env_is_production else True,
@@ -52,21 +52,21 @@ def validate_environment():
     )
 
     # Check required tokens
-    has_shopify_token = bool(settings.shopify_token)
+    has_shopify_token = bool(config.shopify_token)
     print_check(
         "Shopify Token",
         has_shopify_token,
         "Present" if has_shopify_token else "Missing - required for production",
     )
 
-    has_slack_token = bool(settings.slack_refunds_bot_token)
+    has_slack_token = bool(config.slack_refunds_bot_token)
     print_check(
         "Slack Bot Token",
         has_slack_token,
         "Present" if has_slack_token else "Missing - required for Slack integration",
     )
 
-    has_slack_secret = bool(settings.slack_signing_secret)
+    has_slack_secret = bool(config.slack_signing_secret)
     print_check(
         "Slack Signing Secret",
         has_slack_secret,
@@ -113,7 +113,7 @@ def validate_shopify_connectivity():
     """Validate Shopify API connectivity"""
     print_header("SHOPIFY API CONNECTIVITY")
 
-    if not settings.shopify_token:
+    if not config.shopify_token:
         print_check("Shopify Connection", False, "No token available")
         return False
 
@@ -124,8 +124,8 @@ def validate_shopify_connectivity():
         import requests
 
         response = requests.get(
-            settings.graphql_url.replace("/graphql.json", "/products.json?limit=1"),
-            headers={"X-Shopify-Access-Token": settings.shopify_token},
+            config.graphql_url.replace("/graphql.json", "/products.json?limit=1"),
+            headers={"X-Shopify-Access-Token": config.shopify_token},
             timeout=10,
         )
 
@@ -139,7 +139,7 @@ def validate_shopify_connectivity():
         )
 
         if connectivity_ok:
-            print_check("GraphQL Endpoint", True, settings.graphql_url)
+            print_check("GraphQL Endpoint", True, config.graphql_url)
 
         return connectivity_ok
 
@@ -153,7 +153,7 @@ def validate_workflow_components():
     print_header("WORKFLOW COMPONENTS")
 
     # Check if production mode makes real API calls
-    production_mode = settings.is_production_mode
+    production_mode = config.is_production_mode
     print_check(
         "Production API Calls",
         production_mode,
@@ -189,21 +189,21 @@ def validate_security():
 
     # Check CORS settings
     cors_secure = (
-        "localhost" not in str(settings.allowed_origins)
-        if settings.environment == "production"
+        "localhost" not in str(config.allowed_origins)
+        if config.environment == "production"
         else True
     )
     print_check(
         "CORS Configuration",
         cors_secure,
-        f"Origins: {settings.allowed_origins[:2]}..."
-        if len(settings.allowed_origins) > 2
-        else f"Origins: {settings.allowed_origins}",
+        f"Origins: {config.allowed_origins[:2]}..."
+        if len(config.allowed_origins) > 2
+        else f"Origins: {config.allowed_origins}",
     )
 
     # Check docs/redoc are disabled in production
     docs_disabled = (
-        settings.environment == "production"
+        config.environment == "production"
     )  # main.py disables docs in production
     print_check(
         "API Documentation",
@@ -218,7 +218,7 @@ def main():
     """Main validation function"""
     print_header("BARS PRODUCTION REFUNDS WORKFLOW VALIDATION")
     print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Environment: {settings.environment}")
+    print(f"Environment: {config.environment}")
     print(f"Python: {sys.version.split()[0]}")
 
     # Run all validations

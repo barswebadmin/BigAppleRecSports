@@ -34,6 +34,8 @@ class TestWebhooksService:
             "id": 7350462185566,
             "title": "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025",
             "handle": "big-apple-dodgeball-tuesday-open-division-fall-2025",
+            "status": "active",
+            "published_at": "2025-01-01T00:00:00-05:00",  # Published long ago (> 24h)
             "variants": [
                 {
                     "id": 41558875045982,
@@ -99,19 +101,37 @@ class TestWebhooksService:
                 service.verify_webhook_signature(test_body, "SGVsbG8gV29ybGQ=") is False
             )  # Valid base64 but wrong signature
 
-    def test_is_product_update(self):
-        """Test identifying product update webhooks"""
-        # Should return True for product update webhooks
+    def test_webhook_topic_detection(self):
+        """Test that webhooks are routed to the correct handlers based on topic"""
+        # Test that different webhook types can be processed
+        # Note: The service now routes based on topic instead of just checking if it's a product update
+        
+        # Product update should be handled by product update handler
         headers = {"x-shopify-topic": "products/update"}
-        assert self.service.is_product_update(headers) is True
-
-        # Should return False for non-product-update webhooks
+        body = json.dumps({
+            "id": "123",
+            "title": "Test Product",
+            "handle": "test-product",
+            "variants": [{"inventory_quantity": 0}]
+        }).encode('utf-8')
+        
+        result = self.service.handle_shopify_webhook(headers, body)
+        # Should return evaluation format for product updates
+        assert "action_needed" in result
+        
+        # Order create should be handled by order create handler
         headers = {"x-shopify-topic": "orders/create"}
-        assert self.service.is_product_update(headers) is False
-
-        # Should return False when no topic header present
-        headers = {}
-        assert self.service.is_product_update(headers) is False
+        body = json.dumps({
+            "order_number": 12345,
+            "contact_email": "test@example.com",
+            "customer": {"first_name": "Test", "last_name": "User"},
+            "line_items": [{"variant_title": "Standard Registration"}]
+        }).encode('utf-8')
+        
+        result = self.service.handle_shopify_webhook(headers, body)
+        # Should return evaluation format for order creates
+        assert "action_needed" in result
+        assert "reason" in result
 
     def test_product_has_zero_inventory(self):
         """Test detecting products with zero inventory"""
@@ -155,12 +175,11 @@ class TestWebhooksService:
         }
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
-        # Get the expected store name from environment (same as the service uses)
-        shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
-        store_name = shopify_store.split(".")[0]
+        # Get the expected admin URL from config (same as the service uses)
+        from config import config
 
         expected = {
-            "product_url": f"https://admin.shopify.com/store/{store_name}/products/7450381877342",
+            "product_url": f"{config.shopify_admin_url}/products/7450381877342",
             "sport": "Dodgeball",
             "day": "Tuesday",
             "division": "Open",
@@ -176,7 +195,7 @@ class TestWebhooksService:
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
         expected = {
-            "product_url": f"https://admin.shopify.com/store/{store_name}/products/123",
+            "product_url": f"{config.shopify_admin_url}/products/123",
             "sport": None,
             "day": None,
             "division": None,
@@ -192,7 +211,7 @@ class TestWebhooksService:
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
         expected = {
-            "product_url": f"https://admin.shopify.com/store/{store_name}/products/456",
+            "product_url": f"{config.shopify_admin_url}/products/456",
             "sport": None,
             "day": None,
             "division": None,
@@ -257,12 +276,10 @@ class TestWebhooksService:
             assert (
                 result["other_identifier"] == case["expected"]["other_identifier"]
             ), f"Other ID mismatch for '{case['title']}'"
-            # Get the expected store name from environment (same as the service uses)
-            shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
-            store_name = shopify_store.split(".")[0]
+            # Get the expected admin URL from config (same as the service uses)
             assert (
                 result["product_url"]
-                == f"https://admin.shopify.com/store/{store_name}/products/789"
+                == f"{config.shopify_admin_url}/products/789"
             )
 
     @patch("requests.post")
@@ -278,23 +295,22 @@ class TestWebhooksService:
             "os.environ", {"GAS_WAITLIST_FORM_WEB_APP_URL": "https://test-url.com"}
         ):
             service = WebhooksService()
-            # Get the expected store name from environment (same as the service uses)
-            shopify_store = os.getenv("SHOPIFY_STORE", "09fe59-3.myshopify.com")
-            store_name = shopify_store.split(".")[0]
-            product_data = {
-                "product_url": f"https://admin.shopify.com/store/{store_name}/products/123",
-                "sport": "dodgeball",
-                "day": "monday",
-                "division": "open",
-                "other_identifier": "Fall 2025",
+            # Pass raw Shopify product data (not pre-parsed)
+            raw_product_data = {
+                "id": 123,
+                "title": "Big Apple Dodgeball - Monday Open Division - Fall 2025"
             }
+            # Parse it first to get the expected format
+            parsed_data = service.parse_shopify_webhook_for_waitlist_form(raw_product_data)
+            product_data = parsed_data
 
+            from config import config
             expected_camel_case = {
-                "productUrl": f"https://admin.shopify.com/store/{store_name}/products/123",
-                "sport": "dodgeball",
-                "day": "monday",
-                "division": "open",
-                "otherIdentifier": "Fall 2025",
+                "productUrl": f"{config.shopify_admin_url}/products/123",
+                "sport": "Dodgeball", 
+                "day": "Monday",
+                "division": "Open",
+                "otherIdentifier": None,
             }
 
             result = service.send_to_waitlist_form_gas(product_data)
@@ -341,14 +357,22 @@ class TestWebhooksService:
         """Test webhook handler integration - orchestration and end-to-end flow"""
         mock_send.return_value = {"success": True, "response": "GAS success"}
 
-        # Should skip processing for non-product-update webhooks (topic filtering)
+        # Test order create webhook processing
         headers = {"x-shopify-topic": "orders/create"}
-        body = b'{"test": "data"}'
+        body = json.dumps({
+            "order_number": 12345,
+            "contact_email": "test@example.com",
+            "customer": {"first_name": "Test", "last_name": "User"},
+            "line_items": [{"variant_title": "Standard Registration"}]
+        }).encode('utf-8')
 
         result = self.service.handle_shopify_webhook(headers, body)
 
-        assert result["success"] is True
-        assert result["message"] == "Not a product update webhook"
+        # Should return evaluation format for order creates
+        assert "action_needed" in result
+        assert "reason" in result
+        assert "data" in result
+        # Order create webhooks don't call GAS waitlist form directly anymore
         mock_send.assert_not_called()
 
         # Should exit early when product still has inventory (inventory check flow)
@@ -359,21 +383,11 @@ class TestWebhooksService:
 
         result = self.service.handle_shopify_webhook(headers, body)
 
-        assert result["success"] is True
-        assert "still has inventory" in result["message"]
-        # Should include detailed product information
-        assert "product_info" in result
-        assert (
-            result["product_info"]["title"]
-            == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
-        )
-        assert result["product_info"]["total_inventory"] == 42  # 10 + 11 + 21 + 0
-        assert result["product_info"]["sold_out"] is False
-        assert "admin.shopify.com" in result["product_info"]["admin_url"]
-        assert (
-            "myshopify.com/products/big-apple-dodgeball"
-            in result["product_info"]["store_url"]
-        )
+        # Should return evaluation format for product updates with inventory
+        assert "action_needed" in result
+        assert result["action_needed"] is False  # Should be false since product has inventory
+        assert result["reason"] == "product_not_sold_out"
+        assert result["data"]["product_title"] == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
         mock_send.assert_not_called()
 
         # Should process complete pipeline when product is sold out (end-to-end flow)
@@ -386,27 +400,12 @@ class TestWebhooksService:
 
         result = self.service.handle_shopify_webhook(headers, body)
 
-        assert result["success"] is True
-        assert (
-            "sold out" in result["message"]
-            and "waitlist form updated" in result["message"]
-        )
-        # Should include detailed product information for sold out products
-        assert "product_info" in result
-        assert (
-            result["product_info"]["title"]
-            == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
-        )
-        assert result["product_info"]["total_inventory"] == 0
-        assert result["product_info"]["sold_out"] is True
-        assert "admin.shopify.com" in result["product_info"]["admin_url"]
-        assert (
-            "myshopify.com/products/big-apple-dodgeball"
-            in result["product_info"]["store_url"]
-        )
-        # Should include parsed product data and waitlist result
-        assert result["parsed_product"]["sport"] == "Dodgeball"  # Now Title case
-        assert "waitlist_result" in result
+        # Should return evaluation format for sold out products
+        assert "action_needed" in result
+        assert result["action_needed"] is True  # Should be true since product is sold out
+        assert result["reason"] == "product_sold_out"
+        assert result["data"]["product_title"] == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
+        # GAS integration happens in shopify_handler, not in the evaluation function
         mock_send.assert_called_once()
 
         # Should handle invalid JSON gracefully (error handling integration)

@@ -1,121 +1,117 @@
 """
 Shopify Webhook Handler
 
-Handles specific Shopify webhook processing logic.
+Functional handlers for Shopify webhook processing.
 """
 
-import json
 import logging
 from typing import Dict, Any
-from ..parsers import ProductParser
+from .product_update_handler import evaluate_product_update_webhook
+from .order_create_handler import evaluate_order_create_webhook
 from ..integrations import GASClient
+from ...slack.slack_service import SlackService
+from ...slack.slack_config import SlackConfig
 
 logger = logging.getLogger(__name__)
 
 
-class ShopifyHandler:
-    """Handles Shopify-specific webhook processing"""
-
-    def __init__(self, shopify_store: str, gas_client: GASClient):
-        self.product_parser = ProductParser(shopify_store)
-        self.gas_client = gas_client
-
-    def is_product_update(self, headers: Dict[str, str]) -> bool:
-        """Check if webhook is a product update from headers"""
-        topic = headers.get("x-shopify-topic", "")
-        return topic == "products/update"
-
-    def handle_webhook(self, headers: Dict[str, str], body: bytes) -> Dict[str, Any]:
-        """Main handler for Shopify webhooks"""
-        if not self.is_product_update(headers):
-            return {"success": True, "message": "Not a product update webhook"}
-
-        return self.handle_product_update_webhook(body)
-
-    def handle_product_update_webhook(self, body: bytes) -> Dict[str, Any]:
-        """Handle Shopify product update webhook with enhanced logging"""
-        try:
-            product_data = json.loads(body.decode("utf-8"))
-
-            # Extract product information for logging
-            product_id = product_data.get("id", "unknown")
-            product_title = product_data.get("title", "Unknown Product")
-            product_handle = product_data.get("handle", "")
-
-            # Generate product URLs
-            shopify_admin_url = f"https://admin.shopify.com/store/{self.product_parser.shopify_store.split('.')[0]}/products/{product_id}"
-            shopify_store_url = (
-                f"https://{self.product_parser.shopify_store}/products/{product_handle}"
-                if product_handle
-                else ""
+def handle_shopify_webhook(headers: Dict[str, str], body: bytes, gas_client: GASClient) -> Dict[str, Any]:
+    """
+    Main handler for Shopify webhooks
+    
+    Args:
+        headers: HTTP headers from the webhook request
+        body: Raw body content from the webhook
+        gas_client: GAS client for waitlist form integration
+        
+    Returns:
+        Dict containing processing results
+    """
+    slack_service = SlackService()
+    
+    if headers.get("x-shopify-topic") == "orders/create":
+        result = evaluate_order_create_webhook(body)
+        if result.get("action_needed"):
+            slack_service.send_message(
+                channel='joe-test',
+                message_text="Order requires attention",
+                blocks=result.get("slack_blocks"),
+                bot='registrations'
             )
-
-            # Check inventory status
-            has_zero_inventory = self.product_parser.has_zero_inventory(product_data)
-
-            # Calculate total inventory across all variants
-            variants = product_data.get("variants", [])
-            total_inventory = sum(
-                variant.get("inventory_quantity", 0) for variant in variants
-            )
-
-            logger.info(f"📦 PRODUCT UPDATE: '{product_title}' (ID: {product_id})")
-            logger.info(f"🔗 Admin URL: {shopify_admin_url}")
-            if shopify_store_url:
-                logger.info(f"🛍️ Store URL: {shopify_store_url}")
-            logger.info(f"📊 Total Inventory: {total_inventory} units")
-            logger.info(
-                f"🚨 Sold Out Status: {'✅ SOLD OUT' if has_zero_inventory else '❌ Still has inventory'}"
-            )
-
-            if not has_zero_inventory:
-                logger.info(
-                    f"⏭️ Product still has {total_inventory} units in stock - no waitlist action needed"
+        return result
+    elif headers.get("x-shopify-topic") == "products/update":
+        result = evaluate_product_update_webhook(body, gas_client)
+        
+        # Handle actions needed for product updates
+        if result.get("action_needed"):
+            # Send Slack notification (non-blocking)
+            try:
+                slack_service.send_message(
+                    channel='joe-test',
+                    message_text="Product requires attention",
+                    blocks=result.get("slack_blocks"),
+                    bot='registrations'
                 )
-                return {
-                    "success": True,
-                    "message": f"Product '{product_title}' still has inventory ({total_inventory} units)",
-                    "product_info": {
-                        "id": product_id,
-                        "title": product_title,
-                        "admin_url": shopify_admin_url,
-                        "store_url": shopify_store_url,
-                        "total_inventory": total_inventory,
-                        "sold_out": False,
-                    },
-                }
+                logger.info("✅ Slack notification sent for product update")
+            except Exception as e:
+                logger.error(f"❌ Failed to send Slack notification: {e}")
+            
+            # Handle GAS waitlist integration if product is sold out (non-blocking)
+            if "product_sold_out" in result.get("reason", []):
+                try:
+                    from ..parsers.product_parser import parse_for_waitlist_form
+                    import json
+                    
+                    # Parse the original product data
+                    product_data = json.loads(body.decode("utf-8"))
+                    parsed_product = parse_for_waitlist_form(product_data)
+                    
+                    logger.info(f"📤 Sending to GAS waitlist form: {parsed_product}")
+                    gas_result = gas_client.send_to_waitlist_form(parsed_product)
+                    
+                    if gas_result.get("success"):
+                        product_title = result.get("data", {}).get("product_title", "Unknown")
+                        logger.info(f"✅ Successfully added '{product_title}' to waitlist form")
+                    else:
+                        logger.error(f"❌ Failed to add product to waitlist form: {gas_result}")
+                        
+                except Exception as e:
+                    logger.error(f"❌ Failed to process GAS waitlist integration: {e}")
+        else:
+            logger.info(f"No action needed for product update: {result.get('reason')}")
+        return result
+    else:
+        return {"success": True, "message": "Not a product update webhook"}
 
-            logger.info("🎯 Product is sold out - processing for waitlist form...")
-            parsed_product = self.product_parser.parse_for_waitlist_form(product_data)
 
-            logger.info(f"📤 Sending to GAS waitlist form: {parsed_product}")
-            gas_result = self.gas_client.send_to_waitlist_form(parsed_product)
-
-            if gas_result.get("success"):
-                logger.info(f"✅ Successfully added '{product_title}' to waitlist form")
-            else:
-                logger.error(
-                    f"❌ Failed to add '{product_title}' to waitlist form: {gas_result}"
-                )
-
-            return {
-                "success": True,
-                "message": f"Product '{product_title}' sold out - waitlist form {'updated' if gas_result.get('success') else 'update failed'}",
-                "product_info": {
-                    "id": product_id,
-                    "title": product_title,
-                    "admin_url": shopify_admin_url,
-                    "store_url": shopify_store_url,
-                    "total_inventory": total_inventory,
-                    "sold_out": True,
-                },
-                "parsed_product": parsed_product,
-                "waitlist_result": gas_result,
-            }
-
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ Invalid JSON in webhook body: {e}")
-            return {"success": False, "error": "Invalid JSON payload"}
-        except Exception as e:
-            logger.error(f"💥 Error processing product update webhook: {e}")
-            return {"success": False, "error": str(e)}
+def send_to_joetest(message: str) -> Dict[str, Any]:
+    """
+    Send a message to JoeTest channel using Registrations bot
+    
+    Args:
+        message: The message text to send
+        
+    Returns:
+        Dict containing success status and response details
+    """
+    try:
+        # Get registrations bot token using clean API
+        token = SlackConfig.Token.RegistrationsBot()
+        if not token:
+            logger.error("SLACK_REGISTRATIONS_BOT_TOKEN not found in environment")
+            return {"success": False, "error": "Missing registrations bot token"}
+        
+        # Create slack service and send message
+        slack_service = SlackService()
+        result = slack_service.send_message(
+            channel='joe-test',
+            message_text=message,
+            bot='registrations'
+        )
+        
+        logger.info(f"✅ Message sent to JoeTest: {message[:50]}...")
+        return {"success": True, "slack_response": result}
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to send message to JoeTest: {e}")
+        return {"success": False, "error": str(e)}

@@ -69,7 +69,7 @@ class TestOrderFetching:
             "data": {"orders": {"edges": [{"node": self.expected_order_data}]}}
         }
 
-    def test_orders_service_fetch_by_order_name_success(self):
+    def test_orders_service_fetch_by_order_number_success(self):
         """Test OrdersService successfully fetches order by number"""
         orders_service = OrdersService()
 
@@ -79,8 +79,8 @@ class TestOrderFetching:
         ) as mock_request:
             mock_request.return_value = self.mock_shopify_response
 
-            result = orders_service.fetch_order_details_by_email_or_order_name(
-                order_name=self.test_order_number
+            result = orders_service.fetch_order_details_by_email_or_order_number(
+                order_number=self.test_order_number
             )
 
             assert result["success"] is True
@@ -93,7 +93,7 @@ class TestOrderFetching:
             first_call_query = mock_request.call_args_list[0][0][0]["query"]
             assert f"name:#{self.test_order_number}" in first_call_query
 
-    def test_orders_service_fetch_by_order_name_with_hash_prefix(self):
+    def test_orders_service_fetch_by_order_number_with_hash_prefix(self):
         """Test OrdersService handles order number with # prefix correctly"""
         orders_service = OrdersService()
 
@@ -103,8 +103,8 @@ class TestOrderFetching:
             mock_request.return_value = self.mock_shopify_response
 
             # Test with # prefix - should not double-prefix
-            result = orders_service.fetch_order_details_by_email_or_order_name(
-                order_name=f"#{self.test_order_number}"
+            result = orders_service.fetch_order_details_by_email_or_order_number(
+                order_number=f"#{self.test_order_number}"
             )
 
             assert result["success"] is True
@@ -123,7 +123,7 @@ class TestOrderFetching:
         ) as mock_request:
             mock_request.return_value = self.mock_shopify_response
 
-            result = orders_service.fetch_order_details_by_email_or_order_name(
+            result = orders_service.fetch_order_details_by_email_or_order_number(
                 email=self.test_email
             )
 
@@ -149,8 +149,8 @@ class TestOrderFetching:
         ) as mock_request:
             mock_request.return_value = empty_response
 
-            result = orders_service.fetch_order_details_by_email_or_order_name(
-                order_name="nonexistent"
+            result = orders_service.fetch_order_details_by_email_or_order_number(
+                order_number="nonexistent"
             )
 
             assert result["success"] is False
@@ -166,8 +166,8 @@ class TestOrderFetching:
             # Mock API failure (returns None)
             mock_request.return_value = None
 
-            result = orders_service.fetch_order_details_by_email_or_order_name(
-                order_name=self.test_order_number
+            result = orders_service.fetch_order_details_by_email_or_order_number(
+                order_number=self.test_order_number
             )
 
             assert result["success"] is False
@@ -187,14 +187,14 @@ class TestOrderFetching:
         ) as mock_request:
             mock_request.return_value = malformed_response
 
-            result = orders_service.fetch_order_details_by_email_or_order_name(
-                order_name=self.test_order_number
+            result = orders_service.fetch_order_details_by_email_or_order_number(
+                order_number=self.test_order_number
             )
 
             assert result["success"] is False
 
     @patch(
-        "services.orders.orders_service.OrdersService.fetch_order_details_by_email_or_order_name"
+        "services.orders.orders_service.OrdersService.fetch_order_details_by_email_or_order_number"
     )
     def test_get_order_endpoint_success(self, mock_fetch):
         """Test /orders/{order_number} endpoint returns order successfully"""
@@ -244,7 +244,7 @@ class TestOrderFetching:
         assert data["data"]["order"]["name"] == f"#{self.test_order_number}"
 
     @patch(
-        "services.orders.orders_service.OrdersService.fetch_order_details_by_email_or_order_name"
+        "services.orders.orders_service.OrdersService.fetch_order_details_by_email_or_order_number"
     )
     def test_get_order_endpoint_not_found(self, mock_fetch):
         """Test /orders/{order_number} endpoint handles order not found"""
@@ -257,7 +257,7 @@ class TestOrderFetching:
         assert "Order not found" in response.json()["detail"]
 
     @patch(
-        "services.orders.orders_service.OrdersService.fetch_order_details_by_email_or_order_name"
+        "services.orders.orders_service.OrdersService.fetch_order_details_by_email_or_order_number"
     )
     def test_get_order_endpoint_with_email_fallback(self, mock_fetch):
         """Test /orders/{order_number} endpoint uses email fallback when order not found"""
@@ -297,7 +297,7 @@ class TestOrderFetching:
 
         # Verify both order number and email searches were attempted
         assert mock_fetch.call_count == 2
-        mock_fetch.assert_any_call(order_name="nonexistent")
+        mock_fetch.assert_any_call(order_number="nonexistent")
         mock_fetch.assert_any_call(email=self.test_email)
 
 

@@ -62,7 +62,7 @@ class TestWebhooksRouter:
         }
 
         response = client.post(
-            "/webhooks/shopify/product-update",
+            "/webhooks/shopify",
             headers=headers,
             json=sample_product_data,
         )
@@ -108,7 +108,7 @@ class TestWebhooksRouter:
         }
 
         response = client.post(
-            "/webhooks/shopify/product-update",
+            "/webhooks/shopify",
             headers=headers,
             json=sample_product_data,
         )
@@ -157,7 +157,7 @@ class TestWebhooksRouter:
             }
 
             response = client.post(
-                "/webhooks/shopify/product-update",
+                "/webhooks/shopify",
                 headers=headers,
                 json=sample_product_data,
             )
@@ -165,22 +165,54 @@ class TestWebhooksRouter:
             assert response.status_code == 401
             assert "Invalid webhook signature" in response.json()["detail"]
 
-    def test_non_product_update_webhook(self, client, mock_webhook_signature):
-        """Test non-product-update webhooks are handled gracefully"""
+    def test_order_create_webhook(self, client, mock_webhook_signature):
+        """Test order create webhooks are processed correctly"""
 
         headers = {
-            "x-shopify-topic": "orders/create",  # Not a product update
+            "x-shopify-topic": "orders/create",
             "x-shopify-hmac-sha256": "test-signature",
             "content-type": "application/json",
         }
 
+        # Provide a realistic order payload for testing
+        order_payload = {
+            "order_number": 12345,
+            "contact_email": "customer@example.com",
+            "customer": {"first_name": "Test", "last_name": "Customer"},
+            "line_items": [{"variant_title": "Standard Registration"}]
+        }
+
         response = client.post(
-            "/webhooks/shopify/product-update",
+            "/webhooks/shopify",
             headers=headers,
-            json={"id": 123, "name": "test order"},
+            json=order_payload,
         )
 
         assert response.status_code == 200
         response_data = response.json()
         assert response_data["success"] is True
-        assert response_data["message"] == "Not a product update webhook"
+        assert "standard order processed" in response_data["message"]
+        assert "is_email_mismatch" in response_data
+        assert "is_waitlist_registration" in response_data
+        assert response_data["order_number"] == 12345
+
+    def test_unknown_webhook_type(self, client, mock_webhook_signature):
+        """Test unknown webhook types are logged and handled gracefully"""
+
+        headers = {
+            "x-shopify-topic": "customers/create",  # Unknown webhook type
+            "x-shopify-hmac-sha256": "test-signature",
+            "content-type": "application/json",
+        }
+
+        response = client.post(
+            "/webhooks/shopify",
+            headers=headers,
+            json={"id": 123, "email": "test@example.com"},
+        )
+
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data["success"] is True
+        assert "Webhook received and logged for event type: customers/create" in response_data["message"]
+        assert response_data["event_type"] == "customers/create"

@@ -7,8 +7,11 @@ BARS Backend API - Main FastAPI Application
 🚀 Deployment: See README_EXT/2_DEPLOYMENT.md#backend-deployment-render for deployment
 """
 
-# CRITICAL: Configure SSL certificates BEFORE any other imports
+# CRITICAL: Configure SSL certificates and load .env file BEFORE any other imports that might need environment variables
 import os
+from dotenv import load_dotenv
+if os.getenv("ENVIRONMENT") != "production":
+    load_dotenv('../.env')
 
 if os.getenv("ENVIRONMENT") == "production":
     # Force SSL certificate paths for Render (Ubuntu) deployment
@@ -22,9 +25,9 @@ if os.getenv("ENVIRONMENT") == "production":
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routers import leadership, orders, products, refunds, slack, webhooks
+from routers import orders, products, slack, webhooks
 import debug_env
-from config import settings
+from config import config
 from version import get_version_info
 import logging
 import json
@@ -44,10 +47,10 @@ app = FastAPI(
     description="Backend API for Big Apple Rec Sports operations",
     version=get_version_info()["version"],
     docs_url="/docs"
-    if settings.environment != "production"
+    if config.environment != "production"
     else None,  # Disable docs in production
     redoc_url="/redoc"
-    if settings.environment != "production"
+    if config.environment != "production"
     else None,  # Disable redoc in production
 )
 
@@ -59,7 +62,7 @@ allowed_origins = [
     "http://localhost:8000",  # For local backend development
 ]
 
-if settings.environment == "development":
+if config.environment == "development":
     allowed_origins.append("*")
 
 app.add_middleware(
@@ -76,12 +79,15 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     logger = logging.getLogger(__name__)
 
-    # Log incoming request details
-    if request.url.path.startswith("/refunds/"):
+    # Log incoming request details (refunds logging removed)
+    if False:  # Disabled refunds-specific logging
         logger.info("🌐 === INCOMING REQUEST ===")
         logger.info(f"🌐 Method: {request.method}")
         logger.info(f"🌐 URL: {request.url}")
-        logger.info(f"🌐 Headers: {dict(request.headers)}")
+        headers = dict(request.headers)
+        auth_header = headers.pop("Authorization", None)
+        safe_headers = {**headers, "Authorization": f"****{auth_header[-5:]}" if auth_header else None}
+        logger.info(f"🌐 Headers: {safe_headers}")
 
         # Read and log the request body for POST requests
         if request.method == "POST":
@@ -107,10 +113,9 @@ async def log_requests(request: Request, call_next):
 
 
 # Include routers (prefix is already defined in the router)
-app.include_router(leadership.router)
 app.include_router(orders.router)
 app.include_router(products.router)
-app.include_router(refunds.router)
+# app.include_router(refunds.router)  # REMOVED: Refunds functionality moved to orders router
 app.include_router(slack.router)
 app.include_router(webhooks.router)
 app.include_router(debug_env.router)  # TEMPORARY DEBUG ROUTE
@@ -127,9 +132,9 @@ async def root():
         "full_version": version_info["full_version"],
         "codename": version_info["codename"],
         "last_updated": version_info["last_updated"],
-        "environment": settings.environment,
+        "environment": config.environment,
         "docs_url": "/docs"
-        if settings.environment != "production"
+        if config.environment != "production"
         else "Contact admin for documentation",
         "health_check": "/health",
     }
@@ -144,7 +149,7 @@ async def health_check():
         "version": version_info["version"],
         "build": version_info["build"],
         "full_version": version_info["full_version"],
-        "environment": settings.environment,
+        "environment": config.environment,
         "last_updated": version_info["last_updated"],
     }
 
@@ -159,6 +164,6 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        app, host="0.0.0.0", port=8000, reload=settings.environment == "development"
+        app, host="0.0.0.0", port=8000, reload=config.environment == "development"
     )
 # Test change

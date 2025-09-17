@@ -37,7 +37,7 @@ def test_health_check(client):
 
     print("🧪 Testing Health Check...")
 
-    response = client.get("/leadership/health")
+    response = client.get("/products/health")
     assert (
         response.status_code == 200
     ), f"Health check failed with status {response.status_code}"
@@ -59,7 +59,7 @@ def test_add_tags_endpoint(client):
     print("🧪 Testing addTags Endpoint...")
     print(f"📤 Sending {len(TEST_CSV_DATA)} rows to endpoint")
 
-    response = client.post("/leadership/addTags", json=payload)
+    response = client.post("/products/addLeadershipTags", json=payload)
 
     print(f"📊 Response Status: {response.status_code}")
 

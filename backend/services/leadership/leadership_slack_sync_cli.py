@@ -6,7 +6,7 @@ import os
 import re
 from typing import Dict, List, Optional, Tuple
 
-from config import settings
+from config import config
 from services.slack.usergroup_client import SlackUsergroupClient
 
 
@@ -85,7 +85,7 @@ def main() -> int:
 
     plans = build_group_plans(assignments, name_to_id, group_overrides)
 
-    token = settings.active_slack_bot_token
+    token = config.active_slack_bot_token
     client = SlackUsergroupClient(token) if token else None
     existing_handles: Dict[str, str] = {}
 

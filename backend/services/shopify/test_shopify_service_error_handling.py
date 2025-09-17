@@ -13,13 +13,13 @@ class TestShopifyServiceErrorHandling:
     def shopify_service(self):
         """Create a ShopifyService instance for testing."""
         with patch(
-            "backend.services.shopify.shopify_service.settings"
-        ) as mock_settings:
-            mock_settings.shopify_token = "test_token"
-            mock_settings.graphql_url = (
+            "backend.services.shopify.shopify_service.config"
+        ) as mock_config:
+            mock_config.shopify_token = "test_token"
+            mock_config.graphql_url = (
                 "https://test.myshopify.com/admin/api/2023-10/graphql.json"
             )
-            mock_settings.rest_url = "https://test.myshopify.com/admin/api/2023-10"
+            mock_config.rest_url = "https://test.myshopify.com/admin/api/2023-10"
             service = ShopifyService()
             return service
 

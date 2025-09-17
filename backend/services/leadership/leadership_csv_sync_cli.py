@@ -7,7 +7,7 @@ import os
 import re
 from typing import Dict, List, Optional, Tuple
 
-from config import settings
+from config import config
 from services.slack.usergroup_client import SlackUsergroupClient
 
 
@@ -131,7 +131,7 @@ def main() -> int:
     for handle, members in list(plans.items())[:15]:
         print(f"- {handle}: {len(members)} member(s)")
 
-    token = settings.active_slack_bot_token
+    token = config.active_slack_bot_token
     if not args.apply:
         print("✅ Dry run complete. Re-run with --apply to update Slack usergroups.")
         return 0
