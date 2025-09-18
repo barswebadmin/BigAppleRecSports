@@ -105,6 +105,7 @@ const productFieldEnums = {
     ],
     "Pickleball": [
       "Gotham Pickleball (46th and Vernon in LIC)",
+      "John Jay College (59th and 10th)",
       "Pickle1 (7 Hanover Square in LIC)"
     ],
     "Bowling": [
