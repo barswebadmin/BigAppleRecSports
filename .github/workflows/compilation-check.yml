@@ -147,16 +147,16 @@ jobs:
         echo "🔍 Linting GAS files for undefined identifiers (no-undef)..."
         npm init -y >/dev/null 2>&1 || true
         npm install --no-fund --no-audit --silent eslint@8
-        # Collect all .gs files under projects/*/src
-        FILES=$(find projects -type f -path '*/src/*' -name '*.gs')
-        if [ -n "$FILES" ]; then
-          npx eslint \
-            --no-eslintrc \
-            --ext .gs \
-            --rule 'no-undef:error' \
-            --env es6 \
-            --global 'Logger:false,UrlFetchApp:false,PropertiesService:false,Utilities:false,SpreadsheetApp:false,DriveApp:false,Session:false,FormApp:false,HtmlService:false,ContentService:false,ScriptApp:false,GmailApp:false' \
-            $FILES || { echo '❌ GAS no-undef check failed'; exit 1; }
+        # Lint all .gs files under projects/*/src (handle file paths with spaces)
+        if find projects -type f -path '*/src/*' -name '*.gs' | grep -q .; then
+          find projects -type f -path '*/src/*' -name '*.gs' -print0 | \
+            xargs -0 -r npx eslint \
+              --no-eslintrc \
+              --ext .gs \
+              --rule 'no-undef:error' \
+              --env es6 \
+              --global 'Logger:false,UrlFetchApp:false,PropertiesService:false,Utilities:false,SpreadsheetApp:false,DriveApp:false,Session:false,FormApp:false,HtmlService:false,ContentService:false,ScriptApp:false,GmailApp:false' \
+              || { echo '❌ GAS no-undef check failed'; exit 1; }
         else
           echo "ℹ️ No GAS source files found to lint"
         fi
