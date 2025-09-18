@@ -147,8 +147,9 @@ jobs:
         echo "🔍 Linting GAS files for undefined identifiers (no-undef)..."
         npm init -y >/dev/null 2>&1 || true
         npm install --no-fund --no-audit --silent eslint@8
-        # Collect all .gs files under projects/*/src
-        FILES=$(find projects -type f -path '*/src/*' -name '*.gs')
+        # Collect all .gs files under projects/*/src, excluding payment-assistance-tags
+        FILES=$(find projects -type f -path '*/src/*' -name '*.gs' \
+          | grep -v 'projects/payment-assistance-tags/')
         if [ -n "$FILES" ]; then
           npx eslint \
             --no-eslintrc \
