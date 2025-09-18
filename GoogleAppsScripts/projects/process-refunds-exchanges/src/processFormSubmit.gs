@@ -315,7 +315,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         emailSubject = `🔍 BARS Refund Form - Order Not Found (406)`;
         emailBody = `
           <h3>🔍 Order Not Found (406)</h3>
-          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Mode:</strong></p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
           <p><strong>Order:</strong> ${rawOrderNumber}</p>
           <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
