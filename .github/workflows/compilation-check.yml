@@ -103,7 +103,7 @@ jobs:
 
         # Check for basic JavaScript syntax errors in main files
         echo "📋 Checking JavaScript syntax..."
-        node -e "
+        node <<'NODE'
         const fs = require('fs');
         const path = require('path');
 
@@ -141,7 +141,7 @@ jobs:
         }
 
         console.log('✅ Google Apps Scripts compilation successful!');
-        "
+NODE
 
         # Lint for undefined identifiers using ESLint (no-undef)
         echo "🔍 Linting GAS files for undefined identifiers (no-undef)..."
