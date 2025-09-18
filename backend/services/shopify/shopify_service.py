@@ -6,6 +6,7 @@ import os
 import logging
 from .shopify_customer_utils import ShopifyCustomerUtils
 from . import shopify_order_utils
+from config import config
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -90,19 +90,19 @@ class SlackConfig:
             def __str__(self):
                 return self._id
 
-        JoeTest             = _Channel("C092RU7R6PL", "joe-test")
-        Registrations       = _Channel("C08J1EN7SFR", "registrations")
-        RegistrationRefunds = _Channel("C08J1EN7SFR", "registration-refunds")
-        Web                 = _Channel("C02KAENF6",   "web")
+        JoeTest             = _Channel("C092RU7R6PL", "#joe-test")
+        Registrations       = _Channel("C08J1EN7SFR", "#registrations")
+        RegistrationRefunds = _Channel("C08J1EN7SFR", "#registration-refunds")
+        Web                 = _Channel("C02KAENF6",   "#web")
 
         @classmethod
-        def all(cls) -> Dict[str, str]:
-            """Return {friendly_name: channel_id}."""
+        def all(cls) -> Dict[str, _Channel]:
+            """Return {friendly_name: {id, name}}."""
             return {
-                "joe-test": cls.JoeTest.id,
-                "registrations": cls.Registrations.id,
-                "registration-refunds": cls.RegistrationRefunds.id,
-                "web": cls.Web.id,
+                "joe-test": cls.JoeTest,
+                "registrations": cls.Registrations,
+                "registration-refunds": cls.RegistrationRefunds,
+                "web": cls.Web,
             }
 
     # --------------------

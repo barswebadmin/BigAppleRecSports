@@ -12,7 +12,15 @@ os.environ["ENVIRONMENT"] = "dev"
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from .slack_config import SlackConfig, SlackChannel, SlackUser, SlackGroup, SlackToken, Slack
+from config import config
+# from config.Slack import SlackConfig, SlackChannel, SlackUser, SlackGroup, SlackToken, Slack
+SlackConfig = config.Slack
+SlackChannel = config.SlackChannel
+SlackUser = config.SlackUser
+SlackGroup = config.SlackGroup
+SlackBot = config.SlackBot
+Slack = config.Slack
+
 
 def test_slack_config():
     """Test the new Slack configuration system"""
@@ -22,41 +30,36 @@ def test_slack_config():
     
     # Test channel access
     print("\n📺 Testing Channel Access:")
-    print(f"SlackConfig.Channel.RegistrationRefunds = {SlackConfig.Channel.RegistrationRefunds}")
-    print(f"SlackConfig.Channel.JoeTest = {SlackConfig.Channel.JoeTest}")
-    print(f"SlackChannel.RegistrationRefunds = {SlackChannel.RegistrationRefunds}")
-    print(f"SlackChannel.JoeTest = {SlackChannel.JoeTest}")
+    print(f"SlackChannel.RegistrationRefunds = {SlackChannel.RegistrationRefunds.id}")
+    print(f"SlackChannel.JoeTest = {SlackChannel.JoeTest.id}")
     
     # Test user access
     print("\n👤 Testing User Access:")
-    print(f"SlackConfig.User.Joe = {SlackConfig.User.Joe}")
-    print(f"SlackConfig.User.Here = {SlackConfig.User.Here}")
-    print(f"SlackUser.Joe = {SlackUser.Joe}")
+    print(f"SlackUser.Joe = {SlackUser.Joe.id}")
     print(f"SlackUser.Here = {SlackUser.Here}")
     
     # Test group access
     print("\n👥 Testing Group Access:")
-    print(f"SlackConfig.Group.Dodgeball = {SlackConfig.Group.Dodgeball}")
-    print(f"SlackConfig.Group.Kickball = {SlackConfig.Group.Kickball}")
-    print(f"SlackGroup.Dodgeball = {SlackGroup.Dodgeball}")
-    print(f"SlackGroup.Kickball = {SlackGroup.Kickball}")
+    print(f"SlackGroup.Kickball = {SlackGroup.Bowling.name}")
+    print(f"SlackGroup.Dodgeball = {SlackGroup.Dodgeball.name}")
+    print(f"SlackGroup.Kickball = {SlackGroup.Kickball.name}")
+    print(f"SlackGroup.Dodgeball = {SlackGroup.Pickleball.name}")
     
     # Test environment info
     print("\n🌍 Testing Environment Info:")
     print(f"SlackConfig.get_environment() = {SlackConfig.get_environment()}")
-    print(f"SlackConfig.is_production_mode() = {SlackConfig.is_production_mode()}")
+    print(f"SlackConfig.is_production() = {SlackConfig.is_production}")
     
     # Test dynamic lookups
     print("\n🔍 Testing Dynamic Lookups:")
-    print(f"SlackChannel.get_channel_id('registration-refunds') = {SlackChannel.get_channel_id('registration-refunds')}")
-    print(f"SlackUser.get_user_mention('joe') = {SlackUser.get_user_mention('joe')}")
-    print(f"SlackConfig.get_all_groups()['dodgeball'] = {SlackConfig.get_all_groups().get('dodgeball')}")
+    print(f"SlackChannel.get_channel_id('registration-refunds') = {SlackChannel.all()['registration-refunds'].name}")
+    print(f"SlackConfig.Groups.all()['dodgeball'] = {SlackGroup.all()['dodgeball'].get('name')}")
     
     # Test convenience alias
     print("\n⚡ Testing Convenience Alias:")
-    print(f"Slack.Channel.RegistrationRefunds = {Slack.Channel.RegistrationRefunds}")
-    print(f"Slack.User.Joe = {Slack.User.Joe}")
-    print(f"Slack.Group.Dodgeball = {Slack.Group.Dodgeball}")
+    print(f"Slack.Channels.RegistrationRefunds = {SlackChannel.RegistrationRefunds.name}")
+    print(f"Slack.User.Joe = {SlackUser.Joe.name}")
+    print(f"Slack.Group.Dodgeball = {SlackGroup.Dodgeball.name}")
     
     print("\n" + "=" * 50)
     print("✅ Slack Configuration System Test Completed!")
@@ -69,33 +72,33 @@ def test_api_client_with_config():
     
     # Import the SlackService instead of the old API client
     try:
-        from services.slack.slack_service import SlackService
+        from new_structure_target.clients.slack.slack_service import SlackService
         
         # Create service using config
         service = SlackService()
         
-        print(f"📺 Testing channel: {SlackConfig.Channel.JoeTest}")
+        print(f"📺 Testing channel: {SlackChannel.JoeTest.id}")
         
         # Get a token for testing
-        token = SlackConfig.Token.get_all().get('refunds') or "test_token"
+        token = SlackBot.Dev.require_token()
         print(f"🔑 Using token: {token[:10]}..." if len(token) > 10 else f"🔑 Using token: {token}")
         
         # Test sending message with new token-per-operation approach
         print("\n📤 Testing send_message with token:")
         result = service.send_message(
-            channel_id=SlackConfig.Channel.JoeTest,
-            message_text="🧪 Test message using SlackConfig.Channel.JoeTest",
-            token=token,
-            slack_text="Test with config"
+            channel=SlackChannel.JoeTest.id,
+            token=SlackBot.Dev.require_token(),
+            message_text=f"🧪 Test message to {SlackChannel.JoeTest.name} using SlackBot.Dev, message_text",
+            slack_text=f"Test message to {SlackChannel.JoeTest.name} using SlackBot.Dev, slack_text"
         )
         print(f"✅ Result: {result.get('ok', False)}")
         
         # Test sending another message to show multi-channel capability
         print("\n🔄 Testing send_message to different channel:")
         result = service.send_message(
-            channel_id=SlackConfig.Channel.RegistrationRefunds,
-            message_text="🧪 Test message to registration-refunds channel",
-            token=token,
+            channel=SlackChannel.RegistrationRefunds.id,
+            token=SlackBot.Dev.require_token(),
+            message_text=f"🧪 Test message to {SlackChannel.RegistrationRefunds.name} channel, message_text",
             slack_text="Test with different channel"
         )
         print(f"✅ Result: {result.get('ok', False)}")
@@ -103,10 +106,10 @@ def test_api_client_with_config():
         # Test ephemeral message (only visible to specific user)
         print("\n👤 Testing send_ephemeral_message:")
         result = service.send_ephemeral_message(
-            channel_id=SlackConfig.Channel.JoeTest,
-            user_id=SlackConfig.User.Joe,
+            channel_id=SlackChannel.JoeTest.id,
+            token=SlackBot.Dev.require_token(),
+            user_id=SlackUser.Joe.id,
             message_text="🤫 This ephemeral message is only visible to Joe",
-            token=token,
             slack_text="Ephemeral test"
         )
         print(f"✅ Result: {result.get('ok', False)}")

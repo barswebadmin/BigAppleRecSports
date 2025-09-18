@@ -4,10 +4,11 @@ Quick test script to check if order 42309 exists in Shopify
 """
 import requests
 import json
+from backend.config import config
 
 # Use your production values
-shopify_graphql_url = os.environ.get("SHOPIFY_URL_GRAPHQL")
-shopify_token = os.environ.get("SHOPIFY_TOKEN_ADMIN")
+shopify_graphql_url = config.Shopify.graphql_url
+shopify_token = config.Shopify.token
 
 #TODO use the new slack_service / config system
 def test_order_search():
