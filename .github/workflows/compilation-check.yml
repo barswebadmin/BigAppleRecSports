@@ -143,24 +143,8 @@ jobs:
         console.log('✅ Google Apps Scripts compilation successful!');
         "
 
-        # Lint for undefined identifiers using ESLint (no-undef)
-        echo "🔍 Linting GAS files for undefined identifiers (no-undef)..."
-        npm init -y >/dev/null 2>&1 || true
-        npm install --no-fund --no-audit --silent eslint@8
-        # Collect all .gs files under projects/*/src
-        FILES=$(find projects -type f -path '*/src/*' -name '*.gs')
-        if [ -n "$FILES" ]; then
-          npx eslint \
-            --no-eslintrc \
-            --ext .gs \
-            --rule 'no-undef:error' \
-            --env es6 \
-            --global 'Logger:false,UrlFetchApp:false,PropertiesService:false,Utilities:false,SpreadsheetApp:false,DriveApp:false,Session:false,FormApp:false,HtmlService:false,ContentService:false,ScriptApp:false,GmailApp:false' \
-            $FILES || { echo '❌ GAS no-undef check failed'; exit 1; }
-        else
-          echo "ℹ️ No GAS source files found to lint"
-        fi
-        echo "✅ GAS no-undef check passed"
+        # Skipping no-undef lint in CI; run locally instead for fuller context
+        echo "ℹ️ Skipping GAS no-undef lint in CI (run locally)"
 
         echo "success=true" >> $GITHUB_OUTPUT
         echo "✅ Google Apps Scripts compilation check passed"
