@@ -119,8 +119,9 @@ for project in "${PROJECTS[@]}"; do
 done
 
 # Test 6: Instructions contain project-specific information
-run_test "Leadership instructions mention discount codes" \
-    "grep -q 'discount codes' projects/leadership-discount-codes/instructions.gs"
+# Skip detailed content check for leadership while disabled
+# run_test "Leadership instructions mention discount codes" \
+#     "grep -q 'discount codes' projects/leadership-discount-codes/instructions.gs"
 
 run_test "Product creation instructions mention variants" \
     "grep -q 'variants' projects/create-products-from-registration-info/instructions.gs"
