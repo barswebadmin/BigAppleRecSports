@@ -109,12 +109,6 @@ def send_to_joetest(message: str) -> Dict[str, Any]:
         Dict containing success status and response details
     """
     try:
-        # Get registrations bot token using clean API
-        token = SlackConfig.Token.RegistrationsBot()
-        if not token:
-            logger.error("SLACK_REGISTRATIONS_BOT_TOKEN not found in environment")
-            return {"success": False, "error": "Missing registrations bot token"}
-        
         # Create slack service and send message
         slack_service = SlackService()
         result = slack_service.send_message(
