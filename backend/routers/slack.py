@@ -3,9 +3,9 @@ import logging
 import json
 
 from services.orders import OrdersService
-from services.slack import SlackService
-from services.slack_management.usergroup_client import SlackUsergroupClient
-from services.slack_management.users_client import SlackUsersClient
+from new_structure_target.clients.slack.slack_service import SlackService
+from new_structure_target.clients.slack.slack_management.usergroup_client import SlackUsergroupClient
+from new_structure_target.clients.slack.slack_management.users_client import SlackUsersClient
 from config import config
 
 logger = logging.getLogger(__name__)

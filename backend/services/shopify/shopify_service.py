@@ -55,11 +55,12 @@ mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
 class ShopifyService:
     def __init__(self):
         self.shopify_customer_utils = ShopifyCustomerUtils(self._make_shopify_request)
-        self.graphql_url = config.graphql_url
-        self.rest_url = config.rest_url
+        self.graphql_url = config.Shopify.graphql_url
+        self.rest_url = config.Shopify.rest_url
+        self.token = config.Shopify.token
         self.headers = {
             "Content-Type": "application/json",
-            "X-Shopify-Access-Token": config.shopify_token,
+            "X-Shopify-Access-Token": self.token,
         }
 
     def _get_mock_response(self, query: Dict[str, Any]) -> Dict[str, Any]:
@@ -665,7 +666,7 @@ class ShopifyService:
 
         # For development/testing mode when Shopify credentials aren't available
         should_use_mock = (
-            not config.shopify_token
+            not self.token
             or config.environment.lower() in ["dev", "test"]
         )
 

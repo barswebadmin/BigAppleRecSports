@@ -37,8 +37,8 @@ def evaluate_product_update_webhook(body: bytes, gas_client: GASClient) -> Dict[
         product_handle = product_data.get("handle", "")
 
         # Generate product URLs
-        shopify_admin_url = f"{config.shopify_admin_url}/products/{product_id}"
-        shopify_store_url = f"https://{config.shopify_store}/products/{product_handle}" if product_handle else ""
+        shopify_admin_url = f"{config.Shopify.admin_url}/products/{product_id}"
+        shopify_store_url = f"https://{config.Shopify.store_id}/products/{product_handle}" if product_handle else ""
 
         # Early exit checks - skip inventory processing if any of these conditions are true
         early_exit_reason = _check_early_exit_conditions(product_data)
@@ -250,7 +250,7 @@ def _generate_analysis(
         product_details.append(f"*Sold Out At:* {formatted_date}")
     
     # Add admin URL if available
-    shopify_admin_url = f"{config.shopify_admin_url}/products/{product_id}"
+    shopify_admin_url = f"{config.Shopify.admin_url}/products/{product_id}"
     product_details.append(f"*Shopify Product URL:* <{shopify_admin_url}|View in Shopify>")
     product_details.append(f"Please add the product to the waitlist form options (automation is coming soon): <{'https://docs.google.com/forms/d/14ID7mSW747aO1CtIEWzamXreeIBimBsVgmQ6ZqCMadw/edit#responsesc'}|View in Google Forms>")
     product_details.append(f"*Waitlist Responses:* <{'https://docs.google.com/spreadsheets/d/1rrmEu6QKNnDoNJs2XnAD08W-7smUhFPKYnNC5y7iNI0?resourcekey=&usp=forms_web_b&urp=linked#gid=1214906876'}|View in Google Sheets>")

@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 import dateutil.parser
 
 from services.orders import OrdersService
-from services.slack.slack_service import SlackService
+from new_structure_target.clients.slack.slack_service import SlackService
+from config import config
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -24,6 +25,8 @@ class SlackNotificationRequest(BaseModel):
     order_data: Optional[Dict[str, Any]] = None
     sheet_link: Optional[str] = None  # Google Sheets link to the specific row
     request_submitted_at: Optional[str] = None
+
+SlackChannel = config.SlackChannel
 
 
 @router.get("/{order_number}")
@@ -223,9 +226,9 @@ async def send_refund_to_slack(
                         f"Notes: {request.notes}\nSubmitted: {request_initiated_at}"
                     )
                     slack_result = slack_service.send_message(
-                        channel=slackChannelName or 'registration-refunds',
+                        channel=SlackChannel.RegistrationRefunds.id,
+                        token=config.SlackBot.Registrations.require_token(),
                         message_text=message_text,
-                        bot='registrations'
                     )
                     logger.info(f"✅ Slack notification sent: {slack_result.get('success')}")
                 except Exception as slack_error:
@@ -282,9 +285,9 @@ async def send_refund_to_slack(
                 f"Notes: {request.notes}"
             )
             slack_result = slack_service.send_message(
-                channel=slackChannelName or 'registration-refunds',
+                channel=slackChannelName or SlackChannel.RegistrationRefunds.id,
+                token=config.SlackBot.Registrations.require_token(),
                 message_text=slack_message,
-                bot='registrations'
             )
 
             raise HTTPException(
@@ -332,9 +335,9 @@ async def send_refund_to_slack(
                     f"Notes: {request.notes}"
                 )
                 slack_result = slack_service.send_message(
-                    channel=slackChannelName or 'registration-refunds',
+                    channel=slackChannelName or SlackChannel.RegistrationRefunds.id,
+                    token=config.SlackBot.Registrations.require_token(),
                     message_text=dup_msg,
-                    bot='registrations'
                 )
                 logger.info(f"✅ Slack duplicate refund notification sent: {slack_result.get('success')}")
             except Exception as slack_error:
@@ -386,9 +389,9 @@ async def send_refund_to_slack(
             f"Notes: {request.notes}"
         )
         slack_result = slack_service.send_message(
-            channel=slackChannelName or 'registration-refunds',
+            channel=slackChannelName or SlackChannel.RegistrationRefunds.id,
+            token=config.SlackBot.Registrations.require_token(),
             message_text=success_msg,
-            bot='registrations'
         )
 
         if not slack_result["success"]:

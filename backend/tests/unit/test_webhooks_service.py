@@ -179,7 +179,7 @@ class TestWebhooksService:
         from config import config
 
         expected = {
-            "product_url": f"{config.shopify_admin_url}/products/7450381877342",
+            "product_url": f"{config.Shopify.admin_url}/products/7450381877342",
             "sport": "Dodgeball",
             "day": "Tuesday",
             "division": "Open",
@@ -195,7 +195,7 @@ class TestWebhooksService:
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
         expected = {
-            "product_url": f"{config.shopify_admin_url}/products/123",
+            "product_url": f"{config.Shopify.admin_url}/products/123",
             "sport": None,
             "day": None,
             "division": None,
@@ -211,7 +211,7 @@ class TestWebhooksService:
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
         expected = {
-            "product_url": f"{config.shopify_admin_url}/products/456",
+            "product_url": f"{config.Shopify.admin_url}/products/456",
             "sport": None,
             "day": None,
             "division": None,
@@ -279,7 +279,7 @@ class TestWebhooksService:
             # Get the expected admin URL from config (same as the service uses)
             assert (
                 result["product_url"]
-                == f"{config.shopify_admin_url}/products/789"
+                == f"{config.Shopify.admin_url}/products/789"
             )
 
     @patch("requests.post")
@@ -306,7 +306,7 @@ class TestWebhooksService:
 
             from config import config
             expected_camel_case = {
-                "productUrl": f"{config.shopify_admin_url}/products/123",
+                "productUrl": f"{config.Shopify.admin_url}/products/123",
                 "sport": "Dodgeball", 
                 "day": "Monday",
                 "division": "Open",

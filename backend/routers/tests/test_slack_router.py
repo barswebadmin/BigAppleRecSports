@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
-from services.slack import SlackService
+from new_structure_target.clients.slack.slack_service import SlackService
 
 
 class TestSlackWebhook:
@@ -66,7 +66,7 @@ class TestSlackWebhook:
     @pytest.fixture  
     def mock_slack_service(self):
         """Use a real SlackService but mock its dependencies to mimic production exactly"""
-        from services.slack.slack_service import SlackService
+        from new_structure_target.clients.slack.slack_service import SlackService
         from unittest.mock import AsyncMock, Mock, patch
         
         # Create a real SlackService instance

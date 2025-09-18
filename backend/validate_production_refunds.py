@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from config import config
 from services.orders import OrdersService
-from services.slack.slack_service import SlackService
+from new_structure_target.clients.slack.slack_service import SlackService
 
 
 def print_header(title: str):

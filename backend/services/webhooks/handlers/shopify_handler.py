@@ -9,9 +9,8 @@ from typing import Dict, Any
 from .product_update_handler import evaluate_product_update_webhook
 from .order_create_handler import evaluate_order_create_webhook
 from ..integrations import GASClient
-from ...slack.slack_service import SlackService
+from new_structure_target.clients.slack.slack_service import SlackService
 from ...shopify.shopify_service import ShopifyService
-from ...slack.slack_config import SlackConfig
 
 logger = logging.getLogger(__name__)
 

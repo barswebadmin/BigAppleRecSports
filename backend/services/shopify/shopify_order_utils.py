@@ -17,7 +17,7 @@ def build_shopify_order_url(order_id: str) -> str:
         Full admin URL to the order
     """
     # Use the admin URL from config
-    base_url = config.shopify_admin_url
+    base_url = config.Shopify.admin_url
     return f"{base_url}/orders/{order_id}"
 
 

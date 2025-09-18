@@ -6,14 +6,15 @@ import requests
 import json
 
 # Use your production values
-SHOPIFY_STORE = "09fe59-3.myshopify.com"
-SHOPIFY_TOKEN = "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"
+shopify_graphql_url = os.environ.get("SHOPIFY_URL_GRAPHQL")
+shopify_token = os.environ.get("SHOPIFY_TOKEN_ADMIN")
 
+#TODO use the new slack_service / config system
 def test_order_search():
-    url = f"https://{SHOPIFY_STORE}/admin/api/2025-01/graphql.json"
+    url = shopify_graphql_url
     headers = {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": SHOPIFY_TOKEN,
+        "X-Shopify-Access-Token": shopify_token,
     }
 
     # Test 1: Search for order #42309 (exact format backend uses)
@@ -37,8 +38,6 @@ def test_order_search():
     }
 
     print("🔍 Testing Shopify API directly...")
-    print(f"📍 Store: {SHOPIFY_STORE}")
-    print(f"🔑 Token: {SHOPIFY_TOKEN[:15]}...")
     print()
 
     print("📤 Test 1: Searching for 'name:#42309'")

@@ -152,7 +152,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
             logger.warning(f"Date validation warning: {warning}")
 
     # For development/testing mode when Shopify credentials aren't available
-    if not config.shopify_token:
+    if not config.Shopify.token:
         logger.warning("No Shopify token available - returning mock data for testing")
         mock_product_id = "8123456789012345678"
         mock_variant_id = "gid://shopify/ProductVariant/45123456789012345678"

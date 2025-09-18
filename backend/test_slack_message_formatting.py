@@ -12,7 +12,7 @@ except ImportError:
 
 from unittest.mock import Mock, patch
 from datetime import datetime
-from services.slack import SlackService
+from new_structure_target.clients.slack.slack_service import SlackService
 
 
 class TestSlackMessageFormatting:

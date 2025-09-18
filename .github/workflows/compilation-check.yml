@@ -47,7 +47,7 @@ jobs:
         cd backend
 
         # Set minimal environment variables for compilation
-        export SHOPIFY_STORE="test-store.myshopify.com"
+        export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com"
         export SHOPIFY_TOKEN="test_token"
         export ENVIRONMENT="test"
         export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
@@ -263,13 +263,13 @@ jobs:
 
     - name: Set up test environment variables
       run: |
-        echo "SHOPIFY_STORE=test-store.myshopify.com" >> $GITHUB_ENV
+        echo "SHOPIFY_URL_ADMIN_DOMAIN=test-store.myshopify.com" >> $GITHUB_ENV
         echo "SHOPIFY_TOKEN=test_token" >> $GITHUB_ENV
         echo "ENVIRONMENT=test" >> $GITHUB_ENV
 
     - name: Run Backend Tests
       run: |
-        export SHOPIFY_STORE="test-store.myshopify.com"
+        export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com"
         export SHOPIFY_TOKEN="test_token"
         export ENVIRONMENT="test"
         export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
@@ -281,7 +281,7 @@ jobs:
         python -m pytest tests/integration/ -v
         echo "✅ Backend tests completed!"
       env:
-        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_URL_ADMIN_DOMAIN: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
         ENVIRONMENT: test
         SLACK_REFUNDS_BOT_TOKEN: test_slack_token

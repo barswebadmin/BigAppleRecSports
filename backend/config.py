@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+from new_structure_target.clients.slack.core.slack_config import SlackConfig as _SlackConfig
+from new_structure_target.clients.shopify.core.shopify_config import ShopifyConfig as _ShopifyConfig
 
 # Always load .env file, but command line environment variables will override
 load_dotenv('../.env', override=False)
@@ -8,35 +10,14 @@ load_dotenv('../.env', override=False)
 class Config:
     def __init__(self):
         self.environment = os.getenv("ENVIRONMENT", "dev").lower()
-
-        # Environment-specific Shopify configuration
-        if self.environment in ["staging", "production"]:
-            # Use production Shopify credentials for staging and production
-            self.shopify_store = os.getenv("SHOPIFY_STORE")
-            self.shopify_token = os.getenv("SHOPIFY_TOKEN")
-            self.shopify_location_id = os.getenv("SHOPIFY_LOCATION_ID")
-            self.shopify_rest_url = os.getenv("SHOPIFY_REST_URL")
-            self.shopify_admin_url = os.getenv("SHOPIFY_ADMIN_URL")
-        else:
-            # Use dev/test Shopify credentials (if any) or fallback to production
-            self.shopify_store = os.getenv(
-                "SHOPIFY_DEV_STORE",
-                "SHOPIFY_DEV_STORE"
-            )
-            self.shopify_token = os.getenv(
-                "SHOPIFY_DEV_TOKEN", "SHOPIFY_DEV_TOKEN"
-            )
-            self.shopify_location_id = os.getenv(
-                "SHOPIFY_DEV_LOCATION_ID", "SHOPIFY_DEV_LOCATION_ID"
-            )
-            self.shopify_rest_url = os.getenv(
-                "SHOPIFY_DEV_REST_URL", "SHOPIFY_DEV_REST_URL"
-            )
-            self.shopify_admin_url = os.getenv(
-                "SHOPIFY_DEV_ADMIN_URL", 
-                os.getenv("SHOPIFY_ADMIN_URL")
-            )
-
+        # Expose SlackConfig under concise aliases for app usage
+        self.Slack = _SlackConfig(self.environment)
+        self.SlackBot = _SlackConfig.Bots
+        self.SlackChannel = _SlackConfig.Channels
+        self.SlackUser = _SlackConfig.Users
+        self.SlackGroup = _SlackConfig.Groups
+        # Shopify
+        self.Shopify = _ShopifyConfig(self.environment)
 
         # AWS Lambda URLs for scheduling
         self.aws_schedule_product_changes_url = os.getenv(
@@ -61,39 +42,16 @@ class Config:
             else ["*"]
         )
 
-        # Token validation based on environment
-        if self.environment in ["staging", "production"] and not self.shopify_token:
-            raise ValueError(
-                "SHOPIFY_TOKEN environment variable is required for staging/production"
-            )
-        elif self.environment in ["dev", "test"] and not self.shopify_token:
-            print(
-                f"[INFO] No SHOPIFY_TOKEN provided for {self.environment} environment - will use mocks"
-            )
-
-        # Debug: Log environment information in CI
-        if os.getenv("CI"):
-            print(f"[DEBUG] Environment: {self.environment}")
-            print(f"[DEBUG] SHOPIFY_TOKEN present: {bool(self.shopify_token)}")
-            print(f"[DEBUG] ENVIRONMENT env var: {os.getenv('ENVIRONMENT')}")
-
     @property
-    def graphql_url(self):
-        return f"https://{self.shopify_store}/admin/api/2025-07/graphql.json"
-
-    @property
-    def rest_url(self):
-        return (
-            self.shopify_rest_url or f"https://{self.shopify_store}/admin/api/2025-07"
-        )
-
-    @property
-    def is_production_mode(self) -> bool:
+    def is_production(self) -> bool:
         """
         Determine if we're in production mode based on ENVIRONMENT.
         Production mode: makes real API calls, no debug prefixes
         """
-        return self.environment.lower() == "production"
+        return "prod" in self.environment.lower()
+    
+
+    
 
 
 

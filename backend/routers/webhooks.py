@@ -42,6 +42,9 @@ async def handle_shopify_webhook(request: Request):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     event_type = headers.get("x-shopify-topic")
+
+    # logger.info(f"🎯 SHOPIFY WEBHOOK RECEIVED: {event_type}")
+    # logger.info(f"🎯 SHOPIFY WEBHOOK BODY: {body.decode('utf-8', errors='replace')}")
     
     # Route based on event type
     if event_type == "products/update":
