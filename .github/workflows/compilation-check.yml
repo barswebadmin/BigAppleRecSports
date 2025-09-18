@@ -147,17 +147,22 @@ NODE
         echo "🔍 Linting GAS files for undefined identifiers (no-undef)..."
         npm init -y >/dev/null 2>&1 || true
         npm install --no-fund --no-audit --silent eslint@8
-        # Run ESLint over project directories to safely handle filenames with spaces
+        # Lint only instructions files to avoid cross-file symbol false-positives
         if [ -d projects ]; then
-          npx eslint \
-            --no-eslintrc \
-            --ext .gs \
-            --rule 'no-undef:error' \
-            --env es6 \
-            --global 'Logger:false,UrlFetchApp:false,PropertiesService:false,Utilities:false,SpreadsheetApp:false,DriveApp:false,Session:false,FormApp:false,HtmlService:false,ContentService:false,ScriptApp:false,GmailApp:false' \
-            --ignore-pattern 'projects/payment-assistance-tags/**' \
-            --ignore-pattern '**/*.gs.disabled' \
-            'projects' || { echo '❌ GAS no-undef check failed'; exit 1; }
+          FILES=$(find projects \
+            -type f \( -name 'instructions.gs' -o -path '*/src/core/instructions.gs' \) \
+            | grep -v 'projects/payment-assistance-tags/')
+          if [ -n "$FILES" ]; then
+            npx eslint \
+              --no-eslintrc \
+              --ext .gs \
+              --rule 'no-undef:error' \
+              --env es6 \
+              --global 'Logger:false,UrlFetchApp:false,PropertiesService:false,Utilities:false,SpreadsheetApp:false,DriveApp:false,Session:false,FormApp:false,HtmlService:false,ContentService:false,ScriptApp:false,GmailApp:false,MailApp:false,CacheService:false,console:false' \
+              $FILES || { echo '❌ GAS no-undef check failed'; exit 1; }
+          else
+            echo "ℹ️ No GAS instructions files found to lint"
+          fi
         else
           echo "ℹ️ No GAS source files found to lint"
         fi
