@@ -5,6 +5,7 @@ from pydantic import (
     ValidationError,
 )
 from enum import Enum
+from typing import List, Optional
 from .regular_season_basic_details import RegularSeasonBasicDetails
 from .product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
@@ -27,6 +28,7 @@ class ProductCreationRequest(BaseModel):
     optionalLeagueInfo: OptionalLeagueInfo
     importantDates: ImportantDates
     inventoryInfo: InventoryInfo
+    tags: Optional[List[str]] = None
 
     model_config = ConfigDict(use_enum_values=True)
 

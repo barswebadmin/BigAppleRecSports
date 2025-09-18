@@ -10,6 +10,7 @@ from .product_update_handler import evaluate_product_update_webhook
 from .order_create_handler import evaluate_order_create_webhook
 from ..integrations import GASClient
 from ...slack.slack_service import SlackService
+from ...shopify.shopify_service import ShopifyService
 from ...slack.slack_config import SlackConfig
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,19 @@ def handle_shopify_webhook(headers: Dict[str, str], body: bytes, gas_client: GAS
                         logger.info(f"✅ Successfully added '{product_title}' to waitlist form")
                     else:
                         logger.error(f"❌ Failed to add product to waitlist form: {gas_result}")
+
+                    # Additionally, tag the product as waitlist-only in Shopify (best-effort)
+                    try:
+                        product_id = result.get("data", {}).get("product_id")
+                        if product_id:
+                            shopify_service = ShopifyService()
+                            tag_result = shopify_service.set_product_as_waitlist_only(str(product_id))
+                            if not tag_result.get("success"):
+                                logger.error(f"❌ Failed to set waitlist-only tag: {tag_result}")
+                            else:
+                                logger.info("✅ Product tagged as waitlist-only in Shopify")
+                    except Exception as tag_err:
+                        logger.error(f"❌ Error tagging product as waitlist-only: {tag_err}")
                         
                 except Exception as e:
                     logger.error(f"❌ Failed to process GAS waitlist integration: {e}")

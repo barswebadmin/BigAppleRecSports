@@ -877,3 +877,74 @@ class ShopifyService:
                 "error": "unexpected_response",
                 "message": "Unexpected response format",
             }
+
+    def set_product_as_waitlist_only(self, product_id: str) -> Dict[str, Any]:
+        """
+        Set a product's tags to include "waitlist-only" via GraphQL productUpdate.
+
+        Args:
+            product_id: Shopify product ID (numeric or full GID)
+
+        Returns:
+            Dict with success flag and returned product/tags or error details.
+        """
+        try:
+            # Normalize to Shopify GID if a numeric ID is provided
+            if isinstance(product_id, str) and product_id.startswith("gid://shopify/Product/"):
+                product_gid = product_id
+            else:
+                product_gid = f"gid://shopify/Product/{product_id}"
+
+            mutation = (
+                "mutation {\n"
+                "  productUpdate(input: {id: \"" + product_gid + "\", tags: [\"waitlist-only\"]}) {\n"
+                "    product { id tags }\n"
+                "    userErrors { field message }\n"
+                "  }\n"
+                "}"
+            )
+
+            payload = {"query": mutation}
+            result = self._make_shopify_request(payload)
+
+            if not result:
+                logger.error("❌ productUpdate failed - raw response: None")
+                return {"success": False, "error": "no_response", "message": "No response from Shopify"}
+
+            if "errors" in result:
+                try:
+                    logger.error(f"❌ productUpdate failed - GraphQL errors. Raw response: {json.dumps(result, indent=2)}")
+                except Exception:
+                    logger.error("❌ productUpdate failed - GraphQL errors. Raw response present but could not be serialized")
+                return {"success": False, "error": "graphql_errors", "details": result["errors"]}
+
+            update = result.get("data", {}).get("productUpdate", {})
+            user_errors = update.get("userErrors", [])
+            if user_errors:
+                try:
+                    logger.error(f"❌ productUpdate failed - userErrors present. Raw response: {json.dumps(result, indent=2)}")
+                except Exception:
+                    logger.error("❌ productUpdate failed - userErrors present. Raw response present but could not be serialized")
+                return {
+                    "success": False,
+                    "error": "user_errors",
+                    "details": user_errors,
+                }
+
+            product = update.get("product")
+            if not product:
+                try:
+                    logger.error(f"❌ productUpdate failed - no product returned. Raw response: {json.dumps(result, indent=2)}")
+                except Exception:
+                    logger.error("❌ productUpdate failed - no product returned. Raw response present but could not be serialized")
+                return {
+                    "success": False,
+                    "error": "no_product_returned",
+                    "message": "productUpdate returned no product",
+                }
+
+            return {"success": True, "product": product}
+
+        except Exception as e:
+            logger.error(f"Error setting product {product_id} as waitlist-only: {e}")
+            return {"success": False, "error": str(e)}

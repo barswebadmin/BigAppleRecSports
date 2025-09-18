@@ -53,7 +53,7 @@ def evaluate_product_update_webhook(body: bytes, gas_client: GASClient) -> Dict[
             }
             
             # Generate analysis with Slack blocks
-            result = _generate_analysis(product_data, False, "registration_not_yet_open", data)
+            result = _generate_analysis(product_data, False, early_exit_reason, data)
             
             # Return result structure
             return result
@@ -109,6 +109,22 @@ def _check_early_exit_conditions(product_data: Dict[str, Any]) -> Optional[str]:
     Returns:
         String reason for early exit if any condition is met, None otherwise
     """
+    # Check if product is already marked as waitlist-only via tags
+    tags_value = product_data.get("tags")
+    tags_list: List[str] = []
+    if isinstance(tags_value, list):
+        tags_list = [str(t).strip().lower() for t in tags_value]
+    elif isinstance(tags_value, str):
+        # Shopify often sends tags as a comma-separated string
+        tags_list = [t.strip().lower() for t in tags_value.split(",") if t.strip()]
+    if "waitlist-only" in tags_list:
+        try:
+            # Log the raw webhook payload to validate waitlist-only state
+            logger.info(f"🧾 Raw product webhook payload (waitlist-only detected): {json.dumps(product_data)[:4000]}")
+        except Exception:
+            logger.info("🧾 Raw product payload available but could not be serialized for logging")
+        return "already_waitlisted"
+
     # Check if status is draft
     status = product_data.get("status", "").lower()
     if status == "draft":
@@ -181,6 +197,12 @@ def _generate_analysis(
             "status": "Registration Not Open",
             "description": "Product published recently or is in draft status",
             "color": "#FFA500"  # Orange
+        },
+        "already_waitlisted": {
+            "emoji": "🔒",
+            "status": "Already Waitlisted",
+            "description": "Product is already marked as waitlist-only; skipping processing",
+            "color": "#808080"  # Gray
         },
         "product_not_sold_out": {
             "emoji": "✅", 

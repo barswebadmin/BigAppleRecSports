@@ -421,7 +421,19 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
         description_html.replace('"', '\\"').replace("\n", "\\n").replace("\r", "")
     )
 
-    # Build GraphQL query (exact match to GAS structure)
+    # Determine tags: prefer request-provided tags; fallback to defaults used previously
+    request_tags = getattr(validated_request, "tags", None) or []
+    if request_tags:
+        safe_tags_list = [str(t).replace('"', '\\"') for t in request_tags]
+    else:
+        default_tags = [
+            sport_name_value,
+            f"{'WTNB' if division_value == 'WTNB+' else division_value} Division",
+        ]
+        safe_tags_list = [str(t).replace('"', '\\"') for t in default_tags]
+    tags_literal = ", ".join([f'"{t}"' for t in safe_tags_list])
+
+    # Build GraphQL query (exact match to GAS structure, with dynamic tags)
     query = {
         "query": f"""mutation {{
           productCreate(
@@ -436,7 +448,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
               title: "{title}",
               status: ACTIVE,
               category: "gid://shopify/TaxonomyCategory/sg-4",
-              tags: ["{validated_request.sportName}", "{'WTNB' if basic_details.division == 'WTNB+' else basic_details.division} Division"],
+              tags: [{tags_literal}],
               descriptionHtml: "{escaped_description}"
             }}) {{
             product {{
