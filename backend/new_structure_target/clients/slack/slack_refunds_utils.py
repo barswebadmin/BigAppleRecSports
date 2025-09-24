@@ -88,17 +88,9 @@ class SlackRefundsUtils:
                 "action_buttons": []
             }
 
-    def get_sport_group_mention(self, product_title: str) -> str:
-        """Get sport group mention for a product (delegates to message builder)"""
-        return self.message_builder.get_sport_group_mention(product_title)
-
-    def get_order_url(self, order_id: str, order_number: str) -> str:
-        """Get formatted order URL (delegates to message builder)"""
-        return self.message_builder.get_order_url(order_id, order_number)
-
-    def get_product_url(self, product_id: str) -> str:
-        """Get formatted product URL (delegates to message builder)"""
-        return self.message_builder.get_product_url(product_id)
+    # def get_sport_group_mention(self, product_title: str) -> str:
+    #     """Get sport group mention for a product (delegates to message builder)"""
+    #     return self.message_builder.get_sport_group_mention(product_title)
 
     def build_comprehensive_success_message(self, *args, **kwargs):
         """Deprecated method - refund functionality removed."""

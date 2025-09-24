@@ -6,7 +6,7 @@ import logging
 from typing import Dict, Any, Union
 from datetime import datetime
 from models.products.product_creation_request import ProductCreationRequest
-from services.shopify.shopify_service import ShopifyService
+from new_structure_target.clients.shopify.shopify_service import ShopifyService
 from utils.date_utils import (
     format_date_only,
     format_date_and_time,

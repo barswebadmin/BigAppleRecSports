@@ -3,28 +3,22 @@ from typing import Optional
 
 
 class ShopifyConfig:
-    def __init__(self, environment: str):
+    def __init__(self, ENVIRONMENT: str):
         # Environment-specific Shopify configuration
-        if environment in ["staging", "production"]:
+        if ENVIRONMENT in ["staging", "production"]:
             # Use production Shopify credentials for staging and production
             self._store_id = os.getenv("SHOPIFY_STORE_ID")
             self._token = os.getenv("SHOPIFY_TOKEN_ADMIN")
             self._location_id = os.getenv("SHOPIFY_LOCATION_ID")
-            self._webhook_secret = os.getenv("SHOPIFY_SECRET_WEBHOOK")
         else:
             # Use dev/test Shopify credentials (if any) or defaults
             self._store_id = os.getenv("SHOPIFY_DEV_STORE", "SHOPIFY_DEV_STORE")
             self._token = os.getenv("SHOPIFY_DEV_TOKEN", "SHOPIFY_DEV_TOKEN")
             self._location_id = os.getenv("SHOPIFY_DEV_LOCATION_ID", "SHOPIFY_DEV_LOCATION_ID")
-            self._webhook_secret = os.getenv("SHOPIFY_DEV_SECRET_WEBHOOK", "SHOPIFY_DEV_SECRET_WEBHOOK")
 
     @property
     def token(self) -> Optional[str]:
         return self._token
-
-    @property
-    def webhook_secret(self) -> Optional[str]:
-        return self._webhook_secret
 
     @property
     def location_id(self) -> Optional[str]:

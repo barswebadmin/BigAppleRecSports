@@ -8,6 +8,7 @@ import json
 import os
 from unittest.mock import patch, Mock
 from services.webhooks import WebhooksService
+from parsers.product_parser import has_zero_inventory
 
 
 class TestWebhooksService:
@@ -115,7 +116,7 @@ class TestWebhooksService:
             "variants": [{"inventory_quantity": 0}]
         }).encode('utf-8')
         
-        result = self.service.handle_shopify_webhook(headers, body)
+        result = self.service.handle_shopify_product_update_webhook(body)
         # Should return evaluation format for product updates
         assert "action_needed" in result
         
@@ -128,7 +129,7 @@ class TestWebhooksService:
             "line_items": [{"variant_title": "Standard Registration"}]
         }).encode('utf-8')
         
-        result = self.service.handle_shopify_webhook(headers, body)
+        result = self.service.handle_shopify_order_create_webhook(body)
         # Should return evaluation format for order creates
         assert "action_needed" in result
         assert "reason" in result
@@ -143,11 +144,11 @@ class TestWebhooksService:
                 {"inventory_quantity": 0},
             ]
         }
-        assert self.service.product_has_zero_inventory(product_data) is True
+        assert has_zero_inventory(product_data) is True
 
         # Should return False when some variants have inventory
         assert (
-            self.service.product_has_zero_inventory(self.sample_product_data) is False
+            has_zero_inventory(self.sample_product_data) is False
         )  # Has inventory = 21
 
         product_data = {
@@ -157,14 +158,14 @@ class TestWebhooksService:
                 {"inventory_quantity": 0},
             ]
         }
-        assert self.service.product_has_zero_inventory(product_data) is False
+        assert has_zero_inventory(product_data) is False
 
         # Should return False when no variants present
         product_data = {"variants": []}
-        assert self.service.product_has_zero_inventory(product_data) is False
+        assert has_zero_inventory(product_data) is False
 
         product_data = {}
-        assert self.service.product_has_zero_inventory(product_data) is False
+        assert has_zero_inventory(product_data) is False
 
     def test_parse_shopify_webhook_for_waitlist_form(self):
         """Test parsing Shopify webhook product data for waitlist form"""
@@ -366,7 +367,7 @@ class TestWebhooksService:
             "line_items": [{"variant_title": "Standard Registration"}]
         }).encode('utf-8')
 
-        result = self.service.handle_shopify_webhook(headers, body)
+        result = self.service.handle_shopify_order_create_webhook(body)
 
         # Should return evaluation format for order creates
         assert "action_needed" in result
@@ -381,7 +382,7 @@ class TestWebhooksService:
             "utf-8"
         )  # Has inventory = 21
 
-        result = self.service.handle_shopify_webhook(headers, body)
+        result = self.service.handle_shopify_product_update_webhook(body)
 
         # Should return evaluation format for product updates with inventory
         assert "action_needed" in result
@@ -398,21 +399,20 @@ class TestWebhooksService:
         headers = {"x-shopify-topic": "products/update"}
         body = json.dumps(sold_out_product).encode("utf-8")
 
-        result = self.service.handle_shopify_webhook(headers, body)
+        result = self.service.handle_shopify_product_update_webhook(body)
 
         # Should return evaluation format for sold out products
         assert "action_needed" in result
         assert result["action_needed"] is True  # Should be true since product is sold out
         assert result["reason"] == "product_sold_out"
         assert result["data"]["product_title"] == "Big Apple Dodgeball - Tuesday - Open Division - Fall 2025"
-        # GAS integration happens in shopify_handler, not in the evaluation function
         mock_send.assert_called_once()
 
         # Should handle invalid JSON gracefully (error handling integration)
         headers = {"x-shopify-topic": "products/update"}
         body = b"invalid-json"
 
-        result = self.service.handle_shopify_webhook(headers, body)
+        result = self.service.handle_shopify_product_update_webhook(body)
 
         assert result["success"] is False
         assert "Invalid JSON" in result["error"]

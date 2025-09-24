@@ -227,7 +227,7 @@ async def send_refund_to_slack(
                     )
                     slack_result = slack_service.send_message(
                         channel=SlackChannel.RegistrationRefunds.id,
-                        token=config.SlackBot.Registrations.require_token(),
+                        token=config.SlackBot.Registrations.token,
                         message_text=message_text,
                     )
                     logger.info(f"✅ Slack notification sent: {slack_result.get('success')}")
@@ -286,7 +286,7 @@ async def send_refund_to_slack(
             )
             slack_result = slack_service.send_message(
                 channel=slackChannelName or SlackChannel.RegistrationRefunds.id,
-                token=config.SlackBot.Registrations.require_token(),
+                token=config.SlackBot.Registrations.token,
                 message_text=slack_message,
             )
 
@@ -336,7 +336,7 @@ async def send_refund_to_slack(
                 )
                 slack_result = slack_service.send_message(
                     channel=slackChannelName or SlackChannel.RegistrationRefunds.id,
-                    token=config.SlackBot.Registrations.require_token(),
+                    token=config.SlackBot.Registrations.token,
                     message_text=dup_msg,
                 )
                 logger.info(f"✅ Slack duplicate refund notification sent: {slack_result.get('success')}")
@@ -390,7 +390,7 @@ async def send_refund_to_slack(
         )
         slack_result = slack_service.send_message(
             channel=slackChannelName or SlackChannel.RegistrationRefunds.id,
-            token=config.SlackBot.Registrations.require_token(),
+            token=config.SlackBot.Registrations.token,
             message_text=success_msg,
         )
 

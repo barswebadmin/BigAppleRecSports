@@ -34,51 +34,57 @@ def convert_to_eastern_time(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
 
-    # Convert to Eastern time
-    return dt.astimezone(get_eastern_timezone())
+    eastern = get_eastern_timezone()
+
+    # If the datetime already carries an offset equal to Eastern at that moment,
+    # treat it as already Eastern-local time and avoid altering the wall clock time
+    try:
+        if dt.utcoffset() == eastern.utcoffset(dt):
+            # Normalize tzinfo to Eastern for consistency but preserve wall time
+            return dt.astimezone(eastern)
+    except Exception:
+        pass
+
+    # Otherwise convert from its source tz to Eastern
+    return dt.astimezone(eastern)
 
 
 def parse_shopify_datetime(date_str: str) -> Optional[datetime]:
-    """Parse Shopify datetime string to timezone-aware datetime"""
+    """Parse Shopify datetime string to timezone-aware datetime.
+    Accepts ISO8601 strings with 'Z' (UTC) or explicit offsets like '-04:00'.
+    If no tzinfo is present, assume UTC.
+    Preserves correct wall-clock time when the offset already matches Eastern.
+    """
     if not date_str:
         return None
 
     try:
-        # Handle different Shopify datetime formats
-        if date_str.endswith("Z"):
-            # ISO format with Z (UTC)
-            dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        iso_str = date_str
+        if iso_str.endswith("Z"):
+            iso_str = iso_str[:-1] + "+00:00"
 
-            # Special handling for dates that appear to be "day boundaries" stored as 4 AM UTC
-            # These represent midnight ET of the intended date, but stored as 4 AM UTC
-            if dt.time().hour == 4 and dt.time().minute == 0 and dt.time().second == 0:
-                # Convert to Eastern Time first to see what date we get
-                et_dt = dt.astimezone(get_eastern_timezone())
-                # Get the date part - this is the date we want to represent
-                target_date = et_dt.date()
+        dt = datetime.fromisoformat(iso_str)
 
-                # If converting 4 AM UTC to ET results in midnight, it means we're in EDT
-                # If it results in 11 PM previous day, it means we're in EST
-                if et_dt.time().hour == 0:
-                    # EDT case: 4 AM UTC = midnight ET same day, but we want previous day
-                    target_date = target_date - timedelta(days=1)
-                # else: EST case: 4 AM UTC = 11 PM ET previous day, which is correct
+        # If naive, assume UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
 
-                # Create midnight ET for the target date
-                dt = datetime.combine(target_date, datetime.min.time()).replace(
-                    tzinfo=get_eastern_timezone()
-                )
-                # Convert back to UTC for consistent storage
-                dt = dt.astimezone(timezone.utc)
+        # Special handling for Shopify "day boundary" timestamps stored as 04:00:00 UTC
+        if (
+            dt.tzinfo == timezone.utc
+            and dt.time().hour == 4
+            and dt.time().minute == 0
+            and dt.time().second == 0
+        ):
+            et_dt = dt.astimezone(get_eastern_timezone())
+            target_date = et_dt.date()
+            if et_dt.time().hour == 0:
+                target_date = target_date - timedelta(days=1)
+            dt = datetime.combine(target_date, datetime.min.time()).replace(
+                tzinfo=get_eastern_timezone()
+            ).astimezone(timezone.utc)
 
-            return dt
-        elif "+" in date_str or date_str.endswith("T"):
-            # ISO format with timezone or without timezone
-            return datetime.fromisoformat(date_str)
-        else:
-            # Try parsing as simple date string and assume UTC
-            dt = datetime.fromisoformat(date_str)
-            return dt.replace(tzinfo=timezone.utc)
+        return dt
     except Exception as e:
         logger.warning(f"Could not parse datetime string '{date_str}': {e}")
         return None
@@ -358,10 +364,12 @@ def format_date_and_time(date) -> str:
     Based on formatDateAndTime from Google Apps Script Utils.gs
     """
     if isinstance(date, str):
+        logger.info(f"using parse_shopify_datetime: {date}")
         date = parse_shopify_datetime(date)
         if date is None:
             return "Unknown Date/Time"
     elif not isinstance(date, datetime):
+        logger.info(f"using datetime.fromtimestamp: {date}")
         # Assume it's a timestamp or other convertible type
         try:
             date = (

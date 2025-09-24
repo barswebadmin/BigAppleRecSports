@@ -17,7 +17,7 @@ sys.path.append(
 
 from main import app
 from services.orders.orders_service import OrdersService
-from services.shopify.shopify_service import ShopifyService
+from new_structure_target.clients.shopify.shopify_service import ShopifyService
 
 client = TestClient(app)
 

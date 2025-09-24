@@ -7,17 +7,34 @@ from typing import Dict, Any, Optional, Union
 from datetime import datetime, timezone
 import logging
 from utils.date_utils import format_date_and_time, parse_shopify_datetime
-from ..core.slack_config import SlackConfig
+from new_structure_target.clients.shopify.builders.shopify_url_builders import build_customer_url, build_order_url, build_product_url
+from config import SlackGroup, config
 
 logger = logging.getLogger(__name__)
+
+slack_groups = SlackGroup()
 
 
 class SlackMessageBuilder:
     """Helper class for building Slack messages with consistent formatting."""
 
-    def __init__(self, sport_groups: Dict[str, str]):
-        self.sport_groups = sport_groups
+    def __init__(self, sport_groups: dict[str, dict[str, str]]):
+        self.sport_groups = slack_groups.all()
 
+    def build_header_block(self, header_text: str) -> Dict[str, Any]:
+        """Build a header block for Slack"""
+        return {
+            "type": "header",
+            "text": {"type": "plain_text", "text": header_text}
+        }
+
+    def build_section_block(self, text: str) -> Dict[str, Any]:
+        """Build a section block for Slack"""
+        return {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": text}
+        }
+    
     def get_group_mention(self, text: str) -> str:
         """Resolve a group mention using SlackConfig.Group mapping; fallback to @here.
 
@@ -27,45 +44,16 @@ class SlackMessageBuilder:
             if not isinstance(text, str) or not text.strip():
                 return "@here"
 
-            lookup = SlackConfig.get_all_groups()
             target = text.lower().strip()
 
-            # Exact key match
-            if target in lookup:
-                return lookup[target]
-
-            # Substring match
-            for key, mention in lookup.items():
-                if key in target:
-                    return mention
-
-            return "@here"
+            group_info = SlackGroup.get(target)
+            return group_info["id"] if "id" in group_info else "@here"
         except Exception:
             return "@here"
 
-    def get_order_url(self, order_id: str, order_number: str) -> str:
-        """Create Shopify admin order URL for Slack"""
-        order_id_digits = order_id.split("/")[-1] if "/" in order_id else order_id
-        normalized_order_number = (
-            order_number if order_number.startswith("#") else f"#{order_number}"
-        )
-        return f"<https://admin.shopify.com/store/09fe59-3/orders/{order_id_digits}|{normalized_order_number}>"
-
-    def get_product_url(self, product_id: str) -> str:
-        """Create Shopify admin product URL for Slack"""
-        product_id_digits = (
-            product_id.split("/")[-1] if "/" in product_id else product_id
-        )
-        return f"https://admin.shopify.com/store/09fe59-3/products/{product_id_digits}"
-
-    def get_customer_url(self, customer_id: str) -> str:
-        """Create Shopify admin customer URL for Slack"""
-        customer_id_digits = (
-            customer_id.split("/")[-1] if "/" in customer_id else customer_id
-        )
-        return (
-            f"https://admin.shopify.com/store/09fe59-3/customers/{customer_id_digits}"
-        )
+    def build_hyperlink(self, url: str, text: str) -> str:
+        """Build a hyperlink for Slack"""
+        return f"<{url}|{text}>"
 
     def _get_request_type_text(self, refund_type: str) -> str:
         """Get detailed request type text for messages"""
@@ -104,7 +92,7 @@ class SlackMessageBuilder:
 
                 if full_name and customer_data and customer_data.get("id"):
                     # Create hyperlinked name to customer profile
-                    customer_url = self.get_customer_url(customer_data["id"])
+                    customer_url = self.build_hyperlink(build_customer_url(customer_data["id"]), full_name)
                     return f"📧 *Requested by:* <{customer_url}|{full_name}> ({requestor_email})\n\n"
                 elif full_name:
                     # Fallback to plain text name
@@ -527,7 +515,7 @@ class SlackMessageBuilder:
                 product = order.get("product", {})
                 product_id = product.get("productId") or product.get("id") or ""
                 product_title = product.get("title", "Unknown Product")
-                product_url = self.get_product_url(product_id) if product_id else "#"
+                product_url = self.build_hyperlink(build_product_url(product_id), product_title) if product_id else "#"
                 product_display = f"<{product_url}|{product_title}>"
                 product_field_name = "Product Title"
 
@@ -535,7 +523,7 @@ class SlackMessageBuilder:
             if original_data.get("order_number_display"):
                 order_number_display = original_data["order_number_display"]
             else:
-                order_url = self.get_order_url(order_id, order_number)
+                order_url = self.build_hyperlink(build_order_url(order_id), order_number)
                 order_number_display = order_url
 
             # Use preserved pricing details
@@ -738,7 +726,7 @@ class SlackMessageBuilder:
                 or "unknown"
             )
 
-            order_url = self.get_order_url(order_id, order_number)
+            order_url = self.build_hyperlink(build_order_url(order_id), order_number)
 
             # Safely get product info - try multiple locations
             product_id = product.get("productId") or product.get("id") or ""
@@ -755,7 +743,7 @@ class SlackMessageBuilder:
                         product_data = first_item.get("product", {})
                         product_id = product_data.get("id", "")
 
-            product_url = self.get_product_url(product_id) if product_id else "#"
+            product_url = self.build_hyperlink(build_product_url(product_id), product_title) if product_id else "#"
             sport_mention = self.get_group_mention(product_title)
 
             # Extract data
@@ -896,7 +884,7 @@ class SlackMessageBuilder:
             order_id = order.get("orderId") or order.get("id") or "unknown"
             order_number = order.get("orderName") or order.get("name") or "unknown"
 
-            order_url = self.get_order_url(order_id, order_number)
+            order_url = self.build_hyperlink(build_order_url(order_id), order_number)
 
             # Safely get product title
             product_title = product.get("title", "Unknown Product")
@@ -962,7 +950,7 @@ class SlackMessageBuilder:
             message_text += f"*Order Created At:* {order_created_time}\n\n"
             # Get product URL
             product_id = product.get("productId") or product.get("id") or ""
-            product_url = self.get_product_url(product_id) if product_id else "#"
+            product_url = self.build_hyperlink(build_product_url(product_id), product_title) if product_id else "#"
             message_text += f"*Product Title*: <{product_url}|{product_title}>\n\n"
             # Add Original Price field if different from Total Paid
             if original_cost is not None and abs(original_cost - total_paid) > 0.01:
@@ -1093,7 +1081,7 @@ class SlackMessageBuilder:
                     raw_order_number=raw_order_number,
                     order_customer_email=order_customer_email,
                     sheet_link=sheet_link,
-                    order_data=order_data,
+                    order_data=order_data or {},
                     customer_orders_url=customer_orders_url,
                 )
 
@@ -1145,7 +1133,7 @@ class SlackMessageBuilder:
         raw_order_number: str,
         order_customer_email: str,
         sheet_link: str,
-        order_data: Optional[Dict[str, Any]] = None,
+        order_data: Dict[str, Any],
         customer_orders_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
@@ -1170,11 +1158,11 @@ class SlackMessageBuilder:
             current_time = format_date_and_time(datetime.now(timezone.utc))
 
             # Get order URL for linking
-            order_url = self.get_order_url(
-                order_id=order_data.get("order", {}).get("id", "")
-                if order_data
-                else "",
-                order_number=raw_order_number,
+            order_id = order_data.get("order", {}).get("id", "")
+            order_number = order_data.get("order", {}).get("name", raw_order_number)
+            order_url = self.build_hyperlink(
+                build_order_url(order_id),
+                order_number,
             )
 
             # Build main message with enhanced content
@@ -1190,8 +1178,8 @@ class SlackMessageBuilder:
 
             # Build requestor line with customer profile hyperlink if available
             if requestor_full_name and customer_data and customer_data.get("id"):
-                customer_url = self.get_customer_url(customer_data["id"])
-                requestor_line = f"📧 *Requested by:* <{customer_url}|{requestor_full_name}> (<mailto:{requestor_email}|{requestor_email}>)"
+                customer_url = self.build_hyperlink(build_customer_url(customer_data["id"]), requestor_full_name)
+                requestor_line = f"📧 *Requested by:* {customer_url} (<mailto:{requestor_email}|{requestor_email}>)"
             else:
                 requestor_line = f"📧 *Requested by:* {requestor_full_name} (<mailto:{requestor_email}|{requestor_email}>)"
 
@@ -1218,7 +1206,7 @@ class SlackMessageBuilder:
                         if raw_order_number.startswith("#")
                         else f"#{raw_order_number}"
                     )
-                    order_url = self.get_order_url(order_id, formatted_order_number)
+                    order_url = self.build_hyperlink(build_order_url(order_id), formatted_order_number)
                     message_text += f"*Order Number:* {order_url}\n\n"
                 else:
                     message_text += f"*Order Number:* {raw_order_number}\n\n"

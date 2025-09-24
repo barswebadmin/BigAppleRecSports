@@ -2,6 +2,8 @@ import os
 from dotenv import load_dotenv
 from new_structure_target.clients.slack.core.slack_config import SlackConfig as _SlackConfig
 from new_structure_target.clients.shopify.core.shopify_config import ShopifyConfig as _ShopifyConfig
+import logging
+logger = logging.getLogger(__name__)
 
 # Always load .env file, but command line environment variables will override
 load_dotenv('../.env', override=False)
@@ -10,12 +12,13 @@ load_dotenv('../.env', override=False)
 class Config:
     def __init__(self):
         self.environment = os.getenv("ENVIRONMENT", "dev").lower()
+        logger.info(f"🌍 MAIN CONFIG Environment: {self.environment}")
         # Expose SlackConfig under concise aliases for app usage
         self.Slack = _SlackConfig(self.environment)
-        self.SlackBot = _SlackConfig.Bots
-        self.SlackChannel = _SlackConfig.Channels
-        self.SlackUser = _SlackConfig.Users
-        self.SlackGroup = _SlackConfig.Groups
+        self.SlackBot = self.Slack.Bots
+        self.SlackChannel = self.Slack.Channels
+        self.SlackUser = self.Slack.Users
+        self.SlackGroup = self.Slack.Groups
         # Shopify
         self.Shopify = _ShopifyConfig(self.environment)
 
@@ -58,3 +61,17 @@ class Config:
 config = Config()
 # Backwards-compat alias expected by CI/scripts
 settings = config
+
+Slack = config.Slack
+SlackBot = config.SlackBot
+SlackChannel = config.SlackChannel
+SlackUser = config.SlackUser
+SlackGroup = config.SlackGroup
+Shopify = config.Shopify
+
+# Re-export SlackConfig as a concrete class with explicit nested type aliases
+class SlackConfig(_SlackConfig):
+    Channel = _SlackConfig.Channel
+    Bot = _SlackConfig.Bot
+    User = _SlackConfig.User
+    Group = _SlackConfig.Group

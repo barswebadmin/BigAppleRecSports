@@ -80,14 +80,14 @@ def test_api_client_with_config():
         print(f"📺 Testing channel: {SlackChannel.JoeTest.id}")
         
         # Get a token for testing
-        token = SlackBot.Dev.require_token()
+        token = SlackBot.Dev.token
         print(f"🔑 Using token: {token[:10]}..." if len(token) > 10 else f"🔑 Using token: {token}")
         
         # Test sending message with new token-per-operation approach
         print("\n📤 Testing send_message with token:")
         result = service.send_message(
             channel=SlackChannel.JoeTest.id,
-            token=SlackBot.Dev.require_token(),
+            token=SlackBot.Dev.token,
             message_text=f"🧪 Test message to {SlackChannel.JoeTest.name} using SlackBot.Dev, message_text",
             slack_text=f"Test message to {SlackChannel.JoeTest.name} using SlackBot.Dev, slack_text"
         )
@@ -97,7 +97,7 @@ def test_api_client_with_config():
         print("\n🔄 Testing send_message to different channel:")
         result = service.send_message(
             channel=SlackChannel.RegistrationRefunds.id,
-            token=SlackBot.Dev.require_token(),
+            token=SlackBot.Dev.token,
             message_text=f"🧪 Test message to {SlackChannel.RegistrationRefunds.name} channel, message_text",
             slack_text="Test with different channel"
         )
@@ -107,7 +107,7 @@ def test_api_client_with_config():
         print("\n👤 Testing send_ephemeral_message:")
         result = service.send_ephemeral_message(
             channel_id=SlackChannel.JoeTest.id,
-            token=SlackBot.Dev.require_token(),
+            token=SlackBot.Dev.token,
             user_id=SlackUser.Joe.id,
             message_text="🤫 This ephemeral message is only visible to Joe",
             slack_text="Ephemeral test"

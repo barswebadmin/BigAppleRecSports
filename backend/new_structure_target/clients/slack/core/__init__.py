@@ -1,16 +1,10 @@
 """
-Core Slack functionality.
-Contains the fundamental Slack API methods, security, business logic, and utilities.
+Core Slack functionality package. Keep this __init__ lightweight to avoid
+importing heavy dependencies (like slack_sdk) during package import.
+
+Import concrete modules directly, e.g.:
+    from .slack_security import SlackSecurity
+    from .slack_client import SlackClient
 """
 
-from .slack_client import SlackClient
-from .slack_security import SlackSecurity
-from .slack_utilities import SlackUtilities
-from .mock_client import MockSlackClient
-
-__all__ = [
-    'SlackClient',
-    'SlackSecurity',
-    'SlackUtilities',
-    'MockSlackClient'
-]
+__all__ = []

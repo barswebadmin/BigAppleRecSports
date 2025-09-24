@@ -13,7 +13,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError, SlackClientError
 
 # Our systems
-from .core.slack_config import SlackConfig
+from config import SlackBot, SlackChannel, config
 from models.slack import Slack, RefundType, SlackMessageType
 
 # Existing services
@@ -21,13 +21,33 @@ from services.orders import OrdersService
 
 # Core functionality
 try:
-    from .core import SlackClient, SlackSecurity, SlackUtilities, MockSlackClient
-    from .builders import SlackMessageBuilder, ModernMessageBuilder, SlackCacheManager, SlackMetadataBuilder, SlackMessageParsers, SlackOrderHandlers
+    from .core.slack_client import SlackClient
+    from .core.slack_security import SlackSecurity
+    from .core.slack_utilities import SlackUtilities
+    from .core.mock_client import MockSlackClient
+    from .builders import (
+        SlackMessageBuilder,
+        ModernMessageBuilder,
+        SlackCacheManager,
+        SlackMetadataBuilder,
+        SlackMessageParsers,
+        SlackOrderHandlers,
+    )
     from .slack_refunds_utils import SlackRefundsUtils
 except ImportError:
-    from core import SlackClient, SlackSecurity, SlackUtilities, MockSlackClient
-    from builders import SlackMessageBuilder, ModernMessageBuilder, SlackCacheManager, SlackMetadataBuilder, SlackMessageParsers, SlackOrderHandlers
-    from slack_refunds_utils import SlackRefundsUtils
+    from new_structure_target.clients.slack.core.slack_client import SlackClient
+    from new_structure_target.clients.slack.core.slack_security import SlackSecurity
+    from new_structure_target.clients.slack.core.slack_utilities import SlackUtilities
+    from new_structure_target.clients.slack.core.mock_client import MockSlackClient
+    from new_structure_target.clients.slack.builders import (
+        SlackMessageBuilder,
+        ModernMessageBuilder,
+        SlackCacheManager,
+        SlackMetadataBuilder,
+        SlackMessageParsers,
+        SlackOrderHandlers,
+    )
+    from new_structure_target.clients.slack.slack_refunds_utils import SlackRefundsUtils
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +58,7 @@ def _is_test_mode() -> bool:
                     return True
     if any("pytest" in arg for arg in sys.argv):
         return True
-    if os.getenv("TESTING", "").lower() in ("true", "1", "yes"):
+    if os.getenv("TEST", "").lower() in ("true", "1", "yes"):
         return True
     if any("test_" in arg or arg.endswith("_test.py") for arg in sys.argv):
         return True
@@ -64,14 +84,15 @@ class SlackService:
         self.orders_service = OrdersService()
         
         # Get configuration from our new system
-        self.config = SlackConfig()
-        self.environment = self.config.get_environment()
-        self.is_production = self.config.is_production_mode()
+        self.config = config
+        self.security = SlackSecurity()
         
         # Initialize core components (no token storage in service)
         # SlackClient will be created on-demand with provided tokens
         self.slack_client = None  # Will be created per-operation with specific token
-        self.slack_security = SlackSecurity(self.config.Token.get_signing_secret())
+
+        # self.slack_security = SlackSecurity(self.config.SlackBot.get_signing_secret())
+
         self.slack_utilities = SlackUtilities(
             self._get_message_builder(),
             self._get_message_parsers()
@@ -92,28 +113,10 @@ class SlackService:
         self.metadata_builder = SlackMetadataBuilder()
         self.message_parsers = self._get_message_parsers()
         self.order_handlers = SlackOrderHandlers(self.orders_service, self, self.message_builder)
-        
-        logger.info(f"🚀 SlackService initialized for {self.environment} environment")
 
-    def _get_default_channel(self) -> str:
-        """Get the default channel for messages."""
-        return self.config.Channel.JoeTest
-
-    def _get_sport_groups(self) -> Dict[str, str]:
+    def _get_sport_groups(self) -> dict[str, dict[str, str]]:
         """Get sport groups configuration."""
-        return self.config.Group.get_all()
-
-    # ============================================================================
-    # CLIENT FACTORY METHODS
-    # ============================================================================
-    
-    def _create_slack_client(self, token: str) -> SlackClient:
-        """Create a SlackClient with the specified token."""
-        if _is_test_mode():
-            client = MockSlackClient(token, self._get_default_channel())
-        else:
-            client = WebClient(token=token)
-        return SlackClient(client)  # type: ignore
+        return self.config.SlackGroup.all()
     
     
 
@@ -123,7 +126,7 @@ class SlackService:
     
     def verify_slack_signature(self, body: bytes, timestamp: str, signature: str) -> bool:
         """Convenience method for tests - delegates to slack_security"""
-        return self.slack_security.verify_slack_signature(body, timestamp, signature)
+        return self.security.verify_slack_signature(body, timestamp, signature)
 
     async def handle_slack_interaction(self, payload: Optional[Dict[str, Any]], body: bytes, timestamp: Optional[str], signature: Optional[str]) -> Dict[str, Any]:
         """
@@ -141,7 +144,7 @@ class SlackService:
         try:
             # Verify signature if present
             if timestamp and signature:
-                signature_valid = self.slack_security.verify_slack_signature(body, timestamp, signature)
+                signature_valid = self.security.verify_slack_signature(body, timestamp, signature)
                 logger.info(f"Signature verification: {'valid' if signature_valid else 'invalid'}")
                 if not signature_valid:
                     logger.warning("Signature verification failed - but continuing for debug...")
@@ -254,7 +257,7 @@ class SlackService:
                 request_data = {}
             else:
                 # Pipe-separated format (older buttons)
-                request_data = self.slack_security.parse_button_value(action_value)
+                request_data = self.security.parse_button_value(action_value)
 
         # Extract requestor info from parsed data
         requestor_name = {
@@ -282,7 +285,7 @@ class SlackService:
         current_message_text = payload.get("message", {}).get("text", "")
 
         # Convert blocks back to text for parsing
-        current_message_full_text = self.slack_security.extract_text_from_blocks(current_message_blocks)
+        current_message_full_text = self.security.extract_text_from_blocks(current_message_blocks)
 
         # If blocks extraction fails, fall back to the simple text field
         if not current_message_full_text and current_message_text:
@@ -494,7 +497,7 @@ class SlackService:
         """Get settings object for backward compatibility."""
         class Config:
             def __init__(self, config):
-                self.slack_subgroups = config.Group.get_all()
+                self.slack_subgroups = config.SlackGroup.all()
         return Config(self.config)
 
     def _get_message_builder(self):
@@ -510,112 +513,11 @@ class SlackService:
         """Get message parsers instance."""
         return SlackMessageParsers()
 
-    # ============================================================================
-    # CORE API METHODS (delegated to SlackClient)
-    # ============================================================================
-
-    def send_message(
-        self,
-        channel: str,
-        token: str,
-        message_text: Optional[str] = None,
-        blocks: Optional[List[Dict[str, Any]]] = None,
-        action_buttons: Optional[List[Dict[str, Any]]] = None,
-        slack_text: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        thread_ts: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Send a message to a Slack channel.
-        
-        Args:
-            channel: Channel name as class name from SlackConfig.Channel, resolves to its ID
-            token: Bot token as SlackConfig.Token, resolves to its secret
-            message_text: Plain text message (used as fallback if blocks provided fail to resolve)
-            blocks: Slack blocks for rich formatting
-            action_buttons: Action buttons for the message
-            slack_text: Alternative text for notifications
-            metadata: Additional metadata
-            thread_ts: Thread timestamp for replies
-            
-        Returns:
-            Dict containing success status and response details
-        """
-        
-        if not token or not channel:
-            raise ValueError("Slack message cannot be sent; token and channel are required")
-        
-        # Create Slack client with resolved token
-        slack_client = self._create_slack_client(token)
-        
-        # Send message using appropriate method based on content type
-        if blocks:
-            return slack_client.send_message_with_blocks(
-                channel, blocks, message_text or "Message", slack_text, metadata, thread_ts
-            )
-        else:
-            return slack_client.send_message(
-                channel, message_text or "Empty message", action_buttons, slack_text, metadata, thread_ts
-            )
-
-    def update_message(
-        self,
-        channel_id: str,
-        message_ts: str,
-        message_text: str,
-        token: str,
-        action_buttons: Optional[List[Dict[str, Any]]] = None,
-        slack_text: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """Update an existing Slack message."""
-        slack_client = self._create_slack_client(token)
-        return slack_client.update_message(
-            channel_id, message_ts, message_text, action_buttons, slack_text, metadata
-        )
-
-    def send_ephemeral_message(
-        self,
-        channel_id: str,
-        user_id: str,
-        message_text: str,
-        token: str,
-        action_buttons: Optional[List[Dict[str, Any]]] = None,
-        slack_text: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Send an ephemeral message to a user in a channel."""
-        slack_client = self._create_slack_client(token)
-        return slack_client.send_ephemeral_message(
-            channel_id, user_id, message_text, action_buttons, slack_text
-        )
-
-    # ============================================================================
-    # SECURITY AND PARSING METHODS (delegated to SlackSecurity)
-    # ============================================================================
-
-
-
-    # ============================================================================
-    # BUSINESS LOGIC METHODS (delegated to SlackBusiness)
-    # ============================================================================
-
 
 
     # ============================================================================
     # UTILITY METHODS (delegated to SlackUtilities)
     # ============================================================================
-
-    def get_sport_group_mention(self, product_title: str) -> str:
-        """Get sport group mention for a product."""
-        return self.slack_utilities.get_sport_group_mention(product_title)
-
-    def get_order_url(self, order_id: str, order_number: str) -> str:
-        """Get formatted order URL."""
-        return self.slack_utilities.get_order_url(order_id, order_number)
-
-    def get_product_url(self, product_id: str) -> str:
-        """Get formatted product URL."""
-        return self.slack_utilities.get_product_url(product_id)
 
     def extract_sheet_link(self, message_text: str) -> str:
         """Extract sheet link from message text."""
@@ -665,6 +567,7 @@ class SlackService:
 # ============================================================================
 # FACTORY FUNCTION (backward compatibility)
 # ============================================================================
+
 
 def create_slack_client(token: str, channel_id: str) -> SlackService:
     """Create a Slack client (backward compatibility)."""

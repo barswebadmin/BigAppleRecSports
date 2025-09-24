@@ -6,6 +6,9 @@ Uses PascalCase for class names and attribute names for enum-like constants.
 
 import os
 from typing import Dict, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SlackConfig:
@@ -14,8 +17,9 @@ class SlackConfig:
     Loads all Slack settings independently from main application config.
     """
 
-    def __init__(self, environment: str):
+    def __init__(self, ENVIRONMENT: str):
         self.environment = os.getenv("ENVIRONMENT", "dev").lower()
+        logger.info(f"🌍 SlackConfig Environment: {self.environment}")
 
     @staticmethod
     def get_environment() -> str:
@@ -42,21 +46,15 @@ class SlackConfig:
                 self._secret_env_name = secret_env
 
             @property
-            def token(self) -> Optional[str]:
-                return os.getenv(self._token_env_name)
-
-            @property
-            def signing_secret(self) -> Optional[str]:
-                return os.getenv(self._secret_env_name)
-
-            def require_token(self) -> str:
-                v = self.token
+            def token(self) -> str:
+                v = os.getenv(self._token_env_name)
                 if not v:
                     raise RuntimeError(f"Missing env: {self._token_env_name}")
                 return v
 
-            def require_signing_secret(self) -> str:
-                v = self.signing_secret
+            @property
+            def signing_secret(self) -> str:
+                v = os.getenv(self._secret_env_name)
                 if not v:
                     raise RuntimeError(f"Missing env: {self._secret_env_name}")
                 return v
@@ -158,9 +156,9 @@ class SlackConfig:
         # Dodgeball
         DodgeballWtnbSocial       = _Group("<!subteam^S09FKLN0SBX>", "dodgeball-wtnb-social")
         DodgeballWtnbDraft        = _Group("<!subteam^S09GFAVQ41E>", "dodgeball-wtnb-draft")
-        DodgeballMonday           = _Group("<!subteam^S09FHSR9ZNF>", "dodgeball-monday")
+        DodgeballBigBall           = _Group("<!subteam^S09FHSR9ZNF>", "dodgeball-bigball")
         DodgeballSmallBallSocial  = _Group("<!subteam^S09FMV42FGA>", "dodgeball-smallball-social")
-        DodgeballSmallBallAdvanced= _Group("<!subteam^S09FKKU1U4D>", "dodgeball-smallball-advanced")
+        DodgeballSmallBallAdvanced = _Group("<!subteam^S09FKKU1U4D>", "dodgeball-smallball-advanced")
         DodgeballFoamBall         = _Group("<!subteam^S09GFD2D67J>", "dodgeball-foamball")
 
         # Kickball
@@ -189,7 +187,7 @@ class SlackConfig:
             return out
 
         @classmethod
-        def get(cls, key: str) -> dict[str, str] | None:
+        def get(cls, key: str) -> Dict[str, str]:
             """
             Lookup by PascalCase attribute name (e.g., 'Dodgeball')
             or by lowercase friendly name (e.g., 'dodgeball').
@@ -206,10 +204,24 @@ class SlackConfig:
                 if isinstance(v, cls._Group) and v.name.lower() == key.lower():
                     return {"id": v.id, "name": f"#{v.name}"}
 
-            return None
+            return {"id": "@here", "name": "@here"}
 
 
-# Convenience aliases for cleaner imports
+    # Public nested types so external code can annotate reliably
+    class Channel(Channels._Channel):
+        pass
+
+    class User(Users._User):
+        pass
+
+    class Bot(Bots._Bot):
+        pass
+
+    class Group(Groups._Group):
+        pass
+
+
+# Convenience aliases for cleaner imports (container classes, not inner types)
 SlackChannel = SlackConfig.Channels
 SlackUser    = SlackConfig.Users
 SlackGroup   = SlackConfig.Groups

@@ -5,7 +5,7 @@ Product publication service - matching scheduleProductPublication from GAS
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
-from services.shopify.shopify_service import ShopifyService
+from new_structure_target.clients.shopify.shopify_service import ShopifyService
 
 logger = logging.getLogger(__name__)
 

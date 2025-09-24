@@ -5,7 +5,7 @@ Product variants creation service - matching Create Variants From Row.gs structu
 import logging
 from typing import Dict, Any
 from models.products.product_creation_request import ProductCreationRequest
-from services.shopify.shopify_service import ShopifyService
+from new_structure_target.clients.shopify.shopify_service import ShopifyService
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ def create_variants(
     # For development/testing mode when Shopify credentials aren't available
     from config import config
 
-    if not config.shopify_token:
+    if not config.Shopify.token:
         logger.warning(
             "No Shopify token available - returning mock variants data for testing"
         )

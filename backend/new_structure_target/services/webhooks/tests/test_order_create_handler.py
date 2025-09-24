@@ -8,7 +8,7 @@ and waitlist registration identification.
 import pytest
 import json
 from typing import Dict, Any
-from .order_create_handler import handle_order_create_webhook
+from new_structure_target.services.webhooks.handlers.order_create_handler import evaluate_order_create_webhook
 
 
 class TestOrderCreateHandler:
@@ -55,7 +55,7 @@ class TestOrderCreateHandler:
         # These should be different -> mismatch = True
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_email_mismatch"] is True
@@ -72,7 +72,7 @@ class TestOrderCreateHandler:
         # form_email is already "jprandazzo@icloud.com"
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_email_mismatch"] is False
@@ -85,7 +85,7 @@ class TestOrderCreateHandler:
         # variant_title: "Coming off Waitlist Reg" contains "waitlist"
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_waitlist_registration"] is True
@@ -100,7 +100,7 @@ class TestOrderCreateHandler:
         order_data["line_items"][0]["variant_title"] = "Regular Registration"
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_waitlist_registration"] is False
@@ -112,7 +112,7 @@ class TestOrderCreateHandler:
         # Default payload has both conditions true
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_email_mismatch"] is True
@@ -130,7 +130,7 @@ class TestOrderCreateHandler:
         order_data["line_items"][0]["variant_title"] = "Regular Registration"
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_email_mismatch"] is False
@@ -154,7 +154,7 @@ class TestOrderCreateHandler:
         ]
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_email_mismatch"] is False  # No form email means no mismatch
@@ -172,7 +172,7 @@ class TestOrderCreateHandler:
         })
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         # Should find the first email property
@@ -186,7 +186,7 @@ class TestOrderCreateHandler:
         order_data["line_items"][0]["properties"][1]["name"] = "BEST CONTACT EMAIL ADDRESS:"
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["form_email"] == "jprandazzo@icloud.com"
@@ -199,7 +199,7 @@ class TestOrderCreateHandler:
         order_data["line_items"][0]["variant_title"] = "Coming off WAITLIST Reg"
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_waitlist_registration"] is True
@@ -207,7 +207,7 @@ class TestOrderCreateHandler:
     def test_invalid_json_payload(self):
         """Test handling of invalid JSON payload"""
         invalid_body = b"invalid json content"
-        result = handle_order_create_webhook(invalid_body)
+        result = evaluate_order_create_webhook(invalid_body)
         
         assert result["success"] is False
         assert "Invalid JSON payload" in result["error"]
@@ -218,7 +218,7 @@ class TestOrderCreateHandler:
         del order_data["line_items"]
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_email_mismatch"] is False
@@ -232,7 +232,7 @@ class TestOrderCreateHandler:
         order_data["line_items"] = []
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_email_mismatch"] is False
@@ -246,7 +246,7 @@ class TestOrderCreateHandler:
         del order_data["line_items"][0]["properties"]
         
         body = json.dumps(order_data).encode('utf-8')
-        result = handle_order_create_webhook(body)
+        result = evaluate_order_create_webhook(body)
         
         assert result["success"] is True
         assert result["is_email_mismatch"] is False

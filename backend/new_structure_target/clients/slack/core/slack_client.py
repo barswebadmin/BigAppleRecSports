@@ -8,6 +8,8 @@ from typing import Dict, Any, Optional, List, Union, TYPE_CHECKING
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError, SlackClientError
 
+from config import SlackConfig, SlackBot, SlackChannel, SlackGroup
+
 if TYPE_CHECKING:
     from .mock_client import MockSlackClient
 
@@ -17,82 +19,27 @@ logger = logging.getLogger(__name__)
 class SlackClient:
     """Core Slack API methods for direct API interactions"""
 
-    def __init__(self, client: Union[WebClient, "MockSlackClient"]):
-        self.client = client
-
-    def send_message_with_blocks(
-        self,
-        channel_id: str,
-        blocks: List[Dict[str, Any]],
-        fallback_text: str = "Message",
-        slack_text: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        thread_ts: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Send a message with custom Slack blocks.
-        
-        Args:
-            channel_id: Slack channel ID
-            blocks: Slack blocks for rich formatting
-            fallback_text: Fallback text for notifications
-            slack_text: Optional alternative slack text
-            metadata: Optional metadata
-            thread_ts: Optional thread timestamp
-            
-        Returns:
-            Dict containing success status and response details
-        """
-        try:
-            # Prepare the message payload
-            payload = {
-                "channel": channel_id,
-                "text": slack_text or fallback_text,
-                "blocks": blocks,
-            }
-            
-            # Add optional parameters
-            if metadata:
-                payload["metadata"] = metadata
-            if thread_ts:
-                payload["thread_ts"] = thread_ts
-            
-            # Send the message
-            response = self.client.chat_postMessage(**payload)
-            
-            if response["ok"]:
-                logger.info(f"✅ Message with blocks sent to {channel_id}")
-                return {
-                    "success": True,
-                    "message_ts": response["message_ts"],
-                    "channel": response["channel"],
-                    "response": response
-                }
-            else:
-                logger.error(f"❌ Failed to send message with blocks: {response['error']}")
-                return {"success": False, "error": response["error"]}
-                
-        except Exception as e:
-            logger.error(f"💥 Error sending message with blocks to {channel_id}: {e}")
-            return {"success": False, "error": str(e)}
+    web_client = WebClient()
+    def __init__(self):
+        self.client = self.web_client
 
     def send_message(
         self,
-        channel_id: str,
-        message_text: str,
+        channel: "SlackConfig.Channels._Channel",
+        bot: "SlackConfig.Bots._Bot",
+        blocks: List[Dict[str, Any]],
         action_buttons: Optional[List[Dict[str, Any]]] = None,
-        slack_text: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
         thread_ts: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Send a message to a Slack channel.
+        Send a message to a Slack channel (blocks required).
         
         Args:
-            channel_id: Slack channel ID
-            message_text: Main message text
+            channel: Slack channel
+            bot: Slack bot (to get its token)
+            blocks: Slack blocks for rich formatting
             action_buttons: Optional action buttons
-            slack_text: Optional fallback text
             metadata: Optional metadata
             thread_ts: Optional thread timestamp
             
@@ -100,13 +47,14 @@ class SlackClient:
             Dict containing success status and response data
         """
         try:
-            # Build blocks for the message
-            blocks = self._build_message_blocks(message_text, action_buttons)
+            # Optionally append action buttons
+            if action_buttons:
+                blocks = blocks + [{"type": "actions", "elements": action_buttons}]
             
             # Prepare the message payload
             payload = {
-                "channel": channel_id,
-                "text": slack_text or message_text,
+                "channel": channel.id,
+                "token": bot.token,
                 "blocks": blocks,
             }
             
@@ -120,7 +68,7 @@ class SlackClient:
             response = self.client.chat_postMessage(**payload)
             
             if response["ok"]:
-                logger.info(f"✅ Message sent to {channel_id}")
+                logger.info(f"✅ Message sent to {channel.name}")
                 return {
                     "success": True,
                     "message_ts": response["message_ts"],
@@ -159,11 +107,12 @@ class SlackClient:
 
     def update_message(
         self,
-        channel_id: str,
+        channel: "SlackConfig.Channels._Channel",
+        bot: "SlackConfig.Bots._Bot",
         message_ts: str,
-        message_text: str,
+        message_text_short: str = "Fallback Short Message",
+        message_text: str = "Fallback Message",
         action_buttons: Optional[List[Dict[str, Any]]] = None,
-        slack_text: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
@@ -186,9 +135,10 @@ class SlackClient:
             
             # Prepare the update payload
             payload = {
-                "channel": channel_id,
+                "channel": channel.id,
+                "token": bot.token,
                 "ts": message_ts,
-                "text": slack_text or message_text,
+                "text": message_text_short or message_text,
                 "blocks": blocks,
             }
             
@@ -200,7 +150,7 @@ class SlackClient:
             response = self.client.chat_update(**payload)
             
             if response["ok"]:
-                logger.info(f"✅ Message updated in {channel_id}")
+                logger.info(f"✅ Message updated in {channel.name}")
                 return {
                     "success": True,
                     "message_ts": response["message_ts"],
@@ -239,11 +189,12 @@ class SlackClient:
 
     def send_ephemeral_message(
         self,
-        channel_id: str,
-        user_id: str,
-        message_text: str,
+        user: "SlackConfig.Users._User",
+        bot: "SlackConfig.Bots._Bot",
+        message_text_short: str = "Fallback Short Message",
+        message_text: str = "Fallback Message",
+        channel: Optional["SlackConfig.Channels._Channel"] = None,
         action_buttons: Optional[List[Dict[str, Any]]] = None,
-        slack_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Send an ephemeral message to a user in a channel.
@@ -263,10 +214,12 @@ class SlackClient:
             blocks = self._build_message_blocks(message_text, action_buttons)
             
             # Prepare the ephemeral message payload
+            if not channel:
+                raise ValueError("channel is required for ephemeral messages")
             payload = {
-                "channel": channel_id,
-                "user": user_id,
-                "text": slack_text or message_text,
+                "channel": channel.id,
+                "user": user.id,
+                "text": message_text or message_text_short,
                 "blocks": blocks,
             }
             
@@ -274,7 +227,7 @@ class SlackClient:
             response = self.client.chat_postEphemeral(**payload)
             
             if response["ok"]:
-                logger.info(f"✅ Ephemeral message sent to {user_id} in {channel_id}")
+                logger.info(f"✅ Ephemeral message sent to {user.name} in {channel.name}")
                 return {
                     "success": True,
                     "message_ts": response["message_ts"],

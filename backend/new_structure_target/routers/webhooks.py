@@ -7,7 +7,7 @@ Handles incoming Shopify webhooks for product changes (especially inventory upda
 from fastapi import APIRouter, Request, HTTPException
 import logging
 import json
-from services.webhooks import WebhooksService
+from new_structure_target.services.webhooks import WebhooksService
 
 logger = logging.getLogger(__name__)
 
@@ -15,25 +15,17 @@ router = APIRouter(prefix="/webhooks", tags=["shopify-webhooks"])
 
 webhooks_service = WebhooksService()
 
-@router.get("/shopify/debug")
-async def debug_webhook_secret():
-    """Debug endpoint to check if webhook secret is loaded"""
-    import os
-    from dotenv import load_dotenv
-    load_dotenv('../.env')
-    
-    secret = os.getenv("SHOPIFY_WEBHOOK_SECRET")
-    return {
-        "secret_loaded": bool(secret),
-        "secret_length": len(secret) if secret else 0,
-        "secret_preview": secret[:10] + "..." if secret else None
-    }
-
 @router.post("/shopify")
 async def handle_shopify_webhook(request: Request):
     """Handle Shopify webhooks asynchronously - routes based on event type"""
     headers = dict(request.headers)
     body = await request.body()
+    # logger.info(f"🎯 SHOPIFY WEBHOOK headers: {headers}")
+    try:
+        parsed = json.loads(body.decode('utf-8'))
+        logger.info("🎯 SHOPIFY WEBHOOK BODY:\n%s", json.dumps(parsed, indent=2, ensure_ascii=False))
+    except Exception:
+        logger.info("🎯 SHOPIFY WEBHOOK BODY (raw): %s", body.decode('utf-8', errors='replace'))
     
     # Verify signature for all webhooks
     signature = headers.get("x-shopify-hmac-sha256", "")
@@ -48,13 +40,13 @@ async def handle_shopify_webhook(request: Request):
     
     # Route based on event type
     if event_type == "products/update":
-        logger.info("🔄 Processing products/update webhook through existing flow")
-        result = webhooks_service.handle_shopify_webhook(headers, body)
+        logger.info("🔄 Processing products/update webhook")
+        result = webhooks_service.handle_shopify_product_update_webhook(body)
         logger.info(f"🎯 SHOPIFY WEBHOOK RESULT: {json.dumps(result, indent=2)}")
         return result
     elif event_type == "orders/create":
-        logger.info("🔄 Processing orders/create webhook through existing flow")
-        result = webhooks_service.handle_shopify_webhook(headers, body)
+        logger.info("🔄 Processing orders/create webhook")
+        result = webhooks_service.handle_shopify_order_create_webhook(body)
         logger.info(f"🎯 SHOPIFY WEBHOOK RESULT: {json.dumps(result, indent=2)}")
         return result
     else:

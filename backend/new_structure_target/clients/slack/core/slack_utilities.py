@@ -16,18 +16,6 @@ class SlackUtilities:
         self.message_builder = message_builder
         self.message_parsers = message_parsers
 
-    def get_sport_group_mention(self, product_title: str) -> str:
-        """Get sport group mention for a product (convenience method)"""
-        return self.message_builder.get_sport_group_mention(product_title)
-
-    def get_order_url(self, order_id: str, order_number: str) -> str:
-        """Get formatted order URL (convenience method)"""
-        return self.message_builder.get_order_url(order_id, order_number)
-
-    def get_product_url(self, product_id: str) -> str:
-        """Get formatted product URL (convenience method)"""
-        return self.message_builder.get_product_url(product_id)
-
     def extract_sheet_link(self, message_text: str) -> str:
         """Extract sheet link from message text"""
         return self.message_parsers.extract_sheet_link(message_text)

@@ -6,21 +6,6 @@ from config import config
 logger = logging.getLogger(__name__)
 
 
-def build_shopify_order_url(order_id: str) -> str:
-    """
-    Build a Shopify admin URL for an order
-    
-    Args:
-        order_id: The Shopify order ID (numeric part only)
-        
-    Returns:
-        Full admin URL to the order
-    """
-    # Use the admin URL from config
-    base_url = config.Shopify.admin_url
-    return f"{base_url}/orders/{order_id}"
-
-
 def cancel_order(order_id: str, request_func: Callable) -> Dict[str, Any]:
     """
     Cancel a Shopify order

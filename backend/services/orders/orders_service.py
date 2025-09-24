@@ -6,7 +6,7 @@ Refactored to use helper modules for better organization.
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from ..shopify import ShopifyService
+from new_structure_target.clients.shopify.shopify_service import ShopifyService
 from .refund_calculator import RefundCalculator
 
 logger = logging.getLogger(__name__)
