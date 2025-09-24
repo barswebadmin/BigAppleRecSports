@@ -1,6 +1,6 @@
 from typing import Dict, Any
 
-import shopify  # shopify_python_api
+import shopify
 
 # Placeholder client wrapper for future use
 def initialize_shopify_session(shop_url: str, api_version: str, access_token: str) -> None:

@@ -22,8 +22,8 @@ slack-sdk==3.30.0
 beautifulsoup4==4.12.3
 lxml==5.3.0
 
-# Shopify API client
-shopify_python_api==12.6.0
+# Shopify API client (installs "shopify" import)
+ShopifyAPI==12.6.0
 
 # Configuration and environment
 python-dotenv==1.0.1
