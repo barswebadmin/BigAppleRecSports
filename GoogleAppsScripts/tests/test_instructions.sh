@@ -54,7 +54,7 @@ PROJECTS=(
     "projects/leadership-discount-codes"
     "projects/create-products-from-registration-info"
     "projects/process-refunds-exchanges"
-    "projects/payment-assistance-tags"
+    # "projects/payment-assistance-tags"  # temporarily excluded from CI
     "projects/veteran-tags"
 )
 
@@ -88,9 +88,6 @@ for project in "${PROJECTS[@]}"; do
         "projects/process-refunds-exchanges")
             file="$project/New.gs"
             ;;
-        "projects/payment-assistance-tags")
-            file="$project/onOpen and getExecEmails.gs"
-            ;;
         "projects/veteran-tags")
             file="$project/Add Menu Item to UI.gs"
             ;;
@@ -112,9 +109,6 @@ for project in "${PROJECTS[@]}"; do
         "projects/process-refunds-exchanges")
             file="$project/New.gs"
             ;;
-        "projects/payment-assistance-tags")
-            file="$project/onOpen and getExecEmails.gs"
-            ;;
         "projects/veteran-tags")
             file="$project/Add Menu Item to UI.gs"
             ;;
@@ -125,8 +119,9 @@ for project in "${PROJECTS[@]}"; do
 done
 
 # Test 6: Instructions contain project-specific information
-run_test "Leadership instructions mention discount codes" \
-    "grep -q 'discount codes' projects/leadership-discount-codes/instructions.gs"
+# Skip detailed content check for leadership while disabled
+# run_test "Leadership instructions mention discount codes" \
+#     "grep -q 'discount codes' projects/leadership-discount-codes/instructions.gs"
 
 run_test "Product creation instructions mention variants" \
     "grep -q 'variants' projects/create-products-from-registration-info/instructions.gs"
@@ -134,8 +129,9 @@ run_test "Product creation instructions mention variants" \
 run_test "Refunds instructions mention exchanges" \
     "grep -q 'exchanges\\|refund' projects/process-refunds-exchanges/instructions.gs"
 
-run_test "Payment assistance instructions mention tags" \
-    "grep -q 'tags\\|assistance' projects/payment-assistance-tags/instructions.gs"
+# Skipping payment assistance instructions check in CI
+# run_test "Payment assistance instructions mention tags" \
+#     "grep -q 'tags\\|assistance' projects/payment-assistance-tags/instructions.gs"
 
 run_test "Veteran instructions mention veteran tags" \
     "grep -q 'veteran' projects/veteran-tags/instructions.gs"

@@ -214,7 +214,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         const shopifyErrors = errorDetail.errors || errorMessage;
         const userMessage = errorDetail.user_message || 'There is a system configuration issue. Please contact support or try again later.';
 
-        Logger.log(`🚨 [${isDebug ? 'debugApi' : 'prodApi'}] Shopify authentication error (401): ${shopifyErrors}`);
+        Logger.log(`🚨Shopify authentication error (401): ${shopifyErrors}`);
 
         // Update spreadsheet with config error note
         try {
@@ -225,10 +225,10 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         }
 
         // Send admin notification only
-        emailSubject = `🚨 BARS Refund Form - Shopify Auth Error (401) [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailSubject = `🚨 BARS Refund Form - Shopify Auth Error (401)`;
         emailBody = `
           <h3>🚨 Shopify Authentication Error (401)</h3>
-          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Mode:</strong></p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
           <p><strong>Shopify Errors:</strong> ${shopifyErrors}</p>
           <p><strong>Order:</strong> ${rawOrderNumber}</p>
@@ -248,7 +248,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         const shopifyErrors = errorDetail.errors || errorMessage;
         const userMessage = errorDetail.user_message || 'There is a system configuration issue. Please contact support or try again later.';
 
-        Logger.log(`🚨 [${isDebug ? 'debugApi' : 'prodApi'}] Shopify store error (404): ${shopifyErrors}`);
+        Logger.log(`🚨Shopify store error (404): ${shopifyErrors}`);
 
         // Update spreadsheet with config error note
         try {
@@ -259,10 +259,10 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         }
 
         // Send admin notification only
-        emailSubject = `🚨 BARS Refund Form - Shopify Store Error (404) [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailSubject = `🚨 BARS Refund Form - Shopify Store Error (404)`;
         emailBody = `
           <h3>🚨 Shopify Store Not Found (404)</h3>
-          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Mode:</strong></p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
           <p><strong>Shopify Errors:</strong> ${shopifyErrors}</p>
           <p><strong>Order:</strong> ${rawOrderNumber}</p>
@@ -280,7 +280,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         // 406: Order Not Found - COMMENTED OUT: Don't send email to requestor per new requirements
         shouldSendToRequestor = false; // Changed from true to false
 
-        Logger.log(`🔍 [${isDebug ? 'debugApi' : 'prodApi'}] Order not found (406): ${errorMessage}`);
+        Logger.log(`🔍 Order not found (406): ${errorMessage}`);
         Logger.log(`📧 CUSTOMER EMAIL DISABLED: Not sending email to customer for order not found`);
 
         /* COMMENTED OUT: Customer email for order not found
@@ -312,10 +312,10 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         }
 
         // Send admin notification about order not found
-        emailSubject = `🔍 BARS Refund Form - Order Not Found (406) [${isDebug ? 'debugApi' : 'prodApi'}]`;
+        emailSubject = `🔍 BARS Refund Form - Order Not Found (406)`;
         emailBody = `
           <h3>🔍 Order Not Found (406)</h3>
-          <p><strong>Mode:</strong> ${isDebug ? 'debugApi' : 'prodApi'}</p>
+          <p><strong>Mode:</strong></p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
           <p><strong>Order:</strong> ${rawOrderNumber}</p>
           <p><strong>Requestor:</strong> ${requestorName.first} ${requestorName.last} (${requestorEmail})</p>
