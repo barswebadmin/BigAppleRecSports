@@ -75,15 +75,22 @@ function parseColCLeagueDetails_(columnCData) {
       }
     }
 
-    // Parse off dates (skipping dates)
+    // Parse off dates (skipping dates) – support multiple dates like "Skipping 11/9 and 11/30"
     if (lowerLine.includes('skipping') || lowerLine.includes('no games') || lowerLine.includes('off')) {
-      // Extract date from "Skipping MM/DD" or similar patterns
-      const skipMatch = line.match(/skipping\s+(.+)/i);
-      if (skipMatch) {
-        const dateStr = skipMatch[1].trim();
-        const parsedDate = parseFlexibleDate_(dateStr, true);
-        if (parsedDate) {
-          offDates.push(parsedDate);
+      // Extract all MM/DD or MM/DD/YY(YY) tokens on the line
+      const tokens = line.match(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g);
+      if (tokens && tokens.length) {
+        for (const t of tokens) {
+          const d = parseFlexibleDate_(t, true);
+          if (d) offDates.push(d);
+        }
+      } else {
+        // Fallback: try to parse whatever follows the keyword (single value)
+        const skipMatch = line.match(/skipping\s+(.+)/i) || line.match(/no games\s+(.+)/i) || line.match(/off\s+(.+)/i);
+        if (skipMatch) {
+          const dateStr = skipMatch[1].trim();
+          const parsedDate = parseFlexibleDate_(dateStr, true);
+          if (parsedDate) offDates.push(parsedDate);
         }
       }
     }

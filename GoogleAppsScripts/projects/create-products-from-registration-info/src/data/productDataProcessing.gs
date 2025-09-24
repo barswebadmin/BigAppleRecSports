@@ -166,6 +166,57 @@ function getEditableFieldsList_(productData) {
 }
 
 /**
+ * Return ordered editable fields metadata used for display, validation, and updates
+ * Each item: { key, name, format? }
+ * format: 'date' | 'datetime' | 'time' | 'price' | undefined
+ */
+function getEditableFieldsMeta_(sportName) {
+  // Core ordered list (indexes are used by UI section slicing)
+  const meta = [
+    // === BASIC INFO === (0..6)
+    { key: 'sportName', name: 'Sport' },
+    { key: 'dayOfPlay', name: 'Day' },
+    { key: 'sportSubCategory', name: 'Sport Sub-Category' },
+    { key: 'division', name: 'Division' },
+    { key: 'season', name: 'Season' },
+    { key: 'year', name: 'Year' },
+    { key: 'socialOrAdvanced', name: 'Social or Advanced' },
+
+    // === DATES & TIMES (and Types first to preserve legacy slicing) === (7..15)
+    { key: 'types', name: 'Type(s)' },
+    { key: 'newPlayerOrientationDateTime', name: 'New Player Orientation Date/Time', format: 'datetime' },
+    { key: 'scoutNightDateTime', name: 'Scout Night Date/Time', format: 'datetime' },
+    { key: 'openingPartyDate', name: 'Opening Party Date', format: 'date' },
+    { key: 'seasonStartDate', name: 'Season Start Date', format: 'date' },
+    { key: 'seasonEndDate', name: 'Season End Date', format: 'date' },
+    { key: 'alternativeStartTime', name: 'Alternative Start Time (Optional)', format: 'time' },
+    { key: 'alternativeEndTime', name: 'Alternative End Time (Optional)', format: 'time' },
+    { key: 'offDatesCommaSeparated', name: 'Off Dates, Separated by Comma' },
+
+    // === SPECIAL EVENTS === (16..18)
+    { key: 'rainDate', name: 'Rain Date', format: 'date' },
+    { key: 'closingPartyDate', name: 'Closing Party Date', format: 'date' },
+
+    // === LOCATION & PRICING === (19..21)
+    { key: 'leagueStartTime', name: 'Sport Start Time', format: 'time' },
+    { key: 'leagueEndTime', name: 'Sport End Time', format: 'time' },
+    { key: 'location', name: 'Location' },
+    { key: 'price', name: 'Price', format: 'price' },
+
+    // === REGISTRATION WINDOWS === (22..)
+    { key: 'vetRegistrationStartDateTime', name: 'Veteran Registration Start Date/Time', format: 'datetime' },
+    { key: 'earlyRegistrationStartDateTime', name: 'Early Registration Start Date/Time', format: 'datetime' },
+    { key: 'openRegistrationStartDateTime', name: 'Open Registration Start Date/Time', format: 'datetime' },
+    { key: 'totalInventory', name: 'Total Inventory' },
+    { key: 'numberVetSpotsToReleaseAtGoLive', name: 'Number of Vet Spots Held' }
+  ];
+
+  // Filter out irrelevant fields for the given sport
+  const irrelevant = (typeof irrelevantFieldsForSport !== 'undefined' && irrelevantFieldsForSport[sportName]) || [];
+  return meta.filter(f => irrelevant.indexOf(f.key) === -1);
+}
+
+/**
  * Update field value in product data
  */
 function updateFieldValue_(productData, fieldNumber, newValue) {
