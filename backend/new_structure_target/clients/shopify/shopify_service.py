@@ -6,9 +6,10 @@ import os
 import logging
 from .shopify_customer_utils import ShopifyCustomerUtils
 from .builders.shopify_gid_builders import build_customer_gid
-from .core.shopify_client import initialize_shopify_session
+from .core.shopify_client import ShopifyClient, get_order_details as sdk_get_order_details
 import shopify
 from . import shopify_order_utils
+from .builders.shopify_query_builders import get_order_details_query
 from config import config
 
 # Add parent directory to path for imports
@@ -467,8 +468,54 @@ class ShopifyService:
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
         return shopify_order_utils.cancel_order(order_id, self._make_shopify_request)
 
-    def get_order_details(self, order_id: str) -> Dict[str, Any]:
-        return shopify_order_utils.get_order_details(order_id, self._make_shopify_request)
+    def get_order_details(self, order_id: Optional[str] = None, order_number: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Fetch order details by Shopify order GID (order_id) or by order number/name.
+
+        Preference: order_id when provided. When only order_number is provided, build an orders search query.
+        Uses Shopify GraphQL via _make_shopify_request.
+        """
+        try:
+            if not order_id and not order_number:
+                return {"success": False, "message": "Provide order_id or order_number"}
+
+            # Prefer SDK where possible (will use REST/ActiveResource search)
+            try:
+                # Ensure session is active for SDK calls
+                shop_url = f"{config.Shopify.store_id}.myshopify.com"
+                ShopifyClient._initialize_session(shop_url, "2025-07", config.Shopify.token)
+                logger.info("🧭 SERVICE:get_order_details → using SDK first")
+                sdk_result = sdk_get_order_details(order_id=order_id, order_number=order_number)
+                # If SDK found an order or definitively not found, return immediately
+                if sdk_result and (sdk_result.get("order") is not None or sdk_result.get("success") is False):
+                    logger.info("🧭 SERVICE:get_order_details → SDK path returned")
+                    return sdk_result
+            except Exception as e:
+                logger.warning(f"SDK order lookup failed, falling back to GraphQL: {e}")
+
+            # Fallback to GraphQL via query builder / util
+            logger.info("🧭 SERVICE:get_order_details → using GraphQL fallback")
+            if order_id:
+                return shopify_order_utils.get_order_details(order_id, self._make_shopify_request)
+            payload = get_order_details_query(order_id=None, order_number=order_number)
+            data = self._make_shopify_request(payload)
+            if not data or "data" not in data:
+                return {"success": False, "message": "No response from Shopify"}
+
+            # Unwrap when using orders query
+            orders = data["data"].get("orders", {}).get("edges", [])
+            if orders:
+                node = orders[0].get("node", {})
+                return {"success": True, "order": node}
+
+            # If the response used order(id:), normalize similarly
+            if "order" in data["data"] and data["data"]["order"]:
+                return {"success": True, "order": data["data"]["order"]}
+
+            return {"success": True, "message": "Order not found", "order": None}
+        except Exception as e:
+            logger.error(f"Error fetching order details: {e}")
+            return {"success": False, "message": str(e)}
 
     def create_refund(
         self, order_id: str, refund_amount: float, refund_type: str = "refund"
@@ -683,7 +730,7 @@ class ShopifyService:
 
             # Initialize Shopify session
             shop_url = f"{config.Shopify.store_id}.myshopify.com"
-            initialize_shopify_session(shop_url, "2025-07", config.Shopify.token)
+            ShopifyClient._initialize_session(shop_url, "2025-07", config.Shopify.token)
 
             # Fetch customer
             if customer_id:

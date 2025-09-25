@@ -6,6 +6,60 @@ from .shopify_gid_builders import build_product_gid
 logger = logging.getLogger(__name__)
 
 
+# --- Orders ---
+def get_order_details_query(order_id: Optional[str] = None, order_number: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Build a GraphQL payload to fetch order details.
+
+    - If order_id is provided (Shopify GID), use order(id: $id)
+    - If order_number is provided (e.g., "#12345" or "12345"), use orders(first:1, query: $query)
+      with query string matching the order name.
+    """
+    if not order_id and not order_number:
+        raise ValueError("Either order_id or order_number must be provided")
+
+    if order_id:
+        return {
+            "query": (
+                "query getOrderDetails($id: ID!) {\n"
+                "  order(id: $id) {\n"
+                "    id\n"
+                "    name\n"
+                "    email\n"
+                "    customer { id email }\n"
+                "    transactions { id kind gateway parentTransaction { id } }\n"
+                "  }\n"
+                "}"
+            ),
+            "variables": {"id": order_id},
+        }
+
+    # Normalize order_number – ensure it includes leading '#'
+    on = order_number or ""
+    if not on.startswith("#"):
+        on = f"#{on}"
+    # Shopify Admin search syntax can match name via name:<value>
+    query_string = f"name:{on}"
+
+    return {
+        "query": (
+            "query getOrderByName($q: String!) {\n"
+            "  orders(first: 1, query: $q) {\n"
+            "    edges {\n"
+            "      node {\n"
+            "        id\n"
+            "        name\n"
+            "        email\n"
+            "        customer { id email }\n"
+            "        transactions { id kind gateway parentTransaction { id } }\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}"
+        ),
+        "variables": {"q": query_string},
+    }
+
 
 def get_product_details_query(product_id: Optional[str], product_handle: Optional[str]) -> Dict[str, Any]:
     """Create a get product details query"""
@@ -109,4 +163,23 @@ def get_product_details_query(product_id: Optional[str], product_handle: Optiona
 
 
 
-# def get_order_details_query(order_id: str) -> Dict[str, Any]:
+# orders query
+
+# curl -X POST "https://09fe59-3.myshopify.com/admin/api/2025-07/graphql.json" \
+#   -H "Content-Type: application/json" \
+#   -H "X-Shopify-Access-Token: token" \
+#   -w '{"status_code": %{http_code}}\n' \
+#   -d '{
+#     "query": "query { orders(first: 1, query: \"id:5236092698718\") { edges { node { id name email totalPriceSet { shopMoney { amount currencyCode } } } } } }"
+#   }'
+
+# data.orders.edges is empty
+# search[0].warnings for 400/422 (gid instead of id)
+# warnings has one object with `field` and `message`
+
+# order_number:
+# "field": "order_number",
+#             "message": "Invalid search field for this query."
+
+# data.orders.edges is empty but no `search` for order id not found
+

@@ -20,4 +20,20 @@ class Customer:
     @classmethod
     def search(cls, *, query: str) -> list["Customer"]: ...
 
+class Order:
+    # Minimal attributes commonly accessed; actual SDK exposes more
+    id: int | str | None
+    name: str | None
+    email: str | None
+
+    # ActiveResource returns objects with attributes dict in many cases
+    attributes: dict
+    def to_dict(self) -> dict: ...
+
+    @classmethod
+    def find(cls, *args, **kwargs) -> list["Order"] | "Order" | None: ...
+
+    @classmethod
+    def search(cls, *, query: str) -> list["Order"]: ...
+
 

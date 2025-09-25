@@ -18,14 +18,15 @@ router = APIRouter(prefix="/refunds", tags=["refunds"])
 @router.post("/submit-request")
 async def handle_refund_request(request: Request):
     payload = await request.json()
+    logger.info(f"Received refund request: {payload}")
     email = payload.get("email")
     order_number = payload.get("orderNumber")
 
-    validation_errors = [
+    validation_results = [
         validate_email_format(email),
         validate_shopify_order_number_format(order_number),
     ]
-    errors = [e for e in validation_errors if e]
+    errors = [str(r["message"]) for r in validation_results if not r["success"] and r.get("message")]
     if errors:
         raise HTTPException(status_code=422, detail='; '.join(errors))
 
