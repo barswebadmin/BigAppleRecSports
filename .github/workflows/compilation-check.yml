@@ -199,16 +199,21 @@ NODE
 
     # Summary step
     - name: Compilation Summary
+      env:
+        BACKEND_STATUS: ${{ steps.backend-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}
+        GAS_STATUS: ${{ steps.gas-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}
+        LAMBDA_STATUS: ${{ steps.lambda-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}
+        BACKEND_OK: ${{ steps.backend-compile.outputs.success }}
+        GAS_OK: ${{ steps.gas-compile.outputs.success }}
+        LAMBDA_OK: ${{ steps.lambda-compile.outputs.success }}
       run: |
         echo "📊 Compilation Check Summary:"
-        echo "Backend: ${{ steps.backend-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}"
-        echo "Google Apps Scripts: ${{ steps.gas-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}"
-        echo "Lambda Functions: ${{ steps.lambda-compile.outputs.success == 'true' && '✅ PASSED' || '❌ FAILED' }}"
+        echo "Backend: ${BACKEND_STATUS}"
+        echo "Google Apps Scripts: ${GAS_STATUS}"
+        echo "Lambda Functions: ${LAMBDA_STATUS}"
 
         # Fail the job if any compilation failed
-        if [ "${{ steps.backend-compile.outputs.success }}" != "true" ] || \
-           [ "${{ steps.gas-compile.outputs.success }}" != "true" ] || \
-           [ "${{ steps.lambda-compile.outputs.success }}" != "true" ]; then
+        if [ "${BACKEND_OK}" != "true" ] || [ "${GAS_OK}" != "true" ] || [ "${LAMBDA_OK}" != "true" ]; then
           echo "❌ One or more compilation checks failed"
           exit 1
         fi
