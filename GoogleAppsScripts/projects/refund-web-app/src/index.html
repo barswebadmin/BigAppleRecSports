@@ -16,17 +16,44 @@
       .error { color: #b00020; }
       .success { color: #0a7a0a; }
       .hidden { display: none; }
+      /* simple modal */
+      .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 9999; }
+      .modal { background: #fff; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 520px; width: calc(100% - 40px); padding: 16px; }
+      .modal h2 { margin: 0 0 8px; font-size: 18px; }
+      .modal p { margin: 0 0 12px; }
+      .modal .actions { text-align: right; }
+      .modal .actions button { padding: 8px 12px; }
     </style>
     <script>
       function byId(id){ return document.getElementById(id); }
       function show(el, yes){ el.classList.toggle('hidden', !yes); }
       function text(el, t){ el.textContent = t; }
 
+      // Modal helpers
+      function showModal(message, title){
+        var bd = byId('modalBackdrop');
+        text(byId('modalTitle'), title || 'Notice');
+        text(byId('modalBody'), message || '');
+        bd.style.display = 'flex';
+      }
+      function hideModal(){ byId('modalBackdrop').style.display = 'none'; }
+
       function onQuoteSubmit(e){
         e.preventDefault();
         var email = byId('email').value.trim();
         var order = byId('order').value.trim();
         var msg = byId('quoteMsg');
+
+        // Basic validation
+        if (email.indexOf('@') === -1) {
+          showModal('Email is invalid.', 'Invalid email');
+          return;
+        }
+        if (order.length < 5) {
+          showModal('Order number is invalid.', 'Invalid order number');
+          return;
+        }
+
         text(msg, 'Submitting...'); msg.className = 'muted';
 
         google.script.run
@@ -105,7 +132,7 @@
           <input id="order" type="text" required />
         </div>
       </div>
-      <button type="submit">Check Refund</button>
+      <button type="submit">Submit Request</button>
       <div id="quoteMsg" class="muted" style="margin-top:8px;"></div>
     </form>
 
@@ -118,6 +145,17 @@
         <button type="button" onclick="onAccept()">Accept & Process Refund</button>
       </div>
       <div id="processMsg" style="margin-top:8px;"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modalBackdrop" class="modal-backdrop">
+      <div class="modal">
+        <h2 id="modalTitle">Notice</h2>
+        <p id="modalBody"></p>
+        <div class="actions">
+          <button type="button" onclick="hideModal()">OK</button>
+        </div>
+      </div>
     </div>
   </body>
   
