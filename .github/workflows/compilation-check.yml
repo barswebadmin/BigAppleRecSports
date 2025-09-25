@@ -141,6 +141,7 @@ jobs:
         }
 
         console.log('✅ Google Apps Scripts compilation successful!');
+NODE
 
         # Skipping no-undef lint in CI; run locally instead for fuller context
         echo "ℹ️ Skipping GAS no-undef lint in CI (run locally)"
@@ -336,7 +337,7 @@ jobs:
 
   # Base branch (main) checks - run only on PRs to compare against base
   compilation-check-base:
-    if: github.event_name == 'pull_request_target'
+    if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha != github.event.pull_request.head.sha }}
     runs-on: ubuntu-latest
 
     outputs:
@@ -469,9 +470,8 @@ NODE
         echo "✅ Lambda Functions compilation check (base) passed"
 
   backend-tests-base:
-    if: github.event_name == 'pull_request_target'
     needs: compilation-check-base
-    if: needs.compilation-check-base.outputs.backend-compiled == 'true'
+    if: ${{ github.event_name == 'pull_request_target' && needs.compilation-check-base.outputs.backend-compiled == 'true' && github.event.pull_request.base.sha != github.event.pull_request.head.sha }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -514,9 +514,8 @@ NODE
         echo "✅ Backend tests (base) completed!"
 
   gas-tests-base:
-    if: github.event_name == 'pull_request_target'
     needs: compilation-check-base
-    if: needs.compilation-check-base.outputs.gas-compiled == 'true'
+    if: ${{ github.event_name == 'pull_request_target' && needs.compilation-check-base.outputs.gas-compiled == 'true' && github.event.pull_request.base.sha != github.event.pull_request.head.sha }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -550,9 +549,8 @@ NODE
         echo "✅ GAS tests (base) completed!"
 
   lambda-tests-base:
-    if: github.event_name == 'pull_request_target'
     needs: compilation-check-base
-    if: needs.compilation-check-base.outputs.lambda-compiled == 'true'
+    if: ${{ github.event_name == 'pull_request_target' && needs.compilation-check-base.outputs.lambda-compiled == 'true' && github.event.pull_request.base.sha != github.event.pull_request.head.sha }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
