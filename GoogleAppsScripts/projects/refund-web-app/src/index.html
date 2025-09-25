@@ -42,6 +42,22 @@
               quote_id: data.quote_id
             });
             show(byId('quoteCard'), true);
+            try {
+              var pretty = JSON.stringify(data, null, 2);
+              var w = window.open('', 'quotePopup', 'width=600,height=500');
+              if (w) {
+                w.document.write('<!doctype html><html><head><title>Quote Result</title>' +
+                  '<style>body{font-family:monospace;white-space:pre-wrap;margin:16px;} h1{font-family:system-ui,sans-serif;}</style>' +
+                  '</head><body><h1>Quote Result</h1><pre>' +
+                  pretty.replace(/[&<>]/g, function(ch){return ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]);}) +
+                  '</pre></body></html>');
+                w.document.close();
+              } else {
+                alert(pretty);
+              }
+            } catch (e) {
+              // fallback no-op
+            }
           })
           .withFailureHandler(function(err){
             msg.className = 'error'; text(msg, err && err.message ? err.message : 'Error getting quote');
