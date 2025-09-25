@@ -5,7 +5,6 @@ from config import config
 
 logger = logging.getLogger(__name__)
 
-
 def cancel_order(order_id: str, request_func: Callable) -> Dict[str, Any]:
     """
     Cancel a Shopify order

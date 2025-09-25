@@ -80,8 +80,7 @@ def _generate_product_update_analysis(
     result["product_data"]["sold_out_at"] = format_date_and_time(webhook_data.get("updated_at", ""))
     
     product_tags = webhook_data.get("tags")
-    slack_group_mention = get_slack_group_mention(product_tags)
-    result["product_data"]["slack_group_mention"] = slack_group_mention
+    result["product_data"]["tags"] = product_tags
 
 
     return result

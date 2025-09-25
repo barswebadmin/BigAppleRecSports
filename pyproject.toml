@@ -9,7 +9,13 @@ extraPaths = [
     "./lambda-functions/changePricesOfOpenAndWaitlistVariants"
 ]
 
+stubPath = "typings"
+
 typeCheckingMode = "basic"
+
+# Use local stubs for untyped third-party libs without requiring the package at runtime
+reportMissingImports = "none"
+reportMissingModuleSource = "none"
 
 [tool.pytest.ini_options]
 pythonpath = [

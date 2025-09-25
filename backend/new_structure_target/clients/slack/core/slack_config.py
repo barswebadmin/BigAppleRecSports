@@ -18,8 +18,9 @@ class SlackConfig:
     """
 
     def __init__(self, ENVIRONMENT: str):
-        self.environment = os.getenv("ENVIRONMENT", "dev").lower()
-        logger.info(f"🌍 SlackConfig Environment: {self.environment}")
+        # Honor the environment provided by the main Config, do not re-read os.getenv here
+        self.environment = (ENVIRONMENT or "dev").lower()
+        logger.info(f"🌍 SlackConfig Environment (from Config): {self.environment}")
 
     @staticmethod
     def get_environment() -> str:
@@ -168,14 +169,14 @@ class SlackConfig:
         KickballWtnbThursday= _Group("<!subteam^S09FN0WGZKL>", "kickball-wtnb-thursday")
         KickballWtnbSocial  = _Group("<!subteam^S09FKLYHB2R>", "kickball-wtnb-social")
         KickballThursday    = _Group("<!subteam^S09G22N4SG1>", "kickball-thursday")
-        KickballSaturday    = _Group("<!subteam^S09G21RM22D>", "kickball-saturday")
+        KickballSaturday    = _Group("<!subteam^S09G21RM22D>", "kickball-saturday-open")
         KickballSunday      = _Group("<!subteam^S09FSNVD5EY>", "kickball-sunday")
 
         # Pickleball
-        PickleballTuesdaySocial   = _Group("<!subteam^S09G20K6LM7>", "pickleball-tuesday-social")
-        PickleballTuesdayAdvanced = _Group("<!subteam^S09G20K6LM7>", "pickleball-tuesday-advanced")  # same ID per source
+        PickleballTuesday   = _Group("<!subteam^S09G20K6LM7>", "pickleball-tuesday")
         PickleballThursday        = _Group("<!subteam^S09F7GCF91D>", "pickleball-thursday")
-        PickleballSundayWtnb      = _Group("<!subteam^S09FKM2JA9K>", "pickleball-sunday-wtnb")
+        PickleballSundayWtnb      = _Group("<!subteam^S09FN14308J>", "pickleball-sunday-wtnb")
+        PickleballSundayOpen      = _Group("<!subteam^S09FKM2JA9K>", "pickleball-sunday-open")
 
         @classmethod
         def all(cls) -> dict[str, dict[str, str]]:

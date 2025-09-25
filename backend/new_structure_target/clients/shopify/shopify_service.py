@@ -5,6 +5,9 @@ import sys
 import os
 import logging
 from .shopify_customer_utils import ShopifyCustomerUtils
+from .builders.shopify_gid_builders import build_customer_gid
+from .core.shopify_client import initialize_shopify_session
+import shopify
 from . import shopify_order_utils
 from config import config
 
@@ -658,6 +661,85 @@ class ShopifyService:
         except Exception as e:
             logger.error(f"❌ Error fetching customer by email {email}: {str(e)}")
             return {"success": False, "message": str(e), "customer": None}
+
+    def get_customer_details(
+        self,
+        customer_email: Optional[str] = None,
+        customer_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Fetch Shopify customer details (id, email, first_name, last_name, tags)
+
+        Uses the Shopify Python library for simpler requests and parsing.
+        Provide either customer_email or customer_id. If both provided, customer_id is preferred.
+        Prints success/failure messages and returns a structured result.
+        """
+        try:
+            lookup_by = "id" if customer_id else ("email" if customer_email else None)
+            if not lookup_by:
+                msg = "Provide customer_email or customer_id"
+                print(f"❌ {msg}")
+                logger.error(msg)
+                return {"success": False, "message": msg, "customer": None}
+
+            # Initialize Shopify session
+            shop_url = f"{config.Shopify.store_id}.myshopify.com"
+            initialize_shopify_session(shop_url, "2025-07", config.Shopify.token)
+
+            # Fetch customer
+            if customer_id:
+                cust = shopify.Customer.find(customer_id)
+                # Some versions return None when not found
+                if not cust or not getattr(cust, "id", None):
+                    msg = f"Customer not found for id: {customer_id}"
+                    print(f"📭 {msg}")
+                    logger.info(msg)
+                    return {"success": True, "message": "No customer found", "customer": None}
+            else:
+                results = shopify.Customer.search(query=f"email:{customer_email}")
+                if not results:
+                    msg = f"Customer not found for email: {customer_email}"
+                    print(f"📭 {msg}")
+                    logger.info(msg)
+                    return {"success": True, "message": "No customer found", "customer": None}
+                cust = results[0]
+
+            # Normalize tags to list[str]
+            tags_raw = getattr(cust, "tags", [])
+            if isinstance(tags_raw, str):
+                tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
+            elif isinstance(tags_raw, list):
+                tags = [str(t).strip() for t in tags_raw if str(t).strip()]
+            else:
+                tags = []
+
+            customer = {
+                "id": getattr(cust, "id", None),
+                "email": getattr(cust, "email", None),
+                "first_name": getattr(cust, "first_name", None),
+                "last_name": getattr(cust, "last_name", None),
+                "tags": tags,
+            }
+
+            print(
+                f"✅ Customer found: {customer.get('first_name','')} {customer.get('last_name','')} "
+                f"({customer.get('email','')}) | ID: {customer.get('id')}"
+            )
+            logger.info(
+                f"✅ Customer found: {customer.get('first_name','')} {customer.get('last_name','')} "
+                f"({customer.get('email','')})"
+            )
+            return {"success": True, "message": "Customer found", "customer": customer}
+
+        except Exception as e:
+            # Try to classify credential problems
+            err_text = str(e)
+            if "401" in err_text or "Unauthorized" in err_text:
+                msg = "Shopify authentication error (credentials likely wrong)"
+            else:
+                msg = f"Error fetching customer details: {err_text}"
+            print(f"❌ {msg}")
+            logger.error(msg)
+            return {"success": False, "message": msg, "customer": None}
 
     def _make_shopify_rest_request(
         self, endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] = None

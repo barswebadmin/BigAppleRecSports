@@ -9,7 +9,7 @@ TODO: should we delete this??? i don't see why it's needed
 
 import os
 from typing import Dict, Any
-from new_structure_target.services.webhooks.parsers.product_parser import parse_for_waitlist_form
+from new_structure_target.services.webhooks.parsers.product_parser import get_slack_group_mention, parse_for_waitlist_form
 from new_structure_target.clients.shopify.core.shopify_security import ShopifySecurity
 from new_structure_target.clients.slack.core.slack_client import SlackClient
 from new_structure_target.clients.google_apps_script.gas_client import GASClient
@@ -36,7 +36,20 @@ class WebhooksOrchestrator:
     
     def handle_shopify_order_create_webhook(self, body: bytes) -> Dict[str, Any]:
         """Handle Shopify order create webhook"""
-        return evaluate_order_create_webhook(body)
+
+        evaluation_result = evaluate_order_create_webhook(body)
+        product_data = evaluation_result["product_data"]
+        reasons = ", ".join(evaluation_result["reasons"])
+
+        product_tags = product_data.get("tags")
+        slack_group_mention = get_slack_group_mention(product_tags)
+        group_info = SlackGroup.get(slack_group_mention) if slack_group_mention else None
+        
+        return {
+                "result": "success",
+                "reasons": reasons,
+                "product_data": product_data
+            }
     
     def handle_shopify_product_update_webhook(self, body: bytes) -> Dict[str, Any]:
         """Handle Shopify product update webhook"""
@@ -109,7 +122,10 @@ class WebhooksOrchestrator:
         section_text_3 = f"*Waitlist Responses:* {slack_message_builder.build_hyperlink('https://docs.google.com/spreadsheets/d/1rrmEu6QKNnDoNJs2XnAD08W-7smUhFPKYnNC5y7iNI0?resourcekey=&usp=forms_web_b&urp=linked#gid=1214906876', 'View in Google Sheets')}"
         section_block_3 = slack_message_builder.build_section_block(section_text_3)
 
+        product_tags = product_data.get("tags")
+        slack_group_mention = get_slack_group_mention(product_tags)
         group_info = SlackGroup.get(slack_group_mention) if slack_group_mention else None
+        
         mention_target = group_info.get('id') if isinstance(group_info, dict) else "@here"
         mention_text = f"*Attn*: {mention_target}"
         mention_block = slack_message_builder.build_section_block(mention_text)

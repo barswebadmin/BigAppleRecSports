@@ -54,12 +54,14 @@ def _generate_order_create_analysis(
     order_id = webhook_data.get("order_id", "Unknown")
     order_created_at = webhook_data.get("created_at", "")
     product_title = webhook_data.get("product_title", "Unknown Product")
+    product_id = webhook_data.get("product_id", "Unknown")
     order_url = build_order_url(order_id)
     order_data = {
         "order_id": order_id,
         "order_number": order_number,
         "order_created_at": order_created_at,
         "product_title": product_title,
+        "product_id": product_id,
         "order_url": order_url,
     }
     
@@ -93,6 +95,8 @@ def _generate_order_create_analysis(
     if is_waitlist_registration:
         result["reasons"].append("waitlist_registration")
         result["action_needed"] = True
+
+    # product_tags = 
 
     return result
 

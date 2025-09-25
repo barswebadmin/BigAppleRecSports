@@ -17,15 +17,21 @@ class ShopifyConfig:
             self._location_id = os.getenv("SHOPIFY_DEV_LOCATION_ID", "SHOPIFY_DEV_LOCATION_ID")
 
     @property
-    def token(self) -> Optional[str]:
+    def token(self) -> str:
+        if not self._token:
+            raise RuntimeError("Shopify token is not set")
         return self._token
 
     @property
-    def location_id(self) -> Optional[str]:
+    def location_id(self) -> str:
+        if not self._location_id:
+            raise RuntimeError("Shopify location id is not set")
         return self._location_id
 
     @property
     def store_id(self) -> Optional[str]:
+        if not self._store_id:
+            raise RuntimeError("Shopify store id is not set")
         return self._store_id
 
     @property

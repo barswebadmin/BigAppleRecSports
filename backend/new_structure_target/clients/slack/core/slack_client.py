@@ -187,6 +187,43 @@ class SlackClient:
                 "response": None
             }
 
+    def update_message_blocks(
+        self,
+        channel: "SlackConfig.Channels._Channel",
+        bot: "SlackConfig.Bots._Bot",
+        message_ts: str,
+        blocks: List[Dict[str, Any]],
+        *,
+        metadata: Optional[Dict[str, Any]] = None,
+        text_fallback: str = "Updated message",
+    ) -> Dict[str, Any]:
+        """Update an existing message using pre-built blocks (preferred)."""
+        try:
+            payload = {
+                "channel": channel.id,
+                "token": bot.token,
+                "ts": message_ts,
+                "text": text_fallback,
+                "blocks": blocks,
+            }
+            if metadata:
+                payload["metadata"] = metadata
+
+            response = self.client.chat_update(**payload)
+            if response["ok"]:
+                logger.info(f"✅ Message updated in {channel.name}")
+                return {"success": True, "message_ts": response["message_ts"], "channel": response["channel"], "response": response}
+            return {"success": False, "error": response.get("error", "Unknown error"), "response": response}
+        except SlackApiError as e:
+            logger.error(f"❌ Slack API error updating message: {e.response['error']}")
+            return {"success": False, "error": f"Slack API error: {e.response['error']}", "response": e.response}
+        except SlackClientError as e:
+            logger.error(f"❌ Slack client error updating message: {str(e)}")
+            return {"success": False, "error": f"Slack client error: {str(e)}", "response": None}
+        except Exception as e:
+            logger.error(f"❌ Unexpected error updating message: {str(e)}")
+            return {"success": False, "error": f"Unexpected error: {str(e)}", "response": None}
+
     def send_ephemeral_message(
         self,
         user: "SlackConfig.Users._User",
@@ -263,6 +300,38 @@ class SlackClient:
                 "error": f"Unexpected error: {str(e)}",
                 "response": None
             }
+
+    def send_ephemeral_blocks(
+        self,
+        user: "SlackConfig.Users._User",
+        bot: "SlackConfig.Bots._Bot",
+        channel: "SlackConfig.Channels._Channel",
+        blocks: List[Dict[str, Any]],
+        *,
+        text_fallback: str = "Ephemeral message",
+    ) -> Dict[str, Any]:
+        """Send an ephemeral message using pre-built blocks (preferred)."""
+        try:
+            payload = {
+                "channel": channel.id,
+                "user": user.id,
+                "text": text_fallback,
+                "blocks": blocks,
+            }
+            response = self.client.chat_postEphemeral(**payload)
+            if response["ok"]:
+                logger.info(f"✅ Ephemeral message sent to {user.name} in {channel.name}")
+                return {"success": True, "message_ts": response.get("message_ts"), "channel": response["channel"], "response": response}
+            return {"success": False, "error": response.get("error", "Unknown error"), "response": response}
+        except SlackApiError as e:
+            logger.error(f"❌ Slack API error sending ephemeral message: {e.response['error']}")
+            return {"success": False, "error": f"Slack API error: {e.response['error']}", "response": e.response}
+        except SlackClientError as e:
+            logger.error(f"❌ Slack client error sending ephemeral message: {str(e)}")
+            return {"success": False, "error": f"Slack client error: {str(e)}", "response": None}
+        except Exception as e:
+            logger.error(f"❌ Unexpected error sending ephemeral message: {str(e)}")
+            return {"success": False, "error": f"Unexpected error: {str(e)}", "response": None}
 
     def _build_message_blocks(self, message_text: str, action_buttons: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
         """Build Slack blocks for a message with optional action buttons"""
