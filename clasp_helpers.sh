@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deployment helper for add-sold-out-product-to-waitlist
+# Deployment helper for Google Apps Script projects
 # Creates temp directory, flattens src/ structure, pushes to GAS, then cleans up
 
 set -e
@@ -68,13 +68,19 @@ deploy() {
         log_info "Copied appsscript.json"
     fi
 
-    # Copy .clasp.json if it exists
+    # Copy .clasp.json if it exists, but normalize rootDir for flattened deploy
     if [ -f ".clasp.json" ]; then
-        cp ".clasp.json" "$DEPLOY_TEMP/"
-        log_info "Copied .clasp.json"
+        # If rootDir is present, rewrite it to "." for deploy_temp
+        if grep -q '"rootDir"' .clasp.json; then
+            sed '/"rootDir"/s#"rootDir"[[:space:]]*:[[:space:]]*"[^"]*"#"rootDir": "."#' .clasp.json > "$DEPLOY_TEMP/.clasp.json"
+            log_info "Copied .clasp.json (rootDir normalized to .)"
+        else
+            cp ".clasp.json" "$DEPLOY_TEMP/"
+            log_info "Copied .clasp.json"
+        fi
     fi
 
-    # Find and copy all .gs files from src/ subdirectories with flattened names
+    # Find and copy all source files from src/ with flattened names (.gs, .html, .js)
     log_info "Copying and flattening src/ structure..."
 
     file_count=0
@@ -105,10 +111,10 @@ deploy() {
         log_info "  $file → $new_name"
         file_count=$((file_count + 1))
 
-    done < <(find src -name "*.gs" -type f -print0)
+    done < <(find src \( -name "*.gs" -o -name "*.html" -o -name "*.js" \) -type f -print0)
 
     if [ $file_count -eq 0 ]; then
-        log_warning "No .gs files found in src/ directory"
+        log_warning "No source files found in src/ directory (.gs/.html/.js)"
     else
         log_success "Copied $file_count files with flattened structure"
     fi
