@@ -43,13 +43,6 @@ function getRefundQuote(email, orderNumber) {
   if (status < 200 || status >= 300) {
     throw new Error('Quote failed: ' + status + ' ' + res.getContentText());
   }
-  // Optional: show UI message box (best-effort; may be unavailable in web app context)
-  try {
-    var ui = SpreadsheetApp.getUi();
-    ui.alert('title', 'prompt', ui.ButtonSet.OK);
-  } catch (e) {
-    // ignore if UI not available
-  }
   return JSON.parse(res.getContentText());
 }
 
