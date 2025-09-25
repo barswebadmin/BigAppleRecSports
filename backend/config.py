@@ -37,7 +37,7 @@ class Config:
             [
                 "https://docs.google.com",  # Google Apps Script
                 "https://script.google.com",  # Google Apps Script
-                "https://barsbackend.onrender.com",  # Production domain
+                "https://bars-backend.onrender.com",  # Production domain
                 "http://localhost:8000",  # Local development
                 "http://127.0.0.1:8000",  # Local development
             ]

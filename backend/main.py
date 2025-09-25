@@ -26,7 +26,7 @@ if os.getenv("ENVIRONMENT") == "production":
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routers import orders, products, slack
-from new_structure_target.routers import webhooks
+from new_structure_target.routers import webhooks, refunds
 from config import config
 from version import get_version_info
 import logging
@@ -117,6 +117,7 @@ app.include_router(orders.router)
 app.include_router(products.router)
 app.include_router(slack.router)
 app.include_router(webhooks.router)
+app.include_router(refunds.router)
 
 
 @app.get("/")
