@@ -1,1 +1,1 @@
-../clasp_helpers.sh
+../../clasp_helpers.sh
