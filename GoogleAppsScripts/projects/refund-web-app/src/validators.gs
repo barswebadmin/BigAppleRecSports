@@ -17,7 +17,7 @@ function validateEmail(email) {
  * @return {{success:boolean,message:string}}
  */
 function validateOrderNumber(order) {
-  var ok = typeof order === 'string' && order.length >= 5;
+  var ok = typeof order === 'string' && /^\d{5,}$/.test(order);
   return {
     success: ok,
     message: ok ? '' : "'" + String(order) + "' is not a valid order number. Please try again."
