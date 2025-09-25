@@ -40,19 +40,33 @@
       }
       function hideModal(){ byId('modalBackdrop').style.display = 'none'; }
 
+      function setError(id, on){
+        var el = byId(id);
+        if (on) { el.style.borderColor = '#b00020'; } else { el.style.borderColor = ''; }
+      }
+
+      function onInputChange(e){
+        var t = e.target && e.target.id;
+        if (t === 'email' || t === 'order') setError(t, false);
+      }
+
       function onSubmitRequest(e){
         e.preventDefault();
         var email = byId('email').value.trim();
         var order = byId('order').value.trim();
         var msg = byId('quoteMsg');
 
-        // Basic validation
-        if (email.indexOf('@') === -1) {
-          showModal('Email is invalid.', 'Invalid email');
+        // Server-side validators exposed globally from validators.gs
+        var emailCheck = typeof validateEmail === 'function' ? validateEmail(email) : {success: email.indexOf('@') !== -1, message: ''};
+        var orderCheck = typeof validateOrderNumber === 'function' ? validateOrderNumber(order) : {success: order.length >= 5, message: ''};
+        if (!emailCheck.success) {
+          setError('email', true);
+          showModal(emailCheck.message || "Email address is not valid. Please try again.", 'Invalid email');
           return;
         }
-        if (order.length < 5) {
-          showModal('Order number is invalid.', 'Invalid order number');
+        if (!orderCheck.success) {
+          setError('order', true);
+          showModal(orderCheck.message || "Order number is not valid. Please try again.", 'Invalid order number');
           return;
         }
 
@@ -122,22 +136,22 @@
       <a href="https://account.bigapplerecsports.com/" target="_blank" rel="noopener noreferrer">Sign into your account</a>
       to find your order number. Sometimes Shopify authenticates automatically using an old email address, so if you're not able to find your order number, please log out and try again. We are not able to process any refunds without a valid order number.
     </p>
-    <h1>Refund Request</h1>
+    <h2>Submit Refund Request</h2>
     <form onsubmit="onSubmitRequest(event)">
       <div class="fields">
         <div>
           <label for="email">Email</label>
-          <input id="email" type="email" required />
+          <input id="email" type="email" required oninput="onInputChange(event)" />
         </div>
         <div>
           <label for="order">Order Number</label>
           <div class="input-group">
             <span class="prefix" aria-hidden="true">#</span>
-            <input id="order" type="text" inputmode="numeric" pattern="[0-9A-Za-z\-]+" required />
+            <input id="order" type="text" inputmode="numeric" pattern="[0-9A-Za-z\-]+" required oninput="onInputChange(event)" />
           </div>
         </div>
       </div>
-      <button type="submit">Submit Request</button>
+      <button type="submit">Refunds</button>
       <div id="quoteMsg" class="muted" style="margin-top:8px;"></div>
     </form>
 
