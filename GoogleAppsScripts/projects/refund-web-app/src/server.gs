@@ -5,11 +5,13 @@ var NGROK_URL = 'https://9f09dea8f27c.ngrok-free.app';
  * Web app entrypoint: serves HTML UI
  */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <these are called by the web app> */
-function doGet() {
-  return HtmlService
+function doGet(e) {
+  var html = HtmlService
     .createHtmlOutputFromFile('index')
     .setTitle('Refund Web App')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  // html.setSandboxMode(HtmlService.SandboxMode.IFRAME); // optional
+  return html;
 }
 
 function getBackendBaseUrl_() {
@@ -28,7 +30,7 @@ function getBackendBaseUrl_() {
  * @return {Object}
  */
 function getRefundQuote(email, orderNumber) {
-  var url = getBackendBaseUrl_() + '/refunds/request';
+  var url = getBackendBaseUrl_() + '/refunds/submit-request';
   var payload = {
     email: email,
     order_number: orderNumber
