@@ -1,6 +1,7 @@
 /**
  * Web app entrypoint: serves HTML UI
  */
+/** biome-ignore-all lint/correctness/noUnusedVariables: <these are called by the web app> */
 function doGet() {
   return HtmlService
     .createHtmlOutputFromFile('index')
@@ -24,7 +25,7 @@ function getBackendBaseUrl_() {
  * @return {Object}
  */
 function getRefundQuote(email, orderNumber) {
-  var url = getBackendBaseUrl_() + '/refunds/quote';
+  var url = `${getBackendBaseUrl_()}/refunds/quote`;
   var payload = {
     email: email,
     order_number: orderNumber
@@ -37,7 +38,7 @@ function getRefundQuote(email, orderNumber) {
   });
   var status = res.getResponseCode();
   if (status < 200 || status >= 300) {
-    throw new Error('Quote failed: ' + status + ' ' + res.getContentText());
+    throw new Error(`Quote failed: ${status} ${res.getContentText()}`);
   }
   return JSON.parse(res.getContentText());
 }
@@ -48,7 +49,7 @@ function getRefundQuote(email, orderNumber) {
  * @return {Object}
  */
 function processRefund(quoteContext) {
-  var url = getBackendBaseUrl_() + '/refunds/process';
+  var url = `${getBackendBaseUrl_()}/refunds/process`;
   var res = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
@@ -57,7 +58,7 @@ function processRefund(quoteContext) {
   });
   var status = res.getResponseCode();
   if (status < 200 || status >= 300) {
-    throw new Error('Process failed: ' + status + ' ' + res.getContentText());
+    throw new Error(`Process failed: ${status} ${res.getContentText()}`);
   }
   return JSON.parse(res.getContentText());
 }
