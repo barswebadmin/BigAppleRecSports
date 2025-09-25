@@ -141,7 +141,6 @@ jobs:
         }
 
         console.log('✅ Google Apps Scripts compilation successful!');
-NODE
 
         # Skipping no-undef lint in CI; run locally instead for fuller context
         echo "ℹ️ Skipping GAS no-undef lint in CI (run locally)"
@@ -333,3 +332,239 @@ NODE
         echo "🧪 Running Lambda tests..."
         python3 tests/run_tests.py unit
         echo "✅ Lambda tests completed!"
+
+
+  # Base branch (main) checks - run only on PRs to compare against base
+  compilation-check-base:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+
+    outputs:
+      backend-compiled: ${{ steps.backend-compile.outputs.success }}
+      gas-compiled: ${{ steps.gas-compile.outputs.success }}
+      lambda-compiled: ${{ steps.lambda-compile.outputs.success }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        # Check out the base branch (e.g., main)
+        ref: ${{ github.event.pull_request.base.sha }}
+
+    # Backend Compilation Check (base)
+    - name: Check Backend Compilation (base)
+      id: backend-compile
+      continue-on-error: true
+      run: |
+        echo "🔍 Checking Backend compilation (base)..."
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt
+        cd backend
+        export SHOPIFY_STORE="test-store.myshopify.com"
+        export SHOPIFY_TOKEN="test_token"
+        export ENVIRONMENT="test"
+        export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
+        echo "📋 Checking Python syntax..."
+        python -m py_compile config.py
+        python -m py_compile main.py
+        echo "📋 Checking module imports..."
+        python -c "
+        import sys
+        sys.path.append('.')
+        try:
+            from config import settings
+            print('✅ Config module imports successfully')
+            from main import app
+            print('✅ Main FastAPI app imports successfully')
+            from services.orders.orders_service import OrdersService
+            print('✅ Orders service imports successfully')
+            from services.slack.slack_service import SlackService
+            print('✅ Slack service imports successfully')
+            try:
+                from routers.refunds import router as refunds_router
+                print('✅ Refunds router imports successfully')
+            except Exception as _e:
+                print('ℹ️ Refunds router not present (expected after refactor)')
+            print('✅ Backend compilation successful!')
+        except Exception as e:
+            print(f'❌ Backend compilation failed: {e}')
+            sys.exit(1)
+        "
+        echo "success=true" >> $GITHUB_OUTPUT
+        echo "✅ Backend compilation check (base) passed"
+
+    - name: Check Google Apps Scripts Compilation (base)
+      id: gas-compile
+      continue-on-error: true
+      run: |
+        echo "🔍 Checking Google Apps Scripts compilation (base)..."
+        cd GoogleAppsScripts
+        npm install -g @google/clasp || true
+        echo "📋 Validating appsscript.json files..."
+        find . -name "appsscript.json" -exec python3 -m json.tool {} \; > /dev/null
+        echo "✅ All appsscript.json files are valid JSON"
+        echo "📋 Checking JavaScript syntax..."
+        node <<'NODE'
+        const fs = require('fs');
+        const path = require('path');
+        function checkJSFile(filePath) {
+          try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            new Function(content);
+            console.log(`✅ ${filePath} syntax OK`);
+            return true;
+          } catch (error) {
+            console.log(`❌ ${filePath} syntax error: ${error.message}`);
+            return false;
+          }
+        }
+        let allValid = true;
+        const projects = ['process-refunds-exchanges', 'create-products-from-registration-info', 'leadership-discount-codes'];
+        for (const project of projects) {
+          const srcDir = path.join('projects', project, 'src');
+          if (fs.existsSync(srcDir)) {
+            const files = fs.readdirSync(srcDir).filter(f => f.endsWith('.gs'));
+            for (const file of files) {
+              if (!checkJSFile(path.join(srcDir, file))) {
+                allValid = false;
+              }
+            }
+          }
+        }
+        if (!allValid) {
+          console.log('❌ GAS compilation failed due to syntax errors');
+          process.exit(1);
+        }
+        console.log('✅ Google Apps Scripts compilation successful!');
+NODE
+        # Skipping no-undef lint in CI; run locally instead for fuller context
+        echo "ℹ️ Skipping GAS no-undef lint in CI (run locally)"
+        echo "success=true" >> $GITHUB_OUTPUT
+        echo "✅ Google Apps Scripts compilation check (base) passed"
+
+    - name: Check Lambda Functions Compilation (base)
+      id: lambda-compile
+      continue-on-error: true
+      run: |
+        echo "🔍 Checking Lambda Functions compilation (base)..."
+        cd lambda-functions
+        python -m pip install --upgrade pip
+        pip install -r ../requirements.txt
+        echo "📋 Checking Lambda function syntax..."
+        for dir in */; do
+          echo "🔍 Checking ${dir}..."
+          cd "$dir"
+          python -m py_compile *.py 2>/dev/null || { echo "❌ Syntax error in ${dir}"; cd ..; continue; }
+          python -c "
+          import sys
+          try:
+              import lambda_function
+              print('✅ ${dir} imports successfully')
+          except Exception as e:
+              print('❌ ${dir} import failed: {}'.format(e))
+              sys.exit(1)
+          " || { echo "❌ Import error in ${dir}"; cd ..; continue; }
+          cd ..
+        done
+        echo "success=true" >> $GITHUB_OUTPUT
+        echo "✅ Lambda Functions compilation check (base) passed"
+
+  backend-tests-base:
+    if: github.event_name == 'pull_request_target'
+    needs: compilation-check-base
+    if: needs.compilation-check-base.outputs.backend-compiled == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.base.sha }}
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Set up test environment variables
+      run: |
+        echo "SHOPIFY_STORE=test-store.myshopify.com" >> $GITHUB_ENV
+        echo "SHOPIFY_TOKEN=test_token" >> $GITHUB_ENV
+        echo "ENVIRONMENT=test" >> $GITHUB_ENV
+    - name: Run Backend Tests (base)
+      run: |
+        export SHOPIFY_STORE="test-store.myshopify.com"
+        export SHOPIFY_TOKEN="test_token"
+        export ENVIRONMENT="test"
+        export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
+        echo "🧪 Running backend tests (base)..."
+        python -m pytest tests/unit/ -v
+        python -m pytest services/*/tests/ -v || true
+        python -m pytest routers/tests/ -v || true
+        python -m pytest tests/integration/ -v
+        echo "✅ Backend tests (base) completed!"
+
+  gas-tests-base:
+    if: github.event_name == 'pull_request_target'
+    needs: compilation-check-base
+    if: needs.compilation-check-base.outputs.gas-compiled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.base.sha }}
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    - name: Set up Python (for JSON validation)
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    - name: Make test scripts executable
+      run: |
+        cd GoogleAppsScripts
+        chmod +x tests/*.sh
+        chmod +x projects/*/tests/*.sh || true
+    - name: Run Google Apps Scripts Tests (base)
+      run: |
+        cd GoogleAppsScripts
+        echo "🧪 Running GAS tests (base)..."
+        ./tests/test_instructions.sh
+        ./tests/test_sync_utilities.sh
+        ./tests/test_clasp_helpers.sh
+        cd projects/create-products-from-registration-info/tests
+        node run_consolidated_tests.js
+        cd -
+        ./projects/leadership-discount-codes/tests/test_leadership_discount_codes.sh
+        ./projects/process-refunds-exchanges/tests/run_tests.sh
+        echo "✅ GAS tests (base) completed!"
+
+  lambda-tests-base:
+    if: github.event_name == 'pull_request_target'
+    needs: compilation-check-base
+    if: needs.compilation-check-base.outputs.lambda-compiled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.base.sha }}
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Run Lambda Tests (base)
+      run: |
+        cd lambda-functions
+        echo "🧪 Running Lambda tests (base)..."
+        python3 tests/run_tests.py unit
+        echo "✅ Lambda tests (base) completed!"
