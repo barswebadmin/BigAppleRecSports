@@ -4,7 +4,8 @@
  * @return {{success:boolean,message:string}}
  */
 function validateEmail(email) {
-  var ok = typeof email === 'string' && email.indexOf('@') !== -1 && email.indexOf(' ') === -1;
+  // 1+ chars + '@' + 1+ chars + '.' + 2+ chars, no spaces
+  var ok = typeof email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email);
   return {
     success: ok,
     message: ok ? '' : "'" + String(email) + "' is not a valid email address. Please try again."
@@ -20,7 +21,7 @@ function validateOrderNumber(order) {
   var ok = typeof order === 'string' && /^\d{5,}$/.test(order);
   return {
     success: ok,
-    message: ok ? '' : "'" + String(order) + "' is not a valid order number. Please try again."
+    message: ok ? '' : "'" + String(order) + "' is not a valid order number. Please try again. Sign into your accout if unsure."
   };
 }
 
