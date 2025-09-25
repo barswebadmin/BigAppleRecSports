@@ -7,11 +7,10 @@
     <style>
       body { font-family: system-ui, sans-serif; margin: 16px; }
       .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-      label { display: block; margin: 8px 0 4px; }
-      input { width: 100%; padding: 8px; font-size: 16px; }
+      label { display: block; margin: 8px 0 4px; font-weight: 600; }
+      input { width: 100%; padding: 8px; font-size: 14px; }
       button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
-      .row { display: flex; gap: 8px; }
-      .row > * { flex: 1; }
+      .fields { display: flex; flex-direction: column; gap: 10px; max-width: 320px; }
       .muted { color: #666; font-size: 14px; }
       .error { color: #b00020; }
       .success { color: #0a7a0a; }
@@ -23,6 +22,9 @@
       .modal p { margin: 0 0 12px; }
       .modal .actions { text-align: right; }
       .modal .actions button { padding: 8px 12px; }
+      .input-group { display: flex; align-items: center; }
+      .input-group .prefix { background: #f4f4f4; border: 1px solid #ccc; border-right: 0; padding: 8px 10px; border-radius: 6px 0 0 6px; font-weight: 600; }
+      .input-group input { border-radius: 0 6px 6px 0; border: 1px solid #ccc; border-left: 0; }
     </style>
     <script>
       function byId(id){ return document.getElementById(id); }
@@ -38,7 +40,7 @@
       }
       function hideModal(){ byId('modalBackdrop').style.display = 'none'; }
 
-      function onQuoteSubmit(e){
+      function onSubmitRequest(e){
         e.preventDefault();
         var email = byId('email').value.trim();
         var order = byId('order').value.trim();
@@ -121,15 +123,18 @@
       to find your order number. Sometimes Shopify authenticates automatically using an old email address, so if you're not able to find your order number, please log out and try again. We are not able to process any refunds without a valid order number.
     </p>
     <h1>Refund Request</h1>
-    <form onsubmit="onQuoteSubmit(event)">
-      <div class="row">
+    <form onsubmit="onSubmitRequest(event)">
+      <div class="fields">
         <div>
           <label for="email">Email</label>
           <input id="email" type="email" required />
         </div>
         <div>
           <label for="order">Order Number</label>
-          <input id="order" type="text" required />
+          <div class="input-group">
+            <span class="prefix" aria-hidden="true">#</span>
+            <input id="order" type="text" inputmode="numeric" pattern="[0-9A-Za-z\-]+" required />
+          </div>
         </div>
       </div>
       <button type="submit">Submit Request</button>
