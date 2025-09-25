@@ -1,3 +1,6 @@
+var MODE = 'dev';
+var NGROK_URL = 'https://9f09dea8f27c.ngrok-free.app';
+
 /**
  * Web app entrypoint: serves HTML UI
  */
@@ -11,7 +14,7 @@ function doGet() {
 
 function getBackendBaseUrl_() {
   var props = PropertiesService.getScriptProperties();
-  var url = props.getProperty('BACKEND_API_URL');
+  var url = MODE === 'dev' ? NGROK_URL : props.getProperty('BACKEND_API_URL_PROD');
   if (!url) {
     throw new Error('Missing BACKEND_API_URL script property');
   }
@@ -25,7 +28,7 @@ function getBackendBaseUrl_() {
  * @return {Object}
  */
 function getRefundQuote(email, orderNumber) {
-  var url = getBackendBaseUrl_() + '/refunds/quote';
+  var url = getBackendBaseUrl_() + '/refunds/request';
   var payload = {
     email: email,
     order_number: orderNumber
