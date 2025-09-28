@@ -22,6 +22,8 @@ class SlackClient:
     web_client = WebClient()
     def __init__(self):
         self.client = self.web_client
+        self._timeout_seconds = 10
+        self._max_retries = 3
 
     def send_message(
         self,
@@ -65,7 +67,16 @@ class SlackClient:
                 payload["thread_ts"] = thread_ts
             
             # Send the message
-            response = self.client.chat_postMessage(**payload)
+            # Retry wrapper for unexpected responses
+            last_error = None
+            for _ in range(self._max_retries):
+                try:
+                    response = self.client.chat_postMessage(**payload, timeout=self._timeout_seconds)
+                    break
+                except Exception as e:
+                    last_error = e
+            else:
+                return {"success": False, "error": f"Unexpected error: {str(last_error)}", "response": None}
             
             if response["ok"]:
                 logger.info(f"✅ Message sent to {channel.name}")
@@ -147,7 +158,15 @@ class SlackClient:
                 payload["metadata"] = metadata
             
             # Update the message
-            response = self.client.chat_update(**payload)
+            last_error = None
+            for _ in range(self._max_retries):
+                try:
+                    response = self.client.chat_update(**payload, timeout=self._timeout_seconds)
+                    break
+                except Exception as e:
+                    last_error = e
+            else:
+                return {"success": False, "error": f"Unexpected error: {str(last_error)}", "response": None}
             
             if response["ok"]:
                 logger.info(f"✅ Message updated in {channel.name}")
@@ -209,7 +228,15 @@ class SlackClient:
             if metadata:
                 payload["metadata"] = metadata
 
-            response = self.client.chat_update(**payload)
+            last_error = None
+            for _ in range(self._max_retries):
+                try:
+                    response = self.client.chat_update(**payload, timeout=self._timeout_seconds)
+                    break
+                except Exception as e:
+                    last_error = e
+            else:
+                return {"success": False, "error": f"Unexpected error: {str(last_error)}", "response": None}
             if response["ok"]:
                 logger.info(f"✅ Message updated in {channel.name}")
                 return {"success": True, "message_ts": response["message_ts"], "channel": response["channel"], "response": response}
@@ -261,7 +288,15 @@ class SlackClient:
             }
             
             # Send the ephemeral message
-            response = self.client.chat_postEphemeral(**payload)
+            last_error = None
+            for _ in range(self._max_retries):
+                try:
+                    response = self.client.chat_postEphemeral(**payload, timeout=self._timeout_seconds)
+                    break
+                except Exception as e:
+                    last_error = e
+            else:
+                return {"success": False, "error": f"Unexpected error: {str(last_error)}", "response": None}
             
             if response["ok"]:
                 logger.info(f"✅ Ephemeral message sent to {user.name} in {channel.name}")
@@ -318,7 +353,15 @@ class SlackClient:
                 "text": text_fallback,
                 "blocks": blocks,
             }
-            response = self.client.chat_postEphemeral(**payload)
+            last_error = None
+            for _ in range(self._max_retries):
+                try:
+                    response = self.client.chat_postEphemeral(**payload, timeout=self._timeout_seconds)
+                    break
+                except Exception as e:
+                    last_error = e
+            else:
+                return {"success": False, "error": f"Unexpected error: {str(last_error)}", "response": None}
             if response["ok"]:
                 logger.info(f"✅ Ephemeral message sent to {user.name} in {channel.name}")
                 return {"success": True, "message_ts": response.get("message_ts"), "channel": response["channel"], "response": response}

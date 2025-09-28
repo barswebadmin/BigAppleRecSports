@@ -3,10 +3,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def normalize_order_number(order_number: str) -> str:
-    """Normalize order number"""
-    return order_number if order_number.startswith("#") else f"#{order_number}"
-
 def build_order_url(order_id: str) -> str:
     """Create Shopify admin order URL for Slack"""
     order_id_str = str(order_id)

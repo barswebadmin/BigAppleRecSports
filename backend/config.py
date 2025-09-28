@@ -1,12 +1,13 @@
 import os
-from dotenv import load_dotenv
+from pathlib import Path
+from dotenv import load_dotenv, find_dotenv
 from new_structure_target.clients.slack.core.slack_config import SlackConfig as _SlackConfig
 from new_structure_target.clients.shopify.core.shopify_config import ShopifyConfig as _ShopifyConfig
 import logging
 logger = logging.getLogger(__name__)
 
 # Always load .env file, but command line environment variables will override
-load_dotenv('../.env', override=False)
+load_dotenv(find_dotenv('../.env'), override=False)
 
 
 class Config:

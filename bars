@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+PYTHONPATH="/Users/jrandazzo/Documents/BARS_Github/BigAppleRecSports:/Users/jrandazzo/Documents/BARS_Github/BigAppleRecSports/backend" \
+"/Users/jrandazzo/Documents/BARS_Github/BigAppleRecSports/.venv/bin/python" -m backend.new_structure_target.clients.shopify.core.shopify_cli "$@"

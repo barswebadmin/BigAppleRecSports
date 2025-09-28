@@ -9,7 +9,7 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 from config import config
-from new_structure_target.clients.shopify.builders.shopify_url_builders import build_order_url, normalize_order_number
+from new_structure_target.clients.shopify.builders.shopify_url_builders import build_order_url
 from new_structure_target.clients.slack.builders.message_builder import SlackMessageBuilder
 from utils.date_utils import format_date_and_time
 
@@ -50,7 +50,6 @@ def _generate_order_create_analysis(
     """Generate Slack message blocks for order analysis."""
     reasons = []
     order_number = webhook_data.get("order_number", "Unknown")
-    normalized_order_number = normalize_order_number(order_number)
     order_id = webhook_data.get("order_id", "Unknown")
     order_created_at = webhook_data.get("created_at", "")
     product_title = webhook_data.get("product_title", "Unknown Product")

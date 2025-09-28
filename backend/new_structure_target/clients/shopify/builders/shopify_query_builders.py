@@ -1,64 +1,81 @@
 import logging
 from config import config
 from typing import Optional, Dict, Any
-from .shopify_gid_builders import build_product_gid
+from backend.models.shopify.requests import FetchOrderRequest
+from backend.models.shopify.graphql_queries import ShopifyGraphQLQuery
+
+def build_product_gid(product_id: str) -> str:
+    return f"gid://shopify/Product/{product_id}"
 
 logger = logging.getLogger(__name__)
 
+###############################################################################
+# Inventory
+###############################################################################
+
+def build_get_inventory_item_and_quantity(variant_gid: str) -> Dict[str, Any]:
+    query = (
+        "query GetInventoryItemId($variantId: ID!) {\n"
+        "  productVariant(id: $variantId) {\n"
+        "    id\n"
+        "    inventoryItem { id }\n"
+        "    inventoryQuantity\n"
+        "  }\n"
+        "}"
+    )
+    return {"query": query, "variables": {"variantId": variant_gid}}
+
+
+def build_adjust_inventory_mutation(
+    *,
+    inventory_item_id: str,
+    delta: int,
+    location_id: str,
+    reference_uri: Optional[str] = None,
+    reason: str = "correction",
+    name: str = "available",
+) -> Dict[str, Any]:
+    query = (
+        "mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {\n"
+        "  inventoryAdjustQuantities(input: $input) {\n"
+        "    userErrors { field message }\n"
+        "    inventoryAdjustmentGroup { createdAt reason referenceDocumentUri changes { name delta } }\n"
+        "  }\n"
+        "}"
+    )
+    variables = {
+        "input": {
+            "reason": reason,
+            "name": name,
+            "referenceDocumentUri": reference_uri,
+            "changes": [
+                {
+                    "delta": delta,
+                    "inventoryItemId": inventory_item_id,
+                    "locationId": location_id,
+                }
+            ],
+        }
+    }
+    return {"query": query, "variables": variables}
 
 # --- Orders ---
-def get_order_details_query(order_id: Optional[str] = None, order_number: Optional[str] = None) -> Dict[str, Any]:
+
+def build_shopify_order_fetch_query(req: FetchOrderRequest) -> Dict[str, Any]:
     """
-    Build a GraphQL payload to fetch order details.
-
-    - If order_id is provided (Shopify GID), use order(id: $id)
-    - If order_number is provided (e.g., "#12345" or "12345"), use orders(first:1, query: $query)
-      with query string matching the order name.
+    Build a single Shopify order search query using the structured model.
+    Returns a payload with "query" and "variables".
     """
-    if not order_id and not order_number:
-        raise ValueError("Either order_id or order_number must be provided")
+    if req.order_id:
+        search = f"id:{req.order_id}"
+    elif req.order_number:
+        search = f"name:#{req.order_number}"
+    elif req.email:
+        search = f"email:{req.email}"
+    else:
+        raise ValueError("Must provide order_id, order_number, or email")
 
-    if order_id:
-        return {
-            "query": (
-                "query getOrderDetails($id: ID!) {\n"
-                "  order(id: $id) {\n"
-                "    id\n"
-                "    name\n"
-                "    email\n"
-                "    customer { id email }\n"
-                "    transactions { id kind gateway parentTransaction { id } }\n"
-                "  }\n"
-                "}"
-            ),
-            "variables": {"id": order_id},
-        }
-
-    # Normalize order_number – ensure it includes leading '#'
-    on = order_number or ""
-    if not on.startswith("#"):
-        on = f"#{on}"
-    # Shopify Admin search syntax can match name via name:<value>
-    query_string = f"name:{on}"
-
-    return {
-        "query": (
-            "query getOrderByName($q: String!) {\n"
-            "  orders(first: 1, query: $q) {\n"
-            "    edges {\n"
-            "      node {\n"
-            "        id\n"
-            "        name\n"
-            "        email\n"
-            "        customer { id email }\n"
-            "        transactions { id kind gateway parentTransaction { id } }\n"
-            "      }\n"
-            "    }\n"
-            "  }\n"
-            "}"
-        ),
-        "variables": {"q": query_string},
-    }
+    return ShopifyGraphQLQuery.order_search(search).to_payload()
 
 
 def get_product_details_query(product_id: Optional[str], product_handle: Optional[str]) -> Dict[str, Any]:

@@ -5,7 +5,7 @@ from config import config
 
 logger = logging.getLogger(__name__)
 
-def cancel_order(order_id: str, request_func: Callable) -> Dict[str, Any]:
+def cancel_order(order_id: str, request_func: Callable[[Dict[str, Any]], Any]) -> Dict[str, Any]:
     """
     Cancel a Shopify order
     Based on cancelShopifyOrder from ShopifyUtils.gs
@@ -45,7 +45,8 @@ def cancel_order(order_id: str, request_func: Callable) -> Dict[str, Any]:
         print(f"   Mutation variables: {mutation['variables']}")
         print(f"   Mutation query (first 200 chars): {mutation['query'][:200]}...")
 
-        response_data = request_func(mutation)
+        resp = request_func(mutation)
+        response_data = resp.raw if hasattr(resp, "raw") else resp
 
         print("📥 Raw Shopify response:")
         print(f"   Type: {type(response_data)}")
@@ -104,7 +105,7 @@ def cancel_order(order_id: str, request_func: Callable) -> Dict[str, Any]:
         }
 
 
-def get_order_details(order_id: str, request_func: Callable) -> Dict[str, Any]:
+def get_order_details(order_id: str, request_func: Callable[[Dict[str, Any]], Any]) -> Dict[str, Any]:
     """Get order details from Shopify"""
     query = """
         query getOrderDetails($id: ID!) {
@@ -122,7 +123,8 @@ def get_order_details(order_id: str, request_func: Callable) -> Dict[str, Any]:
         }
     """
     variables = {"id": order_id}
-    response = request_func({"query": query, "variables": variables})
+    resp = request_func({"query": query, "variables": variables})
+    response = resp.raw if hasattr(resp, "raw") else resp
     print("🔍 === SHOPIFY GET ORDER DETAILS DEBUG ===")
     print(json.dumps(response, indent=2))
     if not response or "data" not in response:
@@ -133,7 +135,7 @@ def get_order_details(order_id: str, request_func: Callable) -> Dict[str, Any]:
     return response["data"]["order"]
 
 def create_refund(
-    order_id: str, refund_amount: float, refund_type: str, request_func: Callable
+    order_id: str, refund_amount: float, refund_type: str, request_func: Callable[[Dict[str, Any]], Any]
 ) -> Dict[str, Any]:
     """Create a refund for a Shopify order"""
     try:
@@ -218,7 +220,8 @@ def create_refund(
 
         mutation = {"query": query, "variables": {"input": refund_input}}
 
-        response_data = request_func(mutation)
+        resp = request_func(mutation)
+        response_data = resp.raw if hasattr(resp, "raw") else resp
         if not response_data or "data" not in response_data:
             return {"success": False, "message": "Failed to create refund"}
 

@@ -7,9 +7,10 @@ class ShopifyConfig:
         # Environment-specific Shopify configuration
         if ENVIRONMENT in ["staging", "production"]:
             # Use production Shopify credentials for staging and production
-            self._store_id = os.getenv("SHOPIFY_STORE_ID")
-            self._token = os.getenv("SHOPIFY_TOKEN_ADMIN")
-            self._location_id = os.getenv("SHOPIFY_LOCATION_ID")
+            # Support multiple env var names for flexibility
+            self._store_id = os.getenv("SHOPIFY_STORE_ID") or os.getenv("SHOPIFY_STORE")
+            self._token = os.getenv("SHOPIFY_TOKEN_ADMIN") or os.getenv("SHOPIFY_TOKEN")
+            self._location_id = os.getenv("SHOPIFY_LOCATION_ID") or os.getenv("SHOPIFY_DEFAULT_LOCATION_ID")
         else:
             # Use dev/test Shopify credentials (if any) or defaults
             self._store_id = os.getenv("SHOPIFY_DEV_STORE", "SHOPIFY_DEV_STORE")

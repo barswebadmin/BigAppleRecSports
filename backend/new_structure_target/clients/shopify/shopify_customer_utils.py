@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 class ShopifyCustomerUtils:
     def __init__(self, request_func):
-        self._make_shopify_request = request_func
+        self._request = request_func
 
     def get_customer_id(self, email: str) -> Optional[str]:
         """Get customer ID by email address (deprecated - use get_customer_with_tags)"""
@@ -27,7 +27,8 @@ class ShopifyCustomerUtils:
             "variables": {"identifier": {"emailAddress": email}},
         }
 
-        result = self._make_shopify_request(query)
+        resp = self._request(query)
+        result = resp.raw if hasattr(resp, "raw") else resp
         if result and result.get("data", {}).get("customerByIdentifier"):
             customer_data = result["data"]["customerByIdentifier"]
             return {"id": customer_data["id"], "tags": customer_data.get("tags", [])}
@@ -62,7 +63,8 @@ class ShopifyCustomerUtils:
             "variables": {"input": {"id": customer_id, "tags": tags_string}},
         }
 
-        result = self._make_shopify_request(mutation)
+        resp = self._request(mutation)
+        result = resp.raw if hasattr(resp, "raw") else resp
         if result and result.get("data", {}).get("customerUpdate"):
             errors = result["data"]["customerUpdate"].get("userErrors", [])
             if not errors:
@@ -101,7 +103,8 @@ class ShopifyCustomerUtils:
                 """
             }
 
-            result = self._make_shopify_request(query)
+            resp = self._request(query)
+            result = resp.raw if hasattr(resp, "raw") else resp
             if result and result.get("data"):
                 for j, email in enumerate(batch_emails):
                     alias = f"customer_{j}"
@@ -136,7 +139,8 @@ class ShopifyCustomerUtils:
             "variables": {"name": name, "query": query},
         }
 
-        result = self._make_shopify_request(mutation)
+        resp = self._request(mutation)
+        result = resp.raw if hasattr(resp, "raw") else resp
         if result and result.get("data", {}).get("segmentCreate", {}).get("segment"):
             return result["data"]["segmentCreate"]["segment"]["id"]
         return None
@@ -187,7 +191,8 @@ class ShopifyCustomerUtils:
             },
         }
 
-        result = self._make_shopify_request(mutation)
+        resp = self._request(mutation)
+        result = resp.raw if hasattr(resp, "raw") else resp
         if result and result.get("data", {}).get("discountCodeBasicCreate"):
             errors = result["data"]["discountCodeBasicCreate"].get("userErrors", [])
             if not errors:

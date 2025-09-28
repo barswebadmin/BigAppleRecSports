@@ -1,0 +1,22 @@
+query FetchOrder($q: String!) {
+  orders(first: 1, query: $q) {
+    edges {
+      node {
+        id
+        name
+        totalPriceSet { shopMoney { amount currencyCode } }
+        customer { id email }
+        transactions { id kind gateway parentTransaction { id } }
+        refunds {
+          createdAt
+          staffMember { firstName lastName }
+          totalRefundedSet {
+            presentmentMoney { amount currencyCode }
+            shopMoney { amount currencyCode }
+          }
+        }
+        cancelledAt
+      }
+    }
+  }
+}

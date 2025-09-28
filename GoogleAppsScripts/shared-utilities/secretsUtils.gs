@@ -136,7 +136,9 @@ function listSecretKeys() {
   if (keys.length === 0) {
     console.log("No secrets found. Run setupSecrets() first.");
   } else {
-    keys.forEach(key => console.log(`- ${key}`));
+    for (const key of keys) {
+      console.log(`- ${key}`);
+    }
   }
 }
 
@@ -145,7 +147,7 @@ function listSecretKeys() {
  */
 function exampleUsage() {
   // OLD WAY (hardcoded):
-  // const SHOPIFY_TOKEN = "shpat_abc123def456";
+  // const SHOPIFY_TOKEN = "shpat_a*****";
   
   // NEW WAY (using PropertiesService):
   const SHOPIFY_TOKEN = getSecret('SHOPIFY_TOKEN');

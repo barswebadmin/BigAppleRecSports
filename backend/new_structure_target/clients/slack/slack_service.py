@@ -14,10 +14,10 @@ from slack_sdk.errors import SlackApiError, SlackClientError
 
 # Our systems
 from config import SlackBot, SlackChannel, config
-from models.slack import Slack, RefundType, SlackMessageType
+# from models.slack import Slack, RefundType, SlackMessageType
 
 # Existing services
-from services.orders import OrdersService
+# from services.orders import OrdersService
 
 # Core functionality
 try:
@@ -27,9 +27,9 @@ try:
     from .core.mock_client import MockSlackClient
     from .builders import (
         SlackMessageBuilder,
-        ModernMessageBuilder,
-        SlackCacheManager,
-        SlackMetadataBuilder,
+        # ModernMessageBuilder,
+        # SlackCacheManager,
+        # SlackMetadataBuilder,
         SlackMessageParsers,
         SlackOrderHandlers,
     )
@@ -41,28 +41,15 @@ except ImportError:
     from new_structure_target.clients.slack.core.mock_client import MockSlackClient
     from new_structure_target.clients.slack.builders import (
         SlackMessageBuilder,
-        ModernMessageBuilder,
-        SlackCacheManager,
-        SlackMetadataBuilder,
+        # ModernMessageBuilder,
+        # SlackCacheManager,
+        # SlackMetadataBuilder,
         SlackMessageParsers,
         SlackOrderHandlers,
     )
     from new_structure_target.clients.slack.slack_refunds_utils import SlackRefundsUtils
 
 logger = logging.getLogger(__name__)
-
-
-def _is_test_mode() -> bool:
-    """Detect if we're running in test mode."""
-    if "pytest" in sys.modules:
-                    return True
-    if any("pytest" in arg for arg in sys.argv):
-        return True
-    if os.getenv("TEST", "").lower() in ("true", "1", "yes"):
-        return True
-    if any("test_" in arg or arg.endswith("_test.py") for arg in sys.argv):
-        return True
-    return False
 
 
 class SlackService:
@@ -81,7 +68,7 @@ class SlackService:
         """Initialize the Slack service with all components."""
         
         # Initialize services
-        self.orders_service = OrdersService()
+        # self.orders_service = OrdersService()
         
         # Get configuration from our new system
         self.config = config
@@ -101,18 +88,18 @@ class SlackService:
 
         # Initialize helper components
         self.message_builder = self._get_message_builder()
-        self.refunds_utils = SlackRefundsUtils(
-            self.orders_service, 
-            self._get_settings(),
-            self.message_builder
-        )
+        # self.refunds_utils = SlackRefundsUtils(
+        #     self.orders_service, 
+        #     self._get_settings(),
+        #     self.message_builder
+        # )
         
         # Initialize modern utility classes
-        self.modern_message_builder = ModernMessageBuilder()
-        self.cache_manager = self._get_cache_manager()
-        self.metadata_builder = SlackMetadataBuilder()
+        # self.modern_message_builder = ModernMessageBuilder()
+        # self.cache_manager = self._get_cache_manager()
+        # self.metadata_builder = SlackMetadataBuilder()
         self.message_parsers = self._get_message_parsers()
-        self.order_handlers = SlackOrderHandlers(self.orders_service, self, self.message_builder)
+        # self.order_handlers = SlackOrderHandlers(self.orders_service, self, self.message_builder)
 
     def _get_sport_groups(self) -> dict[str, dict[str, str]]:
         """Get sport groups configuration."""
@@ -504,9 +491,9 @@ class SlackService:
         """Get message builder instance."""
         return SlackMessageBuilder(self._get_sport_groups())
 
-    def _get_cache_manager(self):
-        """Get cache manager instance."""
-        return SlackCacheManager()
+    # def _get_cache_manager(self):
+    #     """Get cache manager instance."""
+    #     return SlackCacheManager()
 
 
     def _get_message_parsers(self):
@@ -543,25 +530,25 @@ class SlackService:
     # ORDER HANDLING METHODS (delegated to OrderHandlers)
     # ============================================================================
 
-    async def handle_cancel_order_request(
-        self,
-        order_number: str,
-        refund_type: str,
-        requestor_name: Dict[str, str],
-        requestor_email: str,
-        slack_user_id: str,
-        slack_user_name: str,
-        channel_id: str,
-        thread_ts: str,
-        current_message_text: str,
-        trigger_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Handle order cancellation request from Slack."""
-        return await self.order_handlers.handle_cancel_order_request(
-            order_number, refund_type, requestor_name, requestor_email,
-            slack_user_id, slack_user_name, channel_id, thread_ts,
-            current_message_text, trigger_id
-        )
+    # async def handle_cancel_order_request(
+    #     self,
+    #     order_number: str,
+    #     refund_type: str,
+    #     requestor_name: Dict[str, str],
+    #     requestor_email: str,
+    #     slack_user_id: str,
+    #     slack_user_name: str,
+    #     channel_id: str,
+    #     thread_ts: str,
+    #     current_message_text: str,
+    #     trigger_id: Optional[str] = None,
+    # ) -> Dict[str, Any]:
+    #     """Handle order cancellation request from Slack."""
+    #     return await self.order_handlers.handle_cancel_order_request(
+    #         order_number, refund_type, requestor_name, requestor_email,
+    #         slack_user_id, slack_user_name, channel_id, thread_ts,
+    #         current_message_text, trigger_id
+    #     )
 
 
 # ============================================================================

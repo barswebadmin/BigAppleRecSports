@@ -2,11 +2,14 @@ from __future__ import annotations
 from pydantic import BaseModel
 from typing import List, Optional, TYPE_CHECKING
 import datetime
+from backend.models.model_config import BaseModelConfig
+from backend.models.shopify.orders import Order
 
 if TYPE_CHECKING:
     from .orders import Order
 
 class Customer(BaseModel):
+    model_config = BaseModelConfig
     id: str
     created_at: datetime.datetime
     default_email: Optional[str]

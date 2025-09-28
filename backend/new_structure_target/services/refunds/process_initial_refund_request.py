@@ -1,17 +1,20 @@
 import datetime
 import logging
-from new_structure_target.clients.shopify.shopify_service import ShopifyService
+from backend.models.shopify.requests import FetchOrderRequest
+from backend.new_structure_target.clients.shopify.builders.shopify_normalizers import normalize_order_number
+from new_structure_target.services.orders.orders_service import OrdersService
 
 logger = logging.getLogger("REFUNDS LOGGER")
 
-shopify_service = ShopifyService()
+orders_service = OrdersService()
 
 def process_initial_refund_request(email: str, order_number: str, request_submitted_at: datetime.datetime):
     """
     Process the initial refund request
     """
-    # call shopify to get order details
-    order_details = shopify_service.get_order_details(order_number)
+    request_args = FetchOrderRequest.create({"order_number": order_number})
+    order_details = orders_service.fetch_order_from_shopify(identifier=request_args)
+    
     logger.info(f"Order details: {order_details}")
 
     return order_details

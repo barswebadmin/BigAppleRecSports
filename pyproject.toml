@@ -30,3 +30,11 @@ pythonpath = [
 
 testpaths = ["lambda-functions/tests", "backend/routers/tests"]
 addopts = "-v --tb=short" 
+
+[tool.ariadne-codegen]
+schema_path = "backend/new_structure_target/clients/shopify/core/fetched_schema.json"
+queries_path = "backend/new_structure_target/clients/shopify/queries"
+target_package_path = "backend/new_structure_target/clients/shopify/generated_client"
+client_name = "ShopifyGeneratedClient"
+python_version = "3.11"
+include_comments = true 
