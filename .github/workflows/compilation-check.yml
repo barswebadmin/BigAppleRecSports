@@ -47,10 +47,11 @@ jobs:
         cd backend
 
         # Set minimal environment variables for compilation
-        export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com"
-        export SHOPIFY_TOKEN="test_token"
+        export SHOPIFY_STORE_ID="test-store-id"
+        export SHOPIFY_TOKEN_ADMIN="test_token"
+        export SHOPIFY_LOCATION_ID="test-location-id"
         export ENVIRONMENT="test"
-        export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
+        export SLACK_BOT_TOKEN_REFUNDS="test_slack_token"
 
         # Check if Python files compile without syntax errors
         echo "📋 Checking Python syntax..."
@@ -67,16 +68,12 @@ jobs:
             print('✅ Config module imports successfully')
             from main import app
             print('✅ Main FastAPI app imports successfully')
-            from services.orders.orders_service import OrdersService
+            from modules.orders import OrdersService
             print('✅ Orders service imports successfully')
-            from services.slack.slack_service import SlackService
-            print('✅ Slack service imports successfully')
-            # Refunds router was removed during refactor; skip importing it
-            try:
-                from routers.refunds import router as refunds_router
-                print('✅ Refunds router imports successfully')
-            except Exception as _e:
-                print('ℹ️ Refunds router not present (expected after refactor)')
+            from modules.integrations.slack import SlackClient
+            print('✅ Slack Client imports successfully')
+            from routers.refunds import router as refunds_router
+            print('✅ Refunds router imports successfully')
             print('✅ Backend compilation successful!')
         except Exception as e:
             print(f'❌ Backend compilation failed: {e}')

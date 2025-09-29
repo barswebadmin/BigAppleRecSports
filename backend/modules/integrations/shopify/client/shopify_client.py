@@ -1,0 +1,131 @@
+from typing import Dict, Any, Optional, List, Union, cast
+import json
+import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from backend.config import config
+from backend.config.main import Config
+from backend.modules.integrations.shopify.models.requests import FetchOrderRequest
+from backend.modules.integrations.shopify.models.responses import ShopifyResponse, ShopifyResponseKind
+from backend.modules.integrations.shopify.parsers import parse_shopify_response
+from backend.modules.integrations.shopify.builders import build_order_fetch_request_payload
+from backend.modules.integrations.shopify.parsers.mappers import map_order_node_to_order
+
+ 
+"""
+ShopifyClient - HTTP client using requests to interact with Shopify GraphQL with retries/timeouts.
+"""
+
+
+class ShopifyClient:
+    def __init__(self, config_instance: Optional[Config] = None) -> None:
+        # Allow injection of config instance for CLI use with proper environment
+        self._config = config_instance
+
+    # ------------------------------------------------------------------
+    # HTTP helper
+    # ------------------------------------------------------------------
+    def post_graphql_safe(self, body: Dict[str, Any]) -> requests.Response:
+        """POST to Shopify GraphQL with retries and timeout using config settings."""
+        cfg = self._config or config
+        url = cfg.Shopify.graphql_url
+        headers = cfg.Shopify.headers
+        max_retries = cfg.Shopify.max_retries
+        timeout_seconds = cfg.Shopify.timeout_seconds
+        
+        # Debug: Print the actual URL being used (remove in production)
+        # print(f"[SHOPIFY_CLIENT_DEBUG] Making request to: {url}")
+
+        last_exc: Optional[Exception] = None
+        for _ in range(max_retries):
+            try:
+                return requests.post(url, json=body, headers=headers, timeout=timeout_seconds)
+            except requests.Timeout as e:
+                # Bubble up timeouts immediately; they shouldn't be retried blindly
+                raise TimeoutError(f"Shopify request timeout after {timeout_seconds}s") from e
+            except requests.RequestException as e:
+                last_exc = e
+                continue
+        # Retries exhausted
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("Unexpected transport error")
+
+    def send_request(self, payload: Dict[str, Any]) -> ShopifyResponse:
+        body = {"query": payload.get("query"), "variables": payload.get("variables", {})}
+        if not body.get("query"): 
+            raise ValueError("Error sending Shopify request: missing GraphQL query")
+
+        resp = self.post_graphql_safe(body)
+        status = resp.status_code
+        # Try to parse JSON body; if not JSON, keep text
+        parsed: Any
+        try:
+            parsed = resp.json()
+        except Exception:
+            parsed = {"text": resp.text}
+
+        if status == 404:
+            return ShopifyResponse.Error(
+                kind=ShopifyResponseKind.NOT_FOUND, 
+                errors=parsed.get("errors")
+            )  
+
+        if status == 401:
+            # Success → return parsed response with original status
+            return ShopifyResponse.Error(
+                kind=ShopifyResponseKind.UNAUTHORIZED, 
+                errors=parsed.get("errors")
+            )
+
+        if status >= 500:
+            msg = str(parsed.get("errors") if isinstance(parsed, dict) else resp.text)
+            return ShopifyResponse.Error(
+                kind=ShopifyResponseKind.SERVER_ERROR, 
+                errors=msg
+            )
+
+        try:
+            return parse_shopify_response(parsed)
+        except Exception as e:
+            return ShopifyResponse.Error(
+                kind=ShopifyResponseKind.UNEXPECTED_ERROR, 
+                errors=str(e)
+            )
+
+
+    # def send_batch_requests(self, payloads: List[Dict[str, Any]]) -> List[ShopifyResponse]:
+    #     """Parallel fan-out of multiple single-operation calls."""
+    #     if not payloads:
+    #         return []
+    #     results: List[ShopifyResponse] = [ShopifyResponse.Error(message="Pending", status_code=500)] * len(payloads)
+    #     with ThreadPoolExecutor(max_workers=min(8, len(payloads))) as pool:
+    #         futures = {pool.submit(self.send_request, payloads[i]): i for i in range(len(payloads))}
+    #         for fut in as_completed(futures):
+    #             idx = futures[fut]
+    #             try:
+    #                 results[idx] = fut.result()
+    #             except Exception as e:
+    #                 results[idx] = ShopifyResponse.Error(message=str(e), status_code=500)
+    #     return results
+
+    # ------------------------------------------------------------------
+    # Instance methods
+    # ------------------------------------------------------------------
+    def fetch_order_details(
+        self,
+        *,
+        request_args: FetchOrderRequest
+    ) -> ShopifyResponse:
+        """
+        Fetch order details with a single request: prefer order_id if provided,
+        otherwise use order_number. Callers must validate inputs.
+        """
+        # Build query from identifier (order number, order id, or email)
+       
+        payload = build_order_fetch_request_payload(request_args)
+
+        resp = self.send_request(payload)
+        return resp
+
+    
