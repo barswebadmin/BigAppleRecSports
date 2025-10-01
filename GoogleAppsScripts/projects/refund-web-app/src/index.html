@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Refund Web App</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 16px; }
+      .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+      label { display: block; margin: 8px 0 4px; font-weight: 600; }
+      input { width: 100%; padding: 8px; font-size: 14px; border: 1px solid #000; border-radius: 6px; }
+      button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
+      .fields { display: flex; flex-direction: column; gap: 10px; max-width: 320px; }
+      .muted { color: #666; font-size: 14px; }
+      .error { color: #b00020; }
+      .success { color: #0a7a0a; }
+      .hidden { display: none; }
+      /* simple modal */
+      .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 9999; }
+      .modal { background: #fff; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 520px; width: calc(100% - 40px); padding: 16px; }
+      .modal h2 { margin: 0 0 8px; font-size: 18px; }
+      .modal p { margin: 0 0 12px; }
+      .modal .actions { text-align: right; }
+      .modal .actions button { padding: 8px 12px; }
+      .input-group { display: flex; align-items: center; }
+      .input-group .prefix { background: #f4f4f4; border: 1px solid #000; border-right: 0; padding: 8px 10px; border-radius: 6px 0 0 6px; font-weight: 600; }
+      .input-group input { border-radius: 0 6px 6px 0; border: 1px solid #000; border-left: 0; }
+      form > button { margin-top: 12px; }
+    </style>
+    <script>
+      function byId(id){ return document.getElementById(id); }
+      function show(el, yes){ el.classList.toggle('hidden', !yes); }
+      function text(el, t){ el.textContent = t; }
+
+      // Modal helpers
+      function showModal(message, title){
+        var bd = byId('modalBackdrop');
+        text(byId('modalTitle'), title || 'Notice');
+        text(byId('modalBody'), message || '');
+        bd.style.display = 'flex';
+      }
+      function hideModal(){ byId('modalBackdrop').style.display = 'none'; }
+
+      function setError(id, on){
+        var el = byId(id);
+        if (on) { el.style.borderColor = '#b00020'; } else { el.style.borderColor = ''; }
+      }
+
+      function onInputChange(e){
+        var t = e.target && e.target.id;
+        if (t === 'email' || t === 'order') setError(t, false);
+      }
+
+      function onSubmitRequest(e){
+        e.preventDefault();
+        var email = byId('email').value.trim();
+        var order = byId('order').value.trim();
+        var msg = byId('quoteMsg');
+
+        // Server-side validators exposed globally from validators.gs
+        var emailCheck = typeof validateEmail === 'function' ? validateEmail(email) : {success: email.indexOf('@') !== -1, message: ''};
+        var orderCheck = typeof validateOrderNumber === 'function' ? validateOrderNumber(order) : {success: order.length >= 5, message: ''};
+        if (!emailCheck.success) {
+          setError('email', true);
+          showModal(emailCheck.message || "Email address is not valid. Please try again.", 'Invalid email');
+          return;
+        }
+        if (!orderCheck.success) {
+          setError('order', true);
+          showModal(orderCheck.message || "Order number is not valid. Please try again.", 'Invalid order number');
+          return;
+        }
+
+        text(msg, 'Submitting...'); msg.className = 'muted';
+
+        google.script.run
+          .withSuccessHandler(function(data){
+            text(msg, 'Quote ready.'); msg.className = 'success';
+            byId('quoteResult').innerHTML = '' +
+              '<p><strong>Eligible:</strong> ' + (data.eligible ? 'Yes' : 'No') + '</p>' +
+              '<p><strong>Refund Amount:</strong> $' + Number(data.refund_amount).toFixed(2) + '</p>';
+            text(byId('quoteDetails'), data.reason || '');
+            byId('acceptPayload').value = JSON.stringify({
+              email: email,
+              order_number: order,
+              quote_id: data.quote_id
+            });
+            show(byId('quoteCard'), true);
+            try {
+              var pretty = JSON.stringify(data, null, 2);
+              var w = window.open('', 'quotePopup', 'width=600,height=500');
+              if (w) {
+                w.document.write('<!doctype html><html><head><title>Quote Result</title>' +
+                  '<style>body{font-family:monospace;white-space:pre-wrap;margin:16px;} h1{font-family:system-ui,sans-serif;}</style>' +
+                  '</head><body><h1>Quote Result</h1><pre>' +
+                  pretty.replace(/[&<>]/g, function(ch){return ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]);}) +
+                  '</pre></body></html>');
+                w.document.close();
+              } else {
+                alert(pretty);
+              }
+            } catch (e) {
+              // fallback no-op
+            }
+          })
+          .withFailureHandler(function(err){
+            msg.className = 'error'; text(msg, err && err.message ? err.message : 'Error getting quote');
+          })
+          .getRefundQuote(email, order);
+      }
+
+      function onAccept(){
+        var payload;
+        try {
+          payload = JSON.parse(byId('acceptPayload').value);
+        } catch(e){
+          text(byId('processMsg'), 'Invalid quote context');
+          byId('processMsg').className = 'error';
+          return;
+        }
+        var msg = byId('processMsg');
+        text(msg, 'Processing...'); msg.className = 'muted';
+        google.script.run
+          .withSuccessHandler(function(data){
+            msg.className = 'success';
+            text(msg, 'Refund processed. Reference: ' + (data.refund_id || 'N/A'));
+          })
+          .withFailureHandler(function(err){
+            msg.className = 'error'; text(msg, err && err.message ? err.message : 'Error processing refund');
+          })
+          .processRefund(payload);
+      }
+    </script>
+  </head>
+  <body>
+    <p class="muted" style="margin-bottom:12px;">
+      <a href="https://account.bigapplerecsports.com/" target="_blank" rel="noopener noreferrer">Sign into your account</a>
+      to find your order number. Sometimes Shopify authenticates automatically using an old email address, so if you're not able to find your order number, please log out and try again. We are not able to process any refunds without a valid order number.
+    </p>
+    <h2>Submit Refund Request</h2>
+    <form onsubmit="onSubmitRequest(event)">
+      <div class="fields">
+        <div>
+          <label for="email">Email</label>
+          <input id="email" type="email" required oninput="onInputChange(event)" />
+        </div>
+        <div>
+          <label for="order">Order Number</label>
+          <div class="input-group">
+            <span class="prefix" aria-hidden="true">#</span>
+            <input id="order" type="text" inputmode="numeric" pattern="[0-9A-Za-z\-]+" required oninput="onInputChange(event)" />
+          </div>
+        </div>
+      </div>
+      <button type="submit">Check Refund Eligibility</button>
+      <div id="quoteMsg" class="muted" style="margin-top:8px;"></div>
+    </form>
+
+    <div id="quoteCard" class="card hidden">
+      <h2>Refund Summary</h2>
+      <div id="quoteResult"></div>
+      <div id="quoteDetails" class="muted"></div>
+      <input id="acceptPayload" type="hidden" />
+      <div style="margin-top:12px;">
+        <button type="button" onclick="onAccept()">Accept & Process Refund</button>
+      </div>
+      <div id="processMsg" style="margin-top:8px;"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modalBackdrop" class="modal-backdrop">
+      <div class="modal">
+        <h2 id="modalTitle">Notice</h2>
+        <p id="modalBody"></p>
+        <div class="actions">
+          <button type="button" onclick="hideModal()">OK</button>
+        </div>
+      </div>
+    </div>
+  </body>
+  
+</html>
+
+
