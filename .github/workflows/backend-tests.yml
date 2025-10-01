@@ -50,26 +50,30 @@ jobs:
 
     - name: Set up test environment variables
       run: |
-        echo "SHOPIFY_STORE=test-store.myshopify.com" >> $GITHUB_ENV
+        echo "SHOPIFY_URL_ADMIN_DOMAIN=test-store.myshopify.com" >> $GITHUB_ENV
         echo "SHOPIFY_TOKEN=test_token" >> $GITHUB_ENV
         echo "ENVIRONMENT=test" >> $GITHUB_ENV
 
     - name: Run all tests using pytest
       run: |
         # Set environment variables for testing
-        export SHOPIFY_STORE="test-store.myshopify.com"
+        export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com"
         export SHOPIFY_TOKEN="test_token"
         export ENVIRONMENT="test"
         export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
 
         echo "🧪 Environment setup:"
         echo "  ENVIRONMENT=$ENVIRONMENT"
-        echo "  SHOPIFY_STORE=$SHOPIFY_STORE"
+        echo "  SHOPIFY_URL_ADMIN_DOMAIN=$SHOPIFY_URL_ADMIN_DOMAIN"
         echo "  SHOPIFY_TOKEN present: $([ -n "$SHOPIFY_TOKEN" ] && echo 'yes' || echo 'no')"
 
-        # Run unit tests
+        # Run unit tests (skip if directory doesn't exist or is empty)
         echo "🧪 Running unit tests with mocked services (no external API calls)..."
-        python -m pytest tests/unit/ -v
+        if [ -d "tests/unit" ] && [ "$(find tests/unit -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then
+          python -m pytest tests/unit/ -v
+        else
+          echo "⚠️ No unit tests found in tests/unit/, skipping..."
+        fi
 
         echo "🧪 Running service-specific unit tests..."
         python -m pytest services/*/tests/ -v || true
@@ -81,11 +85,15 @@ jobs:
         python -m pytest routers/tests/test_slack_router.py -v || true
 
         echo "🧪 Running integration tests..."
-        python -m pytest tests/integration/ -v
+        if [ -d "tests/integration" ] && [ "$(find tests/integration -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then
+          python -m pytest tests/integration/ -v
+        else
+          echo "⚠️ No integration tests found in tests/integration/, skipping..."
+        fi
 
         echo "✅ Backend test run completed (advisory)."
       env:
-        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_URL_ADMIN_DOMAIN: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
         ENVIRONMENT: test
         SLACK_REFUNDS_BOT_TOKEN: test_slack_token

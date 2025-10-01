@@ -1,0 +1,2 @@
+#!/bin/zsh
+"/Users/jrandazzo/Documents/git-projects/bars/BigAppleRecSports/.venv/bin/python" -m backend.modules.integrations.shopify.client.shopify_cli "$@"

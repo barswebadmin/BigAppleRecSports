@@ -214,8 +214,6 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         const shopifyErrors = errorDetail.errors || errorMessage;
         const userMessage = errorDetail.user_message || 'There is a system configuration issue. Please contact support or try again later.';
 
-        Logger.log(`🚨Shopify authentication error (401): ${shopifyErrors}`);
-
         // Update spreadsheet with config error note
         try {
           updateOrderNotesColumn(rawOrderNumber, requestorEmail, `⚙️ Auth Error (401): ${shopifyErrors}. No email sent to customer.`);
@@ -228,7 +226,6 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         emailSubject = `🚨 BARS Refund Form - Shopify Auth Error (401)`;
         emailBody = `
           <h3>🚨 Shopify Authentication Error (401)</h3>
-          <p><strong>Mode:</strong></p>
           <p><strong>Status Code:</strong> ${statusCode}</p>
           <p><strong>Shopify Errors:</strong> ${shopifyErrors}</p>
           <p><strong>Order:</strong> ${rawOrderNumber}</p>
@@ -248,7 +245,7 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         const shopifyErrors = errorDetail.errors || errorMessage;
         const userMessage = errorDetail.user_message || 'There is a system configuration issue. Please contact support or try again later.';
 
-        Logger.log(`🚨Shopify store error (404): ${shopifyErrors}`);
+        Logger.log(`🚨 Shopify store error (404): ${shopifyErrors}`);
 
         // Update spreadsheet with config error note
         try {
@@ -280,7 +277,6 @@ function processWithBackendAPI(formattedOrderNumber, rawOrderNumber, requestorNa
         // 406: Order Not Found - COMMENTED OUT: Don't send email to requestor per new requirements
         shouldSendToRequestor = false; // Changed from true to false
 
-        Logger.log(`🔍 Order not found (406): ${errorMessage}`);
         Logger.log(`📧 CUSTOMER EMAIL DISABLED: Not sending email to customer for order not found`);
 
         /* COMMENTED OUT: Customer email for order not found

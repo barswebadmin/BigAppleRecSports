@@ -656,44 +656,94 @@ _test_directory:
 		exit 1; \
 	fi
 
-# Backend testing (Python)
+# Backend testing (Python) - CI-equivalent comprehensive testing
 _test_backend_internal:
-	@echo "🧪 Running backend tests..."
+	@echo "🧪 Running backend tests (CI-equivalent)..."
 	@if [ "$(DIR)" = "." ] || [ "$(DIR)" = "backend" ]; then \
-		if [ -f "backend/Makefile" ]; then \
-			echo "📋 Using backend Makefile..."; \
-			cd backend && make test; \
+		echo "🔍 Step 1: Backend compilation checks..."; \
+		cd backend && \
+		export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com" && \
+		export SHOPIFY_TOKEN="test_token" && \
+		export ENVIRONMENT="test" && \
+		export SLACK_REFUNDS_BOT_TOKEN="test_slack_token" && \
+		echo "📋 Checking Python syntax..." && \
+		python3 -m py_compile config.py main.py && \
+		echo "📋 Checking module imports..." && \
+		python3 -c "import sys; sys.path.append('.'); from config import config; print('✅ Config imports successfully'); from main import app; print('✅ Main FastAPI app imports successfully'); from modules.orders import OrdersService; print('✅ Orders service imports successfully'); from modules.integrations.slack import SlackClient; print('✅ Slack Client imports successfully'); from routers.refunds import router; print('✅ Refunds router imports successfully')" && \
+		echo "🧪 Step 2: Running comprehensive test suite..." && \
+		if [ -d "tests/unit" ] && [ "$$(find tests/unit -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then \
+			echo "🧪 Running unit tests..."; \
+			python3 -m pytest tests/unit/ -v; \
 		else \
-			echo "📋 Running pytest directly..."; \
-			cd backend && python3 -m pytest tests/ -v; \
-		fi; \
+			echo "⚠️ No unit tests found in tests/unit/, skipping..."; \
+		fi && \
+		echo "🧪 Running service-specific tests..." && \
+		python3 -m pytest services/*/tests/ -v || true && \
+		echo "🧪 Running router tests..." && \
+		python3 -m pytest routers/tests/ -v || true && \
+		echo "🧪 Running Slack webhook tests..." && \
+		python3 -m pytest routers/tests/test_slack_router.py -v || true && \
+		if [ -d "tests/integration" ] && [ "$$(find tests/integration -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then \
+			echo "🧪 Running integration tests..."; \
+			python3 -m pytest tests/integration/ -v; \
+		else \
+			echo "⚠️ No integration tests found in tests/integration/, skipping..."; \
+		fi && \
+		echo "✅ Backend tests completed!"; \
 	else \
 		echo "📋 Running tests in $(DIR)..."; \
 		if find "$(DIR)" -name "test_*.py" -o -name "*_test.py" -type f | head -1 | grep -q .; then \
-			cd backend && python3 -m pytest "../$(DIR)" -v; \
+			cd backend && \
+			export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com" && \
+			export SHOPIFY_TOKEN="test_token" && \
+			export ENVIRONMENT="test" && \
+			export SLACK_REFUNDS_BOT_TOKEN="test_slack_token" && \
+			python3 -m pytest "../$(DIR)" -v; \
 		else \
 			echo "⚠️  No Python test files found in $(DIR)"; \
 		fi; \
 	fi
 
-# GoogleAppsScripts testing (JavaScript)
+# GoogleAppsScripts testing (JavaScript) - CI-equivalent comprehensive testing
 _test_gas_internal:
-	@echo "🧪 Running GoogleAppsScripts tests..."
+	@echo "🧪 Running GoogleAppsScripts tests (CI-equivalent)..."
 	@if [ "$(DIR)" = "." ] || [ "$(DIR)" = "GoogleAppsScripts" ]; then \
 		cd GoogleAppsScripts && \
-		if [ -f "tests/test_parse_registration_functions.sh" ]; then \
-			echo "📋 Running GAS test scripts..."; \
-			chmod +x tests/*.sh; \
-			./tests/test_parse_registration_functions.sh || true; \
-			./tests/test_parse_registration_comprehensive.sh || true; \
-		fi; \
+		echo "🔍 Step 1: JSON validation..." && \
+		echo "📋 Validating appsscript.json files..." && \
+		find . -name "appsscript.json" -exec python3 -m json.tool {} \; > /dev/null && \
+		echo "✅ All appsscript.json files are valid JSON" && \
+		echo "🔍 Step 2: Security scan..." && \
+		echo "📋 Checking for hardcoded secrets..." && \
+		if grep -r "shpat_\|xoxb-\|https://hooks.slack.com" --include="*.gs" . | grep -v "shared-utilities/secretsUtils.gs" | grep -v "instructions.gs"; then \
+			echo "❌ Found hardcoded secrets in scripts!"; \
+			exit 1; \
+		else \
+			echo "✅ No hardcoded secrets found"; \
+		fi && \
+		echo "🧪 Step 3: Running test suites..." && \
+		chmod +x tests/*.sh && \
+		chmod +x projects/*/tests/*.sh && \
+		echo "📋 Running Clasp Helpers Tests..." && \
+		./tests/test_clasp_helpers.sh || true && \
+		echo "📋 Running Product Creation Function Tests..." && \
+		cd projects/create-products-from-registration-info/tests && \
+		node run_consolidated_tests.js && \
+		cd - && \
+		echo "📋 Running Process Refunds Exchanges Tests..." && \
+		./projects/process-refunds-exchanges/tests/run_tests.sh || true && \
+		echo "📋 Running Leadership Discount Codes Tests..." && \
+		./projects/leadership-discount-codes/tests/test_leadership_discount_codes.sh || true && \
+		echo "📋 Running Instructions Tests..." && \
+		./tests/test_instructions.sh && \
 		if find tests/ -name "*.js" -o -name "*.mjs" -type f | head -1 | grep -q .; then \
-			echo "📋 Running JavaScript tests..."; \
+			echo "📋 Running additional JavaScript tests..."; \
 			find tests/ -name "*.js" -o -name "*.mjs" -type f | while read -r file; do \
 				echo "  Running $$file..."; \
 				node "$$file" || true; \
 			done; \
-		fi; \
+		fi && \
+		echo "✅ GoogleAppsScripts tests completed!"; \
 	else \
 		echo "📋 Running tests in $(DIR)..."; \
 		if find "$(DIR)" -name "*.sh" -type f | grep -q test; then \
@@ -705,18 +755,29 @@ _test_gas_internal:
 		fi; \
 	fi
 
-# Lambda functions testing (Python)
+# Lambda functions testing (Python) - CI-equivalent comprehensive testing
 _test_lambda_internal:
-	@echo "🧪 Running Lambda function tests..."
+	@echo "🧪 Running Lambda function tests (CI-equivalent)..."
 	@if [ "$(DIR)" = "." ] || [ "$(DIR)" = "lambda-functions" ]; then \
 		cd lambda-functions && \
+		echo "🔍 Step 1: Lambda compilation checks..." && \
+		echo "📋 Checking Lambda function syntax..." && \
+		for dir in */; do \
+			echo "🔍 Checking $$dir..."; \
+			cd "$$dir" && \
+			python3 -m py_compile *.py 2>/dev/null && \
+			python3 -c "import lambda_function; print('✅ $$dir imports successfully')" && \
+			cd ..; \
+		done && \
+		echo "🧪 Step 2: Running Lambda test suite..." && \
 		if [ -f "tests/run_tests.py" ]; then \
 			echo "📋 Running Lambda test suite..."; \
 			python3 tests/run_tests.py unit; \
 		else \
 			echo "📋 Running pytest on Lambda tests..."; \
 			python3 -m pytest tests/ -v || true; \
-		fi; \
+		fi && \
+		echo "✅ Lambda function tests completed!"; \
 	else \
 		echo "📋 Running tests in $(DIR)..."; \
 		if find "$(DIR)" -name "test_*.py" -type f | head -1 | grep -q .; then \

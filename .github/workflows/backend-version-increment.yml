@@ -69,7 +69,7 @@ jobs:
         echo "🔍 Analyzing backend changes for version update..."
         python3 scripts/backend_version_manager.py || true
       env:
-        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_URL_ADMIN_DOMAIN: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
         ENVIRONMENT: test
 
@@ -152,7 +152,7 @@ jobs:
         cd backend
         python3 -c "import sys; from version import get_version_info; from main import app; info = get_version_info(); assert 'version' in info; assert 'build' in info; assert 'full_version' in info; print('✅ Version integration tests passed'); print(f'   FastAPI app version: {app.version}'); print(f'   Version module: {info[\"version\"]}')"
       env:
-        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_URL_ADMIN_DOMAIN: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
         ENVIRONMENT: test
 
@@ -164,6 +164,6 @@ jobs:
         git add backend/ || true
         python3 scripts/backend_version_manager.py || echo "No changes to analyze"
       env:
-        SHOPIFY_STORE: test-store.myshopify.com
+        SHOPIFY_URL_ADMIN_DOMAIN: test-store.myshopify.com
         SHOPIFY_TOKEN: test_token
         ENVIRONMENT: test

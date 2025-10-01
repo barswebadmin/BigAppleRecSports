@@ -135,7 +135,7 @@ This app is configured for deployment on [Render](https://render.com) using the 
 
 ### Environment Variables (Production):
 - `ENVIRONMENT=production` (automatically set)
-- `SHOPIFY_STORE=09fe59-3.myshopify.com` (default)
+- `SHOPIFY_STORE`
 - `SHOPIFY_TOKEN=your_token_here` (set in Render dashboard)
 
 ## Google Apps Script Integration

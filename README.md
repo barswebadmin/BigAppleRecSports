@@ -120,7 +120,7 @@ git commit -am "fix: update logic"
 Create `.env` file in backend directory:
 ```bash
 # Required
-SHOPIFY_STORE=your-store.myshopify.com
+SHOPIFY_URL_ADMIN_DOMAIN=your-store.myshopify.com
 SHOPIFY_TOKEN=your_admin_api_token
 SLACK_REFUNDS_BOT_TOKEN=xoxb-your-bot-token
 
