@@ -17,18 +17,8 @@ class SlackConfig:
     Loads all Slack settings independently from main application config.
     """
 
-    def __init__(self, ENVIRONMENT: str):
-        # Honor the environment provided by the main Config, do not re-read os.getenv here
-        self.environment = (ENVIRONMENT or "dev").lower()
-        logger.info(f"🌍 SlackConfig Environment (from Config): {self.environment}")
-
-    @staticmethod
-    def get_environment() -> str:
-        return os.getenv("ENVIRONMENT", "dev").lower()
-
-    @property
-    def is_production(self) -> bool:
-        return self.environment == "production"
+    def __init__(self, ENVIRONMENT: str = "dev"):
+        self.environment = (ENVIRONMENT).lower()
 
     # --------------------
     # Bots

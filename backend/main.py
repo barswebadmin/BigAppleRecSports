@@ -25,6 +25,7 @@ if os.getenv("ENVIRONMENT") == "production":
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from routers import webhooks, refunds, orders, slack, products
 from config import config
 from version import get_version_info
@@ -41,6 +42,8 @@ logging.getLogger("services.products").setLevel(logging.INFO)
 logging.getLogger("services.shopify").setLevel(logging.INFO)
 logging.getLogger("backend.services").setLevel(logging.INFO)
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(
     title="Big Apple Rec Sports API",
     description="Backend API for Big Apple Rec Sports operations",
@@ -52,6 +55,21 @@ app = FastAPI(
     if config.environment != "production"
     else None,  # Disable redoc in production
 )
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Log ALL incoming requests
+        logger.info(f"🌐 INCOMING REQUEST: {request.method} {request.url}")
+        logger.info(f"   Headers: {dict(request.headers)}")
+        logger.info(f"   Client: {request.client}")
+        
+        response = await call_next(request)
+        
+        logger.info(f"🔄 RESPONSE: {response.status_code}")
+        return response
+
+# Add request logging middleware
+app.add_middleware(RequestLoggingMiddleware)
 
 # Configure CORS
 allowed_origins = [

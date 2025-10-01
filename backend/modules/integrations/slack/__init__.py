@@ -1,5 +1,5 @@
-from .slack_service import SlackService
+from .slack_orchestrator import SlackOrchestrator
 from . import client
 from . import builders
 
-__all__ = ["SlackService", "client", "builders"]
+__all__ = ["SlackOrchestrator", "client", "builders"]

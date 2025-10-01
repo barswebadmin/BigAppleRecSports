@@ -1,5 +1,5 @@
-from models.products.product_creation_request import ProductCreationRequest
-from models.products.product_creation_request_validation_error import (
+from modules.products.models.requests.product_creation_request.product_creation_request import ProductCreationRequest
+from modules.products.models.requests.product_creation_request.product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )
 

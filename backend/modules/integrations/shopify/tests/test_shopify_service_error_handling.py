@@ -1,29 +1,29 @@
-"""Test ShopifyService error handling for network and request failures."""
+"""Test ShopifyOrchestrator error handling for network and request failures."""
 
 import pytest
 from unittest.mock import Mock, patch
 import requests
-from backend.services.shopify.shopify_service import ShopifyService
+from services.shopify.shopify_orchestrator import ShopifyOrchestrator
 
 
-class TestShopifyServiceErrorHandling:
-    """Test how ShopifyService handles various error scenarios."""
+class TestShopifyOrchestratorErrorHandling:
+    """Test how ShopifyOrchestrator handles various error scenarios."""
 
     @pytest.fixture
-    def shopify_service(self):
-        """Create a ShopifyService instance for testing."""
+    def shopify_orchestrator(self):
+        """Create a ShopifyOrchestrator instance for testing."""
         with patch(
-            "backend.services.shopify.shopify_service.config"
+            "backend.services.shopify.shopify_orchestrator.config"
         ) as mock_config:
             mock_config.shopify_token = "test_token"
             mock_config.graphql_url = (
                 "https://test.myshopify.com/admin/api/2023-10/graphql.json"
             )
             mock_config.rest_url = "https://test.myshopify.com/admin/api/2023-10"
-            service = ShopifyService()
+            service = ShopifyOrchestrator()
             return service
 
-    def test_connection_error_handling(self, shopify_service):
+    def test_connection_error_handling(self, shopify_orchestrator):
         """Test handling of network connection errors."""
         test_query = {"query": "{ shop { name } }"}
 
@@ -33,7 +33,7 @@ class TestShopifyServiceErrorHandling:
                 "Connection refused"
             )
 
-            result = shopify_service._make_shopify_request(test_query)
+            result = shopify_orchestrator._make_shopify_request(test_query)
 
             # Should return structured error response
             assert isinstance(result, dict)
@@ -42,7 +42,7 @@ class TestShopifyServiceErrorHandling:
             assert "Failed to connect to Shopify" in result["message"]
             assert "network connectivity" in result["engineering_note"]
 
-    def test_timeout_error_handling(self, shopify_service):
+    def test_timeout_error_handling(self, shopify_orchestrator):
         """Test handling of request timeout errors."""
         test_query = {"query": "{ shop { name } }"}
 
@@ -50,7 +50,7 @@ class TestShopifyServiceErrorHandling:
             # Simulate timeout error
             mock_post.side_effect = requests.exceptions.Timeout("Request timed out")
 
-            result = shopify_service._make_shopify_request(test_query)
+            result = shopify_orchestrator._make_shopify_request(test_query)
 
             # Should return structured error response
             assert isinstance(result, dict)
@@ -59,7 +59,7 @@ class TestShopifyServiceErrorHandling:
             assert "timed out after 30 seconds" in result["message"]
             assert "network latency" in result["engineering_note"]
 
-    def test_generic_request_exception_handling(self, shopify_service):
+    def test_generic_request_exception_handling(self, shopify_orchestrator):
         """Test handling of generic request exceptions."""
         test_query = {"query": "{ shop { name } }"}
 
@@ -69,7 +69,7 @@ class TestShopifyServiceErrorHandling:
                 "SSL handshake failed"
             )
 
-            result = shopify_service._make_shopify_request(test_query)
+            result = shopify_orchestrator._make_shopify_request(test_query)
 
             # Should return structured error response
             assert isinstance(result, dict)
@@ -78,7 +78,7 @@ class TestShopifyServiceErrorHandling:
             assert "Unexpected request error" in result["message"]
             assert "SSL issues" in result["engineering_note"]
 
-    def test_dns_resolution_error(self, shopify_service):
+    def test_dns_resolution_error(self, shopify_orchestrator):
         """Test handling of DNS resolution errors (a type of connection error)."""
         test_query = {"query": "{ shop { name } }"}
 
@@ -88,13 +88,13 @@ class TestShopifyServiceErrorHandling:
                 "Failed to resolve 'test.myshopify.com'"
             )
 
-            result = shopify_service._make_shopify_request(test_query)
+            result = shopify_orchestrator._make_shopify_request(test_query)
 
             # Should return connection error
             assert result["error"] == "connection_error"
             assert "DNS resolution" in result["engineering_note"]
 
-    def test_ssl_error_with_fallback_failure(self, shopify_service):
+    def test_ssl_error_with_fallback_failure(self, shopify_orchestrator):
         """Test SSL error with fallback also failing."""
         test_query = {"query": "{ shop { name } }"}
 
@@ -105,12 +105,12 @@ class TestShopifyServiceErrorHandling:
                 requests.exceptions.ConnectionError("Connection refused"),
             ]
 
-            result = shopify_service._make_shopify_request(test_query)
+            result = shopify_orchestrator._make_shopify_request(test_query)
 
             # Should return None for fallback failure (maintaining current behavior)
             assert result is None
 
-    def test_successful_request_after_ssl_fallback(self, shopify_service):
+    def test_successful_request_after_ssl_fallback(self, shopify_orchestrator):
         """Test successful request after SSL error triggers fallback."""
         test_query = {"query": "{ shop { name } }"}
 
@@ -129,14 +129,14 @@ class TestShopifyServiceErrorHandling:
                 mock_response,
             ]
 
-            result = shopify_service._make_shopify_request(test_query)
+            result = shopify_orchestrator._make_shopify_request(test_query)
 
             # Should return successful response
             assert isinstance(result, dict)
             assert "data" in result
             assert result["data"]["shop"]["name"] == "Test Shop"
 
-    def test_error_response_structure(self, shopify_service):
+    def test_error_response_structure(self, shopify_orchestrator):
         """Test that all error responses have consistent structure."""
         test_query = {"query": "{ shop { name } }"}
 
@@ -150,7 +150,7 @@ class TestShopifyServiceErrorHandling:
             with patch("requests.post") as mock_post:
                 mock_post.side_effect = exception
 
-                result = shopify_service._make_shopify_request(test_query)
+                result = shopify_orchestrator._make_shopify_request(test_query)
 
                 # Verify consistent error structure
                 assert isinstance(result, dict)
@@ -166,9 +166,9 @@ class TestCreateProductErrorHandling:
 
     def test_none_response_handling(self):
         """Test create_product handles None response from Shopify service."""
-        # Mock the ShopifyService to return None
+        # Mock the ShopifyOrchestrator to return None
         with patch(
-            "backend.services.products.create_product_complete_proces.create_product.create_product.ShopifyService"
+            "backend.services.products.create_product_complete_proces.create_product.create_product.ShopifyOrchestrator"
         ) as mock_service_class:
             mock_service = Mock()
             mock_service._make_shopify_request.return_value = None
@@ -183,7 +183,7 @@ class TestCreateProductErrorHandling:
             mock_request.important_dates.closing_party_date = "2025-09-23"
 
             # Import and patch the create_product function to bypass validation
-            from backend.services.products.create_product_complete_proces.create_product.create_product import (
+            from services.products.create_product_complete_proces.create_product.create_product import (
                 create_product,
             )
 
@@ -202,9 +202,9 @@ class TestCreateProductErrorHandling:
 
     def test_engineering_error_response_handling(self):
         """Test create_product handles engineering error responses."""
-        # Mock the ShopifyService to return engineering error
+        # Mock the ShopifyOrchestrator to return engineering error
         with patch(
-            "backend.services.products.create_product_complete_proces.create_product.create_product.ShopifyService"
+            "backend.services.products.create_product_complete_proces.create_product.create_product.ShopifyOrchestrator"
         ) as mock_service_class:
             mock_service = Mock()
             mock_service._make_shopify_request.return_value = {
@@ -223,7 +223,7 @@ class TestCreateProductErrorHandling:
             mock_request.important_dates.open_date = "2025-09-22"
             mock_request.important_dates.closing_party_date = "2025-09-23"
 
-            from backend.services.products.create_product_complete_proces.create_product.create_product import (
+            from services.products.create_product_complete_proces.create_product.create_product import (
                 create_product,
             )
 

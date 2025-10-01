@@ -143,20 +143,20 @@ The discount calculator applies the following tiers:
 
 ## Integration with Existing Services
 
-### Using with ShopifyService
+### Using with ShopifyOrchestrator
 
-The utilities are designed to work alongside the existing `ShopifyService`:
+The utilities are designed to work alongside the existing `ShopifyOrchestrator`:
 
 ```python
-from new_structure_target.clients.shopify.shopify_service import ShopifyService
+from modules.integrations.shopify import ShopifyOrchestrator
 from shared.api_utils import retry_api_request
 from shared.secrets_utils import get_secret
 
-shopify_service = ShopifyService()
+shopify_orchestrator = ShopifyOrchestrator()
 
 # Retry Shopify operations
 def make_shopify_call():
-    return shopify_service.get_customer_by_email("customer@example.com")
+    return shopify_orchestrator.get_customer_by_email("customer@example.com")
 
 result = retry_api_request(make_shopify_call, max_retries=3)
 ```

@@ -6,8 +6,8 @@ import os
 import re
 from typing import Dict, List, Optional, Tuple
 
-from backend.config import config
-from modules.integrations.slack.usergroup_client import SlackUsergroupClient
+from config import config
+from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
 
 
 def normalize_handle(text: str) -> str:
@@ -86,12 +86,12 @@ def main() -> int:
     plans = build_group_plans(assignments, name_to_id, group_overrides)
 
     token = config.active_slack_bot_token
-    client = SlackUsergroupClient(token) if token else None
+    slack_orchestrator = SlackOrchestrator(token) if token else None
     existing_handles: Dict[str, str] = {}
 
-    if client and token:
+    if slack_orchestrator and token:
         try:
-            usergroups = client.list_usergroups()
+            usergroups = slack_orchestrator.list_usergroups()
             for ug in usergroups:
                 handle = ug.get("handle")
                 gid = ug.get("id")
@@ -116,7 +116,7 @@ def main() -> int:
     for handle, ids in preview:
         print(f"- {handle}: {len(ids)} member(s)")
 
-    if args.dry_run or not client or not token:
+    if args.dry_run or not slack_orchestrator or not token:
         print("✅ Dry run complete. Provide a Slack token to apply changes.")
         return 0
 
@@ -124,13 +124,13 @@ def main() -> int:
     created = 0
     updated = 0
     for handle, ids in to_create:
-        gid = client.create_usergroup(name=handle.replace("-", " ").title(), handle=handle)
+        gid = slack_orchestrator.create_usergroup(name=handle.replace("-", " ").title(), handle=handle)
         if gid and ids:
-            if client.update_usergroup_users(gid, ids):
+            if slack_orchestrator.update_usergroup_users(gid, ids):
                 created += 1
     for handle, gid, ids in to_update:
         if gid and ids:
-            if client.update_usergroup_users(gid, ids):
+            if slack_orchestrator.update_usergroup_users(gid, ids):
                 updated += 1
 
     print(f"✅ Applied: created={created}, updated={updated}")

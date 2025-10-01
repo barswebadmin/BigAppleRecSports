@@ -9,7 +9,7 @@ import pytest
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from backend.modules.orders.models.requests import FetchOrderRequest
-from modules.orders.services.orders_service import OrdersService
+from modules.orders.service.orders_service import OrdersService
 
 def test_orders_service():
     """Test the OrdersService functionality"""

@@ -7,21 +7,14 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Handle imports for both direct execution and module import
-try:
-    from ..shopify import ShopifyService
-    from ..csv import CSVService
-except ImportError:
-    try:
-        from modules.integrations.shopify import ShopifyService
-        from shared.csv.csv_processor import CSVService
-    except ImportError:
-        from modules.integrations.shopify import ShopifyService
-        from shared.csv.csv_processor import CSVService
+
+from modules.integrations.shopify import ShopifyOrchestrator
+    # from ..csv import CSVService
 
 class LeadershipService:
     def __init__(self):
-        self.shopify_service = ShopifyService()
-        self.csv_service = CSVService()
+        self.shopify_orchestrator = ShopifyOrchestrator()
+        # self.csv_service = CSVService()
     
     def process_leadership_emails(self, emails: List[str], year: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -50,7 +43,7 @@ class LeadershipService:
             }
         
         # Step 2: Batch process customer lookups (10 at a time for efficiency)
-        batch_results = self.shopify_service.get_customers_batch(filtered_emails)
+        batch_results = self.shopify_orchestrator.get_customers_batch(filtered_emails)
         
         for email in filtered_emails:
             customer_data = batch_results.get(email)
@@ -76,7 +69,7 @@ class LeadershipService:
         
         # Step 3: Create Customer Segment
         segment_query = f"customer_tags CONTAINS '{leadership_tag}'"
-        segment_id = self.shopify_service.create_segment(leadership_segment_name, segment_query)
+        segment_id = self.shopify_orchestrator.create_segment(leadership_segment_name, segment_query)
         
         if not segment_id:
             return {
@@ -91,7 +84,7 @@ class LeadershipService:
         # Step 4: Add Leadership Tag to Customers (preserving existing tags)
         tag_results = []
         for customer in valid_customers:
-            success = self.shopify_service.add_tag_to_customer(
+            success = self.shopify_orchestrator.add_tag_to_customer(
                 customer["id"], 
                 leadership_tag, 
                 customer.get("existing_tags", [])
@@ -116,7 +109,7 @@ class LeadershipService:
             ]
             
             for discount in discounts:
-                success = self.shopify_service.create_discount_code(
+                success = self.shopify_orchestrator.create_discount_code(
                     discount["code"],
                     discount["usage_limit"],
                     season,

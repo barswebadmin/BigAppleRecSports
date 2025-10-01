@@ -153,7 +153,7 @@ class SlackOrderHandlers:
             if shopify_errors:
                 modal_text += f"\n\n**Shopify Error Details:**\n{shopify_errors}"
             
-            # Note: This would need to be implemented in the SlackService
+            # Note: This would need to be implemented in the SlackOrchestrator
             # For now, we'll just log the error
             logger.error(f"Would send error modal: {modal_text}")
             

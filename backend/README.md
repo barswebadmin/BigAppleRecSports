@@ -26,7 +26,7 @@ backend/
 ├── config.py               # Configuration and environment settings
 ├── requirements.txt        # Python dependencies
 ├── services/               # Business logic services
-│   ├── shopify_service.py  # Shopify API integration
+│   ├── shopify_orchestrator.py  # Shopify API integration
 │   └── leadership_service.py # Leadership processing logic
 ├── routers/                # API route handlers
 │   └── leadership.py       # Leadership endpoints
@@ -112,7 +112,7 @@ General health check.
 
 ## Reusable Services
 
-### ShopifyService
+### ShopifyOrchestrator
 Provides reusable methods for Shopify integration:
 - `get_customer_id(email)` - Get customer ID by email
 - `add_tag_to_customer(customer_id, tag)` - Add tag to customer

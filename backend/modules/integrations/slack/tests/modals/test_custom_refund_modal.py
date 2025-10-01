@@ -7,7 +7,7 @@ submitted through Slack modals, ensuring proper data validation and flow.
 
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
-from modules.integrations.slack.slack_service import SlackService
+from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
 
 
 class TestCustomRefundModalSubmission:
@@ -19,16 +19,16 @@ class TestCustomRefundModalSubmission:
         self.mock_api_client = Mock()
         self.mock_api_client.update_message.return_value = {"ok": True}
 
-        # Create SlackService instance with mocked dependencies
+        # Create SlackOrchestrator instance with mocked dependencies
         with (
-            patch("services.slack.slack_service.OrdersService"),
-            patch("services.slack.slack_service.SlackMessageBuilder"),
+            patch("services.slack.slack_orchestrator.OrdersService"),
+            patch("services.slack.slack_orchestrator.SlackMessageBuilder"),
             patch(
-                "services.slack.slack_service.SlackRefundsUtils"
+                "services.slack.slack_orchestrator.SlackRefundsUtils"
             ) as mock_refunds_utils,
         ):
-            self.slack_service = SlackService()
-            self.slack_service.api_client = self.mock_api_client
+            self.slack_orchestrator = SlackOrchestrator()
+            self.slack_orchestrator.api_client = self.mock_api_client
 
             # Mock the refunds utils handle_process_refund method
             self.mock_refunds_utils = mock_refunds_utils.return_value
@@ -53,7 +53,7 @@ class TestCustomRefundModalSubmission:
         requestor_email = "test@example.com"
 
         # Call the method
-        await self.slack_service.handle_process_refund(
+        await self.slack_orchestrator.handle_process_refund(
             request_data=request_data,
             channel_id="C092RU7R6PL",
             requestor_name=requestor_name,
@@ -103,7 +103,7 @@ class TestCustomRefundModalSubmission:
             }
 
             # Call the method
-            await self.slack_service.handle_process_refund(
+            await self.slack_orchestrator.handle_process_refund(
                 request_data=request_data,
                 channel_id="C092RU7R6PL",
                 requestor_name={"first": "Test", "last": "User"},
@@ -143,7 +143,7 @@ class TestCustomRefundModalSubmission:
             }
 
             # Call the method
-            await self.slack_service.handle_process_refund(
+            await self.slack_orchestrator.handle_process_refund(
                 request_data=request_data,
                 channel_id="C092RU7R6PL",
                 requestor_name={"first": "Test", "last": "User"},
@@ -182,7 +182,7 @@ class TestCustomRefundModalSubmission:
         trigger_id = "trigger_id_123"
 
         # Call the method with all parameters
-        await self.slack_service.handle_process_refund(
+        await self.slack_orchestrator.handle_process_refund(
             request_data=request_data,
             channel_id=channel_id,
             requestor_name=requestor_name,
@@ -240,7 +240,7 @@ class TestCustomRefundModalSubmission:
         }
 
         # Call the method
-        result = await self.slack_service.handle_process_refund(
+        result = await self.slack_orchestrator.handle_process_refund(
             request_data=request_data,
             channel_id="C092RU7R6PL",
             requestor_name={"first": "John", "last": "Doe"},

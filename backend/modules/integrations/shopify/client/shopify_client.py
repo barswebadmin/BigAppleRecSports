@@ -3,9 +3,10 @@ import json
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from ....products.models import FetchProductRequest
 from config import config
-from config.main import Config
+from config.shopify import ShopifyConfig
+
+from ....products.models import FetchProductRequest
 from ....orders.models import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response
@@ -17,33 +18,30 @@ from ..parsers.mappers import map_order_node_to_order
 ShopifyClient - HTTP client using requests to interact with Shopify GraphQL with retries/timeouts.
 """
 
-
+shopify_config = config.Shopify
 class ShopifyClient:
-    def __init__(self, config_instance: Optional[Config] = None) -> None:
-        # Allow injection of config instance for CLI use with proper environment
-        self._config = config_instance
+    def __init__(self, shopify_config: ShopifyConfig = shopify_config) -> None:
+        self.url = shopify_config.graphql_url
+        self.headers = shopify_config.headers
+        self.max_retries = shopify_config.max_retries
+        self.timeout_seconds = shopify_config.timeout_seconds
 
     # ------------------------------------------------------------------
     # HTTP helper
     # ------------------------------------------------------------------
     def post_graphql_safe(self, body: Dict[str, Any]) -> requests.Response:
         """POST to Shopify GraphQL with retries and timeout using config settings."""
-        cfg = self._config or config
-        url = cfg.Shopify.graphql_url
-        headers = cfg.Shopify.headers
-        max_retries = cfg.Shopify.max_retries
-        timeout_seconds = cfg.Shopify.timeout_seconds
         
         # Debug: Print the actual URL being used (remove in production)
         # print(f"[SHOPIFY_CLIENT_DEBUG] Making request to: {url}")
 
         last_exc: Optional[Exception] = None
-        for _ in range(max_retries):
+        for _ in range(self.max_retries):
             try:
-                return requests.post(url, json=body, headers=headers, timeout=timeout_seconds)
+                return requests.post(self.url, json=body, headers=self.headers, timeout=self.timeout_seconds)
             except requests.Timeout as e:
                 # Bubble up timeouts immediately; they shouldn't be retried blindly
-                raise TimeoutError(f"Shopify request timeout after {timeout_seconds}s") from e
+                raise TimeoutError(f"Shopify request timeout after {self.timeout_seconds}s") from e
             except requests.RequestException as e:
                 last_exc = e
                 continue
@@ -113,27 +111,6 @@ class ShopifyClient:
     # ------------------------------------------------------------------
     # Instance methods
     # ------------------------------------------------------------------
-    def fetch_order_details(
-        self,
-        *,
-        request_args: FetchOrderRequest
-    ) -> ShopifyResponse:
-        """
-        Fetch order details with a single request: prefer order_id if provided,
-        otherwise use order_number. Callers must validate inputs.
-        """
-       
-        payload = build_order_fetch_request_payload(request_args)
-
-        resp = self.send_request(payload)
-        return resp
-
-    def fetch_product_details(self, request_details: FetchProductRequest) -> ShopifyResponse:
-        """
-        Fetch product details from Shopify
-        """
-        payload = build_product_fetch_request_payload(request_details)
-        resp = self.send_request(payload)
-        return resp
+    
 
     

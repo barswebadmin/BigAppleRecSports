@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
-from modules.integrations.slack.slack_service import SlackService
+from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
 
 
 class TestSlackWebhook:
@@ -23,7 +23,7 @@ class TestSlackWebhook:
     @pytest.fixture
     def mock_slack_signature(self):
         """Mock Slack signature validation to always pass"""
-        # Update to use the SlackService instead of router function
+        # Update to use the SlackOrchestrator instead of router function
         with patch("services.slack.core.slack_security.SlackSecurity.verify_slack_signature", return_value=True):
             yield
 
@@ -64,29 +64,29 @@ class TestSlackWebhook:
             yield mock_service
 
     @pytest.fixture  
-    def mock_slack_service(self):
-        """Use a real SlackService but mock its dependencies to mimic production exactly"""
-        from modules.integrations.slack.slack_service import SlackService
+    def mock_slack_orchestrator(self):
+        """Use a real SlackOrchestrator but mock its dependencies to mimic production exactly"""
+        from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
         from unittest.mock import AsyncMock, Mock, patch
         
-        # Create a real SlackService instance
-        real_service = SlackService()
+        # Create a real SlackOrchestrator instance
+        real_service = SlackOrchestrator()
         
-        # Create a mock slack_client for testing (since service no longer stores one)
-        mock_slack_client = Mock()
-        mock_slack_client.client = Mock()
-        mock_slack_client.client.chat_postMessage.return_value = {"ok": True, "ts": "123.456", "channel": "C123"}
-        mock_slack_client.client.chat_update.return_value = {"ok": True}
+        # Create a mock slack_orchestrator for testing (since service no longer stores one)
+        mock_slack_orchestrator = Mock()
+        mock_slack_orchestrator.client = Mock()
+        mock_slack_orchestrator.client.chat_postMessage.return_value = {"ok": True, "ts": "123.456", "channel": "C123"}
+        mock_slack_orchestrator.client.chat_update.return_value = {"ok": True}
         
         # Mock the client creation method to return our mock
-        real_service._create_slack_client = Mock(return_value=mock_slack_client)
+        real_service._create_slack_orchestrator = Mock(return_value=mock_slack_orchestrator)
         
         # Mock security methods for tests
         real_service.slack_security.verify_slack_signature = Mock(return_value=True)
         
         # Patch the router to use our real service with mocked dependencies
-        with patch("routers.slack.slack_service", real_service):
-            # Now the real SlackService will run real business logic
+        with patch("routers.slack.slack_orchestrator", real_service):
+            # Now the real SlackOrchestrator will run real business logic
             # but won't make actual Slack API calls
             yield real_service
 
@@ -180,11 +180,11 @@ class TestSlackWebhook:
             yield mock_config
 
     def test_slack_signature_validation_success(
-        self, client, mock_orders_service, mock_slack_service, sample_slack_payload
+        self, client, mock_orders_service, mock_slack_orchestrator, sample_slack_payload
     ):
         """Test that valid Slack signatures are accepted"""
         # Mock signature validation to pass - now it's already mocked in the fixture
-        mock_slack_service.slack_security.verify_slack_signature.return_value = True
+        mock_slack_orchestrator.slack_security.verify_slack_signature.return_value = True
         response = client.post(
             "/slack/webhook",
             data=sample_slack_payload,
@@ -196,11 +196,11 @@ class TestSlackWebhook:
         assert response.status_code == 200
 
     def test_slack_signature_validation_failure(
-        self, client, mock_slack_service, sample_slack_payload
+        self, client, mock_slack_orchestrator, sample_slack_payload
     ):
         """Test that invalid Slack signatures are rejected"""
         # Mock signature validation to fail
-        mock_slack_service.slack_security.verify_slack_signature.return_value = False
+        mock_slack_orchestrator.slack_security.verify_slack_signature.return_value = False
         # Add signature headers so validation logic is triggered
         response = client.post(
             "/slack/webhook",
@@ -218,7 +218,7 @@ class TestSlackWebhook:
         self,
         client,
         mock_orders_service,
-        mock_slack_service,
+        mock_slack_orchestrator,
         mock_slack_signature,
         sample_slack_payload,
         mock_debug_config,
@@ -275,7 +275,7 @@ class TestSlackWebhook:
         self,
         client,
         mock_orders_service,
-        mock_slack_service,
+        mock_slack_orchestrator,
         mock_slack_signature,
         refund_payload,
     ):
@@ -299,7 +299,7 @@ class TestSlackWebhook:
         self,
         client,
         mock_orders_service,
-        mock_slack_service,
+        mock_slack_orchestrator,
         mock_slack_signature,
         sample_slack_payload,
     ):
@@ -318,7 +318,7 @@ class TestSlackWebhook:
         assert response.status_code == 200
 
     def test_custom_refund_modal_submission_success(
-        self, client, mock_orders_service, mock_slack_service, mock_slack_signature
+        self, client, mock_orders_service, mock_slack_orchestrator, mock_slack_signature
     ):
         """Test successful custom refund modal submission"""
 
@@ -326,7 +326,7 @@ class TestSlackWebhook:
         from unittest.mock import AsyncMock
 
         # Replace the existing function with an AsyncMock for this test
-        mock_slack_service.handle_process_refund = AsyncMock(
+        mock_slack_orchestrator.handle_process_refund = AsyncMock(
             return_value={"success": True, "message": "Refund processed successfully"}
         )
 
@@ -368,8 +368,8 @@ class TestSlackWebhook:
         assert response.status_code == 200
 
         # Verify that handle_process_refund was called with correct parameters
-        mock_slack_service.handle_process_refund.assert_called_once()
-        call_args = mock_slack_service.handle_process_refund.call_args
+        mock_slack_orchestrator.handle_process_refund.assert_called_once()
+        call_args = mock_slack_orchestrator.handle_process_refund.call_args
 
         # Check the request_data parameter
         request_data = call_args[1]["request_data"]
@@ -389,7 +389,7 @@ class TestSlackWebhook:
         assert call_args[1]["requestor_email"] == "test@example.com"
 
     def test_custom_refund_modal_submission_missing_metadata(
-        self, client, mock_orders_service, mock_slack_service, mock_slack_signature
+        self, client, mock_orders_service, mock_slack_orchestrator, mock_slack_signature
     ):
         """Test custom refund modal submission with missing private_metadata"""
 
@@ -420,7 +420,7 @@ class TestSlackWebhook:
         assert response.json()["detail"] == "Internal server error"
 
     def test_custom_refund_modal_submission_invalid_metadata(
-        self, client, mock_orders_service, mock_slack_service, mock_slack_signature
+        self, client, mock_orders_service, mock_slack_orchestrator, mock_slack_signature
     ):
         """Test custom refund modal submission with invalid JSON in private_metadata"""
 
@@ -449,7 +449,7 @@ class TestSlackWebhook:
         assert response.status_code == 500
 
     def test_custom_refund_modal_submission_with_refund_type(
-        self, client, mock_orders_service, mock_slack_service, mock_slack_signature
+        self, client, mock_orders_service, mock_slack_orchestrator, mock_slack_signature
     ):
         """Test custom refund modal submission for refund type (not credit)"""
 
@@ -457,7 +457,7 @@ class TestSlackWebhook:
         from unittest.mock import AsyncMock
 
         # Replace the existing function with an AsyncMock for this test
-        mock_slack_service.handle_process_refund = AsyncMock(
+        mock_slack_orchestrator.handle_process_refund = AsyncMock(
             return_value={"success": True, "message": "Refund processed successfully"}
         )
 
@@ -498,14 +498,14 @@ class TestSlackWebhook:
         assert response.status_code == 200
 
         # Verify that handle_process_refund was called with refund type
-        mock_slack_service.handle_process_refund.assert_called_once()
-        call_args = mock_slack_service.handle_process_refund.call_args
+        mock_slack_orchestrator.handle_process_refund.assert_called_once()
+        call_args = mock_slack_orchestrator.handle_process_refund.call_args
         request_data = call_args[1]["request_data"]
         assert request_data["refundType"] == "refund"
         assert request_data["refundAmount"] == "15.00"
 
     def test_custom_refund_modal_submission_decimal_amount(
-        self, client, mock_orders_service, mock_slack_service, mock_slack_signature
+        self, client, mock_orders_service, mock_slack_orchestrator, mock_slack_signature
     ):
         """Test custom refund modal submission with decimal amounts"""
 
@@ -513,7 +513,7 @@ class TestSlackWebhook:
         from unittest.mock import AsyncMock
 
         # Replace the existing function with an AsyncMock for this test
-        mock_slack_service.handle_process_refund = AsyncMock(
+        mock_slack_orchestrator.handle_process_refund = AsyncMock(
             return_value={"success": True, "message": "Refund processed successfully"}
         )
 
@@ -560,12 +560,12 @@ class TestSlackWebhook:
             assert response.status_code == 200
 
             # Verify the amount was passed correctly
-            call_args = mock_slack_service.handle_process_refund.call_args
+            call_args = mock_slack_orchestrator.handle_process_refund.call_args
             request_data = call_args[1]["request_data"]
             assert request_data["refundAmount"] == amount
 
     def test_webhook_preserves_user_data(
-        self, client, mock_orders_service, mock_slack_service, mock_slack_signature
+        self, client, mock_orders_service, mock_slack_orchestrator, mock_slack_signature
     ):
         """Test that user information is preserved through webhook processing"""
         payload = {
@@ -600,7 +600,7 @@ class TestSlackWebhook:
         self,
         client,
         mock_orders_service,
-        mock_slack_service,
+        mock_slack_orchestrator,
         mock_slack_signature,
         restock_payload,
     ):
@@ -618,7 +618,7 @@ class TestSlackWebhook:
             # but the webhook still returns 200 response
 
     def test_do_not_restock_webhook_debug_mode(
-        self, client, mock_slack_service, mock_slack_signature, do_not_restock_payload
+        self, client, mock_slack_orchestrator, mock_slack_signature, do_not_restock_payload
     ):
         """Test 'Do Not Restock' action in debug mode"""
 
@@ -634,8 +634,8 @@ class TestSlackWebhook:
 
     def test_extract_season_start_info(self):
         """Test utility function for extracting season start information"""
-        slack_service = SlackService()
-        extract_season_start_info = slack_service.extract_season_start_info
+        slack_orchestrator = SlackOrchestrator()
+        extract_season_start_info = slack_orchestrator.extract_season_start_info
 
         message = "Season Start Date for Big Apple Product is 7/9/25"
         result = extract_season_start_info(message)
@@ -666,12 +666,12 @@ class TestSlackMessageFormatting:
     @pytest.fixture
     def mock_message_builder(self):
         """Mock the message builder service"""
-        with patch("routers.slack.slack_service.message_builder") as mock_builder:
+        with patch("routers.slack.slack_orchestrator.message_builder") as mock_builder:
             yield mock_builder
 
     def test_debug_message_format_expectations(self, mock_message_builder):
         """Test core functionality: proper data extraction, hyperlinks, and business logic"""
-        slack_service = SlackService()
+        slack_orchestrator = SlackOrchestrator()
         # Skip this test since build_comprehensive_success_message was removed in refactoring
         pytest.skip("build_comprehensive_success_message was removed during refactoring")
 
@@ -782,7 +782,7 @@ class TestSlackMessageFormatting:
 
     def test_production_vs_debug_message_differences(self, mock_message_builder):
         """Test core functionality works consistently across production and debug modes"""
-        slack_service = SlackService()
+        slack_orchestrator = SlackOrchestrator()
         # Skip this test since build_comprehensive_success_message was removed in refactoring
         pytest.skip("build_comprehensive_success_message was removed during refactoring")
 

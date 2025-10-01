@@ -1,6 +1,6 @@
 """
 Slack message building utilities.
-Extracted from the main SlackService to improve modularity.
+
 """
 
 from typing import Dict, Any, Optional, Union

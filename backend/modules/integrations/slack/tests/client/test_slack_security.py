@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from new_structure_target.clients.slack.core.slack_security import SlackSecurity
+from modules.integrations.slack.slack_orchestrator import SlackSecurity
 
 
 def _slack_signature(secret: str, body: bytes, timestamp: str) -> str:

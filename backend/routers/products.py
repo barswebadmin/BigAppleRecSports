@@ -2,17 +2,24 @@ import json
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
-from products.services.products_service import ProductsService
-from shopify_client.models.products.product_creation_request.product_creation_request_validation_error import (
-    ProductCreationRequestValidationError,
-)
+
+from modules.products.service import ProductsService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/products", tags=["products"])
 
 
+products_service = ProductsService()
+
+
+@router.get("/{product_id}")
+async def handle_get_product(product_id: str):
+    """Get a product by ID"""
+    return products_service.get_product_details(product_id)
+
+
 @router.post("/create")
-async def create_product(
+async def handle_create_product(
     create_product_request_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     print("create_product_request_data", json.dumps(create_product_request_data, indent=2))
@@ -87,6 +94,12 @@ async def create_product(
     #             status_code=status_code,
     #             detail=error_detail,
     #         )
+
+@router.get("/adjust-inventory")
+async def handle_adjust_inventory():
+    """Health check endpoint for the products service"""
+    return products_service.adjust_inventory()
+
 
 @router.get("/health")
 async def health_check():

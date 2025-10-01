@@ -23,14 +23,9 @@ class SlackNotifierProtocol(Protocol):
 import logging
 from typing import List
 
-try:
-    from ...clients.slack.core.slack_client import SlackClient
-    from ...clients.slack.builders.message_builder import SlackMessageBuilder
-    from backend.config import config
-except ImportError:  # fallback for alternative import roots
-    from new_structure_target.clients.slack.core.slack_client import SlackClient
-    from new_structure_target.clients.slack.builders.message_builder import SlackMessageBuilder
-    from backend.config import config
+from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
+from modules.integrations.slack.builders.message_builder import SlackMessageBuilder
+from config import config
 
 
 logger = logging.getLogger(__name__)

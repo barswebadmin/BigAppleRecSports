@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for the consolidated SlackService.
+Test script for the consolidated SlackOrchestrator.
 Tests both low-level API methods and high-level business logic.
 """
 
@@ -12,21 +12,21 @@ os.environ["ENVIRONMENT"] = "dev"
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from modules.integrations.slack.slack_service import SlackService
+from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
 from models.slack import Slack, RefundType, SlackMessageType
 from modules.integrations.slack.slack_config import SlackConfig
 
 def test_consolidated_slack_service():
     """Test the consolidated Slack service functionality"""
     
-    print("🧪 Testing Consolidated SlackService")
+    print("🧪 Testing Consolidated SlackOrchestrator")
     print("=" * 50)
     
     # Initialize service
-    service = SlackService()
-    print(f"✅ Service initialized for {service.environment} environment")
-    print(f"📺 Default channel: {service._get_default_channel()}")
-    print(f"🏃 Sport groups: {len(service._get_sport_groups())} configured")
+    slack_orchestrator = SlackOrchestrator()
+    print(f"✅ Service initialized for {slack_orchestrator.environment} environment")
+    print(f"📺 Default channel: {slack_orchestrator._get_default_channel()}")
+    print(f"🏃 Sport groups: {len(slack_orchestrator._get_sport_groups())} configured")
     print()
     
     # Test 1: Low-level API methods
@@ -167,7 +167,7 @@ def test_consolidated_slack_service():
     print()
     
     print("=" * 50)
-    print("✅ Consolidated SlackService Test Completed!")
+    print("✅ Consolidated SlackOrchestrator Test Completed!")
 
 def demonstrate_usage_examples():
     """Demonstrate usage examples for the consolidated service"""
@@ -177,7 +177,7 @@ def demonstrate_usage_examples():
     
     print("""
 # Example 1: Low-level API usage
-service = SlackService()
+service = SlackOrchestrator()
 
 # Send a simple message
 result = service.send_message(
@@ -253,7 +253,7 @@ result = service.send_refund_request_notification(
 )
 
 # Example 5: Factory function (backward compatibility)
-client = create_slack_client(
+client = create_slack_orchestrator(
     token=SlackConfig.Token.get_active_token(),
     channel_id=SlackConfig.Channel.RefundRequests
 )
@@ -267,5 +267,5 @@ result = client.send_message_to_channel(
     print("✅ Usage Examples Complete!")
 
 if __name__ == "__main__":
-    test_consolidated_slack_service()
+    test_consolidated_slack_orchestrator()
     demonstrate_usage_examples()

@@ -64,7 +64,7 @@ jobs:
         import sys
         sys.path.append('.')
         try:
-            from config import settings
+            from config import config
             print('✅ Config module imports successfully')
             from main import app
             print('✅ Main FastAPI app imports successfully')
@@ -393,13 +393,13 @@ NODE
         import sys
         sys.path.append('.')
         try:
-            from config import settings
+            from config import config
             print('✅ Config module imports successfully')
             from main import app
             print('✅ Main FastAPI app imports successfully')
             from services.orders.orders_service import OrdersService
             print('✅ Orders service imports successfully')
-            from services.slack.slack_service import SlackService
+            from services.slack.slack_service import SlackOrchestrator
             print('✅ Slack service imports successfully')
             try:
                 from routers.refunds import router as refunds_router

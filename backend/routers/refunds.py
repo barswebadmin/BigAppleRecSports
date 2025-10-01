@@ -5,8 +5,8 @@ Handles incoming refund requests
 """
 
 from fastapi import APIRouter, HTTPException, Request
-from refunds import RefundsService
-from orders.models import FetchOrderRequest
+from modules.refunds.service import RefundsService
+from modules.orders.models import FetchOrderRequest
 
 router = APIRouter(prefix="/refunds", tags=["refunds"])
 

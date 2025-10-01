@@ -2,17 +2,16 @@ from fastapi import APIRouter, HTTPException, Request
 import logging
 import json
 
-from orders.services.orders_service import OrdersService
-from slack_client.slack_service import SlackService
-from slack_client.client.usergroup_client import SlackUsergroupClient
-from slack_client.client.users_client import SlackUsersClient
+from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
+from modules.integrations.slack.client.usergroup_client import SlackUsergroupClient
+from modules.integrations.slack.client.users_client import SlackUsersClient
 from config import config
+from shared.security import verify_webhook_signature
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/slack", tags=["slack"])
 
-orders_service = OrdersService()
-slack_service = SlackService()
+slack_orchestrator = SlackOrchestrator()
 # Note: These clients are not currently used in the simplified router
 # usergroup_client = SlackUsergroupClient(config.active_slack_bot_token or "")
 # users_client = SlackUsersClient(config.active_slack_bot_token or "")
@@ -58,7 +57,7 @@ async def handle_slack_interactions(request: Request):
             raise HTTPException(status_code=400, detail="Invalid form data")
 
         # Delegate to Slack service for processing
-        return await slack_service.handle_slack_interaction(
+        return await slack_orchestrator.handle_slack_interaction(
             payload=payload,
             body=body,
             timestamp=timestamp,
@@ -101,16 +100,110 @@ async def handle_slack_webhook(request: Request):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/commands")
+
+
+
+@router.post("/registrations-bot")
 async def handle_slash_commands(request: Request):
     """
-    Minimal slash command endpoint to trigger CSV sync via URL:
-    e.g. /sync-groups csv_url=https://.../groups.csv apply=true
+    Handle slash commands including:
+    - /sync-groups csv_url=https://.../groups.csv apply=true
+    - /adjust-inventory (inventory adjustment shortcut alternative)
     """
     try:
-        form = await request.form()
+
+        
+        # Try to get raw body for signature verification debugging
+        try:
+            body = await request.body()
+            logger.info(f"   Raw body length: {len(body)} bytes")
+            logger.info(f"   Raw body preview: {body[:200].decode('utf-8', errors='ignore')}")
+            
+            # Validate Slack signature
+            # Determine which bot this request is for (you can add logic to detect this)
+            bot_name = None  # Could be "registrations_bot", "refunds_bot", etc.
+            
+            is_valid = verify_webhook_signature(
+                source="slack",
+                body=body, 
+                headers=dict(request.headers),
+                bot=bot_name
+            )
+            logger.info(f"   🔐 Signature validation: {'✅ VALID' if is_valid else '❌ INVALID'}")
+            
+            # In production, you might want to reject invalid signatures
+            # if not is_valid:
+            #     raise HTTPException(status_code=401, detail="Invalid signature")
+                
+        except Exception as body_error:
+            logger.error(f"   ❌ Error reading raw body: {body_error}")
+        
+        # Try to parse form data
+        try:
+            form = await request.form()
+            logger.info("   ✅ Form parsing successful")
+        except Exception as form_error:
+            logger.error(f"   ❌ Form parsing failed: {form_error}")
+            return {"error": f"Form parsing failed: {str(form_error)}"}
+        
+        # Log all form data for debugging
+        form_data = dict(form)
+        logger.info(f"📥 Slack slash command received:")
+        logger.info(f"   Headers: {dict(request.headers)}")
+        logger.info(f"   Form data: {form_data}")
+        
+        command = form.get("command", "").strip()
         text_field = form.get("text")
         text = str(text_field).strip() if text_field else ""
+        user_id = form.get("user_id", "")
+        user_name = form.get("user_name", "")
+        channel_id = form.get("channel_id", "")
+        channel_name = form.get("channel_name", "")
+        team_id = form.get("team_id", "")
+        team_domain = form.get("team_domain", "")
+        
+        logger.info(f"   Parsed - Command: {command}, Text: {text}, User: {user_name} ({user_id})")
+        logger.info(f"   Channel: {channel_name} ({channel_id}), Team: {team_domain} ({team_id})")
+        
+        # Handle different slash commands
+        if command == "/adjust-inventory":
+            return {
+                "response_type": "ephemeral",
+                "text": f"🔧 *Adjust Product Inventory*",
+                "blocks": [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"🔧 *Adjust Product Inventory*\n\nTriggered by <@{user_id}>\n\nWhat would you like to do?"
+                        }
+                    },
+                    {
+                        "type": "actions",
+                        "elements": [
+                            {
+                                "type": "button",
+                                "text": {
+                                    "type": "plain_text",
+                                    "text": "View Current Inventory"
+                                },
+                                "action_id": "view_inventory",
+                                "style": "primary"
+                            },
+                            {
+                                "type": "button",
+                                "text": {
+                                    "type": "plain_text",
+                                    "text": "Adjust Inventory"
+                                },
+                                "action_id": "adjust_inventory"
+                            }
+                        ]
+                    }
+                ]
+            }
+        
+        # Handle sync-groups command (existing functionality)
         # naive parse: key=value pairs
         args = {}
         for token in text.split():

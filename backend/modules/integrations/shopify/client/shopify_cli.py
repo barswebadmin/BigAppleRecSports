@@ -11,36 +11,31 @@ from rich import print as rprint
 from rich.console import Console
 from rich.syntax import Syntax
 
-from config.main import Config
-from ..models.requests import FetchOrderRequest
-from ..services.orders_service import OrdersService
-from backend.modules.integrations.shopify import ShopifyClient
-from ..builders.shopify_request_builders import build_order_fetch_request_payload
+from config import Config
+from modules.orders.models import FetchOrderRequest
+from modules.orders.service.orders_service import OrdersService
+from modules.integrations.shopify import ShopifyClient
+from ..builders.request_builders import build_order_fetch_request_payload
 
 # Toggle CLI debug logging here
 DEBUG_LOGGING: bool = True
 RAW_OUTPUT: bool = False
 
+load_dotenv(find_dotenv(), override=False)
+# 🎛️ FORCE ENVIRONMENT (set to None for auto-detection)
+FORCED_ENV = None  # Options: None, "development", "staging", "production"
 
-def _ensure_env_loaded() -> None:
-    # Load nearest .env (works regardless of CWD)
-    try:
-        load_dotenv(find_dotenv(), override=False)
-    except Exception:
-        pass
-
-def _initialize_services():
+def _initialize_services(ENVIRONMENT: str = None):
     """Initialize services after environment is properly loaded."""
-    # Force production config for Shopify credentials/URLs  
-    os.environ["ENVIRONMENT"] = "production"
+    # Use forced environment if set, otherwise use provided or default to production
+    env = FORCED_ENV or ENVIRONMENT or "production" #TODO fix this
     
-    # Force a fresh config instance with the new environment
-    from config.main import Config
-    fresh_config = Config()
+    config = Config(env)
     
-    shopify_client = ShopifyClient(fresh_config)
+    
+    shopify_client = ShopifyClient(config.Shopify)
     orders_service = OrdersService(shopify_client)
-    return shopify_client, orders_service, fresh_config
+    return shopify_client, orders_service, config
 
 def _fetch_order_details(ident: FetchOrderRequest, orders_service: OrdersService) -> Dict:
     """Fetch order details using OrdersService (now safe from circular imports)."""
@@ -58,7 +53,6 @@ def cmd_fetch_order(identifier: str) -> int:
         print("Expected identifier as 'id:123' or 'number:123'", file=sys.stderr)
         return 2
 
-    _ensure_env_loaded()
     shopify_client, orders_service, cfg = _initialize_services()
 
     # Enable logging if requested

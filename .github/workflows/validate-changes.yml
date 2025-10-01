@@ -72,7 +72,7 @@ jobs:
           cd backend
           python -c "
           try:
-              from config import settings
+              from config import config
               print('✅ Config validation successful')
           except Exception as e:
               print(f'⚠️ Config validation warning: {e}')

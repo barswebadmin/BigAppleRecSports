@@ -5,17 +5,17 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 import dateutil.parser
 
-from orders.services.orders_service import OrdersService
-from slack_client.slack_service import SlackService
+from modules.orders.service.orders_service import OrdersService
+from modules.orders.models import FetchOrderRequest
+from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
 from shared.fetch_order_from_shopify import fetch_order_from_shopify
-from orders.models import FetchOrderRequest
 from config import config
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 orders_service = OrdersService()
-slack_service = SlackService()
+slack_orchestrator = SlackOrchestrator()
 
 
 class SlackNotificationRequest(BaseModel):
@@ -28,7 +28,7 @@ class SlackNotificationRequest(BaseModel):
     sheet_link: Optional[str] = None  # Google Sheets link to the specific row
     request_submitted_at: Optional[str] = None
 
-SlackChannel = config.SlackChannel
+SlackChannel = config.Slack.Channels
 
 
 @router.get("/{order_number}")
@@ -224,7 +224,7 @@ async def send_refund_to_slack(
                         f"<{request.requestor_email}> — Order: {request.order_number}\n"
                         f"Notes: {request.notes}\nSubmitted: {request_initiated_at}"
                     )
-                    # TODO: Implement send_message method in SlackService or use SlackClient directly
+                    # TODO: Implement send_message method in SlackOrchestrator or use SlackClient directly
                     slack_result = {"success": True, "message": "Slack notification sent (mocked)"}
                     logger.info(f"✅ Slack notification sent: {slack_result.get('success')}")
                 except Exception as slack_error:
@@ -280,7 +280,7 @@ async def send_refund_to_slack(
                 f"Requestor: {request.requestor_name.get('first','')} {request.requestor_name.get('last','')} <{request.requestor_email}>\n"
                 f"Notes: {request.notes}"
             )
-            # TODO: Implement send_message method in SlackService or use SlackClient directly
+            # TODO: Implement send_message method in SlackOrchestrator or use SlackClient directly
             slack_result = {"success": True, "message": "Slack notification sent (mocked)"}
 
             raise HTTPException(
@@ -326,7 +326,7 @@ async def send_refund_to_slack(
                     f"Requestor: {request.requestor_name.get('first','')} {request.requestor_name.get('last','')} <{request.requestor_email}>\n"
                     f"Notes: {request.notes}"
                 )
-                # TODO: Implement send_message method in SlackService or use SlackClient directly
+                # TODO: Implement send_message method in SlackOrchestrator or use SlackClient directly
                 slack_result = {"success": True, "message": "Slack notification sent (mocked)"}
                 logger.info(f"✅ Slack duplicate refund notification sent: {slack_result.get('success')}")
             except Exception as slack_error:
@@ -376,7 +376,7 @@ async def send_refund_to_slack(
             f"Calculated refund: ${refund_calculation.get('refund_amount', 0):.2f}\n"
             f"Notes: {request.notes}"
         )
-        # TODO: Implement send_message method in SlackService or use SlackClient directly
+        # TODO: Implement send_message method in SlackOrchestrator or use SlackClient directly
         slack_result = {"success": True, "message": "Slack notification sent (mocked)"}
 
         if not slack_result["success"]:

@@ -7,12 +7,12 @@ from typing import Any, Dict, Optional
 from unittest.mock import Mock
 
 
-def create_mock_slack_service() -> Mock:
+def create_mock_slack_orchestrator() -> Mock:
     """
-    Create a properly configured mock SlackService for testing.
+    Create a properly configured mock SlackOrchestrator for testing.
     
     Returns:
-        Mock SlackService with common test methods configured
+        Mock SlackOrchestrator with common test methods configured
     """
     from unittest.mock import AsyncMock
     

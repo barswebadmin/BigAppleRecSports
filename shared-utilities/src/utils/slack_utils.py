@@ -428,7 +428,7 @@ def send_waitlist_validation_error(
     email: str,
     reason: str,
     product_handle: str,
-    slack_client: Optional[SlackClient] = None,
+    slack_orchestrator: Optional[SlackClient] = None,
 ) -> bool:
     """
     Send waitlist validation error to joe-test channel
@@ -438,14 +438,14 @@ def send_waitlist_validation_error(
         email: User email
         reason: Validation failure reason
         product_handle: Product handle that was checked
-        slack_client: Optional Slack client instance
+        slack_orchestrator: Optional Slack client instance
 
     Returns:
         Success status
     """
     try:
-        if not slack_client:
-            slack_client = SlackClient()
+        if not slack_orchestrator:
+            slack_orchestrator = SlackClient()
 
         # Hardcoded joe-test channel config (shared utilities don't have access to backend config)
         channel_config = {
@@ -496,7 +496,7 @@ def send_waitlist_validation_error(
             },
         ]
 
-        result = slack_client.send_message(
+        result = slack_orchestrator.send_message(
             channel=channel_config["channel_id"],
             text=f"{error_icon} Waitlist Validation Error: {title}",
             blocks=blocks,

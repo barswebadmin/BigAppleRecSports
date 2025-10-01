@@ -11,11 +11,13 @@ class ShopifyConfig:
             self._store_id = os.getenv("SHOPIFY_STORE_ID") or os.getenv("SHOPIFY_STORE")
             self._token = os.getenv("SHOPIFY_TOKEN_ADMIN") or os.getenv("SHOPIFY_TOKEN")
             self._location_id = os.getenv("SHOPIFY_LOCATION_ID") or os.getenv("SHOPIFY_DEFAULT_LOCATION_ID")
+            self._webhook_secret = os.getenv("SHOPIFY_SECRET_WEBHOOK")
         else:
             # Use dev/test Shopify credentials (if any) or defaults
             self._store_id = os.getenv("SHOPIFY_DEV_STORE", "SHOPIFY_DEV_STORE")
             self._token = os.getenv("SHOPIFY_DEV_TOKEN", "SHOPIFY_DEV_TOKEN")
             self._location_id = os.getenv("SHOPIFY_DEV_LOCATION_ID", "SHOPIFY_DEV_LOCATION_ID")
+            self._webhook_secret = os.getenv("SHOPIFY_DEV_SECRET_WEBHOOK")
 
         # HTTP behavior
         self._timeout_seconds = int(os.getenv("SHOPIFY_TIMEOUT_SECONDS", "10"))
@@ -34,6 +36,12 @@ class ShopifyConfig:
         if not self._token:
             raise RuntimeError("Shopify token is not set")
         return self._token
+
+    @property
+    def webhook_secret(self) -> str:
+        if not self._webhook_secret:
+            raise RuntimeError("Shopify webhook secret is not set")
+        return self._webhook_secret
 
     @property
     def location_id(self) -> str:

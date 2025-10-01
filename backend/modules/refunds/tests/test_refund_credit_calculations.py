@@ -15,7 +15,7 @@ class TestRefundCreditCalculations:
     
     def setup_method(self):
         """Set up test fixtures"""
-        self.mock_shopify_service = Mock()
+        self.mock_shopify_orchestrator = Mock()
         self.calculator = RefundCalculator()
         
         # Sample order data with season dates (format expected by RefundCalculator)

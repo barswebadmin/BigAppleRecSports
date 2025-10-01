@@ -7,8 +7,8 @@ import os
 import re
 from typing import Dict, List, Optional, Tuple
 
-from backend.config import config
-from modules.integrations.slack.usergroup_client import SlackUsergroupClient
+from config import config
+from modules.integrations.slack import SlackOrchestrator
 
 
 def normalize_handle(text: str) -> str:
@@ -140,10 +140,10 @@ def main() -> int:
         print("❌ No Slack bot token configured. Set SLACK_DEV_BOT_TOKEN or SLACK_REFUNDS_BOT_TOKEN.")
         return 1
 
-    client = SlackUsergroupClient(token)
+    slack_orchestrator = SlackOrchestrator(token)
     existing: Dict[str, str] = {}
     try:
-        for ug in client.list_usergroups():
+        for ug in slack_orchestrator.list_usergroups():
             h, gid = ug.get("handle"), ug.get("id")
             if h and gid:
                 existing[h] = gid
@@ -155,13 +155,13 @@ def main() -> int:
     for handle, members in plans.items():
         gid = existing.get(handle)
         if not gid:
-            gid = client.create_usergroup(name=handle.replace("-", " ").title(), handle=handle, description="Auto-managed from CSV")
+            gid = slack_orchestrator.create_usergroup(name=handle.replace("-", " ").title(), handle=handle, description="Auto-managed from CSV")
             if gid:
                 existing[handle] = gid
-                if members and client.update_usergroup_users(gid, members):
+                if members and slack_orchestrator.update_usergroup_users(gid, members):
                     created += 1
         else:
-            if members and client.update_usergroup_users(gid, members):
+            if members and slack_orchestrator.update_usergroup_users(gid, members):
                 updated += 1
 
     print(f"✅ Applied: created={created}, updated={updated}")

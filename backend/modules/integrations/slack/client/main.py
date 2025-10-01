@@ -8,7 +8,8 @@ from typing import Dict, Any, Optional, List, Union, TYPE_CHECKING
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError, SlackClientError
 
-from config.main import SlackConfig
+from config import config
+from config.slack import SlackConfig
 
 if TYPE_CHECKING:
     from .mock_client import MockSlackClient
@@ -16,11 +17,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class SlackClient:
+class SlackClient():
     """Core Slack API methods for direct API interactions"""
-
-    web_client = WebClient()
-    def __init__(self):
+    
+    def __init__(self, slack_config: SlackConfig = config.Slack):
+        self.slack_config = slack_config
+        self.web_client = WebClient()
         self.client = self.web_client
         self._timeout_seconds = 10
         self._max_retries = 3
