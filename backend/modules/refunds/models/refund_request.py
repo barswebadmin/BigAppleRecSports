@@ -1,8 +1,8 @@
 from pydantic import BaseModel, model_validator
 from typing import Optional
 
-from backend.shared.model_config import BaseModelConfig
-from backend.shared.validators import (
+from shared.model_config import BaseModelConfig
+from shared.validators import (
     validate_email_format,
     validate_shopify_order_number_format,
     validate_multiple_fields,

@@ -4,7 +4,7 @@ Complete product creation process orchestrator - matching GAS flow expectations
 
 import logging
 from typing import Dict, Any
-from models.products.product_creation_request import ProductCreationRequest
+from modules.integrations.shopify.models.products.product_creation_request.product_creation_request import ProductCreationRequest
 from .create_product.create_product import create_product
 from .create_variants.create_variants import create_variants
 from .schedule_product_updates.schedule_product_updates import schedule_product_updates

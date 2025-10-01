@@ -3,7 +3,7 @@ from functools import lru_cache
 from typing import Any, Dict, List, Set, Tuple, Type, get_args, get_origin, Union
 
 from pydantic import BaseModel
-from backend.shared.model_config import snake_to_camel
+from shared.model_config import snake_to_camel
 
 
 def _field_alias(model: Type[BaseModel], name: str) -> str:

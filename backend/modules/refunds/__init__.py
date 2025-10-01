@@ -1,4 +1,4 @@
-from backend.modules.refunds.app.main import RefundsService
+from .app.main import RefundsService
 
 __all__ = ["RefundsService"]
 

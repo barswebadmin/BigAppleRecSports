@@ -6,8 +6,8 @@ Combines functionality from test_slack_modal_handlers.py, test_deny_modal.py, an
 import pytest
 import json
 from unittest.mock import Mock, patch
-from services.slack.modal_handlers import SlackModalHandlers
-from services.slack.slack_refunds_utils import SlackRefundsUtils
+from modules.integrations.slack.modal_handlers import SlackModalHandlers
+from modules.integrations.slack.slack_refunds_utils import SlackRefundsUtils
 
 
 class TestModalHandlingConsolidated:

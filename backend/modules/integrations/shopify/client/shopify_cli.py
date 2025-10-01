@@ -11,11 +11,11 @@ from rich import print as rprint
 from rich.console import Console
 from rich.syntax import Syntax
 
-from backend.config.main import Config
-from backend.modules.integrations.shopify.models.requests import FetchOrderRequest
-from backend.modules.orders.services.orders_service import OrdersService
+from config.main import Config
+from ..models.requests import FetchOrderRequest
+from ..services.orders_service import OrdersService
 from backend.modules.integrations.shopify import ShopifyClient
-from backend.modules.integrations.shopify.builders.shopify_request_builders import build_order_fetch_request_payload
+from ..builders.shopify_request_builders import build_order_fetch_request_payload
 
 # Toggle CLI debug logging here
 DEBUG_LOGGING: bool = True
@@ -35,7 +35,7 @@ def _initialize_services():
     os.environ["ENVIRONMENT"] = "production"
     
     # Force a fresh config instance with the new environment
-    from backend.config.main import Config
+    from config.main import Config
     fresh_config = Config()
     
     shopify_client = ShopifyClient(fresh_config)

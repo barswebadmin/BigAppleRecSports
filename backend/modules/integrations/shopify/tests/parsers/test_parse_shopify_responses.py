@@ -1,8 +1,8 @@
 import json
 import pytest
 
-from backend.modules.integrations.shopify.models.responses import ShopifyResponseKind, ShopifyResponse
-from backend.modules.integrations.shopify.parsers.parse_shopify_response import parse_shopify_response
+from ..models.responses import ShopifyResponseKind, ShopifyResponse
+from ..parsers.parse_shopify_response import parse_shopify_response
 
 
 def test_parse_shopify_responses_table_driven(capfd):

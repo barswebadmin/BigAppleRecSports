@@ -3,7 +3,7 @@ Tests for centralized multi-field validation functionality.
 """
 
 import pytest
-from backend.shared.validators import (
+from ../../../shared.validators import (
     validate_multiple_fields,
     validate_email_format,
     validate_shopify_order_number_format,

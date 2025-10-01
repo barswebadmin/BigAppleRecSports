@@ -2,10 +2,10 @@ from fastapi import APIRouter, HTTPException, Request
 import logging
 import json
 
-from services.orders import OrdersService
-from new_structure_target.clients.slack.slack_service import SlackService
-from new_structure_target.clients.slack.slack_management.usergroup_client import SlackUsergroupClient
-from new_structure_target.clients.slack.slack_management.users_client import SlackUsersClient
+from modules.orders.services.orders_service import OrdersService
+from modules.integrations.slack.slack_service import SlackService
+from modules.integrations.slack.client.usergroup_client import SlackUsergroupClient
+from modules.integrations.slack.client.users_client import SlackUsersClient
 from config import config
 
 logger = logging.getLogger(__name__)
@@ -136,7 +136,7 @@ async def handle_slash_commands(request: Request):
         tmp.flush()
 
         # Run CSV sync CLI (dry-run or apply)
-        from services.leadership.leadership_csv_sync_cli import main as csv_sync_main
+        from modules.leadership.leadership_csv_sync_cli import main as csv_sync_main
         import sys
         sys.argv = ["csv_sync", "--csv", tmp.name]
         if apply_flag:
@@ -177,7 +177,7 @@ async def handle_file_uploaded(request: Request):
         tmp.write(resp.content)
         tmp.flush()
 
-        from services.leadership.leadership_csv_sync_cli import main as csv_sync_main
+        from modules.leadership.leadership_csv_sync_cli import main as csv_sync_main
         import sys
         sys.argv = ["csv_sync", "--csv", tmp.name]
         # Default to dry-run when uploaded via DM; you can add apply=true in file title to apply

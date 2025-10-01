@@ -1,16 +1,57 @@
 #!/usr/bin/env python3
 """
-Test script to verify the sheet link functionality works correctly
+Unit tests for sheet link extraction functionality
 """
 
+import pytest
+from modules.integrations.slack.parsers.message_parsers import SlackMessageParsers
+
+
+class TestSheetLinkExtraction:
+    """Unit tests for sheet link extraction from Slack messages"""
+
+    def setup_method(self):
+        """Set up test fixtures"""
+        self.parsers = SlackMessageParsers()
+
+    def test_extract_sheet_link(self):
+        """Test extraction of Google Sheets links from message text"""
+        # Test various sheet link formats
+        test_cases = [
+            {
+                "message": "Please check this sheet: https://docs.google.com/spreadsheets/d/1234567890",
+                "expected": "https://docs.google.com/spreadsheets/d/1234567890"
+            },
+            {
+                "message": "Sheet link: https://docs.google.com/spreadsheets/d/1234567890/edit#gid=0",
+                "expected": "https://docs.google.com/spreadsheets/d/1234567890/edit#gid=0"
+            },
+            {
+                "message": "No sheet link here",
+                "expected": ""
+            },
+            {
+                "message": "Multiple links: https://docs.google.com/spreadsheets/d/1234567890 and https://example.com",
+                "expected": "https://docs.google.com/spreadsheets/d/1234567890"
+            },
+            {
+                "message": "🔗 <https://docs.google.com/spreadsheets/d/ABCD123/edit|View Request in Google Sheets>",
+                "expected": "https://docs.google.com/spreadsheets/d/ABCD123/edit"
+            }
+        ]
+
+        for test_case in test_cases:
+            result = self.parsers.extract_sheet_link(test_case["message"])
+            assert result == test_case["expected"], f"Failed for message: {test_case['message']}"
+
+
+# Legacy integration tests (keeping for backward compatibility)
+from unittest.mock import Mock, patch
 import requests
 import json
-from unittest.mock import Mock, patch
 
 # Test configuration
 BACKEND_URL = "http://127.0.0.1:8000"
-
-# TODO: Route through a test-specific backend configuration
 TEST_SHEET_LINK = "https://docs.google.com/spreadsheets/d/11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw/edit#gid=1435845892&range=A5"
 
 @patch('requests.post')

@@ -5,9 +5,9 @@ Product creation service - matching Create Product From Row.gs structure
 import logging
 from typing import Dict, Any, Union
 from datetime import datetime
-from models.products.product_creation_request import ProductCreationRequest
-from new_structure_target.clients.shopify.shopify_service import ShopifyService
-from utils.date_utils import (
+from modules.integrations.shopify.models.products.product_creation_request.product_creation_request import ProductCreationRequest
+from modules.integrations.shopify import ShopifyClient
+from shared.date_utils import (
     format_date_only,
     format_date_and_time,
     format_league_play_times,
@@ -169,7 +169,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
         }
 
     # Create Shopify service instance
-    shopify_service = ShopifyService()
+    shopify_client = ShopifyClient()
 
     # Get sport-specific image URL (matching GAS function exactly)
     def get_image_url(sport: str) -> str:
@@ -465,7 +465,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
 
     try:
         logger.info("🚀 Sending product creation request to Shopify")
-        response = shopify_service._make_shopify_request(query)
+        response = shopify_client._make_shopify_request(query)
 
         if response is None:
             logger.error("❌ No response received from Shopify")
@@ -549,7 +549,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
                 }}"""
         }
 
-        variant_response = shopify_service._make_shopify_request(variant_query)
+        variant_response = shopify_client._make_shopify_request(variant_query)
 
         first_variant_gid = None
         if variant_response and variant_response.get("data", {}).get("product", {}).get(
@@ -563,7 +563,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
         if first_variant_gid:
             logger.info(f"🔧 Updating variant settings: {first_variant_gid}")
             variant_update_data = {"taxable": False, "requires_shipping": False}
-            update_result = shopify_service.update_variant_rest(
+            update_result = shopify_client.update_variant_rest(
                 first_variant_gid, variant_update_data
             )
 
@@ -575,7 +575,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
             # Enable inventory tracking - matching GAS enableInventoryTracking
             logger.info("📦 Enabling inventory tracking")
             inventory_result = enable_inventory_tracking(
-                first_variant_gid, shopify_service
+                first_variant_gid, shopify_client
             )
 
             if inventory_result.get("success"):

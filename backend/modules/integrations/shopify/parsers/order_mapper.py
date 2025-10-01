@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional
-from backend.models.shopify.orders import Order
+from models.shopify.orders import Order
 
 
 def map_order_node_to_order(node: Optional[Dict[str, Any]]) -> Optional[Order]:

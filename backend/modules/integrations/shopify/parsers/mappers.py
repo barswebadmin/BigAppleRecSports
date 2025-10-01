@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional, TypedDict, List
-from backend.modules.integrations.shopify.models.orders import Order
+from ..models.orders import Order
 
 
 class _OrderNode(TypedDict, total=False):

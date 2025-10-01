@@ -13,42 +13,26 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError, SlackClientError
 
 # Our systems
-from config import SlackBot, SlackChannel, config
+from config import config
+from config.slack import SlackBot, SlackChannel
 # from models.slack import Slack, RefundType, SlackMessageType
 
 # Existing services
-# from services.orders import OrdersService
+# from modules.orders.services import OrdersService
 
 # Core functionality
-try:
-    from backend.clients.slack.core.slack_client import SlackClient
-    from backend.clients.slack.core.slack_security import SlackSecurity
-    from backend.clients.slack.core.slack_utilities import SlackUtilities
-    from backend.clients.slack.core.mock_client import MockSlackClient
-    from backend.clients.slack.builders import (
-        SlackMessageBuilder,
-        # ModernMessageBuilder,
-        # SlackCacheManager,
-        # SlackMetadataBuilder,
-        SlackMessageParsers,
-        SlackOrderHandlers,
-    )
-    from backend.clients.slack.slack_refunds_utils import SlackRefundsUtils
-except ImportError:
-    # fallback for older structure if needed
-    from backend._old_structure.clients.slack.core.slack_client import SlackClient
-    from backend._old_structure.clients.slack.core.slack_security import SlackSecurity
-    from backend._old_structure.clients.slack.core.slack_utilities import SlackUtilities
-    from backend._old_structure.clients.slack.core.mock_client import MockSlackClient
-    from backend._old_structure.clients.slack.builders import (
-        SlackMessageBuilder,
-        # ModernMessageBuilder,
-        # SlackCacheManager,
-        # SlackMetadataBuilder,
-        SlackMessageParsers,
-        SlackOrderHandlers,
-    )
-    from backend._old_structure.clients.slack.slack_refunds_utils import SlackRefundsUtils
+
+from .client.main import SlackClient
+from .client.slack_security import SlackSecurity
+from .client.mock_client import MockSlackClient
+from .parsers.message_parsers import SlackMessageParsers
+from .builders import (
+    SlackMessageBuilder,
+    # ModernMessageBuilder,
+    # SlackCacheManager,
+    # SlackMetadataBuilder,
+    # SlackOrderHandlers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,12 +65,6 @@ class SlackService:
 
         # self.slack_security = SlackSecurity(self.config.SlackBot.get_signing_secret())
 
-        self.slack_utilities = SlackUtilities(
-            self._get_message_builder(),
-            self._get_message_parsers()
-        )
-        # No longer need SlackBusiness - using WebClient directly
-
         # Initialize helper components
         self.message_builder = self._get_message_builder()
         # self.refunds_utils = SlackRefundsUtils(
@@ -94,12 +72,13 @@ class SlackService:
         #     self._get_settings(),
         #     self.message_builder
         # )
+        self.message_parsers = SlackMessageParsers()
         
         # Initialize modern utility classes
         # self.modern_message_builder = ModernMessageBuilder()
         # self.cache_manager = self._get_cache_manager()
         # self.metadata_builder = SlackMetadataBuilder()
-        self.message_parsers = self._get_message_parsers()
+        # self.message_parsers = self._get_message_parsers()
         # self.order_handlers = SlackOrderHandlers(self.orders_service, self, self.message_builder)
 
     def _get_sport_groups(self) -> dict[str, dict[str, str]]:
@@ -490,7 +469,9 @@ class SlackService:
 
     def _get_message_builder(self):
         """Get message builder instance."""
-        return SlackMessageBuilder(self._get_sport_groups())
+        if SlackMessageBuilder:
+            return SlackMessageBuilder(self._get_sport_groups())
+        return None
 
     # def _get_cache_manager(self):
     #     """Get cache manager instance."""
@@ -504,28 +485,28 @@ class SlackService:
 
 
     # ============================================================================
-    # UTILITY METHODS (delegated to SlackUtilities)
+    # UTILITY METHODS (delegated)
     # ============================================================================
 
     def extract_sheet_link(self, message_text: str) -> str:
         """Extract sheet link from message text."""
-        return self.slack_utilities.extract_sheet_link(message_text)
+        return self.message_parsers.extract_sheet_link(message_text)
 
     def extract_season_start_info(self, message_text: str) -> Dict[str, Optional[str]]:
         """Extract season start info from message text."""
-        return self.slack_utilities.extract_season_start_info(message_text)
+        return self.message_parsers.extract_season_start_info(message_text)
 
     def extract_order_number(self, message_text: str) -> Optional[str]:
         """Extract order number from message text."""
-        return self.slack_utilities.extract_order_number(message_text)
+        return self.message_parsers.extract_order_number(message_text)
 
     def extract_email(self, message_text: str) -> Optional[str]:
         """Extract email address from message text."""
-        return self.slack_utilities.extract_email(message_text)
+        return self.message_parsers.extract_email(message_text)
 
     def extract_refund_amount(self, message_text: str) -> Optional[float]:
         """Extract refund amount from message text."""
-        return self.slack_utilities.extract_refund_amount(message_text)
+        return self.message_parsers.extract_refund_amount(message_text)
 
     # ============================================================================
     # ORDER HANDLING METHODS (delegated to OrderHandlers)

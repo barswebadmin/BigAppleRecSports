@@ -7,8 +7,8 @@ import os
 import re
 from typing import Dict, List, Optional, Tuple
 
-from config import config
-from services.slack.usergroup_client import SlackUsergroupClient
+from backend.config import config
+from modules.integrations.slack.usergroup_client import SlackUsergroupClient
 
 
 def normalize_handle(text: str) -> str:

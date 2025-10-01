@@ -3,13 +3,13 @@ import json
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from backend.config import config
-from backend.config.main import Config
-from backend.modules.integrations.shopify.models.requests import FetchOrderRequest
-from backend.modules.integrations.shopify.models.responses import ShopifyResponse, ShopifyResponseKind
-from backend.modules.integrations.shopify.parsers import parse_shopify_response
-from backend.modules.integrations.shopify.builders import build_order_fetch_request_payload
-from backend.modules.integrations.shopify.parsers.mappers import map_order_node_to_order
+from config import config
+from config.main import Config
+from ..models.requests import FetchOrderRequest
+from ..models.responses import ShopifyResponse, ShopifyResponseKind
+from ..parsers import parse_shopify_response
+from ..builders import build_order_fetch_request_payload
+from ..parsers.mappers import map_order_node_to_order
 
  
 """

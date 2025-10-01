@@ -7,7 +7,7 @@ submitted through Slack modals, ensuring proper data validation and flow.
 
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
-from services.slack.slack_service import SlackService
+from modules.integrations.slack.slack_service import SlackService
 
 
 class TestCustomRefundModalSubmission:

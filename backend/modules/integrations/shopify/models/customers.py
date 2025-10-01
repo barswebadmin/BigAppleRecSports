@@ -2,8 +2,8 @@ from __future__ import annotations
 from pydantic import BaseModel
 from typing import List, Optional, TYPE_CHECKING
 import datetime
-from backend.shared.model_config import BaseModelConfig
-from backend.modules.integrations.shopify.models.orders import Order
+from shared.model_config import BaseModelConfig
+from ..models.orders import Order
 
 if TYPE_CHECKING:
     from .orders import Order

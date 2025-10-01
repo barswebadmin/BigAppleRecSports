@@ -6,46 +6,12 @@ both OrdersService and RefundsService without creating circular dependencies.
 """
 
 from typing import Dict, Any, Optional
-from backend.modules.integrations.shopify.models.requests import FetchOrderRequest
-from backend.modules.integrations.shopify import ShopifyClient
-from backend.modules.integrations.shopify.builders import build_order_fetch_request_payload
+from modules.integrations.shopify.models.requests import FetchOrderRequest
+from modules.integrations.shopify import ShopifyClient
+from modules.integrations.shopify.builders import build_order_fetch_request_payload
 
 
 def fetch_order_from_shopify(request_args: FetchOrderRequest, client: Optional[ShopifyClient] = None) -> Dict[str, Any]:
-    """
-    Fetch order details from Shopify using FetchOrderRequest.
-    
-    This is a shared utility function that can be used by any service
-    that needs to fetch order data from Shopify.
-    
-    Args:
-        request_args: FetchOrderRequest with order_id, order_number, or email
-        
-    Returns:
-        Dict containing order data or error information
-        
-    Raises:
-        Exception: If the Shopify request fails
-    """
-    try:
-        if client is None:
-            client = ShopifyClient()
-        payload = build_order_fetch_request_payload(request_args)
-        response = client.send_request(payload)
-        
-        if response.success and response.data:
-            return {"success": True, "data": response.data}
-        else:
-            return {
-                "success": False, 
-                "message": response.message or "Failed to fetch order from Shopify"
-            }
-            
-    except Exception as e:
-        return {"success": False, "message": str(e)}
-
-
-def fetch_order_details_with_validation(request_args: FetchOrderRequest, client: Optional[ShopifyClient] = None) -> Dict[str, Any]:
     """
     Fetch order details with additional validation and error handling.
     

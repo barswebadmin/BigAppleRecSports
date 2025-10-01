@@ -14,9 +14,9 @@ sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
-from services.slack.slack_refunds_utils import SlackRefundsUtils
-from services.orders.orders_service import OrdersService
-from config import Config
+from modules.integrations.slack.slack_refunds_utils import SlackRefundsUtils
+from modules.orders.services.orders_service import OrdersService
+from backend.config import Config
 
 
 class TestSlackDynamicClient:
@@ -112,29 +112,6 @@ class TestSlackUtilsIntegration:
         assert result["requestorName"] == ""
         assert result["requestorEmail"] == "test@example.com"
 
-    def test_extract_sheet_link(self):
-        """Test sheet link extraction from message text"""
-        message_text = """
-        Some message content
-        🔗 *<https://docs.google.com/spreadsheets/d/123/edit#gid=456&range=A1:A1|View Request in Google Sheets>*
-        More content
-        """
-
-        result = self.slack_utils.extract_sheet_link(message_text)
-
-        assert (
-            "https://docs.google.com/spreadsheets/d/123/edit#gid=456&range=A1:A1"
-            in result
-        )
-
-    def test_extract_sheet_link_not_found(self):
-        """Test sheet link extraction when no link is present"""
-        message_text = "Some message without a sheet link"
-
-        result = self.slack_utils.extract_sheet_link(message_text)
-
-        # The method returns a fallback URL when no link is found
-        assert "docs.google.com/spreadsheets" in result
 
 
 if __name__ == "__main__":

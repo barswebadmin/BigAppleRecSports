@@ -1,5 +1,5 @@
 import logging
-from backend.modules.refunds.models import RefundRequest
+from ..models import RefundRequest
 from .helpers.process_initial_refund_request import process_initial_refund_request
 
 logger = logging.getLogger("REFUNDS LOGGER")

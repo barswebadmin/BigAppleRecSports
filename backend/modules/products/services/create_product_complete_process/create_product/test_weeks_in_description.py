@@ -14,7 +14,7 @@ from models.products.regular_season_basic_details import (
 )
 from models.products.inventory_info import InventoryInfo
 from models.products.optional_league_info import OptionalLeagueInfo
-from backend.services.products.create_product_complete_proces.create_product.create_product import (
+from services.products.create_product_complete_proces.create_product.create_product import (
     create_product,
 )
 

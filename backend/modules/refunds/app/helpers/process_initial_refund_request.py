@@ -1,13 +1,13 @@
 import logging
-from backend.modules.integrations.shopify.models.requests import FetchOrderRequest
-from backend.modules.refunds.models import RefundRequest
-from backend.shared.order_fetcher import fetch_order_details_with_validation
+from modules.integrations.shopify.models.requests import FetchOrderRequest
+from ...models import RefundRequest
+from shared.order_fetcher import fetch_order_from_shopify
 
 def process_initial_refund_request(request: RefundRequest):
 
     request_args = FetchOrderRequest.create({"order_number": request.order_number})
     try:
-        order_details = fetch_order_details_with_validation(request_args)
+        order_details = fetch_order_from_shopify(request_args)
         if not order_details.get("success"):
             error_msg = order_details.get("message", "Unknown error fetching order")
             logging.getLogger("REFUNDS LOGGER").error(f"Error fetching order: {error_msg}")

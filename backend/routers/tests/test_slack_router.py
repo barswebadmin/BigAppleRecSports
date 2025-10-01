@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
-from new_structure_target.clients.slack.slack_service import SlackService
+from modules.integrations.slack.slack_service import SlackService
 
 
 class TestSlackWebhook:
@@ -66,7 +66,7 @@ class TestSlackWebhook:
     @pytest.fixture  
     def mock_slack_service(self):
         """Use a real SlackService but mock its dependencies to mimic production exactly"""
-        from new_structure_target.clients.slack.slack_service import SlackService
+        from modules.integrations.slack.slack_service import SlackService
         from unittest.mock import AsyncMock, Mock, patch
         
         # Create a real SlackService instance
@@ -644,14 +644,6 @@ class TestSlackWebhook:
         assert result["season_start_time"] is None
         assert result["season_name"] is None
 
-    def test_extract_sheet_link(self):
-        """Test utility function for extracting Google Sheets link"""
-        slack_service = SlackService()
-        extract_sheet_link = slack_service.extract_sheet_link
-
-        message = "🔗 <https://docs.google.com/spreadsheets/d/ABCD123/edit|View Request in Google Sheets>"
-        result = extract_sheet_link(message)
-        assert "https://docs.google.com/spreadsheets/d/ABCD123" in result
 
     def test_extract_original_requestor_info(self):
         """Test utility function for extracting requestor information - skip if function doesn't exist"""

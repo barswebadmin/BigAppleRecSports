@@ -1,8 +1,8 @@
 import logging
 from config import config
 from typing import Optional, Dict, Any
-from backend.models.shopify.requests import FetchOrderRequest
-from backend.models.shopify.graphql_queries import ShopifyGraphQLQuery
+from ..models.requests import FetchOrderRequest
+from ..models.graphql_queries import ShopifyGraphQLQuery
 
 def build_product_gid(product_id: str) -> str:
     return f"gid://shopify/Product/{product_id}"

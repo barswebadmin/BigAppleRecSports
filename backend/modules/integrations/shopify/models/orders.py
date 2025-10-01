@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-from backend.shared.model_config import BaseModelConfig
+from shared.model_config import BaseModelConfig
 
 
 class Money(BaseModel):

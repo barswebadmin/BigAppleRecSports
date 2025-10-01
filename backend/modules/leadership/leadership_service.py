@@ -12,11 +12,11 @@ try:
     from ..csv import CSVService
 except ImportError:
     try:
-        from services.shopify import ShopifyService
-        from services.csv.csv_service import CSVService
+        from modules.integrations.shopify import ShopifyService
+        from shared.csv.csv_processor import CSVService
     except ImportError:
-        from services.shopify import ShopifyService
-        from services.csv.csv_service import CSVService
+        from modules.integrations.shopify import ShopifyService
+        from shared.csv.csv_processor import CSVService
 
 class LeadershipService:
     def __init__(self):

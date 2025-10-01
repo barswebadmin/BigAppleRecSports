@@ -1,5 +1,5 @@
-from backend.modules.integrations.slack.parsers import SlackInteractionsParser
+from .message_parsers import SlackMessageParsers
 
-__all__ = ["SlackInteractionsParser"]
+__all__ = ["SlackMessageParsers"]
 
 

@@ -8,8 +8,8 @@ import requests
 import os
 from typing import Dict, Any, List
 from datetime import datetime
-from models.products.product_creation_request import ProductCreationRequest
-from utils.date_utils import format_date_only
+from modules.integrations.shopify.models.products.product_creation_request.product_creation_request import ProductCreationRequest
+from shared.date_utils import format_date_only
 
 logger = logging.getLogger(__name__)
 

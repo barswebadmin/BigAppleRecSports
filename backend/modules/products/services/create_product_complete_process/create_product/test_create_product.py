@@ -4,7 +4,7 @@ Tests the product creation business logic
 """
 
 from models.products.product_creation_request import ProductCreationRequest
-from services.products.create_product import create_product
+from modules.products.services.create_product_complete_process.create_product import create_product
 
 
 class TestCreateProductService:

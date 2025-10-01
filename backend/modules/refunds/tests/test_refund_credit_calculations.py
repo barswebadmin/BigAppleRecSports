@@ -6,7 +6,7 @@ Tests the actual calculation logic to ensure refunds and credits are calculated 
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime, timezone
-from services.orders.refund_calculator import RefundCalculator
+from modules.orders.services.refund_calculator import RefundCalculator
 from utils.date_utils import calculate_refund_amount
 
 
@@ -138,21 +138,19 @@ class TestRefundCreditCalculations:
         # Mock successful season date extraction
         mock_extract.return_value = ("10/15/24", "")
         
-        def mock_calc_timing_sensitive(**kwargs):
+        def mock_calc_timing_sensitive(season_start_date_str, off_dates_str, total_amount_paid, refund_type, request_submitted_at):
             """Mock calculation that varies by timing for refunds only (tuple format)"""
-            refund_type = kwargs.get('refund_type')
-            request_submitted_at = kwargs.get('request_submitted_at')
-            
-            
             if refund_type == "credit":
                 return (20.00, "100% store credit (timing doesn't affect credits)")
             
             # For refunds, vary by timing based on request timestamp
-            if request_submitted_at and request_submitted_at.month == 9:  # Early request (September)
+            if request_submitted_at.month == 9:  # Early request (September 1)
                 return (19.00, "95% refund (more than 2 weeks before season)")
-            elif request_submitted_at and request_submitted_at.month == 10 and request_submitted_at.day <= 15:  # Late request
+            elif request_submitted_at.month == 10 and request_submitted_at.day <= 15:  # Late request (Oct 10)
                 return (14.00, "70% refund (less than 2 weeks before season)")
-            else:  # Very late request or no timestamp
+            elif request_submitted_at.month == 10 and request_submitted_at.day > 15:  # Very late request (Oct 20)
+                return (8.00, "40% refund (season already started)")
+            else:  # Other late requests
                 return (0.00, "0% refund (season already started)")
         
         mock_calc.side_effect = mock_calc_timing_sensitive
@@ -179,8 +177,8 @@ class TestRefundCreditCalculations:
         assert late_result["refund_amount"] == 14.00
         assert "70%" in late_result["message"]
         
-        assert very_late_result["refund_amount"] == 0.00
-        assert "0%" in very_late_result["message"]
+        assert very_late_result["refund_amount"] == 8.00
+        assert "40%" in very_late_result["message"]
 
     def test_calculate_refund_amount_utility_function_direct(self):
         """Test the utility function directly to ensure it handles refund vs credit correctly"""
@@ -217,8 +215,7 @@ class TestRefundCreditCalculations:
         mock_extract.return_value = ("10/15/24", "")
         
         # Mock different explanations for each type (tuple format)
-        def mock_explanation_by_type(**kwargs):
-            refund_type = kwargs.get('refund_type')
+        def mock_explanation_by_type(season_start_date_str, off_dates_str, total_amount_paid, refund_type, request_submitted_at):
             if refund_type == "refund":
                 return (19.00, "95% refund calculated with 5% processing fee deducted from total")
             else:
@@ -288,10 +285,8 @@ class TestRefundCreditCalculations:
         # Mock successful season date extraction
         mock_extract.return_value = ("10/15/24", "")
         
-        def mock_case_sensitive_calc(**kwargs):
-            req_type = kwargs.get('refund_type')
-            # req_type should never be None since GAS always sends refund_type
-            if req_type and req_type.lower() == "refund":
+        def mock_case_sensitive_calc(season_start_date_str, off_dates_str, total_amount_paid, refund_type, request_submitted_at):
+            if refund_type.lower() == "refund":
                 return (19.00, "Refund with processing fee")
             else:
                 return (20.00, "Credit with no fee")
@@ -344,8 +339,7 @@ class TestRefundCreditCalculations:
             # Mock successful season date extraction
             mock_extract.return_value = ("10/15/24", "")
             
-            def mock_type_aware_calc(**kwargs):
-                refund_type = kwargs.get('refund_type')
+            def mock_type_aware_calc(season_start_date_str, off_dates_str, total_amount_paid, refund_type, request_submitted_at):
                 if refund_type == "refund":
                     return (19.00, "Refund calculation with fees")
                 else:

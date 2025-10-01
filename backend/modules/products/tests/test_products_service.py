@@ -4,7 +4,7 @@ Tests cover all validation rules including sport-specific requirements
 """
 
 import pytest
-from services.products.products_service import ProductsService
+from modules.products.services.products_service import ProductsService
 from models.products.product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )

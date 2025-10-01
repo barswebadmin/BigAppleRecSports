@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional, List, Union, TYPE_CHECKING
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError, SlackClientError
 
-from backend.config.main import SlackConfig
+from config.main import SlackConfig
 
 if TYPE_CHECKING:
     from .mock_client import MockSlackClient

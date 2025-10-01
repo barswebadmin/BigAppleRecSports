@@ -4,7 +4,7 @@ Tests that available variants are properly extracted and formatted with a "Do No
 """
 
 from unittest.mock import Mock
-from services.slack.slack_refunds_utils import SlackRefundsUtils
+from modules.integrations.slack.slack_refunds_utils import SlackRefundsUtils
 
 
 class TestVariantNameHandling:

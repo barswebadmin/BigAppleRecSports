@@ -4,13 +4,13 @@ Inventory tracking service - matching enableInventoryTracking from GAS
 
 import logging
 from typing import Dict, Any, Optional
-from new_structure_target.clients.shopify.shopify_service import ShopifyService
+from modules.integrations.shopify import ShopifyClient
 
 logger = logging.getLogger(__name__)
 
 
 def enable_inventory_tracking(
-    variant_gid: str, shopify_service: Optional[ShopifyService] = None
+    variant_gid: str, shopify_service: Optional[ShopifyClient] = None
 ) -> Dict[str, Any]:
     """
     Enable inventory tracking for a variant using Shopify management
@@ -18,13 +18,13 @@ def enable_inventory_tracking(
 
     Args:
         variant_gid: The Shopify variant GID (e.g., "gid://shopify/ProductVariant/123")
-        shopify_service: ShopifyService instance (optional, will create if not provided)
+        shopify_service: ShopifyClient instance (optional, will create if not provided)
 
     Returns:
         Dict with success status and any error details
     """
     if not shopify_service:
-        shopify_service = ShopifyService()
+        shopify_service = ShopifyClient()
 
     try:
         # Use REST API to enable inventory management

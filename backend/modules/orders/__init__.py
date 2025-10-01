@@ -1,4 +1,4 @@
-from backend.modules.orders.services.orders_service import OrdersService
+from .services.orders_service import OrdersService
 
 __all__ = ["OrdersService"]
 

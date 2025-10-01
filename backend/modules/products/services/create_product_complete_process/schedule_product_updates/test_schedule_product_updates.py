@@ -27,7 +27,7 @@ from models.products.regular_season_basic_details import (
 )
 from models.products.inventory_info import InventoryInfo
 from models.products.optional_league_info import OptionalLeagueInfo
-from backend.services.products.create_product_complete_proces.schedule_product_updates.schedule_product_updates import (
+from services.products.create_product_complete_proces.schedule_product_updates.schedule_product_updates import (
     schedule_product_updates,
     create_product_aws_requests,
     send_aws_lambda_request,

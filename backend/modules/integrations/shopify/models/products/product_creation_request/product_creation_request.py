@@ -6,7 +6,7 @@ from pydantic import (
 )
 from enum import Enum
 from typing import List, Optional
-from .regular_season_basic_details import RegularSeasonBasicDetails
+from ..regular_season_basic_details import RegularSeasonBasicDetails
 from .product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )

@@ -248,7 +248,7 @@
 #   },
 
 from typing import Any, Dict, Optional
-from backend.modules.integrations.shopify.models.responses import ShopifyResponse, ShopifyResponseKind
+from ..models.responses import ShopifyResponse, ShopifyResponseKind
 
 
 def _has_values(obj: Any) -> bool:

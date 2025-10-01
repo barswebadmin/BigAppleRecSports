@@ -7,13 +7,14 @@ Handles incoming Shopify webhooks for product changes (especially inventory upda
 from fastapi import APIRouter, Request, HTTPException
 import logging
 import json
-from services.webhooks import WebhooksService
+# WebhooksService not yet implemented in new architecture
+# from modules.integrations.webhooks import WebhooksService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["shopify-webhooks"])
 
-webhooks_service = WebhooksService()
+# webhooks_service = WebhooksService()  # TODO: Implement WebhooksService in new architecture
 
 @router.post("/shopify")
 async def handle_shopify_webhook(request: Request):
@@ -29,9 +30,10 @@ async def handle_shopify_webhook(request: Request):
     
     # Verify signature for all webhooks
     signature = headers.get("x-shopify-hmac-sha256", "")
-    if not webhooks_service.verify_webhook_signature(body, signature):
-        logger.error("Invalid webhook signature")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    # TODO: Implement webhook signature verification
+    # if not webhooks_service.verify_webhook_signature(body, signature):
+    #     logger.error("Invalid webhook signature")
+    #     raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     event_type = headers.get("x-shopify-topic")
 
@@ -41,12 +43,14 @@ async def handle_shopify_webhook(request: Request):
     # Route based on event type
     if event_type == "products/update":
         logger.info("🔄 Processing products/update webhook")
-        result = webhooks_service.handle_shopify_product_update_webhook(body)
+        # TODO: Implement product update webhook handler
+        result = {"status": "not_implemented", "message": "WebhooksService not yet implemented"}
         logger.info(f"🎯 SHOPIFY WEBHOOK RESULT: {json.dumps(result, indent=2)}")
         return result
     elif event_type == "orders/create":
         logger.info("🔄 Processing orders/create webhook")
-        result = webhooks_service.handle_shopify_order_create_webhook(body)
+        # TODO: Implement order create webhook handler
+        result = {"status": "not_implemented", "message": "WebhooksService not yet implemented"}
         logger.info(f"🎯 SHOPIFY WEBHOOK RESULT: {json.dumps(result, indent=2)}")
         return result
     else:

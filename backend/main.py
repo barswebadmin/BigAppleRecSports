@@ -25,7 +25,7 @@ if os.getenv("ENVIRONMENT") == "production":
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routers import webhooks, refunds # to add: orders, products, slack
+from routers import webhooks, refunds, orders, slack, products
 from config import config
 from version import get_version_info
 import logging
@@ -112,9 +112,9 @@ async def log_requests(request: Request, call_next):
 
 
 # Include routers (prefix is already defined in the router)
-# app.include_router(orders.router)
-# app.include_router(products.router)
-# app.include_router(slack.router)
+app.include_router(orders.router)
+app.include_router(products.router)
+app.include_router(slack.router)
 app.include_router(webhooks.router)
 app.include_router(refunds.router)
 

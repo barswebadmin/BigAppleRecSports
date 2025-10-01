@@ -8,14 +8,14 @@ import logging
 from backend.modules.integrations.shopify.models import FetchOrderRequest
 from .shopify_client import ShopifyClient
 from ..builders.shopify_request_builders import build_order_fetch_request_payload
-from config import config
+from backend.config import config
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Handle imports for both direct execution and module import
 try:
-    from config import config
+    from backend.config import config
 except ImportError:
     from backend.config import config
 

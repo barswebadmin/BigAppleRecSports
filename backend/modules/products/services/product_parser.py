@@ -11,7 +11,7 @@ import json
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from .text_cleaner import TextCleaner
-from config import config
+from ../../../../config import config
 
 logger = logging.getLogger(__name__)
 

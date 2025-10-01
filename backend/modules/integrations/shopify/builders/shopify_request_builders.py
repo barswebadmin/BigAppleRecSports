@@ -1,12 +1,12 @@
 from typing import Dict, Any, List, Union, Optional, Set, Tuple
-from backend.modules.integrations.shopify.models.graphql_allowlist import (
+from ..models.graphql_allowlist import (
     derive_allowed_paths,
     convert_paths_python_to_graphql,
     derive_leaf_paths,
     derive_scalar_leaf_paths,
 )
-from backend.modules.integrations.shopify.models.orders import Order as OrderModel
-from backend.modules.integrations.shopify.models.requests import FetchOrderRequest
+from ..models.orders import Order as OrderModel
+from ..models.requests import FetchOrderRequest
 
 # ---------------------------------------------------------------------------
 # Generic, composable GraphQL selection helpers (mini-DSL)

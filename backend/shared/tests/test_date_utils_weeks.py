@@ -3,7 +3,7 @@ Test for weeks calculation in date_utils
 """
 
 from datetime import datetime, timezone
-from backend.shared.date_utils import calculate_weeks_between_dates
+from ../../../shared.date_utils import calculate_weeks_between_dates
 
 
 class TestCalculateWeeksBetweenDates:

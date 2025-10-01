@@ -6,9 +6,10 @@ Extracted from the main SlackService to improve modularity.
 from typing import Dict, Any, Optional, Union
 from datetime import datetime, timezone
 import logging
-from utils.date_utils import format_date_and_time, parse_shopify_datetime
-from new_structure_target.clients.shopify.builders.shopify_url_builders import build_customer_url, build_order_url, build_product_url
-from config import SlackGroup, config
+from shared.date_utils import format_date_and_time, parse_shopify_datetime
+from modules.integrations.shopify.builders.shopify_url_builders import build_customer_url, build_order_url, build_product_url
+from config import config
+from config.slack import SlackGroup
 
 logger = logging.getLogger(__name__)
 

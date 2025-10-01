@@ -4,7 +4,7 @@ Unit tests for RefundCalculator.
 
 import pytest
 from unittest.mock import patch
-from services.orders.refund_calculator import RefundCalculator
+from modules.orders.services.refund_calculator import RefundCalculator
 
 
 class TestRefundCalculator:

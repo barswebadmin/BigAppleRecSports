@@ -1,5 +1,5 @@
 from typing import Dict, Optional
-from backend.shared.validators import (
+from .validators import (
     validate_shopify_order_number_format,
     validate_shopify_order_id_format,
     validate_shopify_product_id_format,

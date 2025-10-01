@@ -6,7 +6,7 @@
 from typing import Dict, Any, Optional
 import logging
 from datetime import datetime
-from backend.utils.date_utils import extract_season_dates, calculate_refund_amount
+from shared.date_utils import extract_season_dates, calculate_refund_amount
 
 # logger = logging.getLogger(__name__)
 

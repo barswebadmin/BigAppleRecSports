@@ -4,7 +4,7 @@ Test InventoryInfo model validation
 
 import pytest
 from pydantic import ValidationError
-from backend.models.products.inventory_info import InventoryInfo
+from models.products.inventory_info import InventoryInfo
 
 
 class TestInventoryInfoValidation:

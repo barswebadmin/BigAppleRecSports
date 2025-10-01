@@ -8,7 +8,7 @@ import os
 import pytest
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from services.orders import OrdersService
+from modules.orders.services import OrdersService
 
 def test_orders_service():
     """Test the OrdersService functionality"""
