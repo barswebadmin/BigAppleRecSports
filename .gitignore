@@ -11,6 +11,7 @@ venv/
 ENV/
 .venv/
 .pytest_cache/
+*/bars_backend.egg-info/
 
 # Backend-specific: Prevent cache files (cleaner development)
 backend/**/__pycache__/

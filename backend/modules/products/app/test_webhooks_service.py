@@ -7,6 +7,7 @@ Tests the core webhook processing logic with real Shopify webhook data.
 import json
 import os
 from unittest.mock import patch, Mock
+from config import config
 from modules.integrations.webhooks import WebhooksService
 from parsers.product_parser import has_zero_inventory
 
@@ -176,9 +177,6 @@ class TestWebhooksService:
         }
         result = self.service.parse_shopify_webhook_for_waitlist_form(product_data)
 
-        # Get the expected admin URL from config (same as the service uses)
-        from ../../../../config import config
-
         expected = {
             "product_url": f"{config.Shopify.admin_url}/products/7450381877342",
             "sport": "Dodgeball",
@@ -305,7 +303,6 @@ class TestWebhooksService:
             parsed_data = service.parse_shopify_webhook_for_waitlist_form(raw_product_data)
             product_data = parsed_data
 
-            from ../../../../config import config
             expected_camel_case = {
                 "productUrl": f"{config.Shopify.admin_url}/products/123",
                 "sport": "Dodgeball", 

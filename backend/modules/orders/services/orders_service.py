@@ -1,11 +1,11 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
-from modules.integrations.shopify.models import FetchOrderRequest
-from modules.integrations.shopify.models.responses import ShopifyResponse
-from modules.integrations.shopify import ShopifyClient
-from modules.integrations.slack import SlackClient
-from modules.refunds.app.calculate_refund_due import calculate_refund_due
-from shared.order_fetcher import fetch_order_from_shopify
+from ..models import FetchOrderRequest
+from shopify_client.models.responses import ShopifyResponse
+from shopify_client import ShopifyClient
+from slack_client import SlackService
+from refunds.app.calculate_refund_due import calculate_refund_due
+from shared.fetch_order_from_shopify import fetch_order_from_shopify
 
 class OrdersService:
     def __init__(self, shopify_client: Optional[ShopifyClient] = None):
@@ -20,9 +20,9 @@ class OrdersService:
         """
         Fetch order details using FetchOrderRequest.
         This is the primary method for order fetching.
-        Delegates to shared utility to avoid circular imports.
+        Delegates to shared utility for use by the Refunds service.
         """
-        return fetch_order_from_shopify(request_args, self.shopify_client)
+        return fetch_order_from_shopify(request_args)
 
     def calculate_refund_due(
         self,

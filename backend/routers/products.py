@@ -2,8 +2,8 @@ import json
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
-from modules.products.services.products_service import ProductsService
-from modules.integrations.shopify.models.products.product_creation_request.product_creation_request_validation_error import (
+from products.services.products_service import ProductsService
+from shopify_client.models.products.product_creation_request.product_creation_request_validation_error import (
     ProductCreationRequestValidationError,
 )
 

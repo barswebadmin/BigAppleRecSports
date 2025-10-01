@@ -1,14 +1,21 @@
-"""Domain-first import facade.
+# BARS Backend Modules
+# This makes all modules importable as top-level packages
 
-Usage examples:
-- from ../../modules.orders import OrdersService
-- from ../../modules.refunds import process_initial_refund_request
-- from ../../modules.integrations.shopify import ShopifyClient
-- from ../../modules.integrations.slack import SlackService
-"""
+# Import and re-export all major modules
+from . import orders
+from . import products  
+from . import refunds
+from . import integrations
+
+# Make integrations submodules available at top level
+from .integrations import shopify
+from .integrations import slack
 
 __all__ = [
-    # namespaces only; concrete exports live in subpackages
+    "orders",
+    "products", 
+    "refunds",
+    "integrations",
+    "shopify",
+    "slack",
 ]
-
-

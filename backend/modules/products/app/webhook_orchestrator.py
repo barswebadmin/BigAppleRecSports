@@ -15,7 +15,7 @@ from new_structure_target.clients.slack.core.slack_client import SlackClient
 from new_structure_target.clients.google_apps_script.gas_client import GASClient
 from .handlers.order_create_handler import evaluate_order_create_webhook, slack_message_builder
 from .handlers.product_update_handler import evaluate_product_update_webhook
-from ../../../../config import SlackChannel, SlackBot, SlackGroup
+from config import config
 
 
 class WebhooksOrchestrator:
@@ -29,6 +29,9 @@ class WebhooksOrchestrator:
         self.signature_verifier = ShopifySecurity()
         self.slack_client = SlackClient()
         self.gas_client = GASClient(gas_url)
+        self.slack_channel = config.SlackChannel
+        self.slack_bot = config.SlackBot
+        self.slack_group = config.SlackGroup
     
     def verify_webhook_signature(self, body: bytes, signature: str) -> bool:
         """Verify webhook signature for security"""
@@ -43,7 +46,7 @@ class WebhooksOrchestrator:
 
         product_tags = product_data.get("tags")
         slack_group_mention = get_slack_group_mention(product_tags)
-        group_info = SlackGroup.get(slack_group_mention) if slack_group_mention else None
+        group_info = self.slack_group.get(slack_group_mention) if slack_group_mention else None
         
         return {
                 "result": "success",
@@ -124,7 +127,7 @@ class WebhooksOrchestrator:
 
         product_tags = product_data.get("tags")
         slack_group_mention = get_slack_group_mention(product_tags)
-        group_info = SlackGroup.get(slack_group_mention) if slack_group_mention else None
+        group_info = self.slack_group.get(slack_group_mention) if slack_group_mention else None
         
         mention_target = group_info.get('id') if isinstance(group_info, dict) else "@here"
         mention_text = f"*Attn*: {mention_target}"
@@ -139,8 +142,8 @@ class WebhooksOrchestrator:
         ]
 
         self.slack_client.send_message(
-            channel=SlackChannel.JoeTest,
-            bot=SlackBot.Registrations,
+            channel=self.slack_channel.JoeTest,
+            bot=self.slack_bot.Registrations,
             blocks=blocks,
         )
 

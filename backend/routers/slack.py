@@ -2,10 +2,10 @@ from fastapi import APIRouter, HTTPException, Request
 import logging
 import json
 
-from modules.orders.services.orders_service import OrdersService
-from modules.integrations.slack.slack_service import SlackService
-from modules.integrations.slack.client.usergroup_client import SlackUsergroupClient
-from modules.integrations.slack.client.users_client import SlackUsersClient
+from orders.services.orders_service import OrdersService
+from slack_client.slack_service import SlackService
+from slack_client.client.usergroup_client import SlackUsergroupClient
+from slack_client.client.users_client import SlackUsersClient
 from config import config
 
 logger = logging.getLogger(__name__)

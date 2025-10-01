@@ -12,7 +12,7 @@ import sys
 sys.path.append('/path/to/shared-utilities/src')
 
 # Then import utilities
-from utils import get_secret, format_date_for_slack, create_discount_amount
+from shared import get_secret, format_date_for_slack, create_discount_amount
 ```
 
 ## Available Modules
@@ -22,7 +22,7 @@ from utils import get_secret, format_date_for_slack, create_discount_amount
 Date parsing, formatting, and calculation utilities converted from GAS dateUtils.gs.
 
 ```python
-from utils.date_utils import format_date_for_slack, parse_flexible_date, get_business_days_between
+from shared.date_utils import format_date_for_slack, parse_flexible_date, get_business_days_between
 
 # Format dates for Slack messages
 formatted = format_date_for_slack(datetime.now())  # "Mon, Jan 15, 2024"
@@ -39,7 +39,7 @@ days = get_business_days_between(start_date, end_date)
 HTTP API request helpers and utilities.
 
 ```python
-from utils.api_utils import make_api_request, retry_api_request, normalize_order_number
+from shared.api_utils import make_api_request, retry_api_request, normalize_order_number
 
 # Make API requests with error handling
 response = make_api_request("https://api.example.com/data", method="POST", payload={"key": "value"})
@@ -56,7 +56,7 @@ normalized = normalize_order_number("12345")  # "#12345"
 Secret management and configuration utilities.
 
 ```python
-from utils.secrets_utils import get_secret, SecretsManager, test_secrets
+from shared.secrets_utils import get_secret, SecretsManager, test_secrets
 
 # Get secrets from environment variables
 shopify_token = get_secret('SHOPIFY_TOKEN')
@@ -74,7 +74,7 @@ results = test_secrets(['SHOPIFY_TOKEN', 'SLACK_BOT_TOKEN'])
 Slack API integration and message formatting.
 
 ```python
-from utils.slack_utils import SlackClient, send_slack_message, create_confirm_button
+from shared.slack_utils import SlackClient, send_slack_message, create_confirm_button
 
 # Send messages
 client = SlackClient()
@@ -96,7 +96,7 @@ button = create_confirm_button(
 Google Sheets data processing utilities (provides structure for sheet operations).
 
 ```python
-from utils.sheet_utils import SheetDataProcessor, parse_refund_row_data
+from shared.sheet_utils import SheetDataProcessor, parse_refund_row_data
 
 # Process sheet data (2D arrays)
 data = [
@@ -113,7 +113,7 @@ row = processor.find_row_by_column_value("Order", "#12345")
 Discount calculation based on season timing (without penalties).
 
 ```python
-from utils.discount_calculator import create_discount_amount, calculate_discounted_price
+from shared.discount_calculator import create_discount_amount, calculate_discounted_price
 
 # Calculate discount based on timing
 discount_amount, description = create_discount_amount(
@@ -149,8 +149,8 @@ The utilities are designed to work alongside the existing `ShopifyService`:
 
 ```python
 from new_structure_target.clients.shopify.shopify_service import ShopifyService
-from utils.api_utils import retry_api_request
-from utils.secrets_utils import get_secret
+from shared.api_utils import retry_api_request
+from shared.secrets_utils import get_secret
 
 shopify_service = ShopifyService()
 
@@ -188,7 +188,7 @@ DEBUG_EMAIL=debug@example.com
 Each utility module includes comprehensive error handling and logging. Test your setup:
 
 ```python
-from utils.secrets_utils import test_secrets
+from shared.secrets_utils import test_secrets
 
 # Test if secrets are properly configured
 results = test_secrets()
@@ -210,7 +210,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # All utilities will log their operations
-from utils.date_utils import parse_flexible_date
+from shared.date_utils import parse_flexible_date
 
 try:
     date = parse_flexible_date("invalid-date")

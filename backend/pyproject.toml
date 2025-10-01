@@ -1,3 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bars-backend"
+version = "0.1.0"
+description = "BARS Backend Services"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "pydantic",
+    "requests",
+    "python-dotenv",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["modules*", "orders*", "products*", "refunds*", "shopify*", "slack*", "shared*"]
+
+[tool.setuptools.package-dir]
+orders = "modules/orders"
+products = "modules/products" 
+refunds = "modules/refunds"
+bars_shopify = "modules/integrations/shopify"
+bars_slack = "modules/integrations/slack"
+shared = "shared"
+
 [tool.pyright]
 extraPaths = [
     "./lambda-layers/bars-common-utils/python",

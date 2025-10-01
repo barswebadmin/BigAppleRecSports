@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install reinstall clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
 
 # Default target
 help:
@@ -16,6 +16,7 @@ help:
 	@echo "  make stop                - Stop all processes"
 	@echo "  make install             - Install all dependencies from unified requirements.txt"
 	@echo "  make install-prod        - Install production dependencies only"
+	@echo "  make reinstall           - Reinstall backend package after pyproject.toml changes"
 	@echo "  make clean               - Clean up processes and cache files"
 	@echo "  make status              - Show running processes"
 	@echo "  make url                 - Show localtunnel URL"
@@ -407,6 +408,11 @@ install-prod:
 	@echo "📦 Installing production dependencies only..."
 	@pip3 install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil typing-extensions
 	@echo "✅ Production dependencies installed!"
+
+reinstall:
+	@echo "🔄 Reinstalling backend package after pyproject.toml changes..."
+	@pip install -e backend
+	@echo "✅ Backend package reinstalled!"
 
 install-backend-legacy:
 	@echo "📦 Installing backend dependencies (legacy method)..."

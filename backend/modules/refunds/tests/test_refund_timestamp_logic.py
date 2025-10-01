@@ -6,7 +6,7 @@ Ensures refund calculations use the request submission timestamp, not processing
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 from modules.orders.services.refund_calculator import RefundCalculator
-from utils.date_utils import calculate_refund_amount
+from shared.date_utils import calculate_refund_amount
 
 
 class TestRefundTimestampLogic:

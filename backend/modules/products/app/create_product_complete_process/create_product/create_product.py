@@ -105,7 +105,7 @@ def validate_important_dates(important_dates) -> Dict[str, Any]:
                 else:
                     # Try to validate it can be parsed
                     try:
-                        from utils.date_utils import parse_shopify_datetime
+                        from shared.date_utils import parse_shopify_datetime
 
                         parsed = parse_shopify_datetime(field_value)
                         if parsed is None:
@@ -465,7 +465,7 @@ def create_product(validated_request: ProductCreationRequest) -> Dict[str, Any]:
 
     try:
         logger.info("🚀 Sending product creation request to Shopify")
-        response = shopify_client._make_shopify_request(query)
+        response = shopify_client.make_shopify_request(query)
 
         if response is None:
             logger.error("❌ No response received from Shopify")

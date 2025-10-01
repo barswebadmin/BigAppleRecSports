@@ -1,10 +1,10 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from typing import Optional
-from shared.shopify_normalizers import (
-    normalize_order_id,
+from shared.normalizers import (
+    normalize_shopify_id,
     normalize_order_number,
+    normalize_email,
 )
-from shared.validators import validate_email_format
 
 
 class FetchOrderRequest(BaseModel):
@@ -30,16 +30,19 @@ class FetchOrderRequest(BaseModel):
         order_number_input = data.get("order_number")
         email_input = data.get("email")
 
-        norm_id = normalize_order_id(order_id_input) if order_id_input else None
-        order_id = norm_id.get("digits_only") if norm_id else None
-        
-        norm_num = normalize_order_number(order_number_input) if order_number_input else None
-        order_number = norm_num.get("digits_only") if norm_num else None
+        order_id = normalize_shopify_id(order_id_input)
+        order_number = normalize_order_number(order_number_input)
+        email = normalize_email(email_input)
 
-        email = email_input if validate_email_format(email_input).get("success") else None
-
-        if not order_id and not order_number and not email:
+        if not order_id_input and not order_number_input and not email_input:
             raise ValueError("Must provide a valid order_id, order_number, or email")
+        
+        # Check for invalid inputs that were provided but failed normalization
+        if order_id_input is not None and order_id is None:
+            raise ValueError(f"'{order_id_input}' is not a valid order_id")
+        if order_number_input is not None and order_number is None:
+            raise ValueError(f"'{order_number_input}' is not a valid order_number")
+        if email_input is not None and email is None:
+            raise ValueError(f"'{email_input}' is not a valid email")
+            
         return cls(order_id=order_id, order_number=order_number, email=email)
-
-

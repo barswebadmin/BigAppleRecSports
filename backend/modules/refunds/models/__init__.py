@@ -1,6 +1,6 @@
-from .refund_request import RefundRequest
+from modules.orders.models import FetchOrderRequest
 
 __all__ = [
-    "RefundRequest",
+    "FetchOrderRequest",
 ]
 

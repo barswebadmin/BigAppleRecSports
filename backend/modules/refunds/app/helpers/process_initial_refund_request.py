@@ -1,9 +1,17 @@
 import logging
-from modules.integrations.shopify.models.requests import FetchOrderRequest
-from ...models import RefundRequest
-from shared.order_fetcher import fetch_order_from_shopify
+from modules.orders.models import FetchOrderRequest
+from shared.fetch_order_from_shopify import fetch_order_from_shopify
 
-def process_initial_refund_request(request: RefundRequest):
+def process_initial_refund_request(request: FetchOrderRequest):
+    """
+    Public entry point for initial refund request processing.
+
+    Args:
+        request: Validated refund request payload
+
+    Returns:
+        The result of the initial refund request processing. Exits early if there is an error and returns an HTTPException.
+    """
 
     request_args = FetchOrderRequest.create({"order_number": request.order_number})
     try:

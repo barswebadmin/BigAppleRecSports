@@ -1,7 +1,7 @@
 import logging
 from config import config
 from typing import Optional, Dict, Any
-from ..models.requests import FetchOrderRequest
+from modules.orders.models import FetchOrderRequest
 from ..models.graphql_queries import ShopifyGraphQLQuery
 
 def build_product_gid(product_id: str) -> str:
@@ -76,24 +76,6 @@ def build_shopify_order_fetch_query(req: FetchOrderRequest) -> Dict[str, Any]:
         raise ValueError("Must provide order_id, order_number, or email")
 
     return ShopifyGraphQLQuery.order_search(search).to_payload()
-
-
-def get_product_details_query(product_id: Optional[str], product_handle: Optional[str]) -> Dict[str, Any]:
-    """Create a get product details query"""
-    query = ""
-    variables = {}
-    if not product_id and not product_handle:
-        raise ValueError("Either product_id or product_handle must be provided")
-    elif product_id:
-        query = "query($identifier: ProductIdentifierInput!) { product: productByIdentifier(identifier: $identifier) { id handle title tags } }"
-        variables = { "identifier": { "id": build_product_gid(product_id) } }
-    elif product_handle:
-        query = "query ($handle: String!) { productByHandle(handle: $handle) { id title productType description vendor } }"
-        variables = { "handle": product_handle }
-    return {
-        "query": query,
-        "variables": variables
-    }
 
 
 

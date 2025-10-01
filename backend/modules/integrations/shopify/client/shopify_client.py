@@ -3,12 +3,13 @@ import json
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from ....products.models import FetchProductRequest
 from config import config
 from config.main import Config
-from ..models.requests import FetchOrderRequest
+from ....orders.models import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response
-from ..builders import build_order_fetch_request_payload
+from ..builders import build_product_fetch_request_payload, build_order_fetch_request_payload
 from ..parsers.mappers import map_order_node_to_order
 
  
@@ -121,10 +122,17 @@ class ShopifyClient:
         Fetch order details with a single request: prefer order_id if provided,
         otherwise use order_number. Callers must validate inputs.
         """
-        # Build query from identifier (order number, order id, or email)
        
         payload = build_order_fetch_request_payload(request_args)
 
+        resp = self.send_request(payload)
+        return resp
+
+    def fetch_product_details(self, request_details: FetchProductRequest) -> ShopifyResponse:
+        """
+        Fetch product details from Shopify
+        """
+        payload = build_product_fetch_request_payload(request_details)
         resp = self.send_request(payload)
         return resp
 

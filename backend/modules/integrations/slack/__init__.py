@@ -1,9 +1,5 @@
-from .client import SlackClient
-# from backend.modules.integrations.slack.builders import SlackMessageBuilder
-# from backend.modules.integrations.slack.parsers import SlackInteractionsParser
+from .slack_service import SlackService
+from . import client
+from . import builders
 
-__all__ = [
-    "SlackClient",
-    # "SlackMessageBuilder",
-    # "SlackInteractionsParser",
-]
+__all__ = ["SlackService", "client", "builders"]

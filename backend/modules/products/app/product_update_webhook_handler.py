@@ -10,11 +10,11 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
-from new_structure_target.clients.shopify.builders.shopify_url_builders import build_product_url
-from new_structure_target.services.webhooks.handlers.order_create_handler import slack_message_builder
-from ..parsers.product_parser import has_zero_inventory, get_slack_group_mention
-from ../../../../config import config
-from utils.date_utils import format_date_and_time, parse_shopify_datetime
+from backend.modules.integrations.shopify.builders.shopify_url_builders import build_product_url
+from backend.modules.integrations.slack.builders.message_builder import SlackMessageBuilder
+from .product_parser import has_zero_inventory, get_slack_group_mention
+from config import config
+from shared.date_utils import format_date_and_time, parse_shopify_datetime
 
 logger = logging.getLogger(__name__)
 

@@ -6,12 +6,12 @@ both OrdersService and RefundsService without creating circular dependencies.
 """
 
 from typing import Dict, Any, Optional
-from modules.integrations.shopify.models.requests import FetchOrderRequest
+from modules.orders.models import FetchOrderRequest
 from modules.integrations.shopify import ShopifyClient
 from modules.integrations.shopify.builders import build_order_fetch_request_payload
 
 
-def fetch_order_from_shopify(request_args: FetchOrderRequest, client: Optional[ShopifyClient] = None) -> Dict[str, Any]:
+def fetch_order_from_shopify(request_args: FetchOrderRequest) -> Dict[str, Any]:
     """
     Fetch order details with additional validation and error handling.
     
@@ -25,13 +25,21 @@ def fetch_order_from_shopify(request_args: FetchOrderRequest, client: Optional[S
         Dict containing order data with validation status
     """
     try:
-        result = fetch_order_from_shopify(request_args, client)
+        shopify_client = ShopifyClient()
         
-        if not result["success"]:
-            return result
+        payload = build_order_fetch_request_payload(request_args)
+        
+        # Use send_request which returns a ShopifyResponse object
+        result = shopify_client.send_request(payload)
+        
+        if not result.success:
+            return {
+                "success": False,
+                "message": result.message or "Failed to fetch order from Shopify"
+            }
             
         # Additional validation can be added here
-        order_data = result["data"]
+        order_data = result.data
         
         # Validate order exists and has required fields
         if not order_data or not order_data.get("orders", {}).get("edges"):
@@ -40,7 +48,10 @@ def fetch_order_from_shopify(request_args: FetchOrderRequest, client: Optional[S
                 "message": "No order found matching the provided criteria"
             }
             
-        return result
+        return {
+            "success": True,
+            "data": order_data
+        }
         
     except Exception as e:
         return {"success": False, "message": f"Error fetching order: {str(e)}"}

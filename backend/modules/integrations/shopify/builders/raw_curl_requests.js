@@ -97,6 +97,8 @@ https://09fe59-3.myshopify.com/admin/api/2025-10/graphql.json \
   }
 }'
 
+"title": "joe test product - dodgeball"
+
   */
 
 

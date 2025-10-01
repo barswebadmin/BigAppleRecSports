@@ -4,7 +4,7 @@ Optional League Information model for product creation
 
 from typing import List, Optional
 from pydantic import BaseModel, field_validator
-from ..regular_season_basic_details import (
+from .regular_season_basic_details import (
     SportSubCategory,
     SocialOrAdvanced,
     LeagueAssignmentTypes,

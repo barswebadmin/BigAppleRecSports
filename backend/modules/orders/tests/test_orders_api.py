@@ -8,7 +8,8 @@ import os
 import pytest
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from modules.orders.services import OrdersService
+from backend.modules.orders.models.requests import FetchOrderRequest
+from modules.orders.services.orders_service import OrdersService
 
 def test_orders_service():
     """Test the OrdersService functionality"""
@@ -22,7 +23,7 @@ def test_orders_service():
         test_order = "#1001"  # Replace with a real order number
         print(f"Testing order lookup for: {test_order}")
         
-        result = orders_service.fetch_order_details_by_email_or_order_number(order_number=test_order)
+        result = orders_service.fetch_order_from_shopify(request_args=FetchOrderRequest(order_number=test_order))
         print(f"Order lookup result: {result}")
         
         if result["success"]:
@@ -53,7 +54,7 @@ def test_date_utils():
     print("\nTesting date utilities...")
     
     try:
-        from utils.date_utils import extract_season_dates, calculate_refund_amount
+        from shared.date_utils import extract_season_dates, calculate_refund_amount
         
         # Test season date extraction
         sample_html = """
