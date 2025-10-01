@@ -58,22 +58,25 @@ PROJECTS=(
     "projects/veteran-tags"
 )
 
-# Test 1: Each project has instructions.gs file
+# Test 1-3: instructions can be at root or under src
 for project in "${PROJECTS[@]}"; do
-    run_test "$project has instructions.gs file" \
-        "[ -f '$project/instructions.gs' ]"
-done
+    instr_file=""
+    if [ -f "$project/instructions.gs" ]; then
+        instr_file="$project/instructions.gs"
+    elif [ -f "$project/src/core/instructions.gs" ]; then
+        instr_file="$project/src/core/instructions.gs"
+    elif [ -f "$project/src/instructions.gs" ]; then
+        instr_file="$project/src/instructions.gs"
+    fi
 
-# Test 2: Each instructions.gs contains showInstructions function
-for project in "${PROJECTS[@]}"; do
+    run_test "$project has instructions file (root or src)" \
+        "[ -n '$instr_file' ] && [ -f '$instr_file' ]"
+
     run_test "$project instructions contain showInstructions function" \
-        "grep -q 'function showInstructions' '$project/instructions.gs'"
-done
+        "[ -n '$instr_file' ] && grep -q 'function showInstructions' '$instr_file'"
 
-# Test 3: Each instructions.gs uses SpreadsheetApp.getUi().alert
-for project in "${PROJECTS[@]}"; do
     run_test "$project instructions use SpreadsheetApp.getUi().alert" \
-        "grep -q 'SpreadsheetApp.getUi().alert' '$project/instructions.gs'"
+        "[ -n '$instr_file' ] && grep -q 'SpreadsheetApp.getUi().alert' '$instr_file'"
 done
 
 # Test 4: Each project's onOpen function calls showInstructions

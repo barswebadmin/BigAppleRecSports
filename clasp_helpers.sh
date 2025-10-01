@@ -1,12 +1,14 @@
 #!/bin/bash
 
-# Deployment helper for add-sold-out-product-to-waitlist
+# Deployment helper for Google Apps Script projects
 # Creates temp directory, flattens src/ structure, pushes to GAS, then cleans up
 
 set -e
 
 PROJECT_NAME=$(basename "$(pwd)")
 DEPLOY_TEMP="deploy_temp"
+ORIGINAL_PWD="$(pwd)"
+DEPLOY_TEMP_PATH="$ORIGINAL_PWD/$DEPLOY_TEMP"
 
 # Colors for output
 RED='\033[0;31m'
@@ -33,9 +35,13 @@ log_error() {
 
 # Cleanup function - always runs
 cleanup() {
-    if [ -d "$DEPLOY_TEMP" ]; then
+    # Always return to original directory first
+    if [ "$(pwd)" != "$ORIGINAL_PWD" ]; then
+        cd "$ORIGINAL_PWD" || true
+    fi
+    if [ -d "$DEPLOY_TEMP_PATH" ]; then
         log_info "Cleaning up temporary deployment directory..."
-        rm -rf "$DEPLOY_TEMP"
+        rm -rf "$DEPLOY_TEMP_PATH"
         log_success "Cleanup completed"
     fi
 }
@@ -54,27 +60,33 @@ deploy() {
     fi
 
     # Create clean deploy temp directory
-    if [ -d "$DEPLOY_TEMP" ]; then
+    if [ -d "$DEPLOY_TEMP_PATH" ]; then
         log_info "Removing existing deploy_temp directory..."
-        rm -rf "$DEPLOY_TEMP"
+        rm -rf "$DEPLOY_TEMP_PATH"
     fi
 
     log_info "Creating temporary deployment directory..."
-    mkdir "$DEPLOY_TEMP"
+    mkdir -p "$DEPLOY_TEMP_PATH"
 
     # Copy appsscript.json if it exists
     if [ -f "appsscript.json" ]; then
-        cp "appsscript.json" "$DEPLOY_TEMP/"
+        cp "appsscript.json" "$DEPLOY_TEMP_PATH/"
         log_info "Copied appsscript.json"
     fi
 
-    # Copy .clasp.json if it exists
+    # Copy .clasp.json if it exists, but normalize rootDir for flattened deploy
     if [ -f ".clasp.json" ]; then
-        cp ".clasp.json" "$DEPLOY_TEMP/"
-        log_info "Copied .clasp.json"
+        # If rootDir is present, rewrite it to "." for deploy_temp
+        if grep -q '"rootDir"' .clasp.json; then
+            sed '/"rootDir"/s#"rootDir"[[:space:]]*:[[:space:]]*"[^"]*"#"rootDir": "."#' .clasp.json > "$DEPLOY_TEMP_PATH/.clasp.json"
+            log_info "Copied .clasp.json (rootDir normalized to .)"
+        else
+            cp ".clasp.json" "$DEPLOY_TEMP_PATH/"
+            log_info "Copied .clasp.json"
+        fi
     fi
 
-    # Find and copy all .gs files from src/ subdirectories with flattened names
+    # Find and copy all source files from src/ with flattened names (.gs, .html, .js)
     log_info "Copying and flattening src/ structure..."
 
     file_count=0
@@ -97,24 +109,24 @@ deploy() {
 
         # Create directory if needed for subdirectory files
         if [[ "$new_name" == *"/"* ]]; then
-            mkdir -p "$(dirname "$DEPLOY_TEMP/$new_name")"
+            mkdir -p "$(dirname "$DEPLOY_TEMP_PATH/$new_name")"
         fi
 
         # Copy to deploy_temp with new name
-        cp "$file" "$DEPLOY_TEMP/$new_name"
+        cp "$file" "$DEPLOY_TEMP_PATH/$new_name"
         log_info "  $file → $new_name"
         file_count=$((file_count + 1))
 
-    done < <(find src -name "*.gs" -type f -print0)
+    done < <(find src \( -name "*.gs" -o -name "*.html" -o -name "*.js" \) -type f -print0)
 
     if [ $file_count -eq 0 ]; then
-        log_warning "No .gs files found in src/ directory"
+        log_warning "No source files found in src/ directory (.gs/.html/.js)"
     else
         log_success "Copied $file_count files with flattened structure"
     fi
 
     # Change to deploy_temp directory for clasp operations
-    cd "$DEPLOY_TEMP"
+    cd "$DEPLOY_TEMP_PATH"
 
     # Push to Google Apps Script
     log_info "Pushing code to Google Apps Script..."
@@ -133,7 +145,7 @@ deploy() {
     fi
 
     # Return to original directory
-    cd ..
+    cd "$ORIGINAL_PWD"
 
     log_success "Deployment completed successfully!"
     log_warning "Code pushed to Google Apps Script but NOT deployed to web app"
