@@ -75,6 +75,24 @@ function makeKey_(sport, day, division) {
 }
 
 /**
+ * Capitalize a string.
+ * - When titleCase is true, capitalize the first letter of each word
+ * - Otherwise, only capitalize the first letter of the string
+ * @param {string} str
+ * @param {boolean} [titleCase=false]
+ * @returns {string}
+ */
+function capitalize(str, titleCase) {
+  const text = (str || '').toString();
+  if (!text) return '';
+  const lower = text.toLowerCase();
+  if (titleCase) {
+    return lower.replace(/\b([a-z])/g, function(match, p1) { return p1.toUpperCase(); });
+  }
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+/**
  * Extract player count from details text
  */
 function extractPlayersFromDetails_(details, unresolved) {

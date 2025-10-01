@@ -21,23 +21,31 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields, c
     // Check if there are unresolved fields and ask user for confirmation
     if (unresolvedFields && unresolvedFields.length > 0) {
       const errorDisplay = buildErrorDisplay_(productData, unresolvedFields);
-      const action = ui.alert(
+      const alertResult = ui.alert(
         '🛍️ Create Shopify Product - Missing Required Fields',
         errorDisplay,
         ui.ButtonSet.OK_CANCEL
       );
 
-      if (action === ui.Button.CANCEL) {
+      if (alertResult === ui.Button.CANCEL) {
         return null; // User cancelled
       }
 
-      const userAction = action.getResponseText().trim().toLowerCase();
+      // Collect typed action
+      const promptResult = ui.prompt(
+        'Next Step',
+        'Type "update" to edit fields or "cancel" to abort:',
+        ui.ButtonSet.OK_CANCEL
+      );
+      if (promptResult.getSelectedButton() !== ui.Button.OK) {
+        return null; // Cancel/close
+      }
+      const userAction = (promptResult.getResponseText() || '').trim().toLowerCase();
       if (userAction === 'cancel') {
         return null;
       } else if (userAction === 'update') {
         productData = showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber);
         if (!productData) return null; // User cancelled editing
-        // After editing, unresolvedFields may have changed; recompute if needed upstream
         continue; // Re-validate
       } else {
         ui.alert('Invalid Input', 'Please type "update" or "cancel"', ui.ButtonSet.OK);
@@ -47,17 +55,26 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields, c
 
     // All required fields present - text-based confirmation
     const confirmationDisplay = buildConfirmationDisplay_(productData);
-    const action = ui.alert(
+    const alertResult = ui.alert(
       '🛍️ Create Shopify Product - All Parsed Fields',
       confirmationDisplay,
       ui.ButtonSet.OK_CANCEL
     );
 
-    if (action === ui.Button.CANCEL) {
+    if (alertResult === ui.Button.CANCEL) {
       return null; // User cancelled
     }
 
-    const userAction = action.getResponseText().trim().toLowerCase();
+    // Collect typed action
+    const promptResult = ui.prompt(
+      'Next Step',
+      'Type "create" to proceed or "update" to edit fields:',
+      ui.ButtonSet.OK_CANCEL
+    );
+    if (promptResult.getSelectedButton() !== ui.Button.OK) {
+      return null; // Cancel/close
+    }
+    const userAction = (promptResult.getResponseText() || '').trim().toLowerCase();
     if (userAction === 'create') {
       return productData; // Ready to create
     } else if (userAction === 'update') {
