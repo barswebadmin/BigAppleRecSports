@@ -148,7 +148,7 @@ The discount calculator applies the following tiers:
 The utilities are designed to work alongside the existing `ShopifyService`:
 
 ```python
-from services.shopify.shopify_service import ShopifyService
+from new_structure_target.clients.shopify.shopify_service import ShopifyService
 from utils.api_utils import retry_api_request
 from utils.secrets_utils import get_secret
 

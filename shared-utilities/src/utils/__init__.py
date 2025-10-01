@@ -58,8 +58,6 @@ from .secrets_utils import (
 
 from .slack_utils import (
     SlackClient,
-    get_slack_refunds_channel,
-    get_joe_test_channel,
     get_order_url,
     get_product_url,
     get_slack_group_id,
