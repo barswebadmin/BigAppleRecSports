@@ -11,6 +11,26 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.integrations.shopify import ShopifyOrchestrator
     # from ..csv import CSVService
 
+# things leadership service needs to do every jan:
+    # create google users
+    # create slack users
+    # create shopify users
+    # reassign new leadership to their respective aliases
+        # in Google
+            # give exec / admin users their perms
+        # in Drive
+        # in Shopify
+    # Shopify:
+        # create leadership discount codes for the year
+            # 3 per season: 2 at 100% off, 1 at 50% off, 1x use per user
+            # restricted to leadership segment
+        # add leadership tags to leadership users
+        # assign users to appropriate roles/perms
+    # remove retired users from all services
+    # remove post-leadership tags for retired users whose benefits have expired
+    # auto-update the BARS leadership page with details and photo
+
+
 class LeadershipService:
     def __init__(self):
         self.shopify_orchestrator = ShopifyOrchestrator()
