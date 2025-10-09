@@ -1,5 +1,5 @@
-from .message_builder import SlackMessageBuilder
+from .message_builders import SlackMessageBuilders
 
-__all__ = ["SlackMessageBuilder"]
+__all__ = ["SlackMessageBuilders"]
 
 

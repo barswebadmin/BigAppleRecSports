@@ -9,11 +9,18 @@ BARS Backend API - Main FastAPI Application
 
 # CRITICAL: Configure SSL certificates and load .env file BEFORE any other imports that might need environment variables
 import os
+import platform
 from dotenv import load_dotenv
-if os.getenv("ENVIRONMENT") != "production":
-    load_dotenv('../.env')
 
-if os.getenv("ENVIRONMENT") == "production":
+load_dotenv('../.env')
+
+# Set SSL certificate paths based on platform
+if platform.system() == "Darwin":  # macOS
+    # Use Homebrew SSL certificates for macOS
+    os.environ["SSL_CERT_FILE"] = "/opt/homebrew/etc/openssl@3/cert.pem"
+    os.environ["REQUESTS_CA_BUNDLE"] = "/opt/homebrew/etc/openssl@3/cert.pem"
+    os.environ["CURL_CA_BUNDLE"] = "/opt/homebrew/etc/openssl@3/cert.pem"
+elif os.getenv("ENVIRONMENT") == "production":
     # Force SSL certificate paths for Render (Ubuntu) deployment
     os.environ["SSL_CERT_FILE"] = "/etc/ssl/certs/ca-certificates.crt"
     os.environ["REQUESTS_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
@@ -58,14 +65,9 @@ app = FastAPI(
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # Log ALL incoming requests
-        logger.info(f"🌐 INCOMING REQUEST: {request.method} {request.url}")
-        logger.info(f"   Headers: {dict(request.headers)}")
-        logger.info(f"   Client: {request.client}")
         
         response = await call_next(request)
         
-        logger.info(f"🔄 RESPONSE: {response.status_code}")
         return response
 
 # Add request logging middleware

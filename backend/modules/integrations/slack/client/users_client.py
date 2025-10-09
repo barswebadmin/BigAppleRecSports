@@ -10,9 +10,9 @@ class SlackUsersClient:
 
     def __init__(self, bearer_token: str):
         self.bearer_token = bearer_token
-        self.verify = (
-            "/etc/ssl/certs/ca-certificates.crt" if os.getenv("ENVIRONMENT") == "production" else True
-        )
+        # Use environment SSL cert path or default to True for system certs
+        ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
+        self.verify = ssl_cert_file if os.path.exists(ssl_cert_file) else True
 
     def list_all_users(self) -> List[Dict[str, Any]]:
         users: List[Dict[str, Any]] = []

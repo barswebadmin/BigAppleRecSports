@@ -6,22 +6,25 @@ class ShopifyConfig:
     def __init__(self, ENVIRONMENT: str):
         # Environment-specific Shopify configuration
         if ENVIRONMENT in ["staging", "production"]:
-            # Use production Shopify credentials for staging and production
-            # Support multiple env var names for flexibility
-            self._store_id = os.getenv("SHOPIFY_STORE_ID") or os.getenv("SHOPIFY_STORE")
-            self._token = os.getenv("SHOPIFY_TOKEN_ADMIN") or os.getenv("SHOPIFY_TOKEN")
-            self._location_id = os.getenv("SHOPIFY_LOCATION_ID") or os.getenv("SHOPIFY_DEFAULT_LOCATION_ID")
+            self._store_id = os.getenv("SHOPIFY_STORE_ID")
+            self._token = os.getenv("SHOPIFY_TOKEN_ADMIN")
+            self._location_id = os.getenv("SHOPIFY_LOCATION_ID")
             self._webhook_secret = os.getenv("SHOPIFY_SECRET_WEBHOOK")
         else:
-            # Use dev/test Shopify credentials (if any) or defaults
-            self._store_id = os.getenv("SHOPIFY_DEV_STORE", "SHOPIFY_DEV_STORE")
-            self._token = os.getenv("SHOPIFY_DEV_TOKEN", "SHOPIFY_DEV_TOKEN")
-            self._location_id = os.getenv("SHOPIFY_DEV_LOCATION_ID", "SHOPIFY_DEV_LOCATION_ID")
+            self._store_id = os.getenv("SHOPIFY_DEV_STORE_ID")
+            self._token = os.getenv("SHOPIFY_DEV_TOKEN")
+            self._location_id = os.getenv("SHOPIFY_DEV_LOCATION_ID")
             self._webhook_secret = os.getenv("SHOPIFY_DEV_SECRET_WEBHOOK")
 
-        # HTTP behavior
-        self._timeout_seconds = int(os.getenv("SHOPIFY_TIMEOUT_SECONDS", "10"))
-        self._max_retries = int(os.getenv("SHOPIFY_MAX_RETRIES", "3"))
+        timeout_str = os.getenv("SHOPIFY_TIMEOUT_SECONDS")
+        if not timeout_str:
+            raise RuntimeError("Missing env: SHOPIFY_TIMEOUT_SECONDS")
+        self._timeout_seconds = int(timeout_str)
+        
+        retries_str = os.getenv("SHOPIFY_MAX_RETRIES")
+        if not retries_str:
+            raise RuntimeError("Missing env: SHOPIFY_MAX_RETRIES")
+        self._max_retries = int(retries_str)
 
     @property
     def timeout_seconds(self) -> int:

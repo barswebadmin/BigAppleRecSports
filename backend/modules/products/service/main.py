@@ -4,7 +4,7 @@ Products Service for validating and processing product creation requests
 
 import logging
 from typing import Dict, Any
-from .fetch_product_from_shopify import fetch_product_from_shopify
+from shared.fetch_shopify_products import fetch_product_from_shopify, fetch_recent_products_from_shopify
 from .inventory.update_product_inventory import update_product_inventory
 from ..models import FetchProductRequest, ProductCreationRequest, ProductCreationRequestValidationError
 
@@ -55,6 +55,12 @@ class ProductsService:
         Fetch product details from Shopify
         """
         return fetch_product_from_shopify(request_details)
+
+    def get_recent_products(self):
+        """
+        Fetch recent products from Shopify
+        """
+        return fetch_recent_products_from_shopify()
 
     def update_inventory(self, validated_request):
         """

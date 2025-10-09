@@ -5,7 +5,6 @@ Product variants creation service - matching Create Variants From Row.gs structu
 import logging
 from typing import Dict, Any
 from modules.products.models.requests.product_creation_request.product_creation_request import ProductCreationRequest
-from modules.integrations.shopify import ShopifyClient
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +96,8 @@ def create_variants(
         }
 
     try:
-        shopify_orchestrator = ShopifyClient()
+        from modules.integrations.shopify import ShopifyOrchestrator
+        shopify_orchestrator = ShopifyOrchestrator()
 
         # Build variants array dynamically (exact GAS logic)
         variants_to_create = []

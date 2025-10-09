@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 slack_groups = SlackGroup()
 
 
-class SlackMessageBuilder:
+class SlackMessageBuilders:
     """Helper class for building Slack messages with consistent formatting."""
 
-    def __init__(self, sport_groups: dict[str, dict[str, str]]):
+    def __init__(self):
         self.sport_groups = slack_groups.all()
 
     def build_header_block(self, header_text: str) -> Dict[str, Any]:

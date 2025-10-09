@@ -1,6 +1,6 @@
 from .main import SlackClient
-from ..client.slack_config import SlackConfig
+from .slack_security import verify_slack_signature
 
-__all__ = ["SlackClient", "SlackConfig"]
+__all__ = ["SlackClient", "verify_slack_signature"]
 
 

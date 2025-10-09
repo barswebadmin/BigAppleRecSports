@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional
 from config import config
 from ...models import FetchProductRequest
-from ..fetch_product_from_shopify import fetch_product_from_shopify
+from shared.fetch_shopify_products import fetch_product_from_shopify
 
 def update_product_inventory(request_details: FetchProductRequest) -> Dict[str, Any]:
     """

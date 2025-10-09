@@ -25,12 +25,9 @@ def fetch_order_from_shopify(request_args: FetchOrderRequest) -> Dict[str, Any]:
         Dict containing order data with validation status
     """
     try:
-        shopify_client = ShopifyClient()
-        
-        payload = build_order_fetch_request_payload(request_args)
-        
-        # Use send_request which returns a ShopifyResponse object
-        result = shopify_client.send_request(payload)
+        from modules.integrations.shopify import ShopifyOrchestrator
+        shopify = ShopifyOrchestrator()
+        result = shopify.fetch_order_details(request_args)
         
         if not result.success:
             return {

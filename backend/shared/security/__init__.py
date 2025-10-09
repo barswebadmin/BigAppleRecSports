@@ -2,10 +2,10 @@
 Shared security utilities for webhook verification and other security functions.
 """
 
-from .webhook_signature_verification import verify_webhook_signature, extract_signature_from_headers, get_signing_secret
+from .webhook_signature_verification import is_valid_webhook_signature, extract_shopify_webhook_signature, extract_slack_webhook_signature
 
 __all__ = [
-    "verify_webhook_signature",
-    "extract_signature_from_headers", 
-    "get_signing_secret"
+    "is_valid_webhook_signature",
+    "extract_shopify_webhook_signature", 
+    "extract_slack_webhook_signature",
 ]

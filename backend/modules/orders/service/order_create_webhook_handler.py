@@ -10,12 +10,12 @@ import logging
 from typing import Dict, Any, List, Optional
 from config import config
 from modules.integrations.shopify.builders.shopify_url_builders import build_order_url
-from modules.integrations.slack.builders.message_builder import SlackMessageBuilder
+from modules.integrations.slack.builders.message_builders import SlackMessageBuilders
 from shared.date_utils import format_date_and_time
 
 logger = logging.getLogger(__name__)
 
-slack_message_builder = SlackMessageBuilder(sport_groups=config.Slack.Groups.all())
+slack_message_builder = SlackMessageBuilders()
 
 
 def evaluate_order_create_webhook(body: bytes) -> Dict[str, Any]:

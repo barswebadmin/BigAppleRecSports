@@ -9,7 +9,6 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError, SlackClientError
 
 from config import config
-from config.slack import SlackConfig
 
 if TYPE_CHECKING:
     from .mock_client import MockSlackClient
@@ -20,8 +19,8 @@ logger = logging.getLogger(__name__)
 class SlackClient():
     """Core Slack API methods for direct API interactions"""
     
-    def __init__(self, slack_config: SlackConfig = config.Slack):
-        self.slack_config = slack_config
+    def __init__(self):
+        self.config = config.slack
         self.web_client = WebClient()
         self.client = self.web_client
         self._timeout_seconds = 10
@@ -29,8 +28,8 @@ class SlackClient():
 
     def send_message(
         self,
-        channel: "SlackConfig.Channels._Channel",
-        bot: "SlackConfig.Bots._Bot",
+        channel: "config.slack.Channels._Channel",
+        bot: "config.slack.Bots._Bot",
         blocks: List[Dict[str, Any]],
         action_buttons: Optional[List[Dict[str, Any]]] = None,
         metadata: Optional[Dict[str, Any]] = None,
@@ -120,8 +119,8 @@ class SlackClient():
 
     def update_message(
         self,
-        channel: "SlackConfig.Channels._Channel",
-        bot: "SlackConfig.Bots._Bot",
+        channel: "config.slack.Channels._Channel",
+        bot: "config.slack.Bots._Bot",
         message_ts: str,
         message_text_short: str = "Fallback Short Message",
         message_text: str = "Fallback Message",
@@ -210,8 +209,8 @@ class SlackClient():
 
     def update_message_blocks(
         self,
-        channel: "SlackConfig.Channels._Channel",
-        bot: "SlackConfig.Bots._Bot",
+        channel: "config.slack.Channels._Channel",
+        bot: "config.slack.Bots._Bot",
         message_ts: str,
         blocks: List[Dict[str, Any]],
         *,
@@ -255,11 +254,11 @@ class SlackClient():
 
     def send_ephemeral_message(
         self,
-        user: "SlackConfig.Users._User",
-        bot: "SlackConfig.Bots._Bot",
+        user: "config.slack.Users._User",
+        bot: "config.slack.Bots._Bot",
         message_text_short: str = "Fallback Short Message",
         message_text: str = "Fallback Message",
-        channel: Optional["SlackConfig.Channels._Channel"] = None,
+        channel: Optional["config.slack.Channels._Channel"] = None,
         action_buttons: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
@@ -340,9 +339,9 @@ class SlackClient():
 
     def send_ephemeral_blocks(
         self,
-        user: "SlackConfig.Users._User",
-        bot: "SlackConfig.Bots._Bot",
-        channel: "SlackConfig.Channels._Channel",
+        user: "config.slack.Users._User",
+        bot: "config.slack.Bots._Bot",
+        channel: "config.slack.Channels._Channel",
         blocks: List[Dict[str, Any]],
         *,
         text_fallback: str = "Ephemeral message",

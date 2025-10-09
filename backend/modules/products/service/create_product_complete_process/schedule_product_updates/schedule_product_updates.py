@@ -41,13 +41,16 @@ def send_aws_lambda_request(
 
     try:
         # Send POST request to AWS Lambda
+        # Always use Homebrew SSL certificate path for macOS
+        ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
+        verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
+        
         response = requests.post(
             aws_url,
             json=request_data,
             headers={"Content-Type": "application/json", "Accept": "application/json"},
             timeout=30,
-            verify=os.getenv("ENVIRONMENT")
-            == "production",  # SSL verification for production only
+            verify=verify_ssl,
         )
 
         logger.info("📥 AWS LAMBDA RESPONSE")

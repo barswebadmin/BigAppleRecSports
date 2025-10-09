@@ -216,3 +216,51 @@ def build_product_fetch_request_payload(
         raise ValueError("Must provide product_id or product_handle")
     print("Shopify Request Payload:", {"query": query, "variables": variables})
     return {"query": query, "variables": variables}
+
+def build_multiple_products_fetch_request_payload(limit: int = 20, status_filter: str = "status:active,draft") -> Dict[str, Any]:
+    """
+    Build multiple products fetch payload for Shopify GraphQL API.
+    
+    Args:
+        limit: Number of products to fetch (default: 20)
+        status_filter: Status filter for products (default: "status:active,draft")
+        
+    Returns:
+        Dict containing the GraphQL query for fetching multiple products
+    """
+    
+    # Based on your curl example: query GetProducts { products(first: 10) { nodes { id title } } }
+    # Adding query parameter for status filtering
+    query = f"""
+    query GetProducts($query: String!) {{
+        products(first: {limit}, query: $query) {{
+            nodes {{
+                id
+                title
+                handle
+                tags
+                status
+                variants(first: 10) {{
+                    edges {{
+                        node {{
+                            id
+                            title
+                            inventoryQuantity
+                            inventoryItem {{
+                                id
+                            }}
+                        }}
+                    }}
+                }}
+            }}
+        }}
+    }}
+    """
+    
+    # Add the status filter as a variable
+    variables = {
+        "query": status_filter
+    }
+    
+    print("Shopify Multiple Products Request Payload:", {"query": query.strip(), "variables": variables})
+    return {"query": query.strip(), "variables": variables}

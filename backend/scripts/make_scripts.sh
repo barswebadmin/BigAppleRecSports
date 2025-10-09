@@ -2,7 +2,7 @@
 # Big Apple Rec Sports Backend Scripts
 # Usage: source scripts.sh
 
-export BACKEND_DIR="/Users/jrandazzo/Documents/BARS_Github/BigAppleRecSports/backend"
+export BACKEND_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
 
 # npm-like commands
 serve() {

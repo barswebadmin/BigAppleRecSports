@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
 
-from modules.products.service import ProductsService
+from modules.products import ProductsService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/products", tags=["products"])
@@ -95,10 +95,10 @@ async def handle_create_product(
     #             detail=error_detail,
     #         )
 
-@router.get("/adjust-inventory")
-async def handle_adjust_inventory():
+@router.get("/update-inventory")
+async def handle_update_inventory():
     """Health check endpoint for the products service"""
-    return products_service.adjust_inventory()
+    return products_service.update_inventory()
 
 
 @router.get("/health")

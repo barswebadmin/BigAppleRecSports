@@ -1,6 +1,6 @@
 import logging
 from modules.orders.models import FetchOrderRequest
-from shared.fetch_order_from_shopify import fetch_order_from_shopify
+from shared.fetch_shopify_orders import fetch_order_from_shopify
 
 def process_initial_refund_request(request: FetchOrderRequest):
     """

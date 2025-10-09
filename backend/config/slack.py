@@ -32,30 +32,76 @@ class SlackConfig:
 
         class _Bot:
             """Proxy that lazily reads env vars at access time."""
-            def __init__(self, token_env: str, secret_env: str):
-                self._token_env_name = token_env
-                self._secret_env_name = secret_env
-
+            def __init__(self, token_env: str, signing_secret_env: str, app_id_env: str):
+                self._token_env = token_env
+                self._signing_secret_env = signing_secret_env
+                self._app_id_env = app_id_env
+                self._token = None
+                self._signing_secret = None
+                self._app_id = None
+            
             @property
             def token(self) -> str:
-                v = os.getenv(self._token_env_name)
-                if not v:
-                    raise RuntimeError(f"Missing env: {self._token_env_name}")
-                return v
+                if self._token is None:
+                    self._token = os.getenv(self._token_env)
+                    if not self._token:
+                        raise RuntimeError(f"Missing env: {self._token_env}")
+                return self._token
 
             @property
             def signing_secret(self) -> str:
-                v = os.getenv(self._secret_env_name)
-                if not v:
-                    raise RuntimeError(f"Missing env: {self._secret_env_name}")
-                return v
+                if self._signing_secret is None:
+                    self._signing_secret = os.getenv(self._signing_secret_env)
+                    if not self._signing_secret:
+                        raise RuntimeError(f"Missing env: {self._signing_secret_env}")
+                return self._signing_secret
+            
+            @property
+            def app_id(self) -> str:
+                if self._app_id is None:
+                    self._app_id = os.getenv(self._app_id_env)
+                    if not self._app_id:
+                        raise RuntimeError(f"Missing env: {self._app_id_env}")
+                return self._app_id
 
-        Dev               = _Bot("SLACK_BOT_TOKEN_DEV",               "SLACK_SIGNING_SECRET_DEV")
-        Exec              = _Bot("SLACK_BOT_TOKEN_EXEC",              "SLACK_SIGNING_SECRET_EXEC")
-        PaymentAssistance = _Bot("SLACK_BOT_TOKEN_PAYMENT_ASSISTANCE","SLACK_SIGNING_SECRET_PAYMENT_ASSISTANCE")
-        Refunds           = _Bot("SLACK_BOT_TOKEN_REFUNDS",           "SLACK_SIGNING_SECRET_REFUNDS")
-        Registrations     = _Bot("SLACK_BOT_TOKEN_REGISTRATIONS",     "SLACK_SIGNING_SECRET_REGISTRATIONS")
-        Web               = _Bot("SLACK_BOT_TOKEN_WEB",               "SLACK_SIGNING_SECRET_WEB")
+        Dev               = _Bot("SLACK_BOT_TOKEN_DEV",               "SLACK_SIGNING_SECRET_DEV",               "SLACK_BOT_APP_ID_DEV")
+        Exec              = _Bot("SLACK_BOT_TOKEN_EXEC",              "SLACK_SIGNING_SECRET_EXEC",              "SLACK_BOT_APP_ID_EXEC")
+        PaymentAssistance = _Bot("SLACK_BOT_TOKEN_PAYMENT_ASSISTANCE","SLACK_SIGNING_SECRET_PAYMENT_ASSISTANCE","SLACK_BOT_APP_ID_PAYMENT_ASSISTANCE")
+        Refunds           = _Bot("SLACK_BOT_TOKEN_REFUNDS",           "SLACK_SIGNING_SECRET_REFUNDS",           "SLACK_BOT_APP_ID_REFUNDS")
+        Registrations     = _Bot("SLACK_BOT_TOKEN_REGISTRATIONS",     "SLACK_SIGNING_SECRET_REGISTRATIONS",     "SLACK_BOT_APP_ID_REGISTRATIONS")
+        Web               = _Bot("SLACK_BOT_TOKEN_WEB",               "SLACK_SIGNING_SECRET_WEB",               "SLACK_BOT_APP_ID_WEB")
+
+        @classmethod
+        def all(cls) -> dict[str, dict[str, str]]:
+            """Return all bots as {PascalCaseName: {'token': token, 'signing_secret': signing_secret, 'app_id': app_id}}"""
+            out = {}
+            for k, v in cls.__dict__.items():
+                if isinstance(v, cls._Bot):
+                    out[k] = {"token": v.token, "signing_secret": v.signing_secret, "app_id": v.app_id}
+            return out
+
+        @classmethod
+        def by_app_id(cls, app_id: str) -> Optional[Dict[str, str]]:
+            """
+            Lookup bot by app_id (e.g., 'A09FJ4FJQRJ').
+            Returns {'token': token, 'signing_secret': signing_secret, 'app_id': app_id} or None.
+            """
+            for k, v in cls.__dict__.items():
+                if isinstance(v, cls._Bot) and v.app_id == app_id:
+                    return {"token": v.token, "signing_secret": v.signing_secret, "app_id": v.app_id}
+            return None
+
+        @classmethod
+        def get(cls, key: str) -> Dict[str, str]:
+            """
+            Lookup by PascalCase attribute name (e.g., 'Registrations')
+            Returns {'token': token, 'signing_secret': signing_secret, 'app_id': app_id}.
+            """
+            if hasattr(cls, key):
+                v = getattr(cls, key)
+                if isinstance(v, cls._Bot):
+                    return {"token": v.token, "signing_secret": v.signing_secret, "app_id": v.app_id}
+            return None
 
     # --------------------
     # Channels

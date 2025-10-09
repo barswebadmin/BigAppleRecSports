@@ -4,10 +4,9 @@ import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import config
-from config.shopify import ShopifyConfig
 
-from ....products.models import FetchProductRequest
-from ....orders.models import FetchOrderRequest
+from modules.products.models import FetchProductRequest
+from modules.orders.models import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response
 from ..builders import build_product_fetch_request_payload, build_order_fetch_request_payload
@@ -17,14 +16,13 @@ from ..parsers.mappers import map_order_node_to_order
 """
 ShopifyClient - HTTP client using requests to interact with Shopify GraphQL with retries/timeouts.
 """
-
-shopify_config = config.Shopify
 class ShopifyClient:
-    def __init__(self, shopify_config: ShopifyConfig = shopify_config) -> None:
-        self.url = shopify_config.graphql_url
-        self.headers = shopify_config.headers
-        self.max_retries = shopify_config.max_retries
-        self.timeout_seconds = shopify_config.timeout_seconds
+    def __init__(self) -> None:
+        self.config = config.shopify
+        self.url = self.config.graphql_url
+        self.headers = self.config.headers
+        self.max_retries = self.config.max_retries
+        self.timeout_seconds = self.config.timeout_seconds
 
     # ------------------------------------------------------------------
     # HTTP helper
@@ -35,10 +33,15 @@ class ShopifyClient:
         # Debug: Print the actual URL being used (remove in production)
         # print(f"[SHOPIFY_CLIENT_DEBUG] Making request to: {url}")
 
+        # Set SSL certificate path for macOS with Homebrew
+        import os
+        ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
+        verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
+
         last_exc: Optional[Exception] = None
         for _ in range(self.max_retries):
             try:
-                return requests.post(self.url, json=body, headers=self.headers, timeout=self.timeout_seconds)
+                return requests.post(self.url, json=body, headers=self.headers, timeout=self.timeout_seconds, verify=verify_ssl)
             except requests.Timeout as e:
                 # Bubble up timeouts immediately; they shouldn't be retried blindly
                 raise TimeoutError(f"Shopify request timeout after {self.timeout_seconds}s") from e

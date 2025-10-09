@@ -4,13 +4,13 @@ Inventory tracking service - matching enableInventoryTracking from GAS
 
 import logging
 from typing import Dict, Any, Optional
-from modules.integrations.shopify import ShopifyClient
+
 
 logger = logging.getLogger(__name__)
 
 
 def enable_inventory_tracking(
-    variant_gid: str, shopify_orchestrator: Optional[ShopifyClient] = None
+    variant_gid: str, shopify_orchestrator: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Enable inventory tracking for a variant using Shopify management
@@ -23,8 +23,9 @@ def enable_inventory_tracking(
     Returns:
         Dict with success status and any error details
     """
+    from modules.integrations.shopify import ShopifyOrchestrator
     if not shopify_orchestrator:
-        shopify_orchestrator = ShopifyClient()
+        shopify_orchestrator = ShopifyOrchestrator()
 
     try:
         # Use REST API to enable inventory management

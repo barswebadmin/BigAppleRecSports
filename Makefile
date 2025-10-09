@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install reinstall clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update dev stop install reinstall clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
 
 # Default target
 help:
@@ -10,7 +10,7 @@ help:
 	@echo "🔧 Backend Development:"
 	@echo "  make start               - Start backend server (uvicorn) in dev mode"
 	@echo "  make prod                - Start server + tunnel in production mode"
-	@echo "  make tunnel              - Start localtunnel with auto-restart (persistent)"
+	@echo "  make tunnel              - Start localtunnel with auto-restart (foreground)"
 	@echo "  make tunnel-daemon       - Start localtunnel as background daemon (survives restarts)"
 	@echo "  make dev                 - Start server + tunnel with auto URL updates (dev mode)"
 	@echo "  make stop                - Stop all processes"
@@ -53,7 +53,7 @@ help:
 	@echo "🔧 Quick Start:"
 	@echo "  1. make install          - Install dependencies"
 	@echo "  2. make start            - Start server (terminal 1)"
-	@echo "  3. make tunnel           - Start tunnel (terminal 2)"
+	@echo "  3. make tunnel - Start tunnel (terminal 2)"
 	@echo "  4. make test-backend-unit - Run tests"
 
 # Handle arguments for compile and test commands
@@ -273,26 +273,25 @@ endef
 start:
 	@echo "🚀 Starting backend server..."
 	@if [ -f backend/.venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=production ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	elif [ -f .venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=production ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	elif [ -f backend/venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=production ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	else \
 		echo "❌ Virtual environment not found. Trying system python..."; \
-		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
+		cd backend && ENVIRONMENT=production python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
 	fi
 
-prod:
-	@echo "🔧 Starting production environment..."
+_start-tunnel-in-new-terminal:
 	@pkill -f "lt -p 8000" || true
 	@pkill -f uvicorn || true
 	@sleep 1
 	@echo "🚀 Starting backend server in current terminal..."
 	@echo "🌐 Opening new terminal for localtunnel..."
-	@if command -v cursor >/dev/null 2>&1 && pgrep -f "Cursor.app" >/dev/null 2>&1; then \
-		echo "📱 Detected Cursor - opening new Cursor terminal..."; \
-		osascript -e 'tell application "Cursor" to activate' \
+	@if command -v kiro >/dev/null 2>&1 && pgrep -f "Kiro.app" >/dev/null 2>&1; then \
+		echo "📱 Detected Kiro - opening new Kiro terminal..."; \
+		osascript -e 'tell application "Kiro" to activate' \
 			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
 			-e 'delay 1' \
 			-e 'tell application "System Events" to keystroke "make tunnel-and-update"' \
@@ -306,31 +305,20 @@ prod:
 	fi
 	@sleep 3
 	@echo "✅ Starting server now (tunnel will start in new terminal)..."
-	@if [ -f backend/.venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=production SHOPIFY_TOKEN=test_token ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
-	elif [ -f .venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=production SHOPIFY_TOKEN=test_token ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
-	elif [ -f backend/venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=production SHOPIFY_TOKEN=test_token ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
-	else \
-		echo "❌ Virtual environment not found. Trying system python..."; \
-		cd backend && ENVIRONMENT=production SHOPIFY_TOKEN=test_token python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
-	fi
 
-tunnel:
-	@echo "🌐 Starting localtunnel..."
-	@pkill -f "lt -p 8000" || true
-	@sleep 1
-	@echo "🔄 Starting persistent localtunnel (will auto-restart on failure)..."
-	@while true; do \
-		echo "📡 Connecting to localtunnel..."; \
-		lt -p 8000 -s bars-back-local || { \
-			echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; \
-			sleep 3; \
-		}; \
-	done
+prod:
+	@echo "🔧 Starting production environment..."
+	@$(MAKE) _start-tunnel-in-new-terminal
+	@$(MAKE) start
 
 tunnel-and-update:
+	@echo "🔧 Deactivating any active virtual environment..."
+	@if [ -n "$$VIRTUAL_ENV" ]; then \
+		echo "📦 Deactivating virtual environment: $$VIRTUAL_ENV"; \
+		unset VIRTUAL_ENV; \
+		unset PYTHONPATH; \
+		export PATH=$$(echo $$PATH | sed 's|$$VIRTUAL_ENV/bin:||g'); \
+	fi
 	@echo "🌐 Starting persistent localtunnel with auto-restart..."
 	@pkill -f "lt -p 8000" || true
 	@sleep 1
@@ -353,43 +341,13 @@ tunnel-daemon:
 	@echo "🌐 URL: https://bars-back-local.loca.lt"
 	@echo "📋 Check tunnel.log for status updates"
 
-update-gas-ngrok:
-	@echo "📝 Updating NGROK_URL in Google Apps Scripts..."
-	@python3 scripts/update_ngrok_urls.py
+tunnel:
+	@$(MAKE) tunnel-and-update
 
 dev:
 	@echo "🔧 Starting development environment..."
-	@pkill -f "lt -p 8000" || true
-	@pkill -f uvicorn || true
-	@sleep 1
-	@echo "🚀 Starting backend server in current terminal..."
-	@echo "🌐 Opening new terminal for localtunnel..."
-	@if command -v cursor >/dev/null 2>&1 && pgrep -f "Cursor.app" >/dev/null 2>&1; then \
-		echo "📱 Detected Cursor - opening new Cursor terminal..."; \
-		osascript -e 'tell application "Cursor" to activate' \
-			-e 'tell application "System Events" to keystroke "`" using {control down, shift down}' \
-			-e 'delay 1' \
-			-e 'tell application "System Events" to keystroke "make tunnel-and-update"' \
-			-e 'tell application "System Events" to key code 36' & \
-	elif command -v code >/dev/null 2>&1 && pgrep -x "Code" >/dev/null 2>&1; then \
-		echo "📱 Detected VS Code - opening system terminal..."; \
-		osascript -e 'tell application "Terminal" to do script "make tunnel-and-update"' & \
-	else \
-		echo "🖥️  Opening system terminal..."; \
-		osascript -e 'tell application "Terminal" to do script "make tunnel-and-update"' & \
-	fi
-	@sleep 3
-	@echo "✅ Starting server now (tunnel will start in new terminal)..."
-	@if [ -f backend/.venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ./.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
-	elif [ -f .venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ../.venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
-	elif [ -f backend/venv/bin/python ]; then \
-		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token ./venv/bin/python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
-	else \
-		echo "❌ Virtual environment not found. Trying system python..."; \
-		cd backend && ENVIRONMENT=dev SHOPIFY_TOKEN=test_token python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000; \
-	fi
+	@$(MAKE) _start-tunnel-in-new-terminal
+	@$(MAKE) start
 
 stop:
 	@echo "🛑 Stopping all processes..."
@@ -422,7 +380,6 @@ install-backend-legacy:
 
 clean: stop
 	@echo "🧹 Cleaning up..."
-	@rm -f ngrok.log
 	@find . -name "*.pyc" -delete
 	@find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 	@find . -name ".pytest_cache" -type d -exec rm -rf {} + 2>/dev/null || true
@@ -668,10 +625,7 @@ _test_backend_internal:
 	@if [ "$(DIR)" = "." ] || [ "$(DIR)" = "backend" ]; then \
 		echo "🔍 Step 1: Backend compilation checks..."; \
 		cd backend && \
-		export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com" && \
-		export SHOPIFY_TOKEN="test_token" && \
 		export ENVIRONMENT="test" && \
-		export SLACK_REFUNDS_BOT_TOKEN="test_slack_token" && \
 		echo "📋 Checking Python syntax..." && \
 		python3 -m py_compile config.py main.py && \
 		echo "📋 Checking module imports..." && \
@@ -700,10 +654,7 @@ _test_backend_internal:
 		echo "📋 Running tests in $(DIR)..."; \
 		if find "$(DIR)" -name "test_*.py" -o -name "*_test.py" -type f | head -1 | grep -q .; then \
 			cd backend && \
-			export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com" && \
-			export SHOPIFY_TOKEN="test_token" && \
 			export ENVIRONMENT="test" && \
-			export SLACK_REFUNDS_BOT_TOKEN="test_slack_token" && \
 			python3 -m pytest "../$(DIR)" -v; \
 		else \
 			echo "⚠️  No Python test files found in $(DIR)"; \

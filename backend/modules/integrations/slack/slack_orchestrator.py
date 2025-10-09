@@ -3,10 +3,8 @@ Main Slack service - Table of Contents.
 Provides a clean interface to all Slack functionality organized by concern.
 """
 
-import sys
-import os
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 # Slack SDK
 from slack_sdk import WebClient
@@ -14,21 +12,15 @@ from slack_sdk.errors import SlackApiError, SlackClientError
 
 # Our systems
 from config import config
-from config.slack import SlackBot, SlackChannel
-from shared.signature_verification import SignatureFormat
 # from models.slack import Slack, RefundType, SlackMessageType
 
-from .client.main import SlackClient
-# from .client.slack_security import SlackSecurity
+from .client import SlackClient, verify_slack_signature
 from .client.mock_client import MockSlackClient
-from .parsers.message_parsers import SlackMessageParsers
-from .builders import (
-    SlackMessageBuilder,
-    # ModernMessageBuilder,
-    # SlackCacheManager,
-    # SlackMetadataBuilder,
-    # SlackOrderHandlers,
-)
+from .builders import SlackMessageBuilders
+from .parsers import SlackMessageParsers
+
+# from modules.products.service.inventory.handle_inventory_update import handle_inventory_update
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,24 +37,23 @@ class SlackOrchestrator:
     - Order handling (workflow coordination)
     """
 
-    def __init__(self, token: Optional[str] = None, default_channel: Optional[str] = None):
+    def __init__(self, default_channel: Optional[str] = None):
         """Initialize the Slack service with all components."""
         
         # Initialize services
         # self.orders_service = OrdersService()
         
         # Get configuration from our new system
-        self.config = config
-        # self.security = SlackSecurity()
+        self.channels = config.Slack.Channels
+        self.bots = config.Slack.Bots
+        self.users = config.Slack.Users
+        self.groups = config.Slack.Groups
         
         # Initialize core components (no token storage in service)
         # SlackClient will be created on-demand with provided tokens
-        self.slack_orchestrator = None  # Will be created per-operation with specific token
-
-        # self.slack_security = SlackSecurity(self.config.SlackBot.get_signing_secret())
 
         # Initialize helper components
-        self.message_builder = self._get_message_builder()
+        self.message_builder = SlackMessageBuilders()
         # self.refunds_utils = SlackRefundsUtils(
         #     self.orders_service, 
         #     self._get_settings(),
@@ -77,9 +68,21 @@ class SlackOrchestrator:
         # self.message_parsers = self._get_message_parsers()
         # self.order_handlers = SlackOrderHandlers(self.orders_service, self, self.message_builder)
 
-    def _get_sport_groups(self) -> dict[str, dict[str, str]]:
+    def groups(self) -> dict[str, dict[str, str]]:
         """Get sport groups configuration."""
-        return self.config.Slack.Groups.all()
+        return self.groups
+
+    def bots(self) -> dict[str, dict[str, str]]:
+        """Get bots configuration."""
+        return self.bots
+
+    def users(self) -> dict[str, dict[str, str]]:
+        """Get users configuration."""
+        return self.users
+
+    def channels(self) -> dict[str, dict[str, str]]:
+        """Get channels configuration."""
+        return self.channels
     
     
 
@@ -87,10 +90,35 @@ class SlackOrchestrator:
     # CONVENIENCE METHODS FOR TESTING
     # ============================================================================
     
-    def verify_slack_signature(self, body: bytes, headers: dict) -> bool:
-        """Convenience method for tests - delegates to shared security"""
-        from shared.security import verify_webhook_signature
-        return verify_webhook_signature(source="slack", body=body, headers=headers)
+    def verify_slack_signature(self, headers: dict, body: bytes, app_id: str) -> bool:
+        return verify_slack_signature(headers, body, app_id, self.bots)
+
+    # def handle_slash_command(self, form_data: Dict[str, Any]) -> Dict[str, Any]:
+    #     command = form_data.get("command", "").strip()
+    #     text = form_data.get("text")
+    #     # text = str(text_field).strip() if text_field else ""
+    #     user = {
+    #         "id": form_data.get("user_id", ""),
+    #         "name": form_data.get("user_name", ""),
+    #     }
+    #     channel = {
+    #         "id": form_data.get("channel_id", ""),
+    #         "name": form_data.get("channel_name", ""),
+    #     }
+    #     # team_id = form_data.get("team_id", "")
+    #     # team_domain = form_data.get("team_domain", "")
+    #     response_url = form_data.get("response_url", "")
+    #     trigger_id = form_data.get("trigger_id", "")
+        
+    #     if command == "/update-inventory":
+    #         print('handling')
+    #         return handle_inventory_update({
+    #             "text": text,
+    #             "user": user,
+    #             "channel": channel,
+    #             "response_url": response_url,
+    #             "trigger_id": trigger_id,
+    #             })
 
     async def handle_slack_interaction(self, payload: Optional[Dict[str, Any]], body: bytes, timestamp: Optional[str], signature: Optional[str]) -> Dict[str, Any]:
         """
@@ -274,6 +302,7 @@ class SlackOrchestrator:
             trigger_id=trigger_id,
             original_channel=original_channel,
             original_mention=original_mention,
+            payload=payload,
         )
 
     async def _route_button_action(self, action_id: str, request_data: Dict[str, Any], 
@@ -281,7 +310,7 @@ class SlackOrchestrator:
                                  requestor_email: str, thread_ts: str, slack_user_id: str, 
                                  slack_user_name: str, current_message_full_text: str, 
                                  trigger_id: Optional[str], original_channel: Optional[str] = None, 
-                                 original_mention: Optional[str] = None) -> Dict[str, Any]:
+                                 original_mention: Optional[str] = None, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Route button actions to appropriate handlers."""
         
         # === STEP 1 HANDLERS: INITIAL DECISION (Cancel Order / Proceed Without Canceling) ===
@@ -347,6 +376,11 @@ class SlackOrchestrator:
                 request_data, action_id, channel_id, thread_ts,
                 slack_user_name, current_message_full_text, trigger_id or ""
             )
+        elif action_id == "select_product":
+            # For select menus, we need to pass the action itself, not the parsed request_data
+            action = payload.get("actions", [{}])[0] if payload else {}
+            from .handlers.handle_product_selection import handle_product_selection
+            return handle_product_selection(action)
         else:
             if not action_id:
                 raise ValueError("Missing action_id in request")
@@ -468,8 +502,8 @@ class SlackOrchestrator:
 
     def _get_message_builder(self):
         """Get message builder instance."""
-        if SlackMessageBuilder:
-            return SlackMessageBuilder(self._get_sport_groups())
+        if self.message_builder:
+            return self.message_builder(self._get_groups())
         return None
 
     # def _get_cache_manager(self):
@@ -479,7 +513,7 @@ class SlackOrchestrator:
 
     def _get_message_parsers(self):
         """Get message parsers instance."""
-        return SlackMessageParsers()
+        return self.message_parsers
 
 
 

@@ -1,15 +1,15 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
 from ..models import FetchOrderRequest
-from modules.integrations.shopify.client import ShopifyClient
+from modules.integrations.shopify import ShopifyOrchestrator
 # from slack_orchestrator import SlackOrchestrator
 # from refunds.app.calculate_refund_due import calculate_refund_due
-from shared.fetch_order_from_shopify import fetch_order_from_shopify
+from shared.fetch_shopify_orders import fetch_order_from_shopify
 
 class OrdersService:
-    def __init__(self, shopify_client: Optional[ShopifyClient] = None):
-        self.shopify_client = shopify_client or ShopifyClient()
+    def __init__(self):
         # self.slack_orchestrator = SlackClient()
+        self.shopify = ShopifyOrchestrator()
 
     def fetch_order_from_shopify(
         self,

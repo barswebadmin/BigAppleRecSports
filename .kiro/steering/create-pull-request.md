@@ -1,0 +1,12 @@
+---
+inclusion: manual
+---
+
+Before creating a pull request, run all tests that would be run by CI checks with `make test .` from project root, summarize failures briefly and suggest to user to fix, create without fixing, or escape
+
+When creating a pull request, give a bullet points describing changes being merged into main:
+- use markdown
+- do not describe just one commits, or each commit individually. summarize all changes from the latest commit on the current branch (unless user specifically asks to start a new branch) vs origin/main.
+- use sections for different groups of changes (refactor/reorganize vs feature vs fix)
+- use bullet points within those sections. be descriptive, but brief.
+- add notes at the end for any TODOs left or future changes/risks to address

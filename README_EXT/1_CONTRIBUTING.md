@@ -352,9 +352,9 @@ make url
 ### Environment Variables
 Create `backend/.env`:
 ```bash
-SHOPIFY_STORE=test-store.myshopify.com
-SHOPIFY_TOKEN=test_token
-SLACK_REFUNDS_BOT_TOKEN=test_slack_token
+SHOPIFY_STORE=your-store.myshopify.com
+SHOPIFY_TOKEN=your_shopify_token_here
+SLACK_REFUNDS_BOT_TOKEN=your_slack_bot_token_here
 ENVIRONMENT=development
 ```
 

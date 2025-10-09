@@ -9,7 +9,7 @@ from config import config
 from modules.integrations.shopify.models import ShopifyResponse
 from modules.products.models import FetchProductRequest
 from .client.shopify_client import ShopifyClient
-from .builders.request_builders import build_order_fetch_request_payload, build_product_fetch_request_payload
+from .builders.request_builders import build_multiple_products_fetch_request_payload, build_order_fetch_request_payload, build_product_fetch_request_payload
 from modules.orders.models import FetchOrderRequest
 
 # Add parent directory to path for imports
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class ShopifyOrchestrator:
     def __init__(self):
-        self._client: ShopifyClient = ShopifyClient(config.Shopify)
+        self._client: ShopifyClient = ShopifyClient()
     
     def fetch_order_details(
         self,
@@ -36,6 +36,20 @@ class ShopifyOrchestrator:
 
         resp = self._client.send_request(payload)
         return resp
+
+    def fetch_product_details(self, request_details: FetchProductRequest) -> ShopifyResponse:
+        """
+        Fetch product details from Shopify
+        """
+        payload = build_product_fetch_request_payload(request_details)
+        return self._client.send_request(payload)
+
+    def fetch_recent_products(self) -> ShopifyResponse:
+        """
+        Fetch recent products from Shopify
+        """
+        payload = build_multiple_products_fetch_request_payload()
+        return self._client.send_request(payload)
 
 
     def _get_mock_response(self, query: Dict[str, Any]) -> Dict[str, Any]:

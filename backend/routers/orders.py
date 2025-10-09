@@ -5,10 +5,10 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 import dateutil.parser
 
-from modules.orders.service.orders_service import OrdersService
+from modules.orders import OrdersService
 from modules.orders.models import FetchOrderRequest
 from modules.integrations.slack.slack_orchestrator import SlackOrchestrator
-from shared.fetch_order_from_shopify import fetch_order_from_shopify
+from shared.fetch_shopify_orders import fetch_order_from_shopify
 from config import config
 
 logger = logging.getLogger(__name__)

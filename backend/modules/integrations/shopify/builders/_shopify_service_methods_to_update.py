@@ -326,12 +326,14 @@ def _make_shopify_rest_request(
     logger.info(f"🚀 REST {method} {endpoint}")
 
     try:
-        # Use explicit SSL certificate bundle for production
-        cert_bundle = (
-            "/etc/ssl/certs/ca-certificates.crt"
-            if os.getenv("ENVIRONMENT") == "production"
-            else True
-        )
+        # Use explicit SSL certificate bundle based on platform
+        import platform
+        if platform.system() == "Darwin":  # macOS
+            cert_bundle = "/opt/homebrew/etc/openssl@3/cert.pem"
+        elif os.getenv("ENVIRONMENT") == "production":
+            cert_bundle = "/etc/ssl/certs/ca-certificates.crt"
+        else:
+            cert_bundle = True
 
         if method.upper() == "GET":
             response = requests.get(

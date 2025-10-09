@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
 from modules.integrations.shopify.builders.shopify_url_builders import build_product_url
-from modules.integrations.slack.builders.message_builder import SlackMessageBuilder
+from modules.integrations.slack.builders.message_builders import SlackMessageBuilders
 from .product_parser import has_zero_inventory, get_slack_group_mention
 from config import config
 from shared.date_utils import format_date_and_time, parse_shopify_datetime

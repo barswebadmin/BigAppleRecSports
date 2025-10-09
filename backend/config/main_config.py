@@ -11,16 +11,29 @@ from .shopify import ShopifyConfig as ShopifyConfig
 logger = logging.getLogger(__name__)
 
 # Always load .env file, but command line environment variables will override
-load_dotenv(find_dotenv('../../.env'), override=False)
+# Try multiple possible .env file locations
+env_paths = [
+    find_dotenv('../../.env'),  # From backend/config/
+    find_dotenv('.env'),        # From project root
+    '.env'                      # Direct path
+]
+for env_path in env_paths:
+    if env_path and os.path.exists(env_path):
+        load_dotenv(env_path, override=False)
+        break
 
-default_env = os.getenv("ENVIRONMENT").lower()
+# Get environment - NO DEFAULT VALUE
+env_value = os.getenv("ENVIRONMENT")
+if not env_value:
+    raise RuntimeError("Missing env: ENVIRONMENT")
+default_env = env_value.lower()
 
 class Config:
     def __init__(self, ENVIRONMENT: str = default_env):
         self.environment = ENVIRONMENT.lower()
         logger.info(f"🌍 MAIN CONFIG Environment: {self.environment}")
-        self.slack_config = SlackConfig(self.environment)
-        self.shopify_config = ShopifyConfig(self.environment)
+        self.slack = SlackConfig(self.environment)
+        self.shopify = ShopifyConfig(self.environment)
 
         # AWS Lambda URLs for scheduling
         self.aws_schedule_product_changes_url = os.getenv(
@@ -51,11 +64,11 @@ class Config:
 
     @property
     def Slack(self):
-        return self.slack_config
+        return self.slack
     
     @property
     def Shopify(self):
-        return self.shopify_config
+        return self.shopify
     
 
     
