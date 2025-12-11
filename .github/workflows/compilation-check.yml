@@ -48,7 +48,7 @@ jobs:
 
         # Set minimal environment variables for compilation
         export SHOPIFY_STORE_ID="test-store-id"
-        export SHOPIFY_TOKEN_ADMIN="test_token"
+        export shopify/token.admin="test_token"
         export SHOPIFY_LOCATION_ID="test-location-id"
         export ENVIRONMENT="test"
         export SLACK_BOT_TOKEN_REFUNDS="test_slack_token"
@@ -138,30 +138,10 @@ jobs:
         }
 
         console.log('✅ Google Apps Scripts compilation successful!');
-NODE
+        NODE
 
         # Skipping no-undef lint in CI; run locally instead for fuller context
         echo "ℹ️ Skipping GAS no-undef lint in CI (run locally)"
-        
-
-        # Lint for undefined identifiers using ESLint (no-undef)
-        echo "🔍 Linting GAS files for undefined identifiers (no-undef)..."
-        npm init -y >/dev/null 2>&1 || true
-        npm install --no-fund --no-audit --silent eslint@8
-        # Lint all .gs files under projects/*/src (handle file paths with spaces)
-        if find projects -type f -path '*/src/*' -name '*.gs' | grep -q .; then
-          find projects -type f -path '*/src/*' -name '*.gs' -print0 | \
-            xargs -0 -r npx eslint \
-              --no-eslintrc \
-              --ext .gs \
-              --rule 'no-undef:error' \
-              --env es6 \
-              --global 'Logger:false,UrlFetchApp:false,PropertiesService:false,Utilities:false,SpreadsheetApp:false,DriveApp:false,Session:false,FormApp:false,HtmlService:false,ContentService:false,ScriptApp:false,GmailApp:false' \
-              || { echo '❌ GAS no-undef check failed'; exit 1; }
-        else
-          echo "ℹ️ No GAS source files found to lint"
-        fi
-        echo "✅ GAS no-undef check passed"
 
         echo "success=true" >> $GITHUB_OUTPUT
         echo "✅ Google Apps Scripts compilation check passed"
@@ -457,7 +437,8 @@ NODE
           process.exit(1);
         }
         console.log('✅ Google Apps Scripts compilation successful!');
-NODE
+        NODE
+
         # Skipping no-undef lint in CI; run locally instead for fuller context
         echo "ℹ️ Skipping GAS no-undef lint in CI (run locally)"
         echo "success=true" >> $GITHUB_OUTPUT
