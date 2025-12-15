@@ -33,30 +33,43 @@ jobs:
                   aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
                   aws-region: ${{ env.AWS_REGION }}
 
-            # - name: Deploy Lambda Layer
-            #   run: |
-            #       echo "Deploying bars-common-utils layer..."
-            #       cd lambda-layers/bars-common-utils
+            - name: Check for Lambda Layer changes
+              id: layer_changes
+              run: |
+                  LAYER_CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- lambda-layers/bars-common-utils/ || echo "")
+                  if [ -n "$LAYER_CHANGED" ]; then
+                    echo "layer_changed=true" >> $GITHUB_OUTPUT
+                    echo "✅ Lambda layer changed, will deploy"
+                  else
+                    echo "layer_changed=false" >> $GITHUB_OUTPUT
+                    echo "⏭️ No lambda layer changes detected, skipping deployment"
+                  fi
 
-            #       # Install layer dependencies
-            #       if [ -f "requirements.txt" ]; then
-            #         pip install -r requirements.txt -t python/
-            #       fi
+            - name: Deploy Lambda Layer
+              if: steps.layer_changes.outputs.layer_changed == 'true'
+              run: |
+                  echo "Deploying bars-common-utils layer..."
+                  cd lambda-layers/bars-common-utils
 
-            #       # Create layer package
-            #       zip -r bars-common-utils.zip python/
+                  # Install layer dependencies
+                  if [ -f "requirements.txt" ]; then
+                    pip install -r requirements.txt -t python/
+                  fi
 
-            #       # Deploy layer
-            #       LAYER_VERSION=$(aws lambda publish-layer-version \
-            #         --layer-name bars-common-utils \
-            #         --description "Common utilities for BARS Lambda functions" \
-            #         --zip-file fileb://bars-common-utils.zip \
-            #         --compatible-runtimes python3.9 \
-            #         --query 'LayerVersionArn' \
-            #         --output text)
+                  # Create layer package
+                  zip -r bars-common-utils.zip python/
 
-            #       echo "LAYER_VERSION=${LAYER_VERSION}" >> $GITHUB_ENV
-            #       echo "✅ Deployed layer: ${LAYER_VERSION}"
+                  # Deploy layer
+                  LAYER_VERSION=$(aws lambda publish-layer-version \
+                    --layer-name bars-common-utils \
+                    --description "Common utilities for BARS Lambda functions" \
+                    --zip-file fileb://bars-common-utils.zip \
+                    --compatible-runtimes python3.9 python3.10 python3.11 \
+                    --query 'LayerVersionArn' \
+                    --output text)
+
+                  echo "LAYER_VERSION=${LAYER_VERSION}" >> $GITHUB_ENV
+                  echo "✅ Deployed layer: ${LAYER_VERSION}"
 
             - name: Determine changed functions
               id: changes

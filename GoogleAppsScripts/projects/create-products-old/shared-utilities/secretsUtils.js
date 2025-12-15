@@ -69,10 +69,7 @@ function identifySecrets() {
   console.log("4. Update your code to use getSecret() function");
 }
 
-function setupSecrets() {
-  console.log("🔐 Setting up secrets in PropertiesService...");
-  
-  const secrets = {
+const secrets = {
   'SHOPIFY_ACCESS_TOKEN': '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',
   'SHOPIFY_STORE': '09fe59-3',
   'SLACK_BOT_TOKEN_REFUNDS': 'xoxb-2602080084-8649458379120-vR5W3EeryK5T4lNeDHA3lNwh',
@@ -80,8 +77,12 @@ function setupSecrets() {
   'SLACK_BOT_TOKEN_PAYMENT': 'xoxb-2602080084-8601708038470-Z0eD6HhHG68MitN5xsfGstu5',
   'SLACK_BOT_TOKEN_GENERAL': 'xoxb-2602080084-8610974674770-K6rtRGsLT6obQfluL1fPpdEs',
   'BACKEND_API_URL': 'https://your-render-backend-url.render.com',
-  'SHEET_ID': '1j_nZjp3zU2cj-3Xgv1uX-velcfr9vmGu7SIpwNbhRPQ'
+  'SHEET_ID': '1j_nZjp3zU2cj-3Xgv1uX-velcfr9vmGu7SIpwNbhRPQ',
+  'LAMBDA_SCHEDULE_CHANGES': 'https://6ltvg34u77der4ywcfk3zwr4fq0tcvvj.lambda-url.us-east-1.on.aws/'
 };
+
+function setupSecrets() {
+  console.log("🔐 Setting up secrets in PropertiesService...");
   
   // Validate that secrets have been updated
   const hasPlaceholders = Object.values(secrets).some(value => 

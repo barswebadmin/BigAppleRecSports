@@ -255,7 +255,13 @@ function createVariantsFromRow(rowObject) {
 
   SpreadsheetApp.getUi().alert("✅ Product and Variants created successfully!");
 
+  // Schedule inventory moves (add all inventory at scheduled dates)
   scheduleInventoryMoves(rowNumber);
-  schedulePriceChanges(rowNumber)
+  
+  // Schedule price changes (update prices at scheduled dates)
+  schedulePriceChanges(rowNumber);
+  
+  // Prompt user to schedule go-live inventory (partial inventory release at first registration)
+  scheduleGoLiveInventoryFromRow(rowNumber);
   
 }

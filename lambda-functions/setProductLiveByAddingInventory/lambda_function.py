@@ -33,7 +33,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         import os
         shopify_location = os.environ.get("SHOPIFY_LOCATION_ID")
         # Token now resolved in bars_common_utils.shopify_utils via SSM; we only need location here
-        print(f"🔑 Configuration check - Location exists: {bool(shopify_location)}")
+        print(f"🔑 Configuration check:")
+        print(f"   SHOPIFY_LOCATION_ID exists: {bool(shopify_location)}")
+        print(f"   SHOPIFY_LOCATION_ID value: {shopify_location}")
+        print(f"   Token will be fetched from SSM: /shopify/token.admin")
+        
         if not shopify_location:
             raise ValueError("SHOPIFY_LOCATION_ID environment variable is missing")
 
@@ -108,6 +112,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             }
         })
 
+    except ValueError as e:
+        # Validation errors (bad input, auth failures, etc.)
+        error_msg = str(e)
+        print(f"❌ Validation Error: {error_msg}")
+        print("📋 Full traceback:", traceback.format_exc())
+        
+        if "authentication failed" in error_msg.lower() or "401" in error_msg:
+            return format_error(401, f"Shopify authentication failed: {error_msg}")
+        else:
+            return format_error(400, f"Invalid request: {error_msg}")
+    
     except Exception as e:
-        print("❌ Exception occurred:", traceback.format_exc())
-        return format_error(500, str(e))
+        # Unexpected errors
+        error_msg = str(e)
+        print(f"❌ Unexpected Exception: {type(e).__name__}: {error_msg}")
+        print("📋 Full traceback:", traceback.format_exc())
+        return format_error(500, f"Internal error: {error_msg}")

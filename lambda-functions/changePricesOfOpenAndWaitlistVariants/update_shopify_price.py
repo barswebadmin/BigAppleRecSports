@@ -1,6 +1,6 @@
 import json
 
-from fetch_shopify import fetch_shopify
+from bars_common_utils.shopify_utils import fetch_shopify
 
 def update_shopify_price(product_gid, open_variant_gid, waitlist_variant_gid, updated_price):
 
@@ -20,15 +20,16 @@ def update_shopify_price(product_gid, open_variant_gid, waitlist_variant_gid, up
     )
 
     try:
-        response_data = fetch_shopify(query)
+        # fetch_shopify returns the "data" portion of the response
+        data = fetch_shopify(query)
 
-        print("✅ Shopify response:", json.dumps(response_data, indent=2))
+        print("✅ Shopify response:", json.dumps(data, indent=2))
 
-        user_errors = response_data.get("data", {}).get("productVariantsBulkUpdate", {}).get("userErrors", [])
+        user_errors = data.get("productVariantsBulkUpdate", {}).get("userErrors", [])
         if user_errors:
             raise Exception(f"Shopify User Errors: {user_errors}")
 
-        return response_data["productVariantsBulkUpdate"]["productVariants"]
+        return data["productVariantsBulkUpdate"]["productVariants"]
 
     
     except Exception as e:

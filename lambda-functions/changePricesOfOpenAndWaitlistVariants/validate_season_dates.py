@@ -1,5 +1,5 @@
 import json
-from fetch_shopify import fetch_shopify
+from bars_common_utils.shopify_utils import fetch_shopify
 from date_utils import format_date_only, extract_season_dates
 
 
