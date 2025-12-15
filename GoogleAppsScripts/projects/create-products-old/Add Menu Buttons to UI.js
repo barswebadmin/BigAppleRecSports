@@ -16,6 +16,8 @@ function onOpen() {
     .addItem("💰 Update Scheduled Price Adjustments", "schedulePriceChanges")
     .addItem("🔧 Create Manual Inventory Moves", "createManualScheduledInventoryMoves")
     .addSeparator()
+    .addItem("🚀 Schedule/Update Product Go-Live", "scheduleGoLiveInventoryFromRow")
+    .addSeparator()
     .addItem("📘 View Instructions", "showInstructions")
     .addToUi();
     

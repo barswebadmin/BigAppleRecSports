@@ -95,7 +95,7 @@ function createManualScheduledInventoryMoves() {
   const scheduleName = `manual-move-${productIdDigitsOnly}-${sportSlug}-${truncatedSource}-to-${truncatedDest}`;
 
   const requestPayload = {
-    action: "create-scheduled-inventory-movements",
+    actionType: "create-scheduled-inventory-movements",
     scheduleName,
     groupName,
     productUrl,

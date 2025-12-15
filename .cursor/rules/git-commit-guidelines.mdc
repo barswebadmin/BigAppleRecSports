@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+description: Guidelines for git commits and commit messages
+---
+
+## **Pre-Commit Branch Check**
+
+**Before making any commits**, the assistant must:
+
+1. **Check the current branch** using `git branch --show-current`
+2. **If on `main` branch:**
+   - **STOP** and ask the user to confirm:
+     - "⚠️ You are currently on the `main` branch. Do you want to commit directly to `main`, or would you like to create a new branch first?"
+   - **DO NOT proceed with commits** until the user explicitly confirms their choice
+3. **If on a feature branch:**
+   - Proceed with commits normally
+
+## **Commit Message Guidelines**
+
+### **Format:**
+- **One-line header**: Simple, descriptive summary
+- **Body**: Group changes by major conceptual themes
+- **Focus**: What functionality changed, not implementation details
+
+### **What to Include:**
+- High-level description of functionality added/changed
+- Purpose and impact of the change at a functional level
+- Group changes by major conceptual themes
+
+### **What NOT to Include:**
+- ❌ Function-by-function breakdowns
+- ❌ File size reductions or line count changes
+- ❌ Mentions of adding or updating tests
+- ❌ Implementation minutiae
+- ❌ Development planning files (unless explicitly requested)
+
+### **Examples**
+
+**Good:**
+- "Add generic list filtering utilities for nested field matching"
+- "Improve sub account lookup and selection experience"
+
+**Avoid:**
+- "Refactor sub_account_lookup_helpers.py to reduce file size"
+- "Add tests for list filtering functionality"

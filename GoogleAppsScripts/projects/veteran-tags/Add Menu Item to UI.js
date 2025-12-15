@@ -2,12 +2,14 @@ const ui = SpreadsheetApp.getUi();
 
 function onOpen() {
   ui.createMenu("🎖️ BARS Veteran Tags")
-    .addItem("🏷️ Add Veteran Tags to Customers", "addVeteranTagToCustomerEmails")
+    .addItem("➕ Add Veteran Tags to Customers", "addVeteranTagToCustomerEmails")
+    .addItem("➖ Remove Veteran Tags from Customers", "removeVeteranTagFromCustomerEmails")
+    .addSeparator()
     .addItem("📧 Send Veteran Eligibility Email", "sendVeteranEmailFromMenu")
     .addSeparator()
     .addItem("📘 View Instructions", "showInstructions")
     .addToUi();
-
+    
   // Show instructions on first open
   showInstructions();
 }
