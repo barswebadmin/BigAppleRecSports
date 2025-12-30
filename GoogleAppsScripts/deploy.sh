@@ -7,6 +7,7 @@ set -e
 
 PROJECT_NAME=$(basename "$(pwd)")
 DEPLOY_TEMP="deploy_temp"
+ORIGINAL_DIR="$(pwd)"
 
 # Colors for output
 RED='\033[0;31m'
@@ -33,6 +34,9 @@ log_error() {
 
 # Cleanup function - always runs
 cleanup() {
+    # Always return to original directory first
+    cd "$ORIGINAL_DIR" 2>/dev/null || true
+    
     if [ -d "$DEPLOY_TEMP" ]; then
         log_info "Cleaning up temporary deployment directory..."
         rm -rf "$DEPLOY_TEMP"
@@ -62,16 +66,26 @@ deploy() {
     log_info "Creating temporary deployment directory..."
     mkdir "$DEPLOY_TEMP"
 
-    # Copy appsscript.json if it exists
-    if [ -f "appsscript.json" ]; then
+    # Copy appsscript.json from src/ if it exists
+    if [ -f "src/appsscript.json" ]; then
+        cp "src/appsscript.json" "$DEPLOY_TEMP/"
+        log_info "Copied appsscript.json from src/"
+    elif [ -f "appsscript.json" ]; then
         cp "appsscript.json" "$DEPLOY_TEMP/"
-        log_info "Copied appsscript.json"
+        log_info "Copied appsscript.json from root"
     fi
 
-    # Copy .clasp.json if it exists
+    # Copy and modify .clasp.json if it exists
     if [ -f ".clasp.json" ]; then
-        cp ".clasp.json" "$DEPLOY_TEMP/"
-        log_info "Copied .clasp.json"
+        # Copy .clasp.json and update rootDir to "." since we're flattening to deploy_temp root
+        if command -v jq >/dev/null 2>&1; then
+            jq '.rootDir = "."' ".clasp.json" > "$DEPLOY_TEMP/.clasp.json"
+            log_info "Copied and updated .clasp.json (rootDir set to '.')"
+        else
+            # Fallback if jq not available - use sed
+            sed 's/"rootDir"[[:space:]]*:[[:space:]]*"[^"]*"/"rootDir": "."/' ".clasp.json" > "$DEPLOY_TEMP/.clasp.json"
+            log_info "Copied and updated .clasp.json (rootDir set to '.' via sed)"
+        fi
     fi
 
     # Find and copy all .js/.gs files from src/ subdirectories with flattened names
@@ -113,25 +127,81 @@ deploy() {
 
     # Change to deploy_temp directory for clasp operations
     cd "$DEPLOY_TEMP"
+    
+    # Add a unique version marker with timestamp + random number to force clasp to detect changes
+    if [ -f "config/constants.js" ]; then
+        UNIQUE_ID="$(date -u +"%Y%m%d%H%M%S")_${RANDOM}"
+        echo "" >> "config/constants.js"
+        echo "// Deploy_ID: ${UNIQUE_ID}" >> "config/constants.js"
+        log_info "Added unique deployment marker: ${UNIQUE_ID}"
+    fi
 
-    # Push to Google Apps Script
+    # Push to Google Apps Script and capture output
     log_info "Pushing code to Google Apps Script..."
 
-    if command -v clasp >/dev/null 2>&1; then
-        # Use printf to auto-answer any prompts with 'y' and capture output
-        if printf "y\n" | clasp push --force; then
-            log_success "Code pushed to Google Apps Script successfully"
-        else
-            log_error "Failed to push code to Google Apps Script"
-            exit 1
-        fi
-    else
+    if ! command -v clasp >/dev/null 2>&1; then
         log_error "clasp command not found. Please install clasp CLI."
         exit 1
     fi
 
+    # Capture clasp push output
+    log_info "Running: clasp push --force"
+    push_output=$(printf "y\n" | clasp push --force 2>&1)
+    push_exit_code=$?
+    log_info "Push exit code: $push_exit_code"
+    log_info "Push output: $push_output"
+
+    # Check if clasp reported "already up to date"
+    if echo "$push_output" | grep -q "already up to date"; then
+        log_warning "clasp reports 'Script is already up to date' - clearing cache and retrying..."
+        
+        # Clear clasp cache files
+        if [ -f ".clasprc.json" ]; then
+            rm -f ".clasprc.json"
+            log_info "Cleared local .clasprc.json cache"
+        fi
+        
+        if [ -f "$HOME/.clasprc.json" ]; then
+            rm -f "$HOME/.clasprc.json"
+            log_info "Cleared global .clasprc.json cache"
+        fi
+        
+        # Add another unique marker to ensure it's different
+        if [ -f "config/constants.js" ]; then
+            RETRY_ID="$(date -u +"%Y%m%d%H%M%S")_RETRY_${RANDOM}"
+            echo "// Retry_Deploy_ID: ${RETRY_ID}" >> "config/constants.js"
+            log_info "Added retry deployment marker: ${RETRY_ID}"
+        fi
+        
+        # Retry the push
+        log_info "Retrying push..."
+        log_info "Running: clasp push --force (retry)"
+        push_output=$(printf "y\n" | clasp push --force 2>&1)
+        push_exit_code=$?
+        log_info "Retry exit code: $push_exit_code"
+        log_info "Retry output: $push_output"
+        
+        # Check again if still "already up to date"
+        if echo "$push_output" | grep -q "already up to date"; then
+            log_error "Push still reports 'already up to date' after cache clear and retry!"
+            log_error "This indicates a deeper clasp issue."
+            log_error "Manual intervention required:"
+            log_info "  cd $(pwd)"
+            log_info "  clasp status"
+            log_info "  clasp push --force"
+            exit 1
+        fi
+    fi
+
+    if [ $push_exit_code -ne 0 ]; then
+        log_error "Failed to push code to Google Apps Script (exit code: $push_exit_code)"
+        exit 1
+    fi
+
+    log_success "Code pushed to Google Apps Script successfully!"
+
     # Return to original directory
-    cd ..
+    cd "$ORIGINAL_DIR"
 
     log_success "Deployment completed successfully!"
     log_warning "Code pushed to Google Apps Script but NOT deployed to web app"
