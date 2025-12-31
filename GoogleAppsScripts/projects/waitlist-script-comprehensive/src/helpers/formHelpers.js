@@ -1,13 +1,15 @@
+
+import { NO_WAITLISTS_SENTINEL, QUESTION_TITLE } from '../config/constants';
+
 /**
  * Google Forms helper functions
  */
-
 
 /**
  * Get the form and the target form item
  * @returns {{form: Form, formItem: FormItem}}
  */
-const getFormAndItem = () => {
+export const getFormAndItem = () => {
   const form = FormApp.getActiveForm();
   if (!form) throw new Error('No active form found.');
 
@@ -26,7 +28,7 @@ const getFormAndItem = () => {
  * @param {FormItem} formItem - The form item (Multiple Choice or List)
  * @returns {Choice[]} Array of current choices
  */
-const getCurrentChoices = (formItem) => {
+export const getCurrentChoices = (formItem) => {
   // Google Forms supports two different item types for selectable options:
   // Multiple Choice (radio buttons) and List (dropdown). Each has different APIs for managing choices.
   const mc = (formItem.getType() === FormApp.ItemType.MULTIPLE_CHOICE) ? formItem.asMultipleChoiceItem() : null;
@@ -41,7 +43,7 @@ const getCurrentChoices = (formItem) => {
  * @param {Choice[]} choices - Current form choices
  * @returns {Choice[]} Cleaned choices
  */
-const removeSearchedSentinelIfNeeded = (choices) => {
+export const removeSearchedSentinelIfNeeded = (choices) => {
   if (choices.length === 1 && choices[0].getValue() === NO_WAITLISTS_SENTINEL) {
     return [];
   }

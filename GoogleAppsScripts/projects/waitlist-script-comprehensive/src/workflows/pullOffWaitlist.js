@@ -1,8 +1,14 @@
+import { sendWaitlistProcessedEmailToPlayer } from '../helpers/emailHelpers';
+import { constructProductHandle, getCurrentSeasonAndYearFromSpreadsheetTitle } from '../helpers/productHandleHelpers';
+import { capitalize, normalizePhone } from '../shared-utilities/formatters';
+import { createShopifyCustomer, fetchShopifyCustomerByEmail, updateCustomer } from '../shared-utilities/ShopifyUtils';
+
 /**
  * Pull Player Off Waitlist Workflow
  * Admin workflow to tag customer in Shopify and optionally email them
  */
 
+// biome-ignore lint/correctness/noUnusedVariables: GAS runtime menu callback
 function pullOffWaitlist() {
   const ui = SpreadsheetApp.getUi();
   
@@ -19,7 +25,7 @@ function pullOffWaitlist() {
 
   const rowNumber = parseInt(rowNumberResponse.getResponseText().trim(), 10);
   
-  if (!rowNumber || isNaN(rowNumber) || rowNumber < 2) {
+  if (!rowNumber || Number.isNaN(rowNumber) || rowNumber < 2) {
     ui.alert('❌ Invalid row number. Please enter a number greater than 1.');
     Logger.log("❌ Invalid row number entered");
     return;
@@ -54,15 +60,10 @@ function pullOffWaitlist() {
   }
 
   const { season, year } = getCurrentSeasonAndYearFromSpreadsheetTitle();
+  const spreadsheetName = SpreadsheetApp.getActiveSpreadsheet().getName();
 
-  const [sport, day, rawDivision] =
-    ["Dodgeball - Tuesday Advanced - Open Division", "Dodgeball - Tuesday Social - Open Division"].includes(rawLeague)
-      ? ["Dodgeball", "Tuesday", "Open Division"]
-      : rawLeague === 'Pickleball - July 13th City Pickle Round Robin'
-        ? ['Pickleball', 'Sunday', 'Round Robin']
-        : rawLeague.split(' - ');
 
-  const productHandle = getProductHandleOrPromptFallback(year, season, sport, day, rawDivision);
+  const productHandle = constructProductHandle(rawLeague, spreadsheetName);
   const waitlistTagToAdd = `${productHandle}-waitlist`;
 
   Logger.log(`🏷️ Waitlist tag to add: ${waitlistTagToAdd}`);
@@ -125,7 +126,7 @@ function pullOffWaitlist() {
 
   if ([ui.Button.YES, ui.Button.NO].includes(isMultiplePlayersAddedResponse)) {
     const isMultiplePlayersAdded = isMultiplePlayersAddedResponse === ui.Button.YES;
-    sendEmailToPlayer(email, firstName, isMultiplePlayersAdded, rawLeague, capitalize(season), year);
+    sendWaitlistProcessedEmailToPlayer(email, firstName, isMultiplePlayersAdded, rawLeague, capitalize(season), year);
     
     ui.alert('✅ Complete!', `${email} has been tagged and emailed.`, ui.ButtonSet.OK);
   } else {

@@ -218,7 +218,7 @@ function getWaitlistSpot(email, league) {
       }
       
       // Skip if row is marked as "Processed", "Canceled", or "Done"
-      if (rowNotes.includes('process') || rowNotes.includes('cancel') || rowNotes.includes('done')) {
+      if (rowNotes && rowNotes.trim().length > 0) {
         Logger.log(`⏭️ Skipping row ${i + 2} - notes contain: ${rowNotes}`);
         continue;
       }

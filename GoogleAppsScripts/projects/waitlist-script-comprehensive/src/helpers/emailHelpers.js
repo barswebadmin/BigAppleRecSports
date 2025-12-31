@@ -1,3 +1,11 @@
+/**
+ * Email Helper Functions
+ * Sending emails to players and admins
+ */
+
+import { BARS_LOGO_URL, DEBUG_EMAIL, WAITLIST_WEB_APP_URL } from '../config/constants';
+import { capitalize } from '../shared-utilities/formatters';
+import { getLeadershipEmailForLeague, getLeagueInfo } from './utils';
 
 const emailFooterWithLinks = `
 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
@@ -9,10 +17,86 @@ const emailFooterWithLinks = `
       </div>
       `
 
+
 /**
- * Email Helper Functions
- * Sending emails to players and admins
+ * Send waitlist confirmation email with interactive position checker
+ * @param {string} email - Customer email
+ * @param {string} league - League name
+ * @param {number} waitlistSpot - Position on waitlist
+ * @param {string} firstName - Customer's first name (optional, defaults to email prefix)
+ * @returns {boolean} - Success
  */
+export function sendWaitlistConfirmationEmail(email, league, waitlistSpot, firstName) {
+  try {
+    Logger.log(`📧 === SENDING WAITLIST CONFIRMATION EMAIL ===`);
+    Logger.log(`📧 Email: ${email} (type: ${typeof email})`);
+    Logger.log(`📊 League: ${league} (type: ${typeof league})`);
+    Logger.log(`📊 Waitlist Spot: ${waitlistSpot} (type: ${typeof waitlistSpot})`);
+    Logger.log(`👤 First Name: ${firstName} (type: ${typeof firstName})`);
+    
+    // Use provided first name or fallback to email prefix
+    const nameToUse = firstName || email.split('@')[0];
+    const capitalizedFirstName = capitalize(nameToUse);
+    
+    const encodedEmail = encodeURIComponent(email);
+    const encodedLeague = encodeURIComponent(league);
+    const baseUrl = WAITLIST_WEB_APP_URL;
+    Logger.log(`📍 Using web app URL: ${baseUrl}`);
+    
+    const spotCheckUrl = `${baseUrl}?email=${encodedEmail}&league=${encodedLeague}`;
+    
+    const barsLogoBlob = UrlFetchApp
+      .fetch(BARS_LOGO_URL)
+      .getBlob()
+      .setName("barsLogo");
+    
+    const replyToEmail = getLeadershipEmailForLeague(league);
+    
+    const subject = `🏳️‍🌈 Your Waitlist Spot for Big Apple ${league}`;
+    
+    const htmlBody = `
+      <p>Hi ${capitalizedFirstName},</p>
+      <p>You have successfully joined the waitlist for <strong>${league}</strong></p>
+      <h3>You are currently <strong><u>#${waitlistSpot}</u></strong> on the waitlist.</h3>
+      <p>We'll reach out if a spot opens up!</p>
+      <p></p>
+      <p>*Please note: The provided waitlist position may not be 100% accurate, depending on unavoidable factors like concurrent submission times (when multiple people join the waitlist very close to one another). We apologize if the number is not exactly as expected, but we promise it is <i>very close</i>.</p>
+
+      <div style="background-color: #e8f5e8; border: 2px solid #4CAF50; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center;">
+        <h3 style="margin: 0 0 15px 0; color: #2e7d32;">🔍 Check Your Waitlist Position</h3>
+        <p style="margin: 15px 0; color: #333;">View your position for <strong>${league}</strong> and switch between all your leagues:</p>
+        <a href="${spotCheckUrl}" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 10px 0;">Check Your Current Waitlist Position</a>
+      </div>
+
+      <div style="background-color: #ffebee; border: 2px solid #f44336; border-radius: 8px; padding: 15px; margin: 20px 0;">
+        <p style="margin: 0; color: #d32f2f; font-weight: bold;">⚠️ <strong>Important Note for Safari Users:</strong></p>
+        <p style="margin: 10px 0 0 0; color: #c62828; font-size: 14px;">
+          This waitlist checker does not work in Safari due to browser restrictions.
+          Please use <strong>Chrome, Firefox, or Edge</strong> for the best experience.
+        </p>
+      </div>
+
+      ${emailFooterWithLinks}
+    `;
+    
+    MailApp.sendEmail({
+      to: email,
+      replyTo: replyToEmail,
+      subject: subject,
+      htmlBody: htmlBody,
+      inlineImages: { barsLogo: barsLogoBlob }
+    });
+    
+    Logger.log("✅ Waitlist confirmation email sent successfully");
+    return true;
+    
+  } catch (error) {
+    Logger.log(`💥 Error sending waitlist confirmation email: ${error.message}`);
+    return false;
+  }
+}
+
+
 
 /**
  * Send email to player pulled off waitlist
@@ -23,7 +107,7 @@ const emailFooterWithLinks = `
  * @param {string} season - Season
  * @param {string} year - Year
  */
-function sendEmailToPlayer(email, firstName, isMultiplePlayersAdded, league, season, year) {
+export function sendWaitlistProcessedEmailToPlayer(email, firstName, isMultiplePlayersAdded, league, season, year) {
   Logger.log("📧 Sending email to player...");
   
   const { leadershipEmail, barsProductUrl } = getLeagueInfo(league, season, year);
@@ -82,132 +166,75 @@ function sendEmailToPlayer(email, firstName, isMultiplePlayersAdded, league, sea
   }
 }
 
+
 /**
- * Send waitlist confirmation email with interactive position checker
- * @param {string} email - Customer email
+ * Send validation error email to admin when product validation fails
  * @param {string} league - League name
- * @param {number} waitlistSpot - Position on waitlist
- * @param {string} firstName - Customer's first name (optional, defaults to email prefix)
- * @returns {boolean} - Success
+ * @param {string} userEmail - User's email address
+ * @param {string} reason - Validation failure reason
+ * @param {string} productHandle - Constructed product handle
+ * @returns {boolean} - True if email sent successfully
  */
-function sendWaitlistConfirmationEmail(email, league, waitlistSpot, firstName) {
+export function sendValidationErrorEmailToAdmin(league, userEmail, reason, productHandle) {
   try {
-    Logger.log(`📧 === SENDING WAITLIST CONFIRMATION EMAIL ===`);
-    Logger.log(`📧 Email: ${email} (type: ${typeof email})`);
-    Logger.log(`📊 League: ${league} (type: ${typeof league})`);
-    Logger.log(`📊 Waitlist Spot: ${waitlistSpot} (type: ${typeof waitlistSpot})`);
-    Logger.log(`👤 First Name: ${firstName} (type: ${typeof firstName})`);
+    Logger.log("📧 === SENDING ADMIN VALIDATION ERROR EMAIL ===");
     
-    // Use provided first name or fallback to email prefix
-    const nameToUse = firstName || email.split('@')[0];
-    const capitalizedFirstName = capitalize(nameToUse);
-    
-    const encodedEmail = encodeURIComponent(email);
-    const encodedLeague = encodeURIComponent(league);
-    const baseUrl = WAITLIST_WEB_APP_URL;
-    Logger.log(`📍 Using web app URL: ${baseUrl}`);
-    
-    const spotCheckUrl = `${baseUrl}?email=${encodedEmail}&league=${encodedLeague}`;
-    
-    const barsLogoBlob = UrlFetchApp
-      .fetch(BARS_LOGO_URL)
-      .getBlob()
-      .setName("barsLogo");
-    
-    const sportEmailAlias = getSportEmailAlias(league);
-    const replyToEmail = `${sportEmailAlias}@bigapplerecsports.com`;
-    
-    const subject = `🏳️‍🌈 Your Waitlist Spot for Big Apple ${league}`;
-    
+    const errorIcon = reason.includes("No product found") ? "🚫" : "📦";
+    const title = reason.includes("No product found") ? "Product Not Found" : "Inventory Available";
+    const subject = `${errorIcon} Waitlist Validation Error: ${title}`;
+
     const htmlBody = `
-      <p>Hi ${capitalizedFirstName},</p>
-      <p>You have successfully joined the waitlist for <strong>${league}</strong></p>
-      <p>You are currently <strong>#${waitlistSpot}*</strong> on the waitlist.</p>
-      <p>We'll reach out if a spot opens up!</p>
-      <p></p>
-      <p>*Please Note: This spot is <i>very close</i> to being 100% accurate, but may differ slightly depending on submission times (especially when multiple people join the waitlist very close to each other). We apologize if the number is not exactly as expected, but we promise it is <i>very close</i>.</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px;">
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h2 style="color: #dc3545; margin: 0;">${errorIcon} Waitlist Validation Error</h2>
+        </div>
 
-      <div style="background-color: #e8f5e8; border: 2px solid #4CAF50; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center;">
-        <h3 style="margin: 0 0 15px 0; color: #2e7d32;">🔍 Check Your Waitlist Position</h3>
-        <p style="margin: 15px 0; color: #333;">View your position for <strong>${league}</strong> and switch between all your leagues:</p>
-        <a href="${spotCheckUrl}" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 10px 0;">Check Your Waitlist Position (#${waitlistSpot})</a>
+        <div style="background: white; padding: 20px; border: 1px solid #dee2e6; border-radius: 8px;">
+          <h3 style="color: #495057; margin-top: 0;">Error Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">Error Type:</td>
+              <td style="padding: 8px; border-bottom: 1px solid #dee2e6;">${title}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">League:</td>
+              <td style="padding: 8px; border-bottom: 1px solid #dee2e6;">${league}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">User Email:</td>
+              <td style="padding: 8px; border-bottom: 1px solid #dee2e6;">${userEmail}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">Product Handle:</td>
+              <td style="padding: 8px; border-bottom: 1px solid #dee2e6;"><code>${productHandle}</code></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; font-weight: bold;">Timestamp:</td>
+              <td style="padding: 8px;">${new Date().toLocaleString()}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 20px;">
+          <h4 style="margin: 0 0 10px 0;">Next Steps:</h4>
+          <ul style="margin: 0; padding-left: 20px;">
+            <li>User has NOT been added to the waitlist</li>
+            <li>Row has been marked as "Canceled" in the spreadsheet</li>
+          </ul>
+        </div>
       </div>
-
-      <div style="background-color: #ffebee; border: 2px solid #f44336; border-radius: 8px; padding: 15px; margin: 20px 0;">
-        <p style="margin: 0; color: #d32f2f; font-weight: bold;">⚠️ <strong>Important Note for Safari Users:</strong></p>
-        <p style="margin: 10px 0 0 0; color: #c62828; font-size: 14px;">
-          This waitlist checker does not work in Safari due to browser restrictions.
-          Please use <strong>Chrome, Firefox, or Edge</strong> for the best experience.
-        </p>
-      </div>
-
-      ${emailFooterWithLinks}
     `;
-    
+
     MailApp.sendEmail({
-      to: email,
-      replyTo: replyToEmail,
+      to: DEBUG_EMAIL,
       subject: subject,
-      htmlBody: htmlBody,
-      inlineImages: { barsLogo: barsLogoBlob }
+      htmlBody: htmlBody
     });
-    
-    Logger.log("✅ Waitlist confirmation email sent successfully");
+
+    Logger.log("✅ Admin validation error email sent successfully");
     return true;
-    
   } catch (error) {
-    Logger.log(`💥 Error sending waitlist confirmation email: ${error.message}`);
+    Logger.log(`💥 Error sending admin validation email: ${error.message}`);
     return false;
   }
-}
-
-/**
- * Get sport-specific email alias for a league
- * @param {string} league - League name (e.g., "Kickball - Sunday - Open Division")
- * @returns {string} - Email alias (e.g., "kickball.sunday")
- */
-function getSportEmailAlias(league) {
-  if (!league) {
-    Logger.log("⚠️ getSportEmailAlias called with undefined/null league");
-    return 'executive-board';
-  }
-  
-  const lower = league.toLowerCase();
-  
-  if (lower.includes('kickball')) {
-    if (lower.includes('sunday')) return 'kickball.sunday';
-    if (lower.includes('monday')) return 'kickball.monday';
-    if (lower.includes('tuesday')) return 'kickball.tuesday';
-    if (lower.includes('wednesday')) return 'kickball.wednesday';
-    if (lower.includes('thursday') || lower.includes('wtnb')) return 'kickball.wtnb';
-    if (lower.includes('saturday')) {
-      return lower.includes('open') ? 'kickball.saturday.open' : 'kickball.wtnb';
-    }
-    return 'kickball';
-  }
-  
-  if (lower.includes('dodgeball')) {
-    if (lower.includes('sunday') && lower.includes('wtnb')) return 'dodgeball.wtnb.draft';
-    if (lower.includes('sunday')) return 'dodgeball.draft.smallball';
-    if (lower.includes('monday')) return 'dodgeball.bigball';
-    if (lower.includes('tuesday')) return 'dodgeball.social.smallball';
-    if (lower.includes('wednesday') && lower.includes('wtnb')) return 'dodgeball.wtnb.social';
-    if (lower.includes('thursday')) return 'dodgeball.foamball';
-    return 'dodgeball';
-  }
-  
-  if (lower.includes('bowling')) {
-    if (lower.includes('sunday')) return 'bowling.sunday';
-    if (lower.includes('monday')) return 'bowling.monday';
-    return 'bowling';
-  }
-  
-  if (lower.includes('pickleball')) {
-    if (lower.includes('sunday') && lower.includes('open')) return 'pickleball.advanced';
-    if (lower.includes('sunday') && lower.includes('wtnb')) return 'pickleball.wtnb';
-    if (lower.includes('tuesday')) return 'pickleball.social';
-    return 'pickleball';
-  }
-  
-  return 'executive-board';
 }

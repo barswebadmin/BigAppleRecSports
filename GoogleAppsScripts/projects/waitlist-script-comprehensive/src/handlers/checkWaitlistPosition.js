@@ -1,9 +1,16 @@
+import { DEBUG_EMAIL } from '../config/constants';
+import { createErrorResponse, createSuccessResponse } from '../core/doPost';
+import { sendWaitlistConfirmationEmail } from '../helpers/emailHelpers';
+import { extractProductHandleFromUrl, extractProductIdFromUrl } from '../helpers/productHandleHelpers';
+import { calculateWaitlistPosition } from '../helpers/waitlistCalculation';
+import { validateProductAndInventory, validateProductAndInventoryById } from '../shared-utilities/ShopifyUtils';
+
 /**
  * Handle POST request to check waitlist position
  * Called by doPost router when email + league + productUrl are provided
  */
 
-function handleCheckWaitlistPosition(payload) {
+export function handleCheckWaitlistPosition(payload) {
   const debugInfo = [];
   
   try {
@@ -79,21 +86,21 @@ function handleCheckWaitlistPosition(payload) {
       // Product is sold out, check waitlist spot
       debugInfo.push("✅ Product is sold out, checking waitlist spot...");
       
-      const waitlistResult = getWaitlistSpot(email, league);
+      const waitlistResult = calculateWaitlistPosition(email, league);
       debugInfo.push(`📊 Waitlist result: ${JSON.stringify(waitlistResult)}`);
       
       if (waitlistResult.found) {
         // Send waitlist confirmation email to the user
         debugInfo.push("📧 Sending waitlist confirmation email to user...");
-        const emailSent = sendWaitlistConfirmationEmail(email, league, waitlistResult.spot);
+        const emailSent = sendWaitlistConfirmationEmail(email, league, waitlistResult.position);
         debugInfo.push(`📧 Email sent: ${emailSent}`);
         
         const response = {
           success: true,
           productSoldOut: true,
-          waitlistSpot: waitlistResult.spot,
+          waitlistSpot: waitlistResult.position,
           emailSent: emailSent,
-          message: `You are #${waitlistResult.spot} on the waitlist for ${league}. Confirmation email sent to ${email}.`
+          message: `You are #${waitlistResult.position} on the waitlist for ${league}. Confirmation email sent to ${email}.`
         };
         
         debugInfo.push("✅ Returning successful waitlist response");
@@ -101,7 +108,7 @@ function handleCheckWaitlistPosition(payload) {
         MailApp.sendEmail({
           to: DEBUG_EMAIL,
           subject: "🔍 Check Waitlist Position - Success",
-          body: debugInfo.join('\n') + '\n\nResponse: ' + JSON.stringify(response, null, 2)
+          body: `${debugInfo.join('\n')}\n\nResponse: ${JSON.stringify(response, null, 2)}`
         });
         
         return createSuccessResponse(response);
@@ -141,7 +148,7 @@ function handleCheckWaitlistPosition(payload) {
       MailApp.sendEmail({
         to: DEBUG_EMAIL,
         subject: "🔍 Check Waitlist Position - Product Not Sold Out",
-        body: debugInfo.join('\n') + '\n\nResponse: ' + JSON.stringify(response, null, 2)
+        body: `${debugInfo.join('\n')}\n\nResponse: ${JSON.stringify(response, null, 2)}`
       });
       
       return createSuccessResponse(response);
@@ -164,88 +171,3 @@ function handleCheckWaitlistPosition(payload) {
     });
   }
 }
-
-/**
- * Get waitlist spot for email + league combination
- * Searches the active spreadsheet for the matching row
- */
-function getWaitlistSpot(email, league) {
-  try {
-    Logger.log(`🔍 Getting waitlist spot for email: ${email}, league: ${league}`);
-    
-    const sheet = getSheet();
-    const dataRange = sheet.getDataRange();
-    const values = dataRange.getValues();
-    const backgrounds = dataRange.getBackgrounds();
-    const headers = values[0];
-    const dataRows = values.slice(1);
-    const backgroundRows = backgrounds.slice(1);
-    
-    Logger.log(`📊 Found ${dataRows.length} total rows`);
-    
-    // Find column indices
-    const emailCol = headers.findIndex(h => h.toLowerCase().includes("email address"));
-    const leagueCol = headers.findIndex(h => h.toLowerCase().includes("please select the league you want to sign up for"));
-    const notesCol = headers.findIndex(h => h.toLowerCase().includes("notes"));
-    
-    if (emailCol === -1 || leagueCol === -1) {
-      Logger.log(`❌ Required columns not found. Email col: ${emailCol}, League col: ${leagueCol}`);
-      return { found: false };
-    }
-    
-    Logger.log(`📍 Column indices - Email: ${emailCol}, League: ${leagueCol}, Notes: ${notesCol}`);
-    
-    // Find matching email + league
-    let position = 0;
-    let foundRow = null;
-    
-    for (let i = 0; i < dataRows.length; i++) {
-      const row = dataRows[i];
-      const rowEmail = (row[emailCol] || '').toString().trim().toLowerCase();
-      const rowLeague = (row[leagueCol] || '').toString().trim();
-      const rowNotes = notesCol !== -1 ? (row[notesCol] || '').toString().trim().toLowerCase() : '';
-      const rowBackgrounds = backgroundRows[i];
-      
-      // Skip if row has any cell with a background color (not white/default)
-      const hasBackgroundColor = rowBackgrounds.some(bg => {
-        const bgLower = (bg || '').toLowerCase();
-        return bgLower && bgLower !== '#ffffff' && bgLower !== '#fff' && bgLower !== 'white';
-      });
-      
-      if (hasBackgroundColor) {
-        Logger.log(`⏭️ Skipping row ${i + 2} - has background color`);
-        continue;
-      }
-      
-      // Skip if row is marked as "Processed", "Canceled", or "Done"
-      if (rowNotes && rowNotes.trim().length > 0) {
-        Logger.log(`⏭️ Skipping row ${i + 2} - notes contain: ${rowNotes}`);
-        continue;
-      }
-      
-      // If league matches, increment position
-      if (rowLeague === league) {
-        position++;
-        
-        // Check if this is our email
-        if (rowEmail === email.toLowerCase()) {
-          foundRow = { row: i + 2, position }; // +2 for 1-indexed and header row
-          break;
-        }
-      }
-    }
-    
-    if (foundRow) {
-      Logger.log(`✅ Found waitlist spot: #${foundRow.position} (row ${foundRow.row})`);
-      return { found: true, spot: foundRow.position };
-    } else {
-      Logger.log(`❌ Email not found on waitlist for league: ${league}`);
-      return { found: false };
-    }
-    
-  } catch (error) {
-    Logger.log(`💥 Error in getWaitlistSpot: ${error.message}`);
-    return { found: false, error: error.message };
-  }
-}
-

@@ -1,9 +1,12 @@
+import { NO_WAITLISTS_SENTINEL } from '../config/constants';
+import { getFormAndItem } from '../helpers/formHelpers';
+
 /**
  * Insert sorted choices into the form item
  * @param {FormItem} formItem - The form item (Multiple Choice or List)
  * @param {string[]} sortedLabels - Array of sorted label strings
  */
-const addProductOptionToWaitlistForm = (formItem, sortedLabels) => {
+export const addProductOptionToWaitlistForm = (formItem, sortedLabels) => {
   // Google Forms supports two different item types for selectable options:
   // Multiple Choice (radio buttons) and List (dropdown). Each has different APIs for managing choices.
   const mc = (formItem.getType() === FormApp.ItemType.MULTIPLE_CHOICE) ? formItem.asMultipleChoiceItem() : null;
@@ -26,7 +29,7 @@ const addProductOptionToWaitlistForm = (formItem, sortedLabels) => {
 /**
  * Reset the waitlist form to default state with only the sentinel option
  */
-const returnToDefault = () => {
+export const returnToDefault = () => {
   const { formItem } = getFormAndItem();
   
   // Set only the sentinel option

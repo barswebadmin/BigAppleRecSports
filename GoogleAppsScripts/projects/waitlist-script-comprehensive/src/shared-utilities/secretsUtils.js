@@ -3,7 +3,7 @@
  * Wrapper around PropertiesService for consistent secret access
  */
 
-function getSecret(key) {
+export function getSecret(key) {
   try {
     const value = PropertiesService.getScriptProperties().getProperty(key);
     if (!value) {
@@ -17,7 +17,7 @@ function getSecret(key) {
   }
 }
 
-function setSecret(key, value) {
+export function setSecret(key, value) {
   try {
     PropertiesService.getScriptProperties().setProperty(key, value);
     Logger.log(`✅ Secret '${key}' set successfully`);
@@ -28,7 +28,7 @@ function setSecret(key, value) {
   }
 }
 
-function deleteSecret(key) {
+export function deleteSecret(key) {
   try {
     PropertiesService.getScriptProperties().deleteProperty(key);
     Logger.log(`✅ Secret '${key}' deleted successfully`);
@@ -39,7 +39,7 @@ function deleteSecret(key) {
   }
 }
 
-function listSecrets() {
+export function listSecrets() {
   try {
     const properties = PropertiesService.getScriptProperties().getProperties();
     const keys = Object.keys(properties);

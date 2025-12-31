@@ -1,3 +1,6 @@
+
+import { getCurrentChoices } from '../helpers/formHelpers';
+
 /**
  * Validation helper functions
  */
@@ -6,7 +9,7 @@
  * Validate incoming POST request data
  * @param {{productUrl?: string, sport?: string, day?: string, division?: string, otherIdentifier?: string}} params
  */
-const validateIncomingData = ({ productUrl, sport, day, division, otherIdentifier }) => {
+export const validateIncomingData = ({ productUrl, sport, day, division, otherIdentifier }) => {
   // Check for required productUrl
   if (!productUrl || typeof productUrl !== 'string' || productUrl.trim() === '') {
     throw new Error('productUrl is required and must be a non-empty string');
@@ -27,7 +30,7 @@ const validateIncomingData = ({ productUrl, sport, day, division, otherIdentifie
  * @param {FormItem} formItem - The form item (Multiple Choice or List)
  * @param {string} label - The label to check for
  */
-const checkForDuplicateOption = (formItem, label) => {
+export const checkForDuplicateOption = (formItem, label) => {
   const existingChoices = getCurrentChoices(formItem);
   const existingLabels = existingChoices.map(choice => choice.getValue());
   

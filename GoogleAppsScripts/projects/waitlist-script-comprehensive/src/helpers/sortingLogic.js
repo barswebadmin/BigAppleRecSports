@@ -10,7 +10,7 @@
  * 4. Alphabetical by otherIdentifier
  * Items without sport go to bottom, with additional sorting by year/month
  */
-const sortWaitlistLabels = (labels) => {
+export const sortWaitlistLabels = (labels) => {
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const DIVISIONS = ['Open', 'WTNB+', 'WTNB', 'wtnb'];
   

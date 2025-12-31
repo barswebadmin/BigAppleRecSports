@@ -140,7 +140,7 @@ function getAllLeaguesForEmail(email) {
         return;
       }
       
-      if (rowNotes.includes('process') || rowNotes.includes('cancel') || rowNotes.includes('done')) {
+      if (rowNotes && rowNotes.trim().length > 0) {
         return;
       }
       
