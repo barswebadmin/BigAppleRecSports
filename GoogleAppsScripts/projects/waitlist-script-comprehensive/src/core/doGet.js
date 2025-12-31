@@ -15,13 +15,6 @@ function doGet(e) {
     debugInfo.push("🚀 doGet function called (Interactive Dropdown Version)");
     debugInfo.push(`📥 Parameters received: ${JSON.stringify(e.parameter)}`);
     debugInfo.push(`📥 ALL parameters: ${JSON.stringify(e, null, 2)}`);
-    
-
-    MailApp.sendEmail({
-      to: DEBUG_EMAIL,
-      subject: "🔍 doGet STARTED",
-      body: debugInfo.join('\n')
-    });
 
     
     const email = e.parameter.email;
