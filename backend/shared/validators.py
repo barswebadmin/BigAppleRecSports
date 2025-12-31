@@ -19,7 +19,7 @@ def validate_email_format(email: Optional[str]) -> ValidationResult:
     - domain has at least one dot and valid labels
     """
     if email is None:
-        return {"success": False, "message": "Email was not provided"}
+        return {"success": False, "message": "Email is required"}
     pattern = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$")
     if pattern.match(email) is None:
         return {"success": False, "message": "Invalid email format"}
@@ -31,7 +31,7 @@ def validate_shopify_order_number_format(order_number: Optional[str]) -> Validat
     Validate a Shopify order number: optional leading '#', followed by at least 4 digits.
     """
     if order_number is None:
-        return {"success": False, "message": "Order number was not provided"}
+        return {"success": False, "message": "Order number is required"}
     if re.match(r'^#?\d{4,}$', order_number) is None:
         return {"success": False, "message": "Invalid order number format"}
     return {"success": True, "message": "Order number is valid"}
@@ -146,7 +146,7 @@ def validate_multiple_fields(
                 result = validator_func(field_value)
                 if not result.get("success"):
                     message = result.get("message") or f"Invalid {field_name} format"
-                    errors.append(f"{field_name}: {message}")
+                    errors.append(message)
         except Exception as e:
             errors.append(f"{field_name}: Validation error - {str(e)}")
     

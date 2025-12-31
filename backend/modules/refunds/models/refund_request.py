@@ -1,5 +1,6 @@
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, Field
 from typing import Optional
+from datetime import datetime, timezone
 
 from shared.model_config import BaseModelConfig
 from shared.validators import (
@@ -21,6 +22,7 @@ class RefundRequest(BaseModel):
 
     email: str
     order_number: str
+    request_submitted_at: Optional[str] = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     @model_validator(mode='before')
     @classmethod

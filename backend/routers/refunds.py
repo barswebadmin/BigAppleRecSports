@@ -20,7 +20,8 @@ async def handle_refund_request(request: Request):
         body = RefundRequest.create(payload)
         return refunds_service.process_initial_refund_request(
             email=body.email,
-            order_number=body.order_number
+            order_number=body.order_number,
+            request_submitted_at=body.request_submitted_at
         )
     except (ValidationError, ValueError) as e:
         # Map validation issues to HTTP 400 instead of FastAPI's default 422
