@@ -1,8 +1,14 @@
+import { addProductOptionToWaitlistForm } from '../handlers/addProductOptionToWaitlistForm';
+import { getCurrentChoices, getFormAndItem, removeSearchedSentinelIfNeeded } from '../helpers/formHelpers';
+import { createFormattedLabel } from '../helpers/labelFormatting';
+import { sortWaitlistLabels } from '../helpers/sortingLogic';
+import { checkForDuplicateOption, validateIncomingData } from '../validation/validation';
+
 /**
  * Handle incoming POST request and coordinate the waitlist form update process
  * @param {{productUrl?: string, sport?: string, day?: string, division?: string, otherIdentifier?: string}} params
  */
-const handleIncomingPostRequest = ({ productUrl, sport, day, division, otherIdentifier }) => {
+export const handleIncomingPostRequest = ({ productUrl, sport, day, division, otherIdentifier }) => {
   // Validate required fields
   validateIncomingData({ productUrl, sport, day, division, otherIdentifier });
   

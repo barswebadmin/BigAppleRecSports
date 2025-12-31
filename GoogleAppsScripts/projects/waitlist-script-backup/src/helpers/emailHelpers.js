@@ -80,17 +80,20 @@ function sendEmailToPlayer(email, firstName, isMultiplePlayersAdded, league, sea
  * @param {string} email - Customer email
  * @param {string} league - League name
  * @param {number} waitlistSpot - Position on waitlist
+ * @param {string} firstName - Customer's first name (optional, defaults to email prefix)
  * @returns {boolean} - Success
  */
-function sendWaitlistConfirmationEmail(email, league, waitlistSpot) {
+function sendWaitlistConfirmationEmail(email, league, waitlistSpot, firstName) {
   try {
     Logger.log(`📧 === SENDING WAITLIST CONFIRMATION EMAIL ===`);
     Logger.log(`📧 Email: ${email} (type: ${typeof email})`);
     Logger.log(`📊 League: ${league} (type: ${typeof league})`);
     Logger.log(`📊 Waitlist Spot: ${waitlistSpot} (type: ${typeof waitlistSpot})`);
+    Logger.log(`👤 First Name: ${firstName} (type: ${typeof firstName})`);
     
-    const firstName = email.split('@')[0];
-    const capitalizedFirstName = capitalize(firstName);
+    // Use provided first name or fallback to email prefix
+    const nameToUse = firstName || email.split('@')[0];
+    const capitalizedFirstName = capitalize(nameToUse);
     
     const encodedEmail = encodeURIComponent(email);
     const encodedLeague = encodeURIComponent(league);
@@ -120,14 +123,11 @@ function sendWaitlistConfirmationEmail(email, league, waitlistSpot) {
       <div style="background-color: #e8f5e8; border: 2px solid #4CAF50; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center;">
         <h3 style="margin: 0 0 15px 0; color: #2e7d32;">🔍 Check Your Waitlist Position</h3>
         <p style="margin: 15px 0; color: #333;">View your position for <strong>${league}</strong> and switch between all your leagues:</p>
-
         <a href="${spotCheckUrl}" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 10px 0;">Check Your Waitlist Position (#${waitlistSpot})</a>
       </div>
 
       <div style="background-color: #ffebee; border: 2px solid #f44336; border-radius: 8px; padding: 15px; margin: 20px 0;">
-        <p style="margin: 0; color: #d32f2f; font-weight: bold;">
-          ⚠️ <strong>Important Note for Safari Users:</strong>
-        </p>
+        <p style="margin: 0; color: #d32f2f; font-weight: bold;">⚠️ <strong>Important Note for Safari Users:</strong></p>
         <p style="margin: 10px 0 0 0; color: #c62828; font-size: 14px;">
           This waitlist checker does not work in Safari due to browser restrictions.
           Please use <strong>Chrome, Firefox, or Edge</strong> for the best experience.
@@ -135,9 +135,11 @@ function sendWaitlistConfirmationEmail(email, league, waitlistSpot) {
       </div>
 
       <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
+      <p>Warmly,<br>
+      <b>BARS Leadership</b></p>
+      <img src="cid:barsLogo" style="width:225px; height:auto; margin-top: 15px;">
         <p><strong>Big Apple Rec Sports</strong><br>
         Follow us: <a href="https://www.instagram.com/bigapplerecsports/">Instagram</a> | <a href="https://www.facebook.com/groups/bigapplerecsports">Facebook</a></p>
-        <img src="cid:barsLogo" style="width:225px; height:auto; margin-top: 15px;">
       </div>
     `;
     

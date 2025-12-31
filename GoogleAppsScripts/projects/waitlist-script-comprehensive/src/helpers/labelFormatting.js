@@ -7,7 +7,7 @@
  * @param {{sport?: string, day?: string, division?: string, otherIdentifier?: string}} params
  * @returns {string} Formatted label
  */
-const createFormattedLabel = ({ sport, day, division, otherIdentifier }) => {
+export const createFormattedLabel = ({ sport, day, division, otherIdentifier }) => {
   const parts = [];
 
   if (sport) parts.push(sport);

@@ -10,7 +10,7 @@
  * @param {Array<string>} details - Optional details array
  * @returns {HtmlOutput} - HTML page
  */
-function createErrorPage(title, message, details = []) {
+export function createErrorPage(title, message, details = []) {
   const detailsHtml = details.length > 0 ?
     `<div class="details"><ul>${details.map(d => `<li>${d}</li>`).join('')}</ul></div>` : '';
   
@@ -106,7 +106,7 @@ function createErrorPage(title, message, details = []) {
  * @param {string} selectedLeague - Initially selected league (optional)
  * @returns {HtmlOutput} - HTML page
  */
-function createInteractiveSuccessPage(leagues, email, selectedLeague) {
+export function createInteractiveSuccessPage(leagues, email, selectedLeague) {
   if (!leagues || leagues.length === 0) {
     return createErrorPage("Not Found", "No waitlist positions found for this email.");
   }

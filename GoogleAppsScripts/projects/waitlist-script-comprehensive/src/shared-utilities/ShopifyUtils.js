@@ -1,3 +1,6 @@
+
+import { getSecret } from './secretsUtils';
+
 /**
  * Shopify API Utilities for Waitlist System
  * Handles all Shopify GraphQL API calls
@@ -7,7 +10,7 @@
  * Get Shopify access token
  * @returns {string} Access token
  */
-function getShopifyAccessToken() {
+export function getShopifyAccessToken() {
   return getSecret('SHOPIFY_ACCESS_TOKEN_ADMIN');
 }
 
@@ -134,7 +137,7 @@ function getProductWithVariants(productId) {
  * @param {string} email - Customer email
  * @returns {Object|null} Customer data or null
  */
-function fetchShopifyCustomerByEmail(email) {
+export function fetchShopifyCustomerByEmail(email) {
   const query = `
     query getCustomer($email: String!) {
       customers(first: 1, query: $email) {
@@ -172,7 +175,7 @@ function fetchShopifyCustomerByEmail(email) {
  * @param {string} lastName - Last name
  * @returns {string} Customer ID
  */
-function createShopifyCustomer(email, firstName, lastName) {
+export function createShopifyCustomer(email, firstName, lastName) {
   const mutation = `
     mutation customerCreate($input: CustomerInput!) {
       customerCreate(input: $input) {
@@ -212,7 +215,7 @@ function createShopifyCustomer(email, firstName, lastName) {
  * @param {Object} params - {customerId, tags, phone}
  * @returns {boolean} Success
  */
-function updateCustomer({ customerId, tags, phone }) {
+export function updateCustomer({ customerId, tags, phone }) {
   const mutation = `
     mutation customerUpdate($input: CustomerInput!) {
       customerUpdate(input: $input) {
@@ -257,7 +260,7 @@ function updateCustomer({ customerId, tags, phone }) {
  * @param {string} productId - Product ID in GraphQL format
  * @returns {Object} - {isValid: boolean, reason: string}
  */
-function validateProductAndInventoryById(productId) {
+export function validateProductAndInventoryById(productId) {
   Logger.log("🚀 === STARTING PRODUCT VALIDATION BY ID ===");
   Logger.log(`🔍 Product ID to validate: "${productId}"`);
   
@@ -333,7 +336,7 @@ function validateProductAndInventoryById(productId) {
  * @param {string} handle - Product handle
  * @returns {Object} - {isValid: boolean, reason: string}
  */
-function validateProductAndInventory(handle) {
+export function validateProductAndInventory(handle) {
   Logger.log("🚀 === STARTING PRODUCT VALIDATION BY HANDLE ===");
   Logger.log(`🔍 Product handle to validate: "${handle}"`);
   

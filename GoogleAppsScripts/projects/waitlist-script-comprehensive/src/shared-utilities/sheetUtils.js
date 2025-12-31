@@ -1,3 +1,7 @@
+
+import { WAITLIST_SPREADSHEET_ID } from '../config/constants';
+import { shouldSkipRow } from '../helpers/waitlistCalculation';
+
 /**
  * Google Sheets Helper Functions
  * Consolidated sheet access and modification utilities
@@ -7,7 +11,7 @@
 // BASIC SHEET ACCESS FUNCTIONS
 // =============================================================================
 
-function getSheet() {
+export function getSheet() {
   const spreadsheet = SpreadsheetApp.openById(WAITLIST_SPREADSHEET_ID);
   return spreadsheet.getSheets()[0];
 }
@@ -95,7 +99,7 @@ function appendRowToSheet(rowData) {
  * @param {string} email - Email address to search for
  * @returns {Object} - {leagues: [], debugLog: []}
  */
-function getAllLeaguesForEmail(email) {
+export function getAllLeaguesForEmail(email) {
   const debugLog = [];
   debugLog.push(`🔍 Getting all leagues for email: ${email}`);
   
@@ -127,20 +131,12 @@ function getAllLeaguesForEmail(email) {
     dataRows.forEach((row, index) => {
       const rowEmail = (row[emailCol] || '').toString().trim().toLowerCase();
       const rowLeague = (row[leagueCol] || '').toString().trim();
-      const rowNotes = notesCol !== -1 ? (row[notesCol] || '').toString().trim().toLowerCase() : '';
+      const rowNotes = notesCol !== -1 ? (row[notesCol] || '') : '';
       const rowBackgrounds = backgroundRows[index];
       
-      // Skip if row has any cell with a background color (not white/default)
-      const hasBackgroundColor = rowBackgrounds.some(bg => {
-        const bgLower = (bg || '').toLowerCase();
-        return bgLower && bgLower !== '#ffffff' && bgLower !== '#fff' && bgLower !== 'white';
-      });
-      
-      if (hasBackgroundColor) {
-        return;
-      }
-      
-      if (rowNotes && rowNotes.trim().length > 0) {
+      // Use shared skip logic
+      if (shouldSkipRow(rowBackgrounds, rowNotes)) {
+        debugLog.push(`⏭️ Skipping row ${index + 2} - has background color or notes with process/cancel/done`);
         return;
       }
       
@@ -177,6 +173,7 @@ function getAllLeaguesForEmail(email) {
     
   } catch (error) {
     debugLog.push(`💥 Error: ${error.message}`);
-    return { leagues: [], debugLog, error: error.message };
+    Logger.log(debugLog.join('\n'));
+    throw error;
   }
 }

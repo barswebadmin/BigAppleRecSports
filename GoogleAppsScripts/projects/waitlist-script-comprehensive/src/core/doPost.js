@@ -1,8 +1,13 @@
+import { DEBUG_EMAIL } from '../config/constants';
+import { handleCheckWaitlistPosition } from '../handlers/checkWaitlistPosition';
+import { handleIncomingPostRequest } from '../helpers/handleIncomingPostRequest';
+
 /**
  * Main POST endpoint router
  * Intelligently routes requests to appropriate handlers
  */
 
+// biome-ignore lint/correctness/noUnusedVariables: GAS runtime trigger function
 function doPost(e) {
   try {
     const body = e?.postData?.contents || '{}';
@@ -31,41 +36,51 @@ function doPost(e) {
     
     Logger.log(`📦 Parsed payload: ${JSON.stringify(payload, null, 2)}`);
     
-    if (isShopifyWebhook(e, payload)) {
-      Logger.log(`🔀 Routing to: Shopify Webhook Handler`);
-      return handleShopifyWebhook(e, payload);
-    }
+    const requestType = determineRequestType(e, payload);
+    Logger.log(`🔍 Detected request type: ${requestType}`);
     
-    if (isAddProductRequest(payload)) {
-      Logger.log(`🔀 Routing to: Add Product To Form Handler`);
-      return handleAddProductToForm(payload);
-    }
-    
-    if (isCheckWaitlistRequest(payload)) {
-      Logger.log(`🔀 Routing to: Check Waitlist Position Handler`);
-      return handleCheckWaitlistPosition(payload);
-    }
-    
-    Logger.log(`❌ Unrecognized request type`);
-    return createErrorResponse({
-      status: 'error',
-      message: 'Unrecognized request type',
-      hint: 'Expected: Shopify webhook, add product request, or check waitlist request',
-      providedFields: Object.keys(payload),
-      examples: {
-        addProduct: {
-          productUrl: 'https://example.com/products/handle',
-          sport: 'Kickball',
-          day: 'Sunday',
-          division: 'Open'
-        },
-        checkWaitlist: {
-          email: 'user@example.com',
-          league: 'Kickball - Sunday - Open Division',
-          productUrl: 'https://example.com/products/handle'
-        }
+    switch (requestType) {
+      case 'SHOPIFY_WEBHOOK':
+        Logger.log(`🔀 Shopify webhooks not yet implemented in this system`);
+        return createErrorResponse({
+          status: 'error',
+          message: 'Shopify webhooks not yet implemented',
+          hint: 'This endpoint currently supports: add product requests and check waitlist requests'
+        });
+      
+      case 'ADD_PRODUCT': {
+        Logger.log(`🔀 Routing to: Add Product To Form Handler`);
+        const result = handleIncomingPostRequest(payload);
+        return createSuccessResponse(result);
       }
-    });
+      
+      case 'CHECK_WAITLIST':
+        Logger.log(`🔀 Routing to: Check Waitlist Position Handler`);
+        return handleCheckWaitlistPosition(payload);
+      
+      case 'UNKNOWN':
+      default:
+        Logger.log(`❌ Unrecognized request type`);
+        return createErrorResponse({
+          status: 'error',
+          message: 'Unrecognized request type',
+          hint: 'Expected: Shopify webhook, add product request, or check waitlist request',
+          providedFields: Object.keys(payload),
+          examples: {
+            addProduct: {
+              productUrl: 'https://example.com/products/handle',
+              sport: 'Kickball',
+              day: 'Sunday',
+              division: 'Open'
+            },
+            checkWaitlist: {
+              email: 'user@example.com',
+              league: 'Kickball - Sunday - Open Division',
+              productUrl: 'https://example.com/products/handle'
+            }
+          }
+        });
+    }
     
   } catch (err) {
     Logger.log(`💥 Unexpected error in doPost: ${err.message}`);
@@ -86,53 +101,53 @@ function doPost(e) {
 }
 
 /**
- * Detect if request is from Shopify webhook
+ * Determine request type based on payload and headers
+ * @param {Object} e - Request event object
+ * @param {Object} payload - Parsed request payload
+ * @returns {string} - Request type: 'SHOPIFY_WEBHOOK', 'ADD_PRODUCT', 'CHECK_WAITLIST', or 'UNKNOWN'
  */
-function isShopifyWebhook(e, payload) {
+function determineRequestType(e, payload) {
+  // Check for Shopify webhook
   const headers = e?.parameter || {};
-  
   const hasShopifyHeaders = !!(
     headers['X-Shopify-Hmac-SHA256'] ||
     headers['X-Shopify-Topic'] ||
     headers['X-Shopify-Shop-Domain']
   );
-  
   const hasShopifyPayloadStructure = !!(
     payload.id &&
     payload.title &&
     payload.handle &&
     payload.variants
   );
+  if (hasShopifyHeaders || hasShopifyPayloadStructure) {
+    return 'SHOPIFY_WEBHOOK';
+  }
   
-  return hasShopifyHeaders || hasShopifyPayloadStructure;
-}
-
-/**
- * Detect if request is to add product to form
- */
-function isAddProductRequest(payload) {
-  const hasProductUrl = payload.hasOwnProperty('productUrl') && payload.productUrl;
+  // Check for add product request
+  const hasProductUrl = Object.hasOwn(payload, 'productUrl') && payload.productUrl;
   const hasAtLeastOneField = !!(
     payload.sport ||
     payload.day ||
     payload.division ||
     payload.otherIdentifier
   );
+  if (hasProductUrl && hasAtLeastOneField) {
+    return 'ADD_PRODUCT';
+  }
   
-  return hasProductUrl && hasAtLeastOneField;
-}
-
-/**
- * Detect if request is to check waitlist position
- */
-function isCheckWaitlistRequest(payload) {
-  return !!(payload.email && payload.league);
+  // Check for waitlist position check
+  if (payload.email && payload.league) {
+    return 'CHECK_WAITLIST';
+  }
+  
+  return 'UNKNOWN';
 }
 
 /**
  * Create JSON error response
  */
-function createErrorResponse(errorData) {
+export function createErrorResponse(errorData) {
   return ContentService
     .createTextOutput(JSON.stringify(errorData, null, 2))
     .setMimeType(ContentService.MimeType.JSON);
@@ -141,7 +156,7 @@ function createErrorResponse(errorData) {
 /**
  * Create JSON success response
  */
-function createSuccessResponse(data) {
+export function createSuccessResponse(data) {
   return ContentService
     .createTextOutput(JSON.stringify({
       status: 'ok',

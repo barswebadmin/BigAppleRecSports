@@ -3,37 +3,7 @@
  * Phone normalization, string manipulation, etc.
  */
 
-/**
- * Normalize phone number to XXX-XXX-XXXX format
- * @param {string} rawPhone - Raw phone number
- * @returns {string|null} - Normalized phone or null
- */
-function normalizePhone(rawPhone) {
-  if (!rawPhone) return null;
 
-  const digitsOnly = rawPhone.toString().replace(/\D/g, '');
-
-  const normalized = digitsOnly.length === 11 && digitsOnly.startsWith('1')
-    ? digitsOnly.slice(1)
-    : digitsOnly;
-
-  if (normalized.length !== 10) {
-    Logger.log(`⚠️ Unexpected phone format: "${rawPhone}" → "${normalized}"`);
-    return null;
-  }
-
-  return `${normalized.slice(0, 3)}-${normalized.slice(3, 6)}-${normalized.slice(6)}`;
-}
-
-/**
- * Capitalize first letter of string
- * @param {string} str - String to capitalize
- * @returns {string} - Capitalized string
- */
-function capitalize(str) {
-  if (!str || typeof str !== 'string') return str;
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-}
 
 /**
  * Get league info (leadership email and product URL)
@@ -42,7 +12,7 @@ function capitalize(str) {
  * @param {string} year - Year
  * @returns {Object} - {leadershipEmail, barsProductUrl}
  */
-function getLeagueInfo(league, season, year) {
+export function getLeagueInfo(league, season, year) {
   const barsProductUrl =
     `${SHOPIFY_STORE_URL}/products/${year}-${season.toLowerCase()}-` +
     league
@@ -65,7 +35,12 @@ function getLeagueInfo(league, season, year) {
  * @param {string} league - Full league name
  * @returns {string} - Leadership email
  */
-function getLeadershipEmailForLeague(league) {
+export function getLeadershipEmailForLeague(league) {
+  if (!league) {
+    Logger.log("⚠️ getLeadershipEmailForLeague called with undefined/null league");
+    return 'executive-board@bigapplerecsports.com';
+  }
+  
   let leadershipEmail;
   
   switch (league) {
@@ -140,19 +115,5 @@ function getLeadershipEmailForLeague(league) {
   return leadershipEmail;
 }
 
-/**
- * Check if two dates are the same minute
- * @param {Date} date1 - First date
- * @param {Date} date2 - Second date
- * @returns {boolean} - True if same minute
- */
-function isSameMinute(date1, date2) {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate() &&
-    date1.getHours() === date2.getHours() &&
-    date1.getMinutes() === date2.getMinutes()
-  );
-}
+
 
