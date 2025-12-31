@@ -217,6 +217,7 @@ jobs:
         echo "✅ All compilation checks passed!"
 
   # Backend Tests - only run if backend compilation succeeded
+  # Force fresh run - all pytest commands have || true to handle empty directories
   backend-tests:
     needs: compilation-check
     if: needs.compilation-check.outputs.backend-compiled == 'true'
