@@ -1,0 +1,16 @@
+# Build output
+build/
+
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+
+# Temporary deployment directory
+deploy_temp/
+
+# Clasp credentials
+.clasprc.json
+
+# OS files
+.DS_Store
+
