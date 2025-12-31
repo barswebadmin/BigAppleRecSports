@@ -93,6 +93,12 @@ def validate_shopify_variant_id_format(variant_id: Optional[str]) -> ValidationR
     return {"success": True, "message": "Variant ID is valid"}
 
 
+def _snake_to_camel(name: str) -> str:
+    """Convert snake_case to camelCase."""
+    parts = name.split("_")
+    return parts[0] + "".join(p.capitalize() for p in parts[1:])
+
+
 def validate_multiple_fields(
     data: Dict[str, Any], 
     field_validators: Dict[str, Callable[[Any], ValidationResult]]
@@ -101,7 +107,8 @@ def validate_multiple_fields(
     Validate multiple fields and collect all validation errors.
     
     This centralized validator ensures all field errors are reported together,
-    even when inputs are not the expected types.
+    even when inputs are not the expected types. Supports both snake_case and
+    camelCase field names (e.g., order_number and orderNumber).
     
     Args:
         data: Dictionary containing field values to validate
@@ -124,7 +131,11 @@ def validate_multiple_fields(
     errors = []
     
     for field_name, validator_func in field_validators.items():
+        # Try snake_case first, then camelCase
         field_value = data.get(field_name)
+        if field_value is None:
+            camel_name = _snake_to_camel(field_name)
+            field_value = data.get(camel_name)
         
         try:
             # Check if field requires string type (most validators do)
