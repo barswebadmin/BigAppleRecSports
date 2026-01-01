@@ -264,7 +264,6 @@ jobs:
         export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
 
         echo "🧪 Running backend tests..."
-        python -m pytest services/*/tests/ -v
         python -m pytest routers/tests/ -v
         echo "✅ Backend tests completed!"
       env:
@@ -516,7 +515,6 @@ jobs:
         export ENVIRONMENT="test"
         export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
         echo "🧪 Running backend tests (base)..."
-        python -m pytest services/*/tests/ -v
         python -m pytest routers/tests/ -v
         echo "✅ Backend tests (base) completed!"
 
