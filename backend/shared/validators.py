@@ -19,7 +19,7 @@ def validate_email_format(email: Optional[str]) -> ValidationResult:
     - domain has at least one dot and valid labels
     """
     if email is None:
-        return {"success": False, "message": "Email was not provided"}
+        return {"success": False, "message": "Email is required"}
     pattern = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$")
     if pattern.match(email) is None:
         return {"success": False, "message": "Invalid email format"}
@@ -31,7 +31,7 @@ def validate_shopify_order_number_format(order_number: Optional[str]) -> Validat
     Validate a Shopify order number: optional leading '#', followed by at least 4 digits.
     """
     if order_number is None:
-        return {"success": False, "message": "Order number was not provided"}
+        return {"success": False, "message": "Order number is required"}
     if re.match(r'^#?\d{4,}$', order_number) is None:
         return {"success": False, "message": "Invalid order number format"}
     return {"success": True, "message": "Order number is valid"}
@@ -93,6 +93,12 @@ def validate_shopify_variant_id_format(variant_id: Optional[str]) -> ValidationR
     return {"success": True, "message": "Variant ID is valid"}
 
 
+def _snake_to_camel(name: str) -> str:
+    """Convert snake_case to camelCase."""
+    parts = name.split("_")
+    return parts[0] + "".join(p.capitalize() for p in parts[1:])
+
+
 def validate_multiple_fields(
     data: Dict[str, Any], 
     field_validators: Dict[str, Callable[[Any], ValidationResult]]
@@ -101,7 +107,8 @@ def validate_multiple_fields(
     Validate multiple fields and collect all validation errors.
     
     This centralized validator ensures all field errors are reported together,
-    even when inputs are not the expected types.
+    even when inputs are not the expected types. Supports both snake_case and
+    camelCase field names (e.g., order_number and orderNumber).
     
     Args:
         data: Dictionary containing field values to validate
@@ -124,7 +131,11 @@ def validate_multiple_fields(
     errors = []
     
     for field_name, validator_func in field_validators.items():
+        # Try snake_case first, then camelCase
         field_value = data.get(field_name)
+        if field_value is None:
+            camel_name = _snake_to_camel(field_name)
+            field_value = data.get(camel_name)
         
         try:
             # Check if field requires string type (most validators do)
@@ -135,7 +146,7 @@ def validate_multiple_fields(
                 result = validator_func(field_value)
                 if not result.get("success"):
                     message = result.get("message") or f"Invalid {field_name} format"
-                    errors.append(f"{field_name}: {message}")
+                    errors.append(message)
         except Exception as e:
             errors.append(f"{field_name}: Validation error - {str(e)}")
     
