@@ -229,6 +229,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        # Ensure we test the PR code, not base, when using pull_request_target
+        ref: ${{ github.event.pull_request.head.sha }}
 
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
@@ -281,6 +284,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        # Ensure we test the PR code, not base, when using pull_request_target
+        ref: ${{ github.event.pull_request.head.sha }}
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -323,6 +329,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        # Ensure we test the PR code, not base, when using pull_request_target
+        ref: ${{ github.event.pull_request.head.sha }}
 
     - name: Set up Python
       uses: actions/setup-python@v4
