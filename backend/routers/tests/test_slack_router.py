@@ -24,7 +24,7 @@ class TestSlackWebhook:
     def mock_slack_signature(self):
         """Mock Slack signature validation to always pass"""
         # Update to use the SlackService instead of router function
-        with patch("services.slack.core.slack_security.SlackSecurity.verify_slack_signature", return_value=True):
+        with patch("modules.integrations.slack.client.slack_security.SlackSecurity.verify_slack_signature", return_value=True):
             yield
 
     @pytest.fixture
@@ -82,7 +82,7 @@ class TestSlackWebhook:
         real_service._create_slack_client = Mock(return_value=mock_slack_client)
         
         # Mock security methods for tests
-        real_service.slack_security.verify_slack_signature = Mock(return_value=True)
+        real_service.security.verify_slack_signature = Mock(return_value=True)
         
         # Patch the router to use our real service with mocked dependencies
         with patch("routers.slack.slack_service", real_service):
@@ -184,7 +184,7 @@ class TestSlackWebhook:
     ):
         """Test that valid Slack signatures are accepted"""
         # Mock signature validation to pass - now it's already mocked in the fixture
-        mock_slack_service.slack_security.verify_slack_signature.return_value = True
+        mock_slack_service.security.verify_slack_signature.return_value = True
         response = client.post(
             "/slack/webhook",
             data=sample_slack_payload,
@@ -200,7 +200,7 @@ class TestSlackWebhook:
     ):
         """Test that invalid Slack signatures are rejected"""
         # Mock signature validation to fail
-        mock_slack_service.slack_security.verify_slack_signature.return_value = False
+        mock_slack_service.security.verify_slack_signature.return_value = False
         # Add signature headers so validation logic is triggered
         response = client.post(
             "/slack/webhook",
