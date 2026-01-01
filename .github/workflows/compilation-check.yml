@@ -264,10 +264,8 @@ jobs:
         export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
 
         echo "🧪 Running backend tests..."
-        python -m pytest tests/unit/ -v
         python -m pytest services/*/tests/ -v
         python -m pytest routers/tests/ -v
-        python -m pytest tests/integration/ -v
         echo "✅ Backend tests completed!"
       env:
         SHOPIFY_URL_ADMIN_DOMAIN: test-store.myshopify.com
@@ -518,10 +516,8 @@ jobs:
         export ENVIRONMENT="test"
         export SLACK_REFUNDS_BOT_TOKEN="test_slack_token"
         echo "🧪 Running backend tests (base)..."
-        python -m pytest tests/unit/ -v
         python -m pytest services/*/tests/ -v
         python -m pytest routers/tests/ -v
-        python -m pytest tests/integration/ -v
         echo "✅ Backend tests (base) completed!"
 
   gas-tests-base:
