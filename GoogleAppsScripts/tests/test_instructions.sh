@@ -58,15 +58,21 @@ PROJECTS=(
     "projects/veteran-tags"
 )
 
-# Test 1-3: instructions can be at root or under src
+# Test 1-3: instructions can be at root or under src (check both .gs and .js extensions)
 for project in "${PROJECTS[@]}"; do
     instr_file=""
     if [ -f "$project/instructions.gs" ]; then
         instr_file="$project/instructions.gs"
+    elif [ -f "$project/instructions.js" ]; then
+        instr_file="$project/instructions.js"
     elif [ -f "$project/src/core/instructions.gs" ]; then
         instr_file="$project/src/core/instructions.gs"
+    elif [ -f "$project/src/core/instructions.js" ]; then
+        instr_file="$project/src/core/instructions.js"
     elif [ -f "$project/src/instructions.gs" ]; then
         instr_file="$project/src/instructions.gs"
+    elif [ -f "$project/src/instructions.js" ]; then
+        instr_file="$project/src/instructions.js"
     fi
 
     run_test "$project has instructions file (root or src)" \
@@ -92,7 +98,11 @@ for project in "${PROJECTS[@]}"; do
             file="$project/New.gs"
             ;;
         "projects/veteran-tags")
-            file="$project/Add Menu Item to UI.gs"
+            if [ -f "$project/Add Menu Item to UI.gs" ]; then
+                file="$project/Add Menu Item to UI.gs"
+            else
+                file="$project/Add Menu Item to UI.js"
+            fi
             ;;
     esac
     
@@ -113,7 +123,11 @@ for project in "${PROJECTS[@]}"; do
             file="$project/New.gs"
             ;;
         "projects/veteran-tags")
-            file="$project/Add Menu Item to UI.gs"
+            if [ -f "$project/Add Menu Item to UI.gs" ]; then
+                file="$project/Add Menu Item to UI.gs"
+            else
+                file="$project/Add Menu Item to UI.js"
+            fi
             ;;
     esac
     
@@ -136,8 +150,12 @@ run_test "Refunds instructions mention exchanges" \
 # run_test "Payment assistance instructions mention tags" \
 #     "grep -q 'tags\\|assistance' projects/payment-assistance-tags/instructions.gs"
 
+vet_instr_file="projects/veteran-tags/instructions.gs"
+if [ ! -f "$vet_instr_file" ]; then
+    vet_instr_file="projects/veteran-tags/instructions.js"
+fi
 run_test "Veteran instructions mention veteran tags" \
-    "grep -q 'veteran' projects/veteran-tags/instructions.gs"
+    "grep -q 'veteran' '$vet_instr_file'"
 
 # (Removed) Emoji header checks – no longer required
 
