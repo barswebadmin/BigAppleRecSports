@@ -53,7 +53,7 @@ def test_date_utils():
     print("\nTesting date utilities...")
     
     try:
-        from utils.date_utils import extract_season_dates, calculate_refund_amount
+        from shared.date_utils import extract_season_dates, calculate_refund_amount
         
         # Test season date extraction
         sample_html = """

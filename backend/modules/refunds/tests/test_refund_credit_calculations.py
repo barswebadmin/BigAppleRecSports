@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime, timezone
 from modules.orders.services.refund_calculator import RefundCalculator
-from utils.date_utils import calculate_refund_amount
+from shared.date_utils import calculate_refund_amount
 
 
 class TestRefundCreditCalculations:

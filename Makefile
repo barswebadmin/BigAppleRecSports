@@ -323,7 +323,7 @@ tunnel:
 	@echo "🔄 Starting persistent localtunnel (will auto-restart on failure)..."
 	@while true; do \
 		echo "📡 Connecting to localtunnel..."; \
-		lt -p 8000 -s bars-back-local || { \
+		lt -p 8000 -s bars-backend || { \
 			echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; \
 			sleep 3; \
 		}; \
@@ -336,8 +336,8 @@ tunnel-and-update:
 	@echo "🔄 Starting robust localtunnel (will survive server restarts)..."
 	@while true; do \
 		echo "📡 Connecting to localtunnel..."; \
-		echo "🌐 URL: https://bars-back-local.loca.lt"; \
-		lt -p 8000 -s bars-back-local || { \
+		echo "🌐 URL: https://bars-backend.loca.lt"; \
+		lt -p 8000 -s bars-backend || { \
 			echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; \
 			sleep 3; \
 		}; \
@@ -347,9 +347,9 @@ tunnel-daemon:
 	@echo "🌐 Starting localtunnel as background daemon..."
 	@pkill -f "lt -p 8000" || true
 	@sleep 1
-	@nohup sh -c 'while true; do echo "📡 Connecting to localtunnel..."; echo "🌐 URL: https://bars-back-local.loca.lt"; lt -p 8000 -s bars-back-local || { echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; sleep 3; }; done' > tunnel.log 2>&1 &
+	@nohup sh -c 'while true; do echo "📡 Connecting to localtunnel..."; echo "🌐 URL: https://bars-backend.loca.lt"; lt -p 8000 -s bars-backend || { echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; sleep 3; }; done' > tunnel.log 2>&1 &
 	@echo "✅ Localtunnel daemon started in background"
-	@echo "🌐 URL: https://bars-back-local.loca.lt"
+	@echo "🌐 URL: https://bars-backend.loca.lt"
 	@echo "📋 Check tunnel.log for status updates"
 
 update-gas-ngrok:
@@ -433,7 +433,7 @@ status:
 	@ps aux | grep "lt -p 8000" | grep -v grep || echo "❌ Localtunnel not running"
 	@echo ""
 	@echo "🌐 Localtunnel URL:"
-	@echo "https://bars-back-local.loca.lt"
+	@echo "https://bars-backend.loca.lt"
 	@echo ""
 	@echo "📋 Recent tunnel logs (if daemon is running):"
 	@if [ -f tunnel.log ]; then \
@@ -444,7 +444,7 @@ status:
 	fi
 
 url:
-	@echo "🌐 Localtunnel URL: https://bars-back-local.loca.lt"
+	@echo "🌐 Localtunnel URL: https://bars-backend.loca.lt"
 
 version:
 	@echo "📈 Backend Version Information:"

@@ -14,7 +14,7 @@ from new_structure_target.clients.shopify.builders.shopify_url_builders import b
 from new_structure_target.services.webhooks.handlers.order_create_handler import slack_message_builder
 from ..parsers.product_parser import has_zero_inventory, get_slack_group_mention
 from ../../../../config import config
-from utils.date_utils import format_date_and_time, parse_shopify_datetime
+from shared.date_utils import format_date_and_time, parse_shopify_datetime
 
 logger = logging.getLogger(__name__)
 
