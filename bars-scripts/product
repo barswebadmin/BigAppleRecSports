@@ -1,0 +1,32 @@
+#!/bin/bash
+# Simple wrapper script to look up products
+# Usage: ./bars-scripts/product 12345 [--env development]
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+SCRIPT="$SCRIPT_DIR/get_product_details.py"
+
+# Check for venv in multiple locations (prioritize project root)
+if [ -f "$PROJECT_ROOT/.venv/bin/python3" ]; then
+    VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
+elif [ -f "$PROJECT_ROOT/backend/.venv/bin/python3" ]; then
+    VENV_PYTHON="$PROJECT_ROOT/backend/.venv/bin/python3"
+else
+    echo "❌ Error: Virtual environment not found"
+    echo "Tried locations:"
+    echo "  - $PROJECT_ROOT/.venv/bin/python3"
+    echo "  - $PROJECT_ROOT/backend/.venv/bin/python3"
+    echo "Please set up the backend virtual environment first."
+    exit 1
+fi
+
+# Check if script exists
+if [ ! -f "$SCRIPT" ]; then
+    echo "❌ Error: Script not found at $SCRIPT"
+    exit 1
+fi
+
+# Run the script with all arguments passed through
+cd "$PROJECT_ROOT"
+exec "$VENV_PYTHON" "$SCRIPT" "$@"
+
