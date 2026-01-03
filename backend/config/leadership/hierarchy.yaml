@@ -92,10 +92,16 @@ sections:
       - "CROSS–SPORT LEADERSHIP TEAM"
       - "CROSS-SPORT LEADERSHIP TEAM"
     positions:
-      - role_key: "permits_equipment"
+      - role_key: "permits_and_equipment"
         title: "Director of Permits & Equipment Management"
         match_patterns:
           keywords: ["permits", "equipment"]
+        required: true
+      
+      - role_key: "nyc_parks_liaison"
+        title: "NYC Parks&Rec Permits Liaison"
+        match_patterns:
+          keywords: ["parks", "permits", "liaison"]
         required: true
       
       - role_key: "communications"
@@ -104,13 +110,13 @@ sections:
           keywords: ["communications"]
         required: true
       
-      - role_key: "events_open"
+      - role_key: "events.open"
         title: "Director of Events (Open)"
         match_patterns:
           keywords: ["events", "open"]
         required: true
       
-      - role_key: "events_wtnb"
+      - role_key: "events.wtnb"
         title: "Director of Events (WTNB+)"
         match_patterns:
           keywords: ["events", "wtnb"]
@@ -128,13 +134,13 @@ sections:
           keywords: ["philanthropy"]
         required: true
       
-      - role_key: "social_media_open"
+      - role_key: "social_media.open"
         title: "Director of Social Media & Engagement (Open)"
         match_patterns:
           keywords: ["social media", "open"]
         required: true
       
-      - role_key: "social_media_wtnb"
+      - role_key: "social_media.wtnb"
         title: "Director of Social Media & Engagement (WTNB+)"
         match_patterns:
           keywords: ["social media", "wtnb"]
@@ -146,21 +152,21 @@ sections:
           keywords: ["technology"]
         required: true
       
-      - role_key: "dei_open"
+      - role_key: "dei.open"
         title: "Director of Diversity, Equity & Inclusion (Open)"
         match_patterns:
           keywords_alternatives:
             - ["diversity", "open"]
             - ["dei", "open"]
-        required: false
+        required: true
       
-      - role_key: "dei_wtnb"
+      - role_key: "dei.wtnb"
         title: "Director of Diversity, Equity & Inclusion (WTNB+)"
         match_patterns:
           keywords_alternatives:
             - ["diversity", "wtnb"]
             - ["dei", "wtnb"]
-        required: false
+        required: true
   
   # =============================================================================
   # BOWLING LEADERSHIP TEAM
@@ -170,53 +176,47 @@ sections:
     csv_section_headers:
       - "BOWLING LEADERSHIP TEAM"
     positions:
-      - role_key: "sunday_director"
+      - role_key: "sunday.director"
         title: "Director of Bowling, Sunday"
         match_patterns:
           keywords: ["sunday", "director"]
         required: true
       
-      - role_key: "sunday_ops_manager"
+      - role_key: "sunday.ops_manager"
         title: "Operations Manager, Sunday"
         match_patterns:
           keywords: ["sunday", "operations manager"]
-        required: false
-      
-      - role_key: "monday_open_director"
-        title: "Director of Bowling, Monday (Open)"
-        match_patterns:
-          keywords: ["monday", "open", "director"]
         required: true
       
-      - role_key: "monday_open_ops_manager"
-        title: "Operations Manager, Monday (Open)"
+      - role_key: "monday.director"
+        title: "Director of Bowling, Monday"
         match_patterns:
-          keywords: ["monday", "open", "operations manager"]
-        required: false
-      
-      - role_key: "monday_wtnb_director"
-        title: "Director of Bowling, Monday (WTNB+)"
-        match_patterns:
-          keywords: ["monday", "wtnb", "director"]
+          keywords: ["bowling", "monday", "director"]
         required: true
       
-      - role_key: "monday_wtnb_ops_manager"
-        title: "Operations Manager, Monday (WTNB+)"
+      - role_key: "monday.ops_manager"
+        title: "Operations Manager, Monday"
         match_patterns:
-          keywords: ["monday", "wtnb", "operations manager"]
-        required: false
+          keywords: ["bowling", "monday", "operations manager"]
+        required: true
       
-      - role_key: "player_experience_open"
+      - role_key: "wtnb.director"
+        title: "Director of Bowling, WTNB+"
+        match_patterns:
+          keywords: ["bowling", "wtnb", "director"]
+        required: true
+      
+      - role_key: "player_experience.open"
         title: "Director of Player Experience (Open)"
         match_patterns:
           keywords: ["player experience", "open"]
-        required: false
+        required: true
       
-      - role_key: "player_experience_wtnb"
+      - role_key: "player_experience.wtnb"
         title: "Director of Player Experience (WTNB+)"
         match_patterns:
           keywords: ["player experience", "wtnb"]
-        required: false
+        required: true
   
   # =============================================================================
   # DODGEBALL LEADERSHIP TEAM
@@ -226,89 +226,89 @@ sections:
     csv_section_headers:
       - "DODGEBALL LEADERSHIP TEAM"
     positions:
-      - role_key: "smallball_advanced_director"
+      - role_key: "smallball_advanced.director"
         title: "Director of Dodgeball, Small Ball Advanced (Sunday)"
         match_patterns:
           keywords: ["small ball", "advanced", "director"]
         required: true
       
-      - role_key: "smallball_advanced_ops_manager"
+      - role_key: "smallball_advanced.ops_manager"
         title: "Operations Manager, Small Ball Advanced (Sunday)"
         match_patterns:
           keywords: ["small ball", "advanced", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "smallball_social_director"
+      - role_key: "smallball_social.director"
         title: "Director of Dodgeball, Small Ball Social (Tuesday)"
         match_patterns:
           keywords: ["small ball", "social", "director"]
         required: true
       
-      - role_key: "smallball_social_ops_manager"
+      - role_key: "smallball_social.ops_manager"
         title: "Operations Manager, Small Ball Social (Tuesday)"
         match_patterns:
           keywords: ["small ball", "social", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "wtnb_draft_director"
+      - role_key: "wtnb_draft.director"
         title: "Director of Dodgeball, WTNB+ Draft (Wednesday)"
         match_patterns:
           keywords: ["wtnb", "draft", "director"]
         required: true
       
-      - role_key: "wtnb_draft_ops_manager"
+      - role_key: "wtnb_draft.ops_manager"
         title: "Operations Manager, WTNB+ Draft (Wednesday)"
         match_patterns:
           keywords: ["wtnb", "draft", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "wtnb_social_director"
+      - role_key: "wtnb_social.director"
         title: "Director of Dodgeball, WTNB+ Social (Wednesday)"
         match_patterns:
           keywords: ["wtnb", "social", "director"]
         required: true
       
-      - role_key: "wtnb_social_ops_manager"
+      - role_key: "wtnb_social.ops_manager"
         title: "Operations Manager, WTNB+ Social (Wednesday)"
         match_patterns:
           keywords: ["wtnb", "social", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "foamball_director"
+      - role_key: "foamball.director"
         title: "Director of Dodgeball, Foam Ball (Thursday)"
         match_patterns:
           keywords: ["foam ball", "director"]
         required: true
       
-      - role_key: "foamball_ops_manager"
+      - role_key: "foamball.ops_manager"
         title: "Operations Manager, Foam Ball (Thursday)"
         match_patterns:
           keywords: ["foam ball", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "bigball_director"
+      - role_key: "bigball.director"
         title: "Director of Dodgeball, Big Ball (Monday)"
         match_patterns:
           keywords: ["big ball", "director"]
         required: true
       
-      - role_key: "bigball_ops_manager"
+      - role_key: "bigball.ops_manager"
         title: "Operations Manager, Big Ball (Monday)"
         match_patterns:
           keywords: ["big ball", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "player_experience_open"
+      - role_key: "player_experience.open"
         title: "Director of Player Experience (Open)"
         match_patterns:
           keywords: ["player experience", "open"]
-        required: false
+        required: true
       
-      - role_key: "player_experience_wtnb"
+      - role_key: "player_experience.wtnb"
         title: "Director of Player Experience (WTNB+)"
         match_patterns:
           keywords: ["player experience", "wtnb"]
-        required: false
+        required: true
   
   # =============================================================================
   # KICKBALL LEADERSHIP TEAM
@@ -318,19 +318,19 @@ sections:
     csv_section_headers:
       - "KICKBALL LEADERSHIP TEAM"
     positions:
-      - role_key: "sunday_director"
+      - role_key: "sunday.director"
         title: "Director of Kickball, Sunday"
         match_patterns:
           keywords: ["sunday", "director"]
         required: true
       
-      - role_key: "sunday_ops_manager"
+      - role_key: "sunday.ops_manager"
         title: "Operations Manager, Sunday"
         match_patterns:
           keywords: ["sunday", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "monday_director"
+      - role_key: "monday.director"
         title: "Director of Kickball, Monday (Weekday Social)"
         match_patterns:
           keywords_alternatives:
@@ -338,39 +338,39 @@ sections:
             - ["weekday", "social", "director"]
         required: true
       
-      - role_key: "monday_ops_manager"
+      - role_key: "monday.ops_manager"
         title: "Operations Manager, Monday (Weekday Social)"
         match_patterns:
           keywords_alternatives:
             - ["monday", "operations manager"]
             - ["weekday", "social", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "tuesday_director"
+      - role_key: "tuesday.director"
         title: "Director of Kickball, Tuesday"
         match_patterns:
           keywords: ["tuesday", "director"]
         required: true
       
-      - role_key: "tuesday_ops_manager"
+      - role_key: "tuesday.ops_manager"
         title: "Operations Manager, Tuesday"
         match_patterns:
           keywords: ["tuesday", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "draft_open_director"
+      - role_key: "draft_open.director"
         title: "Director of Kickball, Wednesday (Open Draft)"
         match_patterns:
           keywords: ["wednesday", "director"]
         required: true
       
-      - role_key: "draft_open_ops_manager"
+      - role_key: "draft_open.ops_manager"
         title: "Operations Manager, Wednesday (Open Draft)"
         match_patterns:
           keywords: ["wednesday", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "draft_wtnb_director"
+      - role_key: "draft_wtnb.director"
         title: "Director of Kickball, Thursday (WTNB+ Draft)"
         match_patterns:
           keywords_alternatives:
@@ -378,49 +378,49 @@ sections:
             - ["wtnb", "draft", "director"]
         required: true
       
-      - role_key: "draft_wtnb_ops_manager"
+      - role_key: "draft_wtnb.ops_manager"
         title: "Operations Manager, Thursday (WTNB+ Draft)"
         match_patterns:
           keywords_alternatives:
             - ["thursday", "operations manager"]
             - ["wtnb", "draft", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "saturday_open_director"
+      - role_key: "saturday_open.director"
         title: "Director of Kickball, Saturday (Open)"
         match_patterns:
           keywords: ["saturday", "open", "director"]
         required: true
       
-      - role_key: "saturday_open_ops_manager"
+      - role_key: "saturday_open.ops_manager"
         title: "Operations Manager, Saturday (Open)"
         match_patterns:
           keywords: ["saturday", "open", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "saturday_wtnb_director"
+      - role_key: "saturday_wtnb.director"
         title: "Director of Kickball, Saturday (WTNB+)"
         match_patterns:
           keywords: ["saturday", "wtnb", "director"]
         required: true
       
-      - role_key: "saturday_wtnb_ops_manager"
+      - role_key: "saturday_wtnb.ops_manager"
         title: "Operations Manager, Saturday (WTNB+)"
         match_patterns:
           keywords: ["saturday", "wtnb", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "player_experience_open"
+      - role_key: "player_experience.open"
         title: "Director of Player Experience (Open)"
         match_patterns:
           keywords: ["player experience", "open"]
-        required: false
+        required: true
       
-      - role_key: "player_experience_wtnb"
+      - role_key: "player_experience.wtnb"
         title: "Director of Player Experience (WTNB+)"
         match_patterns:
           keywords: ["player experience", "wtnb"]
-        required: false
+        required: true
   
   # =============================================================================
   # PICKLEBALL LEADERSHIP TEAM
@@ -430,65 +430,65 @@ sections:
     csv_section_headers:
       - "PICKLEBALL LEADERSHIP TEAM"
     positions:
-      - role_key: "advanced_director"
+      - role_key: "advanced.director"
         title: "Director of Pickleball, Advanced"
         match_patterns:
           keywords: ["advanced", "director"]
         required: true
       
-      - role_key: "advanced_ops_manager"
+      - role_key: "advanced.ops_manager"
         title: "Operations Manager, Advanced"
         match_patterns:
           keywords: ["advanced", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "social_director"
+      - role_key: "social.director"
         title: "Director of Pickleball, Social"
         match_patterns:
           keywords: ["social", "director"]
         required: true
       
-      - role_key: "social_ops_manager"
+      - role_key: "social.ops_manager"
         title: "Operations Manager, Social"
         match_patterns:
           keywords: ["social", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "wtnb_director"
+      - role_key: "wtnb.director"
         title: "Director of Pickleball, WTNB+"
         match_patterns:
           keywords: ["wtnb", "director"]
         required: true
       
-      - role_key: "wtnb_ops_manager"
+      - role_key: "wtnb.ops_manager"
         title: "Operations Manager, WTNB+"
         match_patterns:
           keywords: ["wtnb", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "ladder_director"
+      - role_key: "ladder.director"
         title: "Director of Pickleball, Ladder"
         match_patterns:
           keywords: ["ladder", "director"]
         required: true
       
-      - role_key: "ladder_ops_manager"
+      - role_key: "ladder.ops_manager"
         title: "Operations Manager, Ladder"
         match_patterns:
           keywords: ["ladder", "operations manager"]
-        required: false
+        required: true
       
-      - role_key: "player_experience_open"
+      - role_key: "player_experience.open"
         title: "Director of Player Experience (Open)"
         match_patterns:
           keywords: ["player experience", "open"]
-        required: false
+        required: true
       
-      - role_key: "player_experience_wtnb"
+      - role_key: "player_experience.wtnb"
         title: "Director of Player Experience (WTNB+)"
         match_patterns:
           keywords: ["player experience", "wtnb"]
-        required: false
+        required: true
   
   # =============================================================================
   # COMMITTEE MEMBERS (not sport-specific)
