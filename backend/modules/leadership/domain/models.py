@@ -121,6 +121,11 @@ class LeadershipHierarchy(BaseModel):
             self.vacant_positions.add(position_key)
             return
         
+        # Handle committee_members (list) specially
+        if section == "committee_members":
+            self.sections["committee_members"].append(person.model_dump(exclude_none=False))
+            return
+        
         # Navigate to correct location in hierarchy
         target = self.sections[section]
         
