@@ -5,7 +5,7 @@ Combines functionality from test_slack_message_formatting.py and test_updated_me
 
 import pytest
 from unittest.mock import Mock, patch
-from modules.integrations.slack.message_builder import SlackMessageBuilder
+from modules.integrations.slack.builders.message_builder import SlackMessageBuilder
 from modules.integrations.slack.slack_refunds_utils import SlackRefundsUtils
 
 

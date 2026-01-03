@@ -85,7 +85,7 @@ class SlackOrderHandlers:
             refund_calculation = cancel_result["refund_calculation"]
             
             # Extract sheet link from current message
-            sheet_link = self.slack_service.extract_sheet_link(current_message_text)
+            sheet_link = self.slack_service.message_parsers.extract_sheet_link(current_message_text)
             
             # Build refund decision message
             refund_message = self.message_builder.create_refund_decision_message(

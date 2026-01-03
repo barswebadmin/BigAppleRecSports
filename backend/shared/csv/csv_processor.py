@@ -207,5 +207,28 @@ class CSVProcessor:
                     valid_emails.append(email_clean.lower())
         
         return valid_emails
+    
+    def extract_column_values(self, csv_data: List[List[str]], column_index: int) -> List[str]:
+        """
+        Extract all non-empty values from a specific column.
+        
+        Args:
+            csv_data: List of rows, where each row is a list of strings
+            column_index: Zero-based column index (e.g., 5 for column F)
+            
+        Returns:
+            List of non-empty values from the specified column (excluding header)
+        """
+        if not csv_data or len(csv_data) < 2:
+            return []
+        
+        values = []
+        for row in csv_data[1:]:
+            if column_index < len(row):
+                value = row[column_index].strip()
+                if value:
+                    values.append(value)
+        
+        return values
 
 
