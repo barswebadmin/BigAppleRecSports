@@ -87,14 +87,40 @@ def handle_update_leadership_submission(ack: Ack, body: dict, view: dict, client
             )
             return
         
+        logger.info(f"📊 Fetched {len(csv_data)} rows from Google Sheet")
+        
         parser = LeadershipCSVParser()
         hierarchy = parser.parse(csv_data)
+        
+        logger.info(f"📊 Parsed hierarchy: {len(hierarchy.sections)} sections")
+        for section_name, section_data in hierarchy.sections.items():
+            if isinstance(section_data, dict):
+                logger.info(f"  {section_name}: {len(section_data)} positions")
+            elif isinstance(section_data, list):
+                logger.info(f"  {section_name}: {len(section_data)} members")
         
         enrichment_service = UserEnrichmentService(SlackConfig.Bots.Leadership.token)
         lookup_results = enrichment_service.enrich_hierarchy(hierarchy, max_workers=5, max_retries=3)
         
+        logger.info(f"📊 Enriched {len(lookup_results)} members with Slack user IDs")
+        
+        import json
+        from pathlib import Path
+        debug_file = Path(__file__).parent / "result.json"
+        with open(debug_file, "w") as f:
+            json.dump({
+                "hierarchy": hierarchy.model_dump(),
+                "lookup_results": lookup_results,
+                "csv_row_count": len(csv_data)
+            }, f, indent=2, default=str)
+        logger.info(f"📄 Saved debug data to {debug_file}")
+        
         formatter = LeadershipResultsFormatter()
         analysis = formatter.analyze_completeness(hierarchy, lookup_results)
+        
+        total = len(analysis.successes) + len(analysis.warnings) + len(analysis.failures) + len(analysis.vacant_positions)
+        logger.info(f"📊 Analysis: {total} total, {len(analysis.successes)} success, {len(analysis.warnings)} warnings, {len(analysis.failures)} failures, {len(analysis.vacant_positions)} vacant")
+        
         result_blocks = formatter.format_results_for_slack(analysis)
         
         client.chat_postEphemeral(
