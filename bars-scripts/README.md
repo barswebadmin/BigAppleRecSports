@@ -4,6 +4,49 @@ Standalone Python command-line tools for managing Shopify orders with beautiful 
 
 ## Available Scripts
 
+### 💬 Slack User Lookup (`./bars-scripts/slack-get-user`)
+Look up Slack user details by email address or user ID.
+
+**Usage:**
+```bash
+# By email
+./bars-scripts/slack-get-user stephen@bigapplerecsports.com
+
+# By user ID
+./bars-scripts/slack-get-user U03LZKQSHEU
+
+# Interactive prompt
+./bars-scripts/slack-get-user
+
+# JSON output
+./bars-scripts/slack-get-user stephen@bigapplerecsports.com --json
+
+# Use different bot token
+./bars-scripts/slack-get-user --bot refunds stephen@example.com
+
+# Different environment
+./bars-scripts/slack-get-user stephen@example.com --env development
+```
+
+**Features:**
+- **Smart detection**: Automatically detects email (contains `@`) vs user ID (starts with `U`)
+- **Interactive prompt**: If no identifier provided, prompts for email or user ID
+- **Multiple bot tokens**: Supports leadership, refunds, registrations, payment_assistance, exec, dev, web
+- Displays name, email, display name, user ID, title, phone, timezone
+- JSON or formatted text output
+- Environment support (production/staging/dev)
+
+**Example Output:**
+```
+Name: Stephen Torres
+Email: stephen@bigapplerecsports.com
+Display: Stephen (He/Him/His)
+User ID: U03LZKQSHEU
+Title: Vice Commissioner
+Phone: 9292920391
+Timezone: Eastern Standard Time
+```
+
 ### 🔍 Order Lookup (`./bars-scripts/order`)
 Look up complete order details including cancellation status, refunds, line items, and transactions.
 
@@ -371,6 +414,9 @@ alias bars-cancel='/Users/jrandazzo/Documents/git-projects/bars/BigAppleRecSport
 alias bars-refund='/Users/jrandazzo/Documents/git-projects/bars/BigAppleRecSports-alt/bars-scripts/refund'
 alias bars-restock='/Users/jrandazzo/Documents/git-projects/bars/BigAppleRecSports-alt/bars-scripts/restock'
 alias bars-cancel-refund='/Users/jrandazzo/Documents/git-projects/bars/BigAppleRecSports-alt/bars-scripts/cancel-and-refund'
+
+# Slack user management
+alias bars-slack-user='/Users/jrandazzo/Documents/git-projects/bars/BigAppleRecSports-alt/bars-scripts/slack-get-user'
 ```
 
 Then use from anywhere:
@@ -515,6 +561,7 @@ These Python scripts mirror the behavior of `bars-scripts-standalone/` bash scri
 - `bars-scripts/refund_order.py` - Refund processing Python implementation
 - `bars-scripts/restock_order.py` - Inventory restocking Python implementation
 - `bars-scripts/cancel_and_refund.py` - Combined workflow Python implementation
+- `bars-scripts/slack_get_user.py` - Slack user lookup Python implementation
 - `bars-scripts/shared_utils.py` - Shared utilities
 
 **Bash Wrappers:**
@@ -525,6 +572,7 @@ These Python scripts mirror the behavior of `bars-scripts-standalone/` bash scri
 - `bars-scripts/refund` - Refund processing bash wrapper
 - `bars-scripts/restock` - Inventory restocking bash wrapper
 - `bars-scripts/cancel-and-refund` - Combined workflow bash wrapper
+- `bars-scripts/slack-get-user` - Slack user lookup bash wrapper
 
 **Standalone Bash Scripts:**
 - `bars-scripts-standalone/` - Bash-only scripts that don't require Python

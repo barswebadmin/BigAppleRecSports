@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Any
 import requests
 
 from slack_bolt import Ack, Say
@@ -353,7 +353,7 @@ def _categorize_positions_hierarchical(csv_data: List[List[str]], position_col: 
     
     current_section = None
     
-    for row in csv_data:
+    for row_idx, row in enumerate(csv_data, start=1):
         if not row or len(row) == 0:
             continue
         
@@ -394,7 +394,7 @@ def _categorize_positions_hierarchical(csv_data: List[List[str]], position_col: 
             if position.lower() == "position":
                 continue
             
-            person_data = _extract_person_data(row, position, name_col, bars_email_col, personal_email_col, phone_col, birthday_col)
+            person_data = _extract_person_data(row, position, name_col, bars_email_col, personal_email_col, phone_col, birthday_col, row_idx)
             
             # For hierarchical sections (dodgeball, kickball), use fuzzy matching
             if current_section in position_patterns:
@@ -569,6 +569,17 @@ def _enrich_hierarchy_with_slack_ids(hierarchy: Dict, results: Dict) -> None:
                             person_data["slack_user_id"] = results.get(bars_email)
 
 
+def _column_index_to_letter(col_idx: int) -> str:
+    """Convert 0-based column index to Excel-style letter (0 -> A, 25 -> Z, 26 -> AA)."""
+    result = ""
+    col_idx += 1  # Convert to 1-based for Excel-style
+    while col_idx > 0:
+        col_idx -= 1
+        result = chr(col_idx % 26 + ord('A')) + result
+        col_idx //= 26
+    return result
+
+
 def _analyze_hierarchy_completeness(hierarchy: Dict, results: Dict) -> Dict:
     """
     Analyze the hierarchy to determine success/warning/failure status for each position.
@@ -610,23 +621,40 @@ def _analyze_hierarchy_completeness(hierarchy: Dict, results: Dict) -> Dict:
         phone = person_data.get("phone", "").strip()
         birthday = person_data.get("birthday", "").strip()
         
+        # Extract CSV row and column info for detailed error reporting
+        csv_row = person_data.get("_csv_row")
+        csv_columns = person_data.get("_csv_columns", {})
+        
         # Get Slack user ID from results
         slack_user_id = results.get(bars_email) if bars_email else None
         
         # Determine fields present and missing based on section type
         fields_present = []
         fields_missing = []
+        fields_missing_details = []  # Will contain dicts with field name and CSV cell reference
+        
+        # Helper to add missing field with CSV cell reference
+        def add_missing_field(field_name: str, value: str, col_key: str):
+            fields_missing.append(field_name)
+            if csv_row and col_key in csv_columns:
+                col_letter = _column_index_to_letter(csv_columns[col_key])
+                cell_ref = f"{col_letter}{csv_row}"
+                fields_missing_details.append({
+                    "field": field_name,
+                    "cell": cell_ref,
+                    "value": value or "(empty)"
+                })
         
         # Always check name and bars_email
         if name:
             fields_present.append("name")
         else:
-            fields_missing.append("name")
+            add_missing_field("name", "", "name")
         
         if bars_email:
             fields_present.append("bars_email")
         else:
-            fields_missing.append("bars_email")
+            add_missing_field("bars_email", "", "bars_email")
         
         # For committee members, slack_user_id, personal_email, and phone are optional
         # For everyone else, slack_user_id is required
@@ -634,17 +662,18 @@ def _analyze_hierarchy_completeness(hierarchy: Dict, results: Dict) -> Dict:
             if slack_user_id:
                 fields_present.append("slack_user_id")
             else:
-                fields_missing.append("slack_user_id")
+                # Special case: slack_user_id missing due to lookup failure
+                add_missing_field("slack_user_id", f"(lookup failed for {bars_email})", "bars_email")
             
             if personal_email:
                 fields_present.append("personal_email")
             else:
-                fields_missing.append("personal_email")
+                add_missing_field("personal_email", "", "personal_email")
             
             if phone:
                 fields_present.append("phone")
             else:
-                fields_missing.append("phone")
+                add_missing_field("phone", "", "phone")
         else:
             # Committee members: track these but don't require them
             if slack_user_id:
@@ -658,7 +687,7 @@ def _analyze_hierarchy_completeness(hierarchy: Dict, results: Dict) -> Dict:
         if birthday:
             fields_present.append("birthday")
         else:
-            fields_missing.append("birthday")
+            add_missing_field("birthday", "", "birthday")
         
         # Categorize based on section type
         if is_committee_member:
@@ -667,8 +696,10 @@ def _analyze_hierarchy_completeness(hierarchy: Dict, results: Dict) -> Dict:
                 failures.append({
                     "path": path,
                     "position": position_name,
+                    "name": name,
                     "fields_present": fields_present,
-                    "fields_missing": fields_missing
+                    "fields_missing": fields_missing,
+                    "fields_missing_details": fields_missing_details
                 })
             elif len(fields_missing) == 0:
                 successes.append({
@@ -680,8 +711,10 @@ def _analyze_hierarchy_completeness(hierarchy: Dict, results: Dict) -> Dict:
                 warnings.append({
                     "path": path,
                     "position": position_name,
+                    "name": name,
                     "fields_present": fields_present,
-                    "fields_missing": fields_missing
+                    "fields_missing": fields_missing,
+                    "fields_missing_details": fields_missing_details
                 })
         else:
             # Leadership positions: require name, bars_email, and slack_user_id
@@ -689,8 +722,10 @@ def _analyze_hierarchy_completeness(hierarchy: Dict, results: Dict) -> Dict:
                 failures.append({
                     "path": path,
                     "position": position_name,
+                    "name": name,
                     "fields_present": fields_present,
-                    "fields_missing": fields_missing
+                    "fields_missing": fields_missing,
+                    "fields_missing_details": fields_missing_details
                 })
             elif len(fields_missing) == 0:
                 successes.append({
@@ -701,8 +736,10 @@ def _analyze_hierarchy_completeness(hierarchy: Dict, results: Dict) -> Dict:
                 warnings.append({
                     "path": path,
                     "position": position_name,
+                    "name": name,
                     "fields_present": fields_present,
-                    "fields_missing": fields_missing
+                    "fields_missing": fields_missing,
+                    "fields_missing_details": fields_missing_details
                 })
     
     # Walk through hierarchy
@@ -786,8 +823,22 @@ def _build_results_blocks_from_hierarchy(hierarchy: Dict, found: Dict, not_found
     if warnings:
         warning_text = "*⚠️ Partial Matches (missing some fields):*\n"
         for item in warnings[:15]:  # Limit to first 15
-            missing_fields_str = ", ".join(item["fields_missing"])
-            warning_text += f"• `{item['position']}` missing: {missing_fields_str}\n"
+            name = item.get("name", "Unknown")
+            position = item["position"]
+            
+            # Build detailed missing fields with CSV cell references
+            if item.get("fields_missing_details"):
+                detail_lines = []
+                for detail in item["fields_missing_details"]:
+                    field_name = detail["field"]
+                    cell_ref = detail["cell"]
+                    value = detail.get("value", "(empty)")
+                    detail_lines.append(f"`{field_name}` (cell {cell_ref}: {value})")
+                missing_str = "\n    - " + "\n    - ".join(detail_lines)
+            else:
+                missing_str = ", ".join(item["fields_missing"])
+            
+            warning_text += f"• *{name}* - `{position}`{missing_str}\n"
         
         if len(warnings) > 15:
             warning_text += f"\n_...and {len(warnings) - 15} more_"
@@ -804,9 +855,22 @@ def _build_results_blocks_from_hierarchy(hierarchy: Dict, found: Dict, not_found
     if failures:
         failure_text = "*❌ Failed Matches (missing email or Slack user ID):*\n"
         for item in failures[:15]:  # Limit to first 15
-            found_fields_str = ", ".join(item["fields_present"]) if item["fields_present"] else "none"
-            missing_fields_str = ", ".join(item["fields_missing"])
-            failure_text += f"• `{item['position']}`\n  Found: {found_fields_str} | Missing: {missing_fields_str}\n"
+            name = item.get("name", "Unknown")
+            position = item["position"]
+            
+            # Build detailed missing fields with CSV cell references
+            if item.get("fields_missing_details"):
+                detail_lines = []
+                for detail in item["fields_missing_details"]:
+                    field_name = detail["field"]
+                    cell_ref = detail["cell"]
+                    value = detail.get("value", "(empty)")
+                    detail_lines.append(f"`{field_name}` (cell {cell_ref}: {value})")
+                missing_str = "\n    - " + "\n    - ".join(detail_lines)
+            else:
+                missing_str = ", ".join(item["fields_missing"])
+            
+            failure_text += f"• *{name}* - `{position}`{missing_str}\n"
         
         if len(failures) > 15:
             failure_text += f"\n_...and {len(failures) - 15} more_"
@@ -1939,7 +2003,7 @@ def _to_snake_case(text: str) -> str:
     return snake
 
 
-def _extract_person_data(row: List[str], position: str, name_col: int, bars_email_col: int, personal_email_col: int, phone_col: int, birthday_col: int) -> Dict[str, str]:
+def _extract_person_data(row: List[str], position: str, name_col: int, bars_email_col: int, personal_email_col: int, phone_col: int, birthday_col: int, row_number: Optional[int] = None) -> Dict[str, Any]:
     """
     Extract person data from a CSV row, cleaning Unicode control characters.
     
@@ -1947,6 +2011,7 @@ def _extract_person_data(row: List[str], position: str, name_col: int, bars_emai
         row: The CSV row
         position: The position string
         name_col, bars_email_col, personal_email_col, phone_col, birthday_col: Column indices
+        row_number: 1-based row number in the original CSV (for error reporting)
     
     Returns:
         Dictionary with person data (cleaned of invisible Unicode control chars)
@@ -1957,7 +2022,7 @@ def _extract_person_data(row: List[str], position: str, name_col: int, bars_emai
             return _clean_unicode_control_chars(row[col_idx].strip())
         return ""
     
-    return {
+    person_data: Dict[str, Any] = {
         "position": position,
         "name": clean_field(name_col),
         "bars_email": clean_field(bars_email_col),
@@ -1965,6 +2030,18 @@ def _extract_person_data(row: List[str], position: str, name_col: int, bars_emai
         "phone": clean_field(phone_col),
         "birthday": clean_field(birthday_col)
     }
+    
+    if row_number is not None:
+        person_data["_csv_row"] = row_number
+        person_data["_csv_columns"] = {
+            "name": name_col,
+            "bars_email": bars_email_col,
+            "personal_email": personal_email_col,
+            "phone": phone_col,
+            "birthday": birthday_col
+        }
+    
+    return person_data
 
 
 def _build_leadership_hierarchy_and_mappings(csv_data: List[List[str]], header_row: int, position_col: int, email_col: int) -> Dict:

@@ -77,3 +77,6 @@ lambda-functions/*/shared_utilities_dev
 **/.deploy_temp/
 *_temp.sh
 test_*_temp.*
+
+# Planning documents (local working files)
+SLACK_ARCHITECTURE_REFACTOR_PLAN.md
