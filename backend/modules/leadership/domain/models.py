@@ -1,21 +1,18 @@
 """
 Leadership Domain Models using Pydantic.
 
-These are pure domain objects with NO knowledge of Slack, Shopify, or other integrations.
-They represent the core business concepts of the leadership hierarchy.
+Pure domain objects with NO external integration dependencies.
 """
 from typing import Optional, Dict, Any, List, Set
-from pydantic import BaseModel, Field, field_validator, EmailStr
+from pydantic import BaseModel, Field, field_validator
 
 
 class PersonInfo(BaseModel):
     """
-    Represents a person in the leadership hierarchy.
+    Person in leadership hierarchy.
     
-    Business Rules:
-    - Vacant positions have name="Vacant" (case-insensitive)
-    - Complete positions require: name + bars_email
-    - Slack user ID is optional (enriched later)
+    Vacant if name="Vacant" (case-insensitive).
+    Complete if name + bars_email present.
     """
     name: str
     bars_email: str = Field(default="", description="Primary BARS email for Slack lookup")
@@ -37,13 +34,7 @@ class PersonInfo(BaseModel):
         return self.name.lower().strip() == "vacant"
     
     def is_complete(self) -> bool:
-        """
-        Check if all required fields are present.
-        
-        Business Rule:
-        - Vacant positions are always considered complete
-        - Normal positions require: name AND bars_email
-        """
+        """Vacant positions always complete. Normal positions need name + bars_email."""
         if self.is_vacant():
             return True
         return bool(self.name and self.bars_email)
@@ -54,16 +45,7 @@ class PersonInfo(BaseModel):
 
 
 class Position(BaseModel):
-    """
-    Represents a single position in the leadership hierarchy.
-    
-    Structure:
-    - section: Top-level (executive_board, bowling, dodgeball, etc.)
-    - sub_section: Optional nested level (smallball_advanced, monday, etc.)
-    - team: Optional team level (operations, player_experience, etc.)
-    - role: Specific role (commissioner, director, ops_manager, etc.)
-    - person: The PersonInfo for this position
-    """
+    """Single position in hierarchy with section/sub_section/team/role structure."""
     section: str = Field(description="Top-level section (executive_board, bowling, etc.)")
     role: str = Field(description="Specific role (commissioner, director, etc.)")
     person: PersonInfo = Field(description="Person in this position")
@@ -71,14 +53,7 @@ class Position(BaseModel):
     team: Optional[str] = Field(default=None, description="Team level (optional)")
     
     def display_name(self) -> str:
-        """
-        Generate human-readable position name.
-        
-        Examples:
-        - "Executive Board - Commissioner"
-        - "Dodgeball - Smallball Advanced - Director"
-        - "Bowling - Sunday - Operations Manager"
-        """
+        """Generate human-readable name from hierarchy path."""
         parts = [self.section.replace("_", " ").title()]
         
         if self.sub_section:
@@ -108,29 +83,7 @@ class Position(BaseModel):
 
 
 class LeadershipHierarchy(BaseModel):
-    """
-    Represents the entire leadership organizational hierarchy.
-    
-    Structure (matches existing JSON format):
-    ```
-    {
-        "executive_board": {
-            "commissioner": {person_data},
-            "vice_commissioner": {person_data},
-            ...
-        },
-        "dodgeball": {
-            "smallball_advanced": {
-                "director": {person_data},
-                "ops_manager": {person_data}
-            },
-            ...
-        },
-        ...
-        "vacant_positions": ["dodgeball.foamball.director", ...]
-    }
-    ```
-    """
+    """Complete organizational hierarchy. Maintains existing JSON format compatibility."""
     sections: Dict[str, Any] = Field(
         default_factory=lambda: {
             "executive_board": {},
@@ -156,14 +109,7 @@ class LeadershipHierarchy(BaseModel):
         sub_section: Optional[str] = None,
         team: Optional[str] = None
     ) -> None:
-        """
-        Add a position to the hierarchy.
-        
-        Business Rules:
-        - Vacant positions go to vacant_positions set, not sections
-        - Positions are stored as flat dicts for JSON compatibility
-        - Nested positions use sub_section navigation
-        """
+        """Add position. Vacant go to vacant_positions set, others to sections dict."""
         # Handle vacant positions
         if person.is_vacant():
             position_key = f"{section}"
@@ -213,17 +159,10 @@ class LeadershipHierarchy(BaseModel):
             return None
     
     def get_all_emails(self) -> List[str]:
-        """
-        Extract all BARS emails for Slack user lookup.
-        
-        Excludes:
-        - Empty emails
-        - Vacant positions
-        """
+        """Extract all non-empty BARS emails (excludes vacant positions)."""
         emails = []
         
         def extract_emails(obj: Any) -> None:
-            """Recursively extract emails from nested structure."""
             if isinstance(obj, dict):
                 # Check if this is a person dict
                 if "bars_email" in obj and obj["bars_email"]:
@@ -252,17 +191,11 @@ class LeadershipHierarchy(BaseModel):
         return result
     
     def get_summary(self) -> Dict[str, int]:
-        """
-        Get summary statistics for the hierarchy.
-        
-        Returns:
-            Dict with keys: total, with_slack_id, vacant
-        """
+        """Get summary: total, with_slack_id, vacant counts."""
         total = 0
         with_slack_id = 0
         
         def count_positions(obj: Any) -> None:
-            """Recursively count positions."""
             nonlocal total, with_slack_id
             
             if isinstance(obj, dict):
