@@ -47,6 +47,63 @@ Phone: 9292920391
 Timezone: Eastern Standard Time
 ```
 
+### 🛍️ Shopify Page & Template Fetcher (`./bars-scripts/shopify-get-page`)
+Fetch Shopify page content or theme template assets via the Shopify Admin API.
+
+**Usage:**
+```bash
+# Fetch a page by handle
+./bars-scripts/shopify-get-page contact
+
+# Fetch page as JSON
+./bars-scripts/shopify-get-page --page contact --output json
+
+# Fetch page as raw HTML
+./bars-scripts/shopify-get-page --page contact --output html
+
+# Fetch a theme template/asset
+./bars-scripts/shopify-get-page --theme 134424232030 --asset templates/page.about-us-2.json
+
+# List all assets in a theme
+./bars-scripts/shopify-get-page --theme 134424232030 --list
+
+# List assets matching a pattern
+./bars-scripts/shopify-get-page --theme 134424232030 --list --filter about
+```
+
+**Features:**
+- **Fetch pages**: Get page content by handle (e.g., `contact`, `about`)
+- **Fetch theme assets**: Get templates, sections, or snippets from a theme
+- **List assets**: Browse all assets in a theme with optional filtering
+- **Multiple formats**: Output as text, JSON, or raw HTML
+- Useful for extracting content to standardize leadership titles
+
+**Common Use Cases:**
+```bash
+# Get the About Us page template for leadership titles
+./bars-scripts/shopify-get-page --theme 134424232030 --asset templates/page.about-us-2.json
+
+# List all page templates
+./bars-scripts/shopify-get-page --theme 134424232030 --list --filter templates/page
+
+# Extract contact page HTML for parsing
+./bars-scripts/shopify-get-page contact --output html
+```
+
+**Example Output (List Assets):**
+```
+📦 Theme 134424232030 Assets (8 total):
+
+📝 Templates:
+  - templates/page.about-us-2.json
+  - templates/page.contact.json
+  - templates/page.json
+
+📐 Sections:
+  - sections/leadership-grid.liquid
+  - sections/contact-form.liquid
+```
+
 ### 🔍 Order Lookup (`./bars-scripts/order`)
 Look up complete order details including cancellation status, refunds, line items, and transactions.
 
