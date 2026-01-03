@@ -15,10 +15,116 @@ from modules.leadership.services.user_enrichment_service import UserEnrichmentSe
 from modules.integrations.slack.leadership.results_formatter import LeadershipResultsFormatter
 from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
 from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
+from modules.integrations.google import GoogleSheetsClient
 from shared.csv import parse_csv_text
 from shared.csv.csv_processor import CSVProcessor
 
 logger = logging.getLogger(__name__)
+
+
+@app.command("/update-bars-leadership")
+def handle_update_bars_leadership_command(ack: Ack, command: dict, client: WebClient):
+    """Handle /update-bars-leadership slash command. Opens a modal for Google Sheet URL."""
+    ack()
+    
+    trigger_id = command["trigger_id"]
+    
+    blocks = [
+        SlackBlockBuilder.text_input(
+            action_id="sheet_url",
+            label="Google Sheet URL",
+            placeholder="https://docs.google.com/spreadsheets/d/...",
+            block_id="sheet_url_block"
+        ),
+        GenericMessageBuilder.context([
+            "💡 *Tip:* Make sure the sheet is shared with the BARS service account",
+            "📧 Service account: `bars-backend-service@bars-backend-services.iam.gserviceaccount.com`"
+        ])
+    ]
+    
+    modal_view = SlackBlockBuilder.modal(
+        title="Update BARS Leadership",
+        blocks=blocks,
+        submit_text="Fetch Sheet",
+        close_text="Cancel",
+        callback_id="update_leadership_modal"
+    )
+    
+    client.views_open(trigger_id=trigger_id, view=modal_view)
+
+
+@app.view("update_leadership_modal")
+def handle_update_leadership_submission(ack: Ack, body: dict, view: dict, client: WebClient):
+    """Handle leadership update modal submission - fetch and parse Google Sheet."""
+    ack()
+    
+    user_id = body["user"]["id"]
+    sheet_url = view["state"]["values"]["sheet_url_block"]["sheet_url"]["value"]
+    
+    try:
+        sheets_client = GoogleSheetsClient()
+        sheet_id = sheets_client.extract_sheet_id_from_url(sheet_url)
+        
+        initial_blocks = [
+            GenericMessageBuilder.header("📊 Fetching Leadership Data"),
+            GenericMessageBuilder.section(f"🔄 Downloading sheet: `{sheet_id[:20]}...`")
+        ]
+        
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text="Fetching leadership data from Google Sheets...",
+            blocks=initial_blocks
+        )
+        
+        csv_data = sheets_client.fetch_sheet_as_csv(sheet_id)
+        
+        if not csv_data or len(csv_data) < 5:
+            _post_error_message(
+                client,
+                user_id,
+                f"Sheet appears empty or invalid. Found {len(csv_data)} rows."
+            )
+            return
+        
+        parser = LeadershipCSVParser()
+        hierarchy = parser.parse(csv_data)
+        
+        enrichment_service = UserEnrichmentService(SlackConfig.Bots.Leadership.token)
+        lookup_results = enrichment_service.enrich_hierarchy(hierarchy, max_workers=5, max_retries=3)
+        
+        formatter = LeadershipResultsFormatter()
+        analysis = formatter.analyze_completeness(hierarchy, lookup_results)
+        result_blocks = formatter.format_results_for_slack(analysis)
+        
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text="Leadership data processed successfully",
+            blocks=result_blocks
+        )
+        
+    except PermissionError as e:
+        logger.error(f"Google Sheets permission error: {e}")
+        _post_error_message(
+            client,
+            user_id,
+            f"❌ Permission denied: {str(e)}\n\nMake sure the sheet is shared with: `bars-backend-service@bars-backend-services.iam.gserviceaccount.com`"
+        )
+    except ValueError as e:
+        logger.error(f"Invalid sheet URL or ID: {e}")
+        _post_error_message(
+            client,
+            user_id,
+            f"❌ Invalid Google Sheet URL: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error processing leadership sheet: {e}", exc_info=True)
+        _post_error_message(
+            client,
+            user_id,
+            f"❌ Error processing sheet: {str(e)}"
+        )
 
 
 @app.command("/get-user-ids")
