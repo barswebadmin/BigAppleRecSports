@@ -21,6 +21,7 @@ from slack_sdk.models.blocks import (
     MarkdownTextObject,
 )
 from slack_sdk.models.blocks.block_elements import BlockElement, InteractiveElement
+from slack_sdk.models.blocks.basic_components import ConfirmObject
 
 
 class GenericMessageBuilder:
@@ -100,7 +101,8 @@ class GenericMessageBuilder:
         action_id: str, 
         value: Optional[str] = None, 
         style: Optional[str] = None,
-        url: Optional[str] = None
+        url: Optional[str] = None,
+        confirm: Optional[ConfirmObject] = None
     ) -> ButtonElement:
         """
         Build a button for Slack.
@@ -109,8 +111,9 @@ class GenericMessageBuilder:
             text: Button label
             action_id: Unique action identifier
             value: Value to send when clicked (required unless url provided)
-            style: Optional style ("primary", "danger")
+            style: Optional style ("primary", "danger", or None for default)
             url: Optional URL (creates link button instead of action)
+            confirm: Optional confirmation dialog to show before action
             
         Returns:
             Typed Slack button element
@@ -122,7 +125,68 @@ class GenericMessageBuilder:
             action_id=action_id,
             value=value,
             url=url,
-            style=style
+            style=style,
+            confirm=confirm
+        )
+    
+    @staticmethod
+    def confirm_button(
+        text: str,
+        action_id: str,
+        value: Optional[str] = None,
+        url: Optional[str] = None,
+        confirm: Optional[ConfirmObject] = None
+    ) -> ButtonElement:
+        """
+        Build a primary-styled confirmation button.
+        
+        Args:
+            text: Button label
+            action_id: Unique action identifier
+            value: Value to send when clicked
+            url: Optional URL (creates link button instead of action)
+            confirm: Optional confirmation dialog to show before action
+            
+        Returns:
+            Typed Slack button element with primary style
+        """
+        return GenericMessageBuilder.button(
+            text=text,
+            action_id=action_id,
+            value=value,
+            style="primary",
+            url=url,
+            confirm=confirm
+        )
+    
+    @staticmethod
+    def cancel_button(
+        text: str,
+        action_id: str,
+        value: Optional[str] = None,
+        url: Optional[str] = None,
+        confirm: Optional[ConfirmObject] = None
+    ) -> ButtonElement:
+        """
+        Build a danger-styled cancel button.
+        
+        Args:
+            text: Button label
+            action_id: Unique action identifier
+            value: Value to send when clicked
+            url: Optional URL (creates link button instead of action)
+            confirm: Optional confirmation dialog to show before action
+            
+        Returns:
+            Typed Slack button element with danger style
+        """
+        return GenericMessageBuilder.button(
+            text=text,
+            action_id=action_id,
+            value=value,
+            style="danger",
+            url=url,
+            confirm=confirm
         )
     
     @staticmethod
@@ -137,6 +201,54 @@ class GenericMessageBuilder:
             Typed Slack actions block
         """
         return ActionsBlock(elements=elements)
+    
+    @staticmethod
+    def confirmation_dialog(
+        title: str,
+        text: str,
+        confirm_text: str = "Confirm",
+        deny_text: str = "Cancel",
+        style: Optional[str] = None
+    ) -> ConfirmObject:
+        """
+        Build a confirmation dialog to attach to buttons or other actions.
+        
+        Args:
+            title: Dialog title (max 100 chars)
+            text: Dialog text/description (max 300 chars, markdown supported)
+            confirm_text: Confirm button text (max 30 chars)
+            deny_text: Cancel button text (max 30 chars)
+            style: Optional style ("primary" or "danger")
+            
+        Returns:
+            Typed Slack confirmation object
+            
+        Example:
+            confirm = builder.confirmation_dialog(
+                title="Delete Item?",
+                text="Are you sure you want to delete this item?",
+                confirm_text="Yes, delete",
+                deny_text="Cancel",
+                style="danger"
+            )
+            button = builder.cancel_button(
+                text="Delete",
+                action_id="delete_item",
+                confirm=confirm
+            )
+        """
+        title_obj = PlainTextObject(text=title)
+        text_obj = MarkdownTextObject(text=text)
+        confirm_obj = PlainTextObject(text=confirm_text)
+        deny_obj = PlainTextObject(text=deny_text)
+        
+        return ConfirmObject(
+            title=title_obj,
+            text=text_obj,
+            confirm=confirm_obj,
+            deny=deny_obj,
+            style=style
+        )
     
     # ========================================================================
     # TEXT FORMATTING HELPERS (Markdown strings for use in blocks)

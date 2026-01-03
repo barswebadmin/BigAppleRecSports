@@ -41,6 +41,7 @@ class PersonInfo(BaseModel):
     
     model_config = {
         "str_strip_whitespace": True,
+        "extra": "allow"
     }
 
 
