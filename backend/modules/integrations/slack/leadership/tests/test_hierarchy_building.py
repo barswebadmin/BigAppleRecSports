@@ -5,14 +5,9 @@ Tests CSV parsing and hierarchy construction without requiring Slack API calls.
 import json
 import os
 import pytest
-import sys
 
-# Add backend to path for imports
-backend_path = os.path.join(os.path.dirname(__file__), '../../../..')
-sys.path.insert(0, backend_path)
-
-from shared.check_dict_equivalence import check_dict_equivalence
-from modules.integrations.slack.leadership.tests.test_helpers import (
+from shared import check_dict_equivalence
+from .test_helpers import (
     process_csv_to_hierarchy,
     normalize_hierarchy_for_comparison
 )
