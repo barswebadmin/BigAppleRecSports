@@ -87,6 +87,13 @@ def fetch_page(page_handle: str, output_format: str = "text", environment: str =
         
     except requests.RequestException as e:
         print(f"❌ Error fetching page: {e}", file=sys.stderr)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_data = e.response.json()
+                print(f"\n📋 API Response:", file=sys.stderr)
+                print(json.dumps(error_data, indent=2), file=sys.stderr)
+            except (ValueError, AttributeError):
+                print(f"\n📋 Response Text: {e.response.text}", file=sys.stderr)
         return None
 
 
@@ -151,6 +158,13 @@ def fetch_theme_asset(theme_id: str, asset_key: str, output_format: str = "text"
         
     except requests.RequestException as e:
         print(f"❌ Error fetching theme asset: {e}", file=sys.stderr)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_data = e.response.json()
+                print(f"\n📋 API Response:", file=sys.stderr)
+                print(json.dumps(error_data, indent=2), file=sys.stderr)
+            except (ValueError, AttributeError):
+                print(f"\n📋 Response Text: {e.response.text}", file=sys.stderr)
         return None
 
 
@@ -210,6 +224,13 @@ def list_theme_assets(theme_id: str, filter_pattern: Optional[str] = None, envir
         
     except requests.RequestException as e:
         print(f"❌ Error listing theme assets: {e}", file=sys.stderr)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_data = e.response.json()
+                print(f"\n📋 API Response:", file=sys.stderr)
+                print(json.dumps(error_data, indent=2), file=sys.stderr)
+            except (ValueError, AttributeError):
+                print(f"\n📋 Response Text: {e.response.text}", file=sys.stderr)
 
 
 def main():
