@@ -45,4 +45,31 @@ class SlackUsersClient:
             if lname and (real_name.endswith(" " + lname) or real_name.split()[-1] == lname or lname in real_name):
                 candidates.append(u)
         return candidates
+    
+    def lookup_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Look up a Slack user by their email address.
+        Note: Slack's API is case-insensitive, but we normalize to lowercase for consistency.
+        
+        Args:
+            email: Email address to look up
+            
+        Returns:
+            User object if found, None otherwise
+        """
+        headers = {"Authorization": f"Bearer {self.bearer_token}"}
+        params = {"email": email.strip().lower()}
+        
+        resp = requests.get(
+            f"{self.base_url}/users.lookupByEmail",
+            headers=headers,
+            params=params,
+            verify=self.verify
+        )
+        
+        data = resp.json()
+        if data.get("ok"):
+            return data.get("user")
+        
+        return None
 

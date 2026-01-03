@@ -66,7 +66,7 @@ class SlackService:
         # self.slack_security = SlackSecurity(self.config.SlackBot.get_signing_secret())
 
         # Initialize helper components
-        self.message_builder = self._get_message_builder()
+        self.message_builder = SlackMessageBuilder(self.config.SlackGroup.all())
         # self.refunds_utils = SlackRefundsUtils(
         #     self.orders_service, 
         #     self._get_settings(),
@@ -81,11 +81,6 @@ class SlackService:
         # self.message_parsers = self._get_message_parsers()
         # self.order_handlers = SlackOrderHandlers(self.orders_service, self, self.message_builder)
 
-    def _get_sport_groups(self) -> dict[str, dict[str, str]]:
-        """Get sport groups configuration."""
-        return self.config.SlackGroup.all()
-    
-    
 
     # ============================================================================
     # CONVENIENCE METHODS FOR TESTING
@@ -460,53 +455,15 @@ class SlackService:
         logger.warning("handle_restock_inventory not implemented")
         return {"text": "Restock inventory functionality not yet implemented"}
 
-    def _get_settings(self):
-        """Get settings object for backward compatibility."""
-        class Config:
-            def __init__(self, config):
-                self.slack_subgroups = config.SlackGroup.all()
-        return Config(self.config)
 
-    def _get_message_builder(self):
-        """Get message builder instance."""
-        if SlackMessageBuilder:
-            return SlackMessageBuilder(self._get_sport_groups())
-        return None
 
     # def _get_cache_manager(self):
     #     """Get cache manager instance."""
     #     return SlackCacheManager()
 
 
-    def _get_message_parsers(self):
-        """Get message parsers instance."""
-        return SlackMessageParsers()
 
 
-
-    # ============================================================================
-    # UTILITY METHODS (delegated)
-    # ============================================================================
-
-    def extract_sheet_link(self, message_text: str) -> str:
-        """Extract sheet link from message text."""
-        return self.message_parsers.extract_sheet_link(message_text)
-
-    def extract_season_start_info(self, message_text: str) -> Dict[str, Optional[str]]:
-        """Extract season start info from message text."""
-        return self.message_parsers.extract_season_start_info(message_text)
-
-    def extract_order_number(self, message_text: str) -> Optional[str]:
-        """Extract order number from message text."""
-        return self.message_parsers.extract_order_number(message_text)
-
-    def extract_email(self, message_text: str) -> Optional[str]:
-        """Extract email address from message text."""
-        return self.message_parsers.extract_email(message_text)
-
-    def extract_refund_amount(self, message_text: str) -> Optional[float]:
-        """Extract refund amount from message text."""
-        return self.message_parsers.extract_refund_amount(message_text)
 
     # ============================================================================
     # ORDER HANDLING METHODS (delegated to OrderHandlers)

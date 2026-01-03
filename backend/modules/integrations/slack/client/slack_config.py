@@ -62,6 +62,7 @@ class SlackConfig:
 
         Dev               = _Bot("SLACK_BOT_TOKEN_DEV",               "SLACK_SIGNING_SECRET_DEV")
         Exec              = _Bot("SLACK_BOT_TOKEN_EXEC",              "SLACK_SIGNING_SECRET_EXEC")
+        Leadership        = _Bot("SLACK_BOT_TOKEN_LEADERSHIP",        "SLACK_SIGNING_SECRET_LEADERSHIP")
         PaymentAssistance = _Bot("SLACK_BOT_TOKEN_PAYMENT_ASSISTANCE","SLACK_SIGNING_SECRET_PAYMENT_ASSISTANCE")
         Refunds           = _Bot("SLACK_BOT_TOKEN_REFUNDS",           "SLACK_SIGNING_SECRET_REFUNDS")
         Registrations     = _Bot("SLACK_BOT_TOKEN_REGISTRATIONS",     "SLACK_SIGNING_SECRET_REGISTRATIONS")

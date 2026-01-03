@@ -1,0 +1,681 @@
+{
+  "executive_board": {
+    "commissioner": {
+      "role": {
+        "position": "Commissioner",
+        "name": "ExecPerson1",
+        "bars_email": "exec.person1@example.com",
+        "personal_email": "exec1.personal@example.com",
+        "phone": "(555) 000-0001",
+        "birthday": "1/1"
+      }
+    },
+    "vice_commissioner": {
+      "role": {
+        "position": "Vice Commissioner",
+        "name": "ExecPerson2",
+        "bars_email": "exec.person2@example.com",
+        "personal_email": "exec2.personal@example.com",
+        "phone": "(555) 000-0002",
+        "birthday": "1/2"
+      }
+    },
+    "wtnb_commissioner": {
+      "role": {
+        "position": "Commissioner of WTNB+ Players",
+        "name": "ExecPerson3",
+        "bars_email": "exec.person3@example.com",
+        "personal_email": "exec3.personal@example.com",
+        "phone": "(555) 000-0003",
+        "birthday": "1/3"
+      }
+    },
+    "secretary": {
+      "role": {
+        "position": "Secretary",
+        "name": "ExecPerson4",
+        "bars_email": "exec.person4@example.com",
+        "personal_email": "exec4.personal@example.com",
+        "phone": "(555) 000-0004",
+        "birthday": "1/4"
+      }
+    },
+    "treasurer": {
+      "role": {
+        "position": "Treasurer",
+        "name": "ExecPerson5",
+        "bars_email": "exec.person5@example.com",
+        "personal_email": "exec5.personal@example.com",
+        "phone": "(555) 000-0005",
+        "birthday": "1/5"
+      }
+    },
+    "operations_commissioner": {
+      "role": {
+        "position": "Commissioner of Operations",
+        "name": "ExecPerson6",
+        "bars_email": "exec.person6@example.com",
+        "personal_email": "exec6.personal@example.com",
+        "phone": "(555) 000-0006",
+        "birthday": "1/6"
+      }
+    },
+    "dei_commissioner": {
+      "role": {
+        "position": "Commissioner of Diversity, Equity & Inclusion",
+        "name": "ExecPerson7",
+        "bars_email": "exec.person7@example.com",
+        "personal_email": "exec7.personal@example.com",
+        "phone": "(555) 000-0007",
+        "birthday": "1/7"
+      }
+    },
+    "bowling_commissioner": {
+      "role": {
+        "position": "Commissioner of Bowling",
+        "name": "ExecPerson8",
+        "bars_email": "exec.person8@example.com",
+        "personal_email": "exec8.personal@example.com",
+        "phone": "(555) 000-0008",
+        "birthday": "1/8"
+      }
+    },
+    "dodgeball_commissioner": {
+      "role": {
+        "position": "Commissioner of Dodgeball",
+        "name": "ExecPerson9",
+        "bars_email": "exec.person9@example.com",
+        "personal_email": "exec9.personal@example.com",
+        "phone": "(555) 000-0009",
+        "birthday": "1/9"
+      }
+    },
+    "kickball_commissioner": {
+      "role": {
+        "position": "Commissioner of Kickball",
+        "name": "ExecPerson10",
+        "bars_email": "exec.person10@example.com",
+        "personal_email": "exec10.personal@example.com",
+        "phone": "(555) 000-0010",
+        "birthday": "1/10"
+      }
+    },
+    "pickleball_commissioner": {
+      "role": {
+        "position": "Commissioner of Pickleball",
+        "name": "ExecPerson11",
+        "bars_email": "exec.person11@example.com",
+        "personal_email": "exec11.personal@example.com",
+        "phone": "(555) 000-0011",
+        "birthday": "1/11"
+      }
+    }
+  },
+  "cross_sport": {
+    "communications": {
+      "role": {
+        "position": "Director of Communications",
+        "name": "CrossPerson1",
+        "bars_email": "cross.person1@example.com",
+        "personal_email": "cross1.personal@example.com",
+        "phone": "(555) 000-0021",
+        "birthday": "2/1"
+      }
+    },
+    "events": {
+      "open": {
+        "position": "Director of Events (Open)",
+        "name": "CrossPerson4",
+        "bars_email": "cross.person4@example.com",
+        "personal_email": "cross4.personal@example.com",
+        "phone": "(555) 000-0024",
+        "birthday": "2/4"
+      },
+      "wtnb": {
+        "position": "Director of Events (WTNB+)",
+        "name": "CrossPerson5",
+        "bars_email": "cross.person5@example.com",
+        "personal_email": "cross5.personal@example.com",
+        "phone": "(555) 000-0025",
+        "birthday": "2/5"
+      }
+    },
+    "dei": {
+      "open": {
+        "position": "Director of Diversity, Equity & Inclusion (Open)",
+        "name": "CrossPerson2",
+        "bars_email": "cross.person2@example.com",
+        "personal_email": "cross2.personal@example.com",
+        "phone": "(555) 000-0022",
+        "birthday": "2/2"
+      },
+      "wtnb": {
+        "position": "Director of Diversity, Equity & Inclusion (WTNB+)",
+        "name": "CrossPerson3",
+        "bars_email": "cross.person3@example.com",
+        "personal_email": "cross3.personal@example.com",
+        "phone": "(555) 000-0023",
+        "birthday": "2/3"
+      }
+    },
+    "marketing": {
+      "role": {
+        "position": "Director of Marketing",
+        "name": "CrossPerson6",
+        "bars_email": "cross.person6@example.com",
+        "personal_email": "cross6.personal@example.com",
+        "phone": "(555) 000-0026",
+        "birthday": "2/6"
+      }
+    },
+    "philanthropy": {
+      "role": {
+        "position": "Director of Philanthropy",
+        "name": "CrossPerson7",
+        "bars_email": "cross.person7@example.com",
+        "personal_email": "cross7.personal@example.com",
+        "phone": "(555) 000-0027",
+        "birthday": "2/7"
+      }
+    },
+    "social_media": {
+      "open": {
+        "position": "Director of Social Media & Engagement (Open)",
+        "name": "CrossPerson8",
+        "bars_email": "cross.person8@example.com",
+        "personal_email": "cross8.personal@example.com",
+        "phone": "(555) 000-0028",
+        "birthday": "2/8"
+      },
+      "wtnb": {
+        "position": "Director of Social Media & Engagement (WTNB+)",
+        "name": "CrossPerson9",
+        "bars_email": "cross.person9@example.com",
+        "personal_email": "cross9.personal@example.com",
+        "phone": "(555) 000-0029",
+        "birthday": "2/9"
+      }
+    },
+    "technology": {
+      "role": {
+        "position": "Director of Technology",
+        "name": "CrossPerson10",
+        "bars_email": "cross.person10@example.com",
+        "personal_email": "cross10.personal@example.com",
+        "phone": "(555) 000-0030",
+        "birthday": "2/10"
+      }
+    },
+    "permits_equipment": {
+      "role": {
+        "position": "Director of Permits & Equipment Management",
+        "name": "CrossPerson11",
+        "bars_email": "cross.person11@example.com",
+        "personal_email": "cross11.personal@example.com",
+        "phone": "(555) 000-0031",
+        "birthday": "2/11"
+      }
+    }
+  },
+  "bowling": {
+    "sunday": {
+      "director": {
+        "position": "Director of Bowling, Sunday",
+        "name": "BowlingPerson1",
+        "bars_email": "bowling.person1@example.com",
+        "personal_email": "bowling1.personal@example.com",
+        "phone": "(555) 000-0041",
+        "birthday": "3/1"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Sunday",
+        "name": "BowlingPerson4",
+        "bars_email": "bowling.person4@example.com",
+        "personal_email": "bowling4.personal@example.com",
+        "phone": "(555) 000-0044",
+        "birthday": "3/4"
+      }
+    },
+    "monday_open": {
+      "director": {
+        "position": "Director of Bowling, Monday",
+        "name": "BowlingPerson2",
+        "bars_email": "bowling.person2@example.com",
+        "personal_email": "bowling2.personal@example.com",
+        "phone": "(555) 000-0042",
+        "birthday": "3/2"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Monday",
+        "name": "Vacant",
+        "bars_email": "",
+        "personal_email": "",
+        "phone": "",
+        "birthday": ""
+      }
+    },
+    "monday_wtnb": {
+      "director": {
+        "position": "Director of Bowling, WTNB+",
+        "name": "BowlingPerson3",
+        "bars_email": "bowling.person3@example.com",
+        "personal_email": "bowling3.personal@example.com",
+        "phone": "(555) 000-0043",
+        "birthday": "3/3"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, WTNB+",
+        "name": "Vacant",
+        "bars_email": "",
+        "personal_email": "",
+        "phone": "",
+        "birthday": ""
+      }
+    },
+    "player_experience": {
+      "wtnb": {
+        "position": "Director of Player Experience, WTNB+",
+        "name": "BowlingPerson8",
+        "bars_email": "bowling.person8@example.com",
+        "personal_email": "bowling8.personal@example.com",
+        "phone": "(555) 000-0048",
+        "birthday": "3/8"
+      },
+      "open": {
+        "position": "Director of Player Experience, Open",
+        "name": "BowlingPerson7",
+        "bars_email": "bowling.person7@example.com",
+        "personal_email": "bowling7.personal@example.com",
+        "phone": "(555) 000-0047",
+        "birthday": "3/7"
+      }
+    }
+  },
+  "dodgeball": {
+    "smallball_advanced": {
+      "director": {
+        "position": "Director of Dodgeball, Small Ball Advanced (Sunday)",
+        "name": "DodgeballPerson1",
+        "bars_email": "dodgeball.person1@example.com",
+        "personal_email": "dodgeball1.personal@example.com",
+        "phone": "(555) 000-0061",
+        "birthday": "4/1"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Small Ball Advanced (Sunday)",
+        "name": "DodgeballPerson7",
+        "bars_email": "dodgeball.person7@example.com",
+        "personal_email": "dodgeball7.personal@example.com",
+        "phone": "(555) 000-0067",
+        "birthday": "4/7"
+      }
+    },
+    "smallball_social": {
+      "director": {
+        "position": "Director of Dodgeball, Small Ball Social (Tuesday)",
+        "name": "DodgeballPerson4",
+        "bars_email": "dodgeball.person4@example.com",
+        "personal_email": "dodgeball4.personal@example.com",
+        "phone": "(555) 000-0064",
+        "birthday": "4/4"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Small Ball Social (Tuesday)",
+        "name": "DodgeballPerson10",
+        "bars_email": "dodgeball.person10@example.com",
+        "personal_email": "dodgeball10.personal@example.com",
+        "phone": "(555) 000-0070",
+        "birthday": "4/10"
+      }
+    },
+    "wtnb_draft": {
+      "director": {
+        "position": "Director of Dodgeball, WTNB+ Small Ball Draft (Wednesday)",
+        "name": "DodgeballPerson5",
+        "bars_email": "dodgeball.person5@example.com",
+        "personal_email": "dodgeball5.personal@example.com",
+        "phone": "(555) 000-0065",
+        "birthday": "4/5"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, WTNB+ Small Ball Draft (Sunday)",
+        "name": "DodgeballPerson2",
+        "bars_email": "dodgeball.person2@example.com",
+        "personal_email": "dodgeball2.personal@example.com",
+        "phone": "(555) 000-0062",
+        "birthday": "4/2"
+      }
+    },
+    "wtnb_social": {
+      "director": {
+        "position": "Director of Dodgeball, WTNB+ Small Ball Social (Wednesday)",
+        "name": "DodgeballPerson11",
+        "bars_email": "dodgeball.person11@example.com",
+        "personal_email": "dodgeball11.personal@example.com",
+        "phone": "(555) 000-0071",
+        "birthday": "4/11"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, WTNB+ Small Ball Social (Sunday)",
+        "name": "DodgeballPerson8",
+        "bars_email": "dodgeball.person8@example.com",
+        "personal_email": "dodgeball8.personal@example.com",
+        "phone": "(555) 000-0068",
+        "birthday": "4/8"
+      }
+    },
+    "foamball": {
+      "director": {
+        "position": "Director of Dodgeball, Foam Ball (Thursday)",
+        "name": "DodgeballPerson6",
+        "bars_email": "dodgeball.person6@example.com",
+        "personal_email": "dodgeball6.personal@example.com",
+        "phone": "(555) 000-0066",
+        "birthday": "4/6"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Foam Ball (Thursday)",
+        "name": "DodgeballPerson12",
+        "bars_email": "dodgeball.person12@example.com",
+        "personal_email": "dodgeball12.personal@example.com",
+        "phone": "(555) 000-0072",
+        "birthday": "4/12"
+      }
+    },
+    "bigball": {
+      "director": {
+        "position": "Director of Dodgeball, Big Ball (Monday)",
+        "name": "DodgeballPerson3",
+        "bars_email": "dodgeball.person3@example.com",
+        "personal_email": "dodgeball3.personal@example.com",
+        "phone": "(555) 000-0063",
+        "birthday": "4/3"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Big Ball (Monday)",
+        "name": "DodgeballPerson9",
+        "bars_email": "dodgeball.person9@example.com",
+        "personal_email": "dodgeball9.personal@example.com",
+        "phone": "(555) 000-0069",
+        "birthday": "4/9"
+      }
+    },
+    "player_experience": {
+      "wtnb": {
+        "position": "Dodgeball Player Experience (WTNB+)",
+        "name": "DodgeballPerson14",
+        "bars_email": "dodgeball.person14@example.com",
+        "personal_email": "dodgeball14.personal@example.com",
+        "phone": "(555) 000-0074",
+        "birthday": "4/14"
+      },
+      "open": {
+        "position": "Dodgeball Player Experience (Open)",
+        "name": "Vacant",
+        "bars_email": "",
+        "personal_email": "",
+        "phone": "",
+        "birthday": ""
+      }
+    }
+  },
+  "kickball": {
+    "sunday": {
+      "director": {
+        "position": "Director of Kickball. Sunday",
+        "name": "KickballPerson1",
+        "bars_email": "kickball.person1@example.com",
+        "personal_email": "kickball1.personal@example.com",
+        "phone": "(555) 000-0091",
+        "birthday": "5/1"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Sunday Kickball",
+        "name": "KickballPerson8",
+        "bars_email": "kickball.person8@example.com",
+        "personal_email": "kickball8.personal@example.com",
+        "phone": "(555) 000-0098",
+        "birthday": "5/8"
+      }
+    },
+    "monday": {
+      "director": {
+        "position": "Director of Kickball, Weekday Social (Monday)",
+        "name": "KickballPerson2",
+        "bars_email": "kickball.person2@example.com",
+        "personal_email": "kickball2.personal@example.com",
+        "phone": "(555) 000-0092",
+        "birthday": "5/2"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Weekday Social Kickball (Monday)",
+        "name": "Vacant",
+        "bars_email": "",
+        "personal_email": "",
+        "phone": "",
+        "birthday": ""
+      }
+    },
+    "tuesday": {
+      "director": {
+        "position": "Director of Kickball, Tuesday",
+        "name": "KickballPerson3",
+        "bars_email": "kickball.person3@example.com",
+        "personal_email": "kickball3.personal@example.com",
+        "phone": "(555) 000-0093",
+        "birthday": "5/3"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Tuesday Kickball",
+        "name": "KickballPerson10",
+        "bars_email": "kickball.person10@example.com",
+        "personal_email": "kickball10.personal@example.com",
+        "phone": "(555) 000-0100",
+        "birthday": "5/10"
+      }
+    },
+    "draft_open": {
+      "director": {
+        "position": "Director of Kickball, Wednesday Draft",
+        "name": "KickballPerson4",
+        "bars_email": "kickball.person4@example.com",
+        "personal_email": "kickball4.personal@example.com",
+        "phone": "(555) 000-0094",
+        "birthday": "5/4"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Wednesday Draft Kickball",
+        "name": "KickballPerson11",
+        "bars_email": "kickball.person11@example.com",
+        "personal_email": "kickball11.personal@example.com",
+        "phone": "(555) 000-0101",
+        "birthday": "5/11"
+      }
+    },
+    "draft_wtnb": {
+      "director": {
+        "position": "Director of Kickball, Thursday Draft (WTNB+)",
+        "name": "KickballPerson5",
+        "bars_email": "kickball.person5@example.com",
+        "personal_email": "kickball5.personal@example.com",
+        "phone": "(555) 000-0095",
+        "birthday": "5/5"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Thursday Draft Kickball (WTNB+)",
+        "name": "KickballPerson12",
+        "bars_email": "kickball.person12@example.com",
+        "personal_email": "kickball12.personal@example.com",
+        "phone": "(555) 000-0102",
+        "birthday": "5/12"
+      }
+    },
+    "saturday_open": {
+      "director": {
+        "position": "Director of Kickball, Saturday (Open)",
+        "name": "KickballPerson6",
+        "bars_email": "kickball.person6@example.com",
+        "personal_email": "kickball6.personal@example.com",
+        "phone": "(555) 000-0096",
+        "birthday": "5/6"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Saturday Kickball (Open)",
+        "name": "KickballPerson13",
+        "bars_email": "kickball.person13@example.com",
+        "personal_email": "kickball13.personal@example.com",
+        "phone": "(555) 000-0103",
+        "birthday": "5/13"
+      }
+    },
+    "saturday_wtnb": {
+      "director": {
+        "position": "Director of Kickball, Saturday (WTNB+)",
+        "name": "KickballPerson7",
+        "bars_email": "kickball.person7@example.com",
+        "personal_email": "kickball7.personal@example.com",
+        "phone": "(555) 000-0097",
+        "birthday": "5/7"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Saturday Kickball (WTNB+)",
+        "name": "KickballPerson14",
+        "bars_email": "kickball.person14@example.com",
+        "personal_email": "kickball14.personal@example.com",
+        "phone": "(555) 000-0104",
+        "birthday": "5/14"
+      }
+    },
+    "player_experience": {
+      "wtnb": {
+        "position": "Kickball Player Experience (WTNB+)",
+        "name": "KickballPerson17",
+        "bars_email": "kickball.person17@example.com",
+        "personal_email": "kickball17.personal@example.com",
+        "phone": "(555) 000-0107",
+        "birthday": "5/17"
+      },
+      "open": [
+        {
+          "position": "Kickball Player Experience (Open)",
+          "name": "KickballPerson15",
+          "bars_email": "kickball.person15@example.com",
+          "personal_email": "kickball15.personal@example.com",
+          "phone": "(555) 000-0105",
+          "birthday": "5/15"
+        },
+        {
+          "position": "Kickball Player Experience (Open)",
+          "name": "KickballPerson16",
+          "bars_email": "kickball.person16@example.com",
+          "personal_email": "kickball16.personal@example.com",
+          "phone": "(555) 000-0106",
+          "birthday": "5/16"
+        }
+      ]
+    }
+  },
+  "pickleball": {
+    "advanced": {
+      "director": {
+        "position": "Director of Pickleball, Tuesday Advanced",
+        "name": "PickleballPerson3",
+        "bars_email": "pickleball.person3@example.com",
+        "personal_email": "pickleball3.personal@example.com",
+        "phone": "(555) 000-0123",
+        "birthday": "6/3"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Advanced Pickleball (Tuesday)",
+        "name": "PickleballPerson9",
+        "bars_email": "pickleball.person9@example.com",
+        "personal_email": "pickleball9.personal@example.com",
+        "phone": "(555) 000-0129",
+        "birthday": "6/9"
+      }
+    },
+    "social": {
+      "director": {
+        "position": "Director of Pickleball, Sunday Social",
+        "name": "PickleballPerson1",
+        "bars_email": "pickleball.person1@example.com",
+        "personal_email": "pickleball1.personal@example.com",
+        "phone": "(555) 000-0121",
+        "birthday": "6/1"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Social Pickleball (Sunday)",
+        "name": "PickleballPerson7",
+        "bars_email": "pickleball.person7@example.com",
+        "personal_email": "pickleball7.personal@example.com",
+        "phone": "(555) 000-0127",
+        "birthday": "6/7"
+      }
+    },
+    "wtnb": {
+      "director": {
+        "position": "Director of Pickleball, WTNB+ (Sunday)",
+        "name": "PickleballPerson2",
+        "bars_email": "pickleball.person2@example.com",
+        "personal_email": "pickleball2.personal@example.com",
+        "phone": "(555) 000-0122",
+        "birthday": "6/2"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, WTNB+ Pickleball (Sunday)",
+        "name": "PickleballPerson8",
+        "bars_email": "pickleball.person8@example.com",
+        "personal_email": "pickleball8.personal@example.com",
+        "phone": "(555) 000-0128",
+        "birthday": "6/8"
+      }
+    },
+    "ladder": {
+      "director": {
+        "position": "Director of Pickleball, Thursday Ladder",
+        "name": "PickleballPerson4",
+        "bars_email": "pickleball.person4@example.com",
+        "personal_email": "pickleball4.personal@example.com",
+        "phone": "(555) 000-0124",
+        "birthday": "6/4"
+      },
+      "ops_manager": {
+        "position": "Operations Manager, Pickleball Ladder (Thursday)",
+        "name": "Vacant",
+        "bars_email": "",
+        "personal_email": "",
+        "phone": "",
+        "birthday": ""
+      }
+    },
+    "player_experience": {
+      "wtnb": {
+        "position": "Director of Player Experience, WTNB+ Pickleball",
+        "name": "PickleballPerson5",
+        "bars_email": "pickleball.person5@example.com",
+        "personal_email": "pickleball5.personal@example.com",
+        "phone": "(555) 000-0125",
+        "birthday": "6/5"
+      },
+      "open": {
+        "position": "Director of Player Experience, Open Pickleball",
+        "name": "PickleballPerson6",
+        "bars_email": "pickleball.person6@example.com",
+        "personal_email": "pickleball6.personal@example.com",
+        "phone": "(555) 000-0126",
+        "birthday": "6/6"
+      }
+    }
+  },
+  "committee_members": [
+    {
+      "position": "Volunteer Coordinator",
+      "position_key": "volunteer_coordinator",
+      "name": "CommitteePerson1",
+      "bars_email": "committee.person1@example.com",
+      "personal_email": "committee1.personal@example.com",
+      "phone": "(555) 000-0141",
+      "birthday": "7/1"
+    }
+  ]
+}
