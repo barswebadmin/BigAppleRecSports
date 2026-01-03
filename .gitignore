@@ -47,6 +47,10 @@ coverage_html/
 .direnv/
 *.log
 
+# Google Service Account credentials
+backend/google-service-account.json
+google-service-account.json
+
 # Lambda layer symlinks (for local development only)
 lambda-functions/tests/bars_common_utils
 

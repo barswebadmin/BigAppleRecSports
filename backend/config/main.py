@@ -7,6 +7,7 @@ import logging
 
 from .slack import SlackConfig as _SlackConfig
 from .shopify import ShopifyConfig as _ShopifyConfig
+from .google import GoogleConfig as _GoogleConfig
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,8 @@ class Config:
         self.SlackGroup = self.Slack.Groups
         # Shopify
         self.Shopify = _ShopifyConfig(self.environment)
+        # Google
+        self.Google = _GoogleConfig(self.environment)
 
         # AWS Lambda URLs for scheduling
         self.aws_schedule_product_changes_url = os.getenv(
