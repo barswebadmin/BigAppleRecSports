@@ -69,6 +69,9 @@ Fetch Shopify page content or theme template assets via the Shopify Admin API.
 
 # List assets matching a pattern
 ./bars-scripts/shopify-get-page --theme 134424232030 --list --filter about
+
+# Use different environment
+./bars-scripts/shopify-get-page contact --env staging
 ```
 
 **Features:**
@@ -76,6 +79,8 @@ Fetch Shopify page content or theme template assets via the Shopify Admin API.
 - **Fetch theme assets**: Get templates, sections, or snippets from a theme
 - **List assets**: Browse all assets in a theme with optional filtering
 - **Multiple formats**: Output as text, JSON, or raw HTML
+- **Environment support**: production (default), staging, dev
+- **Shared utilities**: Uses same config system as other BARS scripts
 - Useful for extracting content to standardize leadership titles
 
 **Common Use Cases:**
