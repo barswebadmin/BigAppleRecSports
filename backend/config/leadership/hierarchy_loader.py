@@ -4,10 +4,34 @@ Leadership Hierarchy Configuration Loader.
 Loads and validates the expected leadership hierarchy from YAML.
 """
 
+import re
 import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+
+from shared.csv.clean_text import clean_unicode_control_chars
+
+
+def normalize_title(title: str) -> str:
+    """
+    Normalize title for matching by removing invisible characters and extra whitespace.
+    
+    Args:
+        title: The title string to normalize
+        
+    Returns:
+        Normalized title (lowercase, single spaces, no control chars)
+    """
+    # First, replace all control characters and whitespace with a single space
+    # This prevents words from running together after control char removal
+    cleaned = re.sub(r'[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\s]+', ' ', title)
+    
+    # Strip leading/trailing spaces
+    cleaned = cleaned.strip()
+    
+    # Convert to lowercase for case-insensitive matching
+    return cleaned.lower()
 
 
 @dataclass
