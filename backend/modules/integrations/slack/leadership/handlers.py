@@ -99,6 +99,41 @@ def handle_update_leadership_submission(ack: Ack, body: dict, view: dict, client
             elif isinstance(section_data, list):
                 logger.info(f"  {section_name}: {len(section_data)} members")
         
+        from config.leadership import load_hierarchy_config
+        expected_config = load_hierarchy_config()
+        
+        expected_positions = expected_config.get_all_expected_positions()
+        total_expected = sum(len(positions) for positions in expected_positions.values())
+        
+        parsed_count = sum(
+            len(section_data) if isinstance(section_data, dict) else 0
+            for section_data in hierarchy.sections.values()
+        )
+        
+        logger.warning(f"⚠️  HIERARCHY VALIDATION:")
+        logger.warning(f"   Expected: {total_expected} positions")
+        logger.warning(f"   Parsed:   {parsed_count} positions")
+        logger.warning(f"   Missing:  {total_expected - parsed_count} positions")
+        logger.warning(f"")
+        
+        for section_key, expected_roles in expected_positions.items():
+            section_data = hierarchy.sections.get(section_key, {})
+            if isinstance(section_data, dict):
+                parsed_roles = set(section_data.keys())
+                expected_roles_set = set(expected_roles)
+                
+                missing = expected_roles_set - parsed_roles
+                extra = parsed_roles - expected_roles_set
+                
+                if missing or extra:
+                    logger.warning(f"   {section_key}:")
+                    if missing:
+                        logger.warning(f"     Missing: {', '.join(sorted(missing))}")
+                    if extra:
+                        logger.warning(f"     Extra:   {', '.join(sorted(extra))}")
+            else:
+                logger.warning(f"   {section_key}: Expected dict, got {type(section_data).__name__}")
+        
         enrichment_service = UserEnrichmentService(SlackConfig.Bots.Leadership.token)
         lookup_results = enrichment_service.enrich_hierarchy(hierarchy, max_workers=5, max_retries=3)
         
