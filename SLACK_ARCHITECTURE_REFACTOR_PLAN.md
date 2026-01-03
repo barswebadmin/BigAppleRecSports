@@ -105,6 +105,64 @@ Target State (Clean Separation):
 
 ---
 
+## 📋 **Code Quality Standards (Enforced Throughout)**
+
+### **Minimal Comments Policy**
+- **Favor readable names** over comments
+- When commenting, explain "**why**" not "**what**"
+- Docstrings: Brief, focus on business rules or non-obvious behavior
+- **No inline imports** unless absolutely necessary (circular dependency only)
+
+### **Import Organization**
+```python
+# Standard library (native to Python)
+import json
+import os
+from typing import List, Dict
+
+# External libraries
+import pytest
+from pydantic import BaseModel
+
+# Internal modules
+from modules.leadership.domain.models import PersonInfo
+from shared import check_dict_equivalence
+```
+
+### **Testing Standards**
+- **Pytest parameterization**: Single test method per feature with multiple cases
+- **Avoid redundant tests**: 10 small tests → 1 parameterized test with 10 cases
+- **Brief logs**: Focus on values under test, use colorization
+- **Test placement**: Adjacent `tests/` directory to file-under-test
+
+**Example:**
+```python
+# ❌ BAD: Many small redundant tests
+def test_vacant_position_1():
+    person = PersonInfo(name="Vacant", bars_email="")
+    assert person.is_vacant() == True
+
+def test_vacant_position_2():
+    person = PersonInfo(name="  vacant  ", bars_email="")
+    assert person.is_vacant() == True
+
+def test_normal_position():
+    person = PersonInfo(name="John", bars_email="john@bars.com")
+    assert person.is_vacant() == False
+
+# ✅ GOOD: Single test with parameterization
+@pytest.mark.parametrize("name,bars_email,expected_vacant", [
+    ("Vacant", "", True),
+    ("  vacant  ", "", True),
+    ("John", "john@bars.com", False),
+])
+def test_is_vacant(name, bars_email, expected_vacant):
+    person = PersonInfo(name=name, bars_email=bars_email)
+    assert person.is_vacant() == expected_vacant
+```
+
+---
+
 ## 🗺️ **Migration Roadmap**
 
 ### **🔥 CRITICAL: Legacy Code Elimination Tracker**
@@ -156,6 +214,7 @@ Target State (Clean Separation):
 - [x] ✅ Create domain service interfaces
 - [x] ✅ Extract generic message builder utilities (TYPED)
 - [x] ✅ Establish testing patterns
+- [x] ✅ Apply code quality standards (minimal comments, pytest parameterization)
 
 ### **Phase 2: Leadership Domain** (Week 1, 12-20 hours)
 - [x] ✅ Stage 0: Baseline tests exist
