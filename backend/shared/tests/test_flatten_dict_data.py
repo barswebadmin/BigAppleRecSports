@@ -2,7 +2,7 @@
 Tests for flatten_dict_data utility functions
 """
 
-from ../../../shared.flatten_dict_data import flatten_dict_data, flatten_dict_data_with_prefix
+from shared.dict_utils import flatten_dict_data, flatten_dict_data_with_prefix
 
 
 class TestFlattenDictData:

@@ -6,14 +6,16 @@ Extracts leadership hierarchy from CSV data with NO Slack dependencies.
 import re
 from typing import List, Dict, Optional, Tuple, Any
 
-from modules.leadership.domain.models import PersonInfo, LeadershipHierarchy
+from modules.leadership.domain.models import LeadershipMember, LeadershipHierarchy
+from modules.leadership.domain.csv_patterns import CSVPatternRegistry
+from shared.csv import clean_unicode_control_chars, to_snake_case, find_column
 
 
 class LeadershipCSVParser:
     """Parse CSV data into leadership hierarchy structure."""
     
     def __init__(self):
-        self.position_patterns = self._build_all_patterns()
+        self.pattern_registry = CSVPatternRegistry.create_default()
     
     def parse(self, csv_data: List[List[str]]) -> LeadershipHierarchy:
         """Parse CSV data into LeadershipHierarchy domain model."""
@@ -30,10 +32,21 @@ class LeadershipCSVParser:
         if position_col is None or email_col is None:
             raise ValueError("Could not find required columns (POSITION, BARS EMAIL)")
         
-        name_col = self._find_column(header_row, ["name"])
-        personal_email_col = self._find_column(header_row, ["personal email", "personal_email"])
-        phone_col = self._find_column(header_row, ["phone"])
-        birthday_col = self._find_column(header_row, ["birthday", "date of birth"])
+        name_col = find_column(header_row, ["name"])
+        if name_col is None:
+            raise ValueError("Could not find required column: NAME")
+        
+        personal_email_col = find_column(header_row, ["personal email", "personal_email"])
+        if personal_email_col is None:
+            raise ValueError("Could not find required column: PERSONAL EMAIL")
+        
+        phone_col = find_column(header_row, ["phone"])
+        if phone_col is None:
+            raise ValueError("Could not find required column: PHONE")
+        
+        birthday_col = find_column(header_row, ["birthday", "date of birth"])
+        if birthday_col is None:
+            raise ValueError("Could not find required column: BIRTHDAY")
         
         hierarchy = LeadershipHierarchy()
         current_section = "executive_board"
@@ -43,7 +56,7 @@ class LeadershipCSVParser:
                 continue
             
             position_text = row[position_col].strip() if position_col < len(row) else ""
-            name_text = row[name_col].strip() if name_col is not None and name_col < len(row) else ""
+            name_text = row[name_col].strip() if name_col < len(row) else ""
             
             if not position_text and not name_text:
                 continue
@@ -59,7 +72,7 @@ class LeadershipCSVParser:
             if not position_text or not name_text:
                 continue
             
-            person = self.extract_person_data(
+            person = self.extract_personal_info(
                 row, position_text,
                 name_col=name_col,
                 bars_email_col=email_col,
@@ -69,7 +82,7 @@ class LeadershipCSVParser:
             )
             
             if current_section == "committee_members":
-                position_key = self._to_snake_case(position_text)
+                position_key = to_snake_case(position_text)
                 member_data = person.model_dump(exclude_none=False)
                 member_data["position"] = position_text
                 member_data["position_key"] = position_key
@@ -92,7 +105,7 @@ class LeadershipCSVParser:
     
     def find_header_columns(self, header_row: List[str]) -> Tuple[Optional[int], Optional[int]]:
         """Find Position and BARS EMAIL column indices."""
-        position_col = self._find_column(header_row, ["position"])
+        position_col = find_column(header_row, ["position"])
         
         bars_email_col = None
         for idx, cell in enumerate(header_row):
@@ -127,242 +140,70 @@ class LeadershipCSVParser:
             return "cross_sport"
         
         return None
-    
-    def fuzzy_match(self, position: str, patterns: List) -> bool:
-        """Fuzzy match position against patterns (any order, case-insensitive)."""
-        position_lower = position.lower().strip()
-        
-        if patterns and isinstance(patterns[0], list):
-            for term_group in patterns:
-                if all(term.lower() in position_lower for term in term_group):
-                    return True
-            return False
-        else:
-            return all(term.lower() in position_lower for term in patterns)
-    
-    def exact_match(self, position: str, exact_value: str) -> bool:
-        """Exact match (case-insensitive, whitespace-stripped)."""
-        return position.lower().strip() == exact_value.lower().strip()
-    
-    def extract_person_data(
+    def extract_personal_info(
         self,
         row: List[str],
         position: str,
         name_col: int,
         bars_email_col: int,
-        personal_email_col: Optional[int],
-        phone_col: Optional[int],
-        birthday_col: Optional[int]
-    ) -> PersonInfo:
-        """Extract PersonInfo from CSV row."""
+        personal_email_col: int,
+        phone_col: int,
+        birthday_col: int
+    ) -> LeadershipMember:
+        """Extract LeadershipMember from CSV row."""
         name = row[name_col].strip() if name_col < len(row) else ""
         
+        role_placeholder = to_snake_case(position) if position else "unknown.position"
+        
         if name.lower().strip() == "vacant":
-            return PersonInfo(name="Vacant", bars_email="")
+            return LeadershipMember(
+                name="Vacant",
+                personal_email="vacant@placeholder.com",
+                role=role_placeholder
+            )
         
         bars_email = row[bars_email_col].strip() if bars_email_col < len(row) else ""
-        personal_email = row[personal_email_col].strip() if personal_email_col is not None and personal_email_col < len(row) else None
-        phone = row[phone_col].strip() if phone_col is not None and phone_col < len(row) else None
-        birthday = row[birthday_col].strip() if birthday_col is not None and birthday_col < len(row) else None
+        personal_email = row[personal_email_col].strip() if personal_email_col < len(row) else ""
+        phone = row[phone_col].strip() if phone_col < len(row) else ""
+        birthday = row[birthday_col].strip() if birthday_col < len(row) else ""
         
         if phone:
-            phone = self._clean_unicode_control_chars(phone)
+            phone = clean_unicode_control_chars(phone)
         if bars_email:
-            bars_email = self._clean_unicode_control_chars(bars_email)
+            bars_email = clean_unicode_control_chars(bars_email)
         if personal_email:
-            personal_email = self._clean_unicode_control_chars(personal_email)
+            personal_email = clean_unicode_control_chars(personal_email)
         
-        return PersonInfo(
+        return LeadershipMember(
             name=name,
-            bars_email=bars_email or "",
-            personal_email=personal_email or None,
+            personal_email=personal_email or bars_email or "pending@placeholder.com",
+            role=role_placeholder,
+            bars_email=bars_email or None,
             phone=phone or None,
             birthday=birthday or None
         )
     
-    def _find_column(self, header_row: List[str], keywords: List[str]) -> Optional[int]:
-        """Find column index matching any keyword."""
-        for idx, cell in enumerate(header_row):
-            cell_lower = cell.strip().lower()
-            for keyword in keywords:
-                if keyword.lower() in cell_lower:
-                    return idx
-        return None
-    
     def _match_position_to_hierarchy(
         self,
         position: str,
-        person: PersonInfo,
+        person: LeadershipMember,
         section: str,
         hierarchy: LeadershipHierarchy
     ) -> bool:
         """Match position to hierarchy structure and add person."""
-        if section not in self.position_patterns:
+        role_key = self.pattern_registry.find_role_in_section(section, position)
+        
+        if not role_key:
             return False
         
-        patterns = self.position_patterns[section]
-        position_lower = position.lower().strip()
-        is_wtnb = "wtnb" in position_lower
-        
-        all_matches = []
-        for key, pattern_def in patterns.items():
-            if "exact" in pattern_def:
-                if self.exact_match(position, pattern_def["exact"]):
-                    all_matches.append((key, pattern_def, 1000, False))
+        if "." in role_key:
+            parts = role_key.split(".")
+            if len(parts) == 2:
+                sub_section, role = parts
+                hierarchy.add_position(section, role, person, sub_section=sub_section)
             else:
-                for role, terms in pattern_def.items():
-                    if self.fuzzy_match(position, terms):
-                        is_pattern_wtnb = "wtnb" in str(terms).lower()
-                        specificity = len(terms) if not isinstance(terms[0], list) else len(terms[0])
-                        if is_pattern_wtnb:
-                            specificity += 500
-                        all_matches.append((key, {role: terms}, specificity, is_pattern_wtnb))
+                hierarchy.add_position(section, role_key, person, sub_section=parts[0])
+        else:
+            hierarchy.add_position(section, role_key, person)
         
-        if not all_matches:
-            return False
-        
-        all_matches.sort(key=lambda x: x[2], reverse=True)
-        
-        for match_key, match_pattern, _, is_pattern_wtnb in all_matches:
-            if is_wtnb and not is_pattern_wtnb:
-                continue
-            
-            if "exact" in match_pattern:
-                hierarchy.add_position(section, match_key, person)
-                return True
-            else:
-                for role, _ in match_pattern.items():
-                    if "." in match_key:
-                        parts = match_key.split(".")
-                        if len(parts) == 2:
-                            sub_section, role_key = parts
-                            hierarchy.add_position(section, role_key, person, sub_section=sub_section)
-                        else:
-                            hierarchy.add_position(section, role, person, sub_section=match_key)
-                    else:
-                        hierarchy.add_position(section, match_key, person)
-                    return True
-        
-        return False
-    
-    def _build_all_patterns(self) -> Dict[str, Any]:
-        """Build all position patterns for matching."""
-        return {
-            "executive_board": self._build_executive_board_patterns(),
-            "cross_sport": self._build_cross_sport_patterns(),
-            "bowling": self._build_bowling_patterns(),
-            "dodgeball": self._build_dodgeball_patterns(),
-            "kickball": self._build_kickball_patterns(),
-            "pickleball": self._build_pickleball_patterns(),
-        }
-    
-    def _build_executive_board_patterns(self) -> Dict:
-        """Build patterns for executive board positions."""
-        return {
-            "commissioner": {"exact": "commissioner"},
-            "vice_commissioner": {"role": ["vice", "commissioner"]},
-            "wtnb_commissioner": {"role": ["wtnb", "commissioner"]},
-            "secretary": {"role": ["secretary"]},
-            "treasurer": {"role": ["treasurer"]},
-            "operations_commissioner": {"role": ["operations", "commissioner"]},
-            "dei_commissioner": {"role": [["diversity", "commissioner"], ["dei", "commissioner"]]},
-            "bowling_commissioner": {"role": ["bowling", "commissioner"]},
-            "dodgeball_commissioner": {"role": ["dodgeball", "commissioner"]},
-            "kickball_commissioner": {"role": ["kickball", "commissioner"]},
-            "pickleball_commissioner": {"role": ["pickleball", "commissioner"]},
-        }
-    
-    def _build_cross_sport_patterns(self) -> Dict:
-        """Build patterns for cross-sport leadership."""
-        return {
-            "communications": {"role": ["communications"]},
-            "events.open": {"role": ["events", "open"]},
-            "events.wtnb": {"role": ["events", "wtnb"]},
-            "dei.open": {"role": [["diversity", "open"], ["dei", "open"]]},
-            "dei.wtnb": {"role": [["diversity", "wtnb"], ["dei", "wtnb"]]},
-            "marketing": {"role": ["marketing"]},
-            "philanthropy": {"role": ["philanthropy"]},
-            "social_media.open": {"role": ["social media", "open"]},
-            "social_media.wtnb": {"role": ["social media", "wtnb"]},
-            "technology": {"role": ["technology"]},
-            "permits_equipment": {"role": ["permits", "equipment"]},
-        }
-    
-    def _build_bowling_patterns(self) -> Dict:
-        """Build patterns for bowling teams."""
-        return {
-            "sunday.director": {"role": ["sunday", "director"]},
-            "sunday.ops_manager": {"role": ["sunday", "operations manager"]},
-            "monday_open.director": {"role": ["monday", "open", "director"]},
-            "monday_open.ops_manager": {"role": ["monday", "open", "operations manager"]},
-            "monday_wtnb.director": {"role": ["monday", "wtnb", "director"]},
-            "monday_wtnb.ops_manager": {"role": ["monday", "wtnb", "operations manager"]},
-            "player_experience.open": {"role": ["player experience", "open"]},
-            "player_experience.wtnb": {"role": ["player experience", "wtnb"]},
-        }
-    
-    def _build_dodgeball_patterns(self) -> Dict:
-        """Build patterns for dodgeball teams."""
-        return {
-            "smallball_advanced.director": {"role": ["small ball", "advanced", "director"]},
-            "smallball_advanced.ops_manager": {"role": ["small ball", "advanced", "operations manager"]},
-            "smallball_social.director": {"role": ["small ball", "social", "director"]},
-            "smallball_social.ops_manager": {"role": ["small ball", "social", "operations manager"]},
-            "wtnb_draft.director": {"role": ["wtnb", "draft", "director"]},
-            "wtnb_draft.ops_manager": {"role": ["wtnb", "draft", "operations manager"]},
-            "wtnb_social.director": {"role": ["wtnb", "social", "director"]},
-            "wtnb_social.ops_manager": {"role": ["wtnb", "social", "operations manager"]},
-            "foamball.director": {"role": ["foam ball", "director"]},
-            "foamball.ops_manager": {"role": ["foam ball", "operations manager"]},
-            "bigball.director": {"role": ["big ball", "director"]},
-            "bigball.ops_manager": {"role": ["big ball", "operations manager"]},
-            "player_experience.open": {"role": ["player experience", "open"]},
-            "player_experience.wtnb": {"role": ["player experience", "wtnb"]},
-        }
-    
-    def _build_kickball_patterns(self) -> Dict:
-        """Build patterns for kickball teams."""
-        return {
-            "sunday.director": {"role": ["sunday", "director"]},
-            "sunday.ops_manager": {"role": ["sunday", "operations manager"]},
-            "monday.director": {"role": [["monday", "director"], ["weekday", "social", "director"]]},
-            "monday.ops_manager": {"role": [["monday", "operations manager"], ["weekday", "social", "operations manager"]]},
-            "tuesday.director": {"role": ["tuesday", "director"]},
-            "tuesday.ops_manager": {"role": ["tuesday", "operations manager"]},
-            "draft_open.director": {"role": ["wednesday", "director"]},
-            "draft_open.ops_manager": {"role": ["wednesday", "operations manager"]},
-            "draft_wtnb.director": {"role": [["thursday", "director"], ["wtnb", "draft", "director"]]},
-            "draft_wtnb.ops_manager": {"role": [["thursday", "operations manager"], ["wtnb", "draft", "operations manager"]]},
-            "saturday_open.director": {"role": ["saturday", "open", "director"]},
-            "saturday_open.ops_manager": {"role": ["saturday", "open", "operations manager"]},
-            "saturday_wtnb.director": {"role": ["saturday", "wtnb", "director"]},
-            "saturday_wtnb.ops_manager": {"role": ["saturday", "wtnb", "operations manager"]},
-            "player_experience.open": {"role": ["player experience", "open"]},
-            "player_experience.wtnb": {"role": ["player experience", "wtnb"]},
-        }
-    
-    def _build_pickleball_patterns(self) -> Dict:
-        """Build patterns for pickleball teams."""
-        return {
-            "advanced.director": {"role": ["advanced", "director"]},
-            "advanced.ops_manager": {"role": ["advanced", "operations manager"]},
-            "social.director": {"role": ["social", "director"]},
-            "social.ops_manager": {"role": ["social", "operations manager"]},
-            "wtnb.director": {"role": ["wtnb", "director"]},
-            "wtnb.ops_manager": {"role": ["wtnb", "operations manager"]},
-            "ladder.director": {"role": ["ladder", "director"]},
-            "ladder.ops_manager": {"role": ["ladder", "operations manager"]},
-            "player_experience.open": {"role": ["player experience", "open"]},
-            "player_experience.wtnb": {"role": ["player experience", "wtnb"]},
-        }
-    
-    def _clean_unicode_control_chars(self, text: str) -> str:
-        """Remove invisible Unicode control characters."""
-        return re.sub(r'[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e]', '', text)
-    
-    def _to_snake_case(self, text: str) -> str:
-        """Convert string to snake_case."""
-        text = re.sub(r'[^\w\s]', '', text)
-        text = re.sub(r'\s+', '_', text)
-        return text.lower().strip('_')
-
+        return True

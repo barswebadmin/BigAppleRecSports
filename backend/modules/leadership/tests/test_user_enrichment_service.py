@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from modules.leadership.services.user_enrichment_service import UserEnrichmentService
-from modules.leadership.domain.models import LeadershipHierarchy, PersonInfo
+from modules.leadership.domain.models import LeadershipHierarchy, LeadershipMember
 
 
 class TestUserEnrichmentService:
@@ -31,10 +31,11 @@ class TestUserEnrichmentService:
         hierarchy.add_position(
             section="executive_board",
             role="commissioner",
-            person=PersonInfo(
+            person=LeadershipMember(
                 name="John Doe",
-                bars_email="john@bars.com",
                 personal_email="john@gmail.com",
+                role="executive_board.commissioner",
+                bars_email="john@bars.com",
                 phone="111-222-3333",
                 birthday="01/15"
             )
@@ -43,8 +44,10 @@ class TestUserEnrichmentService:
         hierarchy.add_position(
             section="executive_board",
             role="vice_commissioner",
-            person=PersonInfo(
+            person=LeadershipMember(
                 name="Jane Smith",
+                personal_email="jane@gmail.com",
+                role="executive_board.vice_commissioner",
                 bars_email="jane@bars.com"
             )
         )
@@ -53,15 +56,21 @@ class TestUserEnrichmentService:
         hierarchy.add_position(
             section="executive_board",
             role="treasurer",
-            person=PersonInfo(name="Vacant", bars_email="")
+            person=LeadershipMember(
+                name="Vacant",
+                personal_email="vacant@placeholder.com",
+                role="executive_board.treasurer"
+            )
         )
         
         # Add a committee member
         hierarchy.add_position(
             section="committee_members",
             role="member",
-            person=PersonInfo(
+            person=LeadershipMember(
                 name="Alice Johnson",
+                personal_email="alice@gmail.com",
+                role="committee_members.member",
                 bars_email="alice@bars.com"
             )
         )
@@ -153,7 +162,12 @@ class TestUserEnrichmentService:
         hierarchy.add_position(
             section="executive_board",
             role="commissioner",
-            person=PersonInfo(name="John Doe", bars_email="john@bars.com")
+            person=LeadershipMember(
+                name="John Doe",
+                personal_email="john@gmail.com",
+                role="executive_board.commissioner",
+                bars_email="john@bars.com"
+            )
         )
         
         results = {
@@ -176,7 +190,12 @@ class TestUserEnrichmentService:
         hierarchy.add_position(
             section="dodgeball",
             role="director",
-            person=PersonInfo(name="Jane Smith", bars_email="jane@bars.com"),
+            person=LeadershipMember(
+                name="Jane Smith",
+                personal_email="jane@gmail.com",
+                role="dodgeball.smallball_advanced.director",
+                bars_email="jane@bars.com"
+            ),
             sub_section="smallball_advanced"
         )
         
@@ -198,12 +217,22 @@ class TestUserEnrichmentService:
         hierarchy.add_position(
             section="committee_members",
             role="member1",
-            person=PersonInfo(name="Alice Johnson", bars_email="alice@bars.com")
+            person=LeadershipMember(
+                name="Alice Johnson",
+                personal_email="alice@gmail.com",
+                role="committee_members.member1",
+                bars_email="alice@bars.com"
+            )
         )
         hierarchy.add_position(
             section="committee_members",
             role="member2",
-            person=PersonInfo(name="Bob Williams", bars_email="bob@bars.com")
+            person=LeadershipMember(
+                name="Bob Williams",
+                personal_email="bob@gmail.com",
+                role="committee_members.member2",
+                bars_email="bob@bars.com"
+            )
         )
         
         results = {
@@ -279,12 +308,21 @@ class TestUserEnrichmentService:
         hierarchy.add_position(
             section="executive_board",
             role="commissioner",
-            person=PersonInfo(name="John Doe", bars_email="john@bars.com")
+            person=LeadershipMember(
+                name="John Doe",
+                personal_email="john@gmail.com",
+                role="executive_board.commissioner",
+                bars_email="john@bars.com"
+            )
         )
         hierarchy.add_position(
             section="executive_board",
             role="vacant_role",
-            person=PersonInfo(name="Vacant", bars_email="")  # Empty email
+            person=LeadershipMember(
+                name="Vacant",
+                personal_email="vacant@placeholder.com",
+                role="executive_board.vacant_role"
+            )
         )
         
         mock_instance = MagicMock()

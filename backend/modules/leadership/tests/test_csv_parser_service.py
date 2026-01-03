@@ -6,7 +6,7 @@ Tests: LeadershipCSVParser - Extracts leadership hierarchy from CSV data
 import pytest
 from typing import List, Any
 from modules.leadership.services.csv_parser import LeadershipCSVParser
-from modules.leadership.domain.models import LeadershipHierarchy, PersonInfo
+from modules.leadership.domain.models import LeadershipHierarchy, LeadershipMember
 
 
 SAMPLE_CSV_SIMPLE = [
@@ -113,31 +113,6 @@ class TestLeadershipCSVParser:
         
         vice = hierarchy.get_position("executive_board", "vice_commissioner")
         assert vice is None
-    
-    @pytest.mark.parametrize("position,patterns,expected_match", [
-        ("Director of Bowling, Sunday", [["director", "bowling", "sunday"]], True),
-        ("Sunday Director Bowling", [["director", "bowling", "sunday"]], True),
-        ("BOWLING SUNDAY DIRECTOR", [["director", "bowling", "sunday"]], True),
-        ("Director of Bowling", [["director", "bowling", "sunday"]], False),
-        ("Sunday Director", [["director", "bowling", "sunday"]], False),
-    ])
-    def test_fuzzy_match_position(self, position, patterns, expected_match):
-        """Test fuzzy position matching (any order, case-insensitive)."""
-        parser = LeadershipCSVParser()
-        assert parser.fuzzy_match(position, patterns) == expected_match
-    
-    @pytest.mark.parametrize("position,exact_value,expected_match", [
-        ("Commissioner", "commissioner", True),
-        ("  COMMISSIONER  ", "commissioner", True),
-        ("commissioner", "Commissioner", True),
-        ("Vice Commissioner", "commissioner", False),
-        ("Commissioner of Pickleball", "commissioner", False),
-    ])
-    def test_exact_match_position(self, position, exact_value, expected_match):
-        """Test exact position matching (case-insensitive, whitespace-stripped)."""
-        parser = LeadershipCSVParser()
-        assert parser.exact_match(position, exact_value) == expected_match
-    
     def test_wtnb_priority_matching(self):
         """Test that WTNB positions are matched with priority."""
         parser = LeadershipCSVParser()
@@ -151,12 +126,12 @@ class TestLeadershipCSVParser:
         assert wtnb_player_exp is not None
         assert wtnb_player_exp["name"] == "Charlie Brown"
     
-    def test_extract_person_data(self):
+    def test_extract_personal_info(self):
         """Test extracting person data from CSV row."""
         parser = LeadershipCSVParser()
         row = ["Commissioner", "John Doe", "john@bars.com", "john@gmail.com", "555-0100", "01/15"]
         
-        person = parser.extract_person_data(
+        person = parser.extract_personal_info(
             row,
             position="Commissioner",
             name_col=1,
@@ -166,19 +141,19 @@ class TestLeadershipCSVParser:
             birthday_col=5
         )
         
-        assert isinstance(person, PersonInfo)
+        assert isinstance(person, LeadershipMember)
         assert person.name == "John Doe"
         assert person.bars_email == "john@bars.com"
         assert person.personal_email == "john@gmail.com"
         assert person.phone == "555-0100"
         assert person.birthday == "01/15"
     
-    def test_extract_person_data_vacant(self):
+    def test_extract_personal_info_vacant(self):
         """Test extracting vacant person data stops early."""
         parser = LeadershipCSVParser()
         row = ["Vice Commissioner", "Vacant", "", "", "", ""]
         
-        person = parser.extract_person_data(
+        person = parser.extract_personal_info(
             row,
             position="Vice Commissioner",
             name_col=1,
@@ -188,10 +163,11 @@ class TestLeadershipCSVParser:
             birthday_col=5
         )
         
-        assert isinstance(person, PersonInfo)
+        assert isinstance(person, LeadershipMember)
         assert person.is_vacant() is True
-        assert person.bars_email == ""
-        assert person.personal_email is None
+        assert person.bars_email is None
+        assert person.personal_email == "vacant@placeholder.com"
+        assert person.role == "vice_commissioner"
     
     def test_parse_filters_position_header(self):
         """Test that the literal 'POSITION' header is not treated as a position."""

@@ -3,13 +3,87 @@ General CSV processing utilities.
 This module provides reusable CSV processing functionality that can be used across different services.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
 import re
+
+from shared.validators import validate_email_format
 
 
 class CSVProcessor:
     """General CSV processing utilities."""
+    
+    def _has_min_rows(self, csv_data: List[List[str]], min_rows: int = 2) -> bool:
+        """Check if CSV has minimum required rows."""
+        return bool(csv_data and len(csv_data) >= min_rows)
+    
+    def _is_valid_and_normalize_email(self, email: str) -> Optional[str]:
+        """
+        Validate and normalize an email address.
+        
+        Returns:
+            Normalized email (lowercase, stripped) if valid, None otherwise
+        """
+        if not email or "@" not in email:
+            return None
+        
+        email_clean = email.strip()
+        if validate_email_format(email_clean)["success"]:
+            return email_clean.lower()
+        
+        return None
+    
+    def _collect_unique_emails(self, emails: List[str]) -> List[str]:
+        """Remove duplicates while preserving order."""
+        seen: Set[str] = set()
+        unique = []
+        for email in emails:
+            if email not in seen:
+                seen.add(email)
+                unique.append(email)
+        return unique
+    
+    def _find_email_column_indices(self, headers: List[str], keywords: Optional[List[str]] = None) -> List[int]:
+        """Find column indices that match email keywords."""
+        if keywords is None:
+            keywords = ['personal email']
+        
+        indices = []
+        for i, header in enumerate(headers):
+            if header and any(keyword in header.lower() for keyword in keywords):
+                indices.append(i)
+        return indices
+    
+    def _extract_email_from_cell(self, cell: str) -> Optional[str]:
+        """Extract and validate email from a single cell."""
+        if not cell:
+            return None
+        return self._is_valid_and_normalize_email(cell.strip())
+    
+    def _extract_emails_from_columns(
+        self,
+        data_rows: List[List[str]],
+        column_indices: List[int]
+    ) -> List[str]:
+        """Extract emails from specific columns."""
+        emails = []
+        for row in data_rows:
+            for col_index in column_indices:
+                if col_index < len(row):
+                    email = self._extract_email_from_cell(row[col_index])
+                    if email:
+                        emails.append(email)
+        return emails
+    
+    def _scan_all_cells_for_emails(self, data_rows: List[List[str]]) -> List[str]:
+        """Scan all cells in data rows for valid emails."""
+        emails = []
+        for row in data_rows:
+            for cell in row:
+                email = self._extract_email_from_cell(cell)
+                if email:
+                    emails.append(email)
+        return emails
     
     def process_csv_input(self, csv_data: List[List[str]]) -> List[Dict[str, Any]]:
         """
@@ -21,29 +95,30 @@ class CSVProcessor:
         Returns:
             List of dictionaries representing each row
         """
-        if not csv_data or len(csv_data) < 2:
+        if not self._has_min_rows(csv_data):
             return []
         
-        # First row is headers
         headers = [header.strip().lower() for header in csv_data[0]]
         
-        # Process data rows
         objects = []
         for row in csv_data[1:]:
             if not row or all(not cell.strip() for cell in row):
-                continue  # Skip empty rows
+                continue
             
-            # Create object with headers as keys
-            obj = {}
-            for i, value in enumerate(row):
-                if i < len(headers):
-                    obj[headers[i]] = value.strip() if value else ""
-            
+            obj = {
+                headers[i]: value.strip() if value else ""
+                for i, value in enumerate(row)
+                if i < len(headers)
+            }
             objects.append(obj)
         
         return objects
     
-    def extract_emails_from_objects(self, objects: List[Dict[str, Any]], email_column: str = "personal email") -> List[str]:
+    def extract_emails_from_objects(
+        self,
+        objects: List[Dict[str, Any]],
+        email_column: str = "personal email"
+    ) -> List[str]:
         """
         Extract unique email addresses from a list of objects.
         
@@ -54,74 +129,32 @@ class CSVProcessor:
         Returns:
             List of unique email addresses
         """
-        emails = set()
-        
-        for obj in objects:
-            email_value = obj.get(email_column, "").strip()
-            if email_value and "@" in email_value:
-                # Basic email validation
-                if self._is_valid_email(email_value):
-                    emails.add(email_value.lower())
-        
-        return list(emails)
+        emails = {
+            self._is_valid_and_normalize_email(obj.get(email_column, ""))
+            for obj in objects
+        }
+        return [email for email in emails if email is not None]
     
     def extract_emails_from_csv(self, csv_data: List[List[str]]) -> List[str]:
         """
         Extract email addresses from CSV data.
         Looks for columns that might contain emails and extracts valid email addresses.
         """
-        if not csv_data or len(csv_data) < 2:  # Need at least header + 1 data row
+        if not self._has_min_rows(csv_data):
             return []
         
         headers = csv_data[0]
         data_rows = csv_data[1:]
         
-        # Find email column(s) - look for column headers that suggest emails
-        email_column_indices = []
-        for i, header in enumerate(headers):
-            if header and any(keyword in header.lower() for keyword in ['personal email']):
-                email_column_indices.append(i)
+        email_column_indices = self._find_email_column_indices(headers)
         
-        emails = []
+        emails = (
+            self._extract_emails_from_columns(data_rows, email_column_indices)
+            if email_column_indices
+            else self._scan_all_cells_for_emails(data_rows)
+        )
         
-        # If we found explicit email columns, use those
-        if email_column_indices:
-            for row in data_rows:
-                for col_index in email_column_indices:
-                    if col_index < len(row) and row[col_index]:
-                        email = row[col_index].strip()
-                        if self._is_valid_email(email):
-                            emails.append(email.lower())
-        else:
-            # If no explicit email columns, scan all columns for email-like values
-            for row in data_rows:
-                for cell in row:
-                    if cell and self._is_valid_email(cell.strip()):
-                        emails.append(cell.strip().lower())
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_emails = []
-        for email in emails:
-            if email not in seen:
-                seen.add(email)
-                unique_emails.append(email)
-        
-        return unique_emails
-    
-    def _is_valid_email(self, email: str) -> bool:
-        """
-        Basic email validation.
-        
-        Args:
-            email: Email address to validate
-            
-        Returns:
-            True if email appears valid, False otherwise
-        """
-        # Basic regex for email validation
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        return re.match(email_pattern, email) is not None
+        return self._collect_unique_emails(emails)
     
     def get_csv_info(self, csv_data: List[List[str]]) -> Dict[str, Any]:
         """
@@ -141,27 +174,23 @@ class CSVProcessor:
                 "email_columns": []
             }
         
-        total_rows = len(csv_data)
-        data_rows_count = max(0, total_rows - 1)  # Subtract header row
-        total_columns = len(csv_data[0]) if csv_data else 0
+        headers = csv_data[0]
+        email_keywords = ["email", "mail", "e-mail"]
         
-        # Detect email columns
-        email_columns = []
-        if csv_data and len(csv_data) > 0:
-            headers = csv_data[0]
-            for i, header in enumerate(headers):
-                header_lower = header.strip().lower()
-                if any(keyword in header_lower for keyword in ["email", "mail", "e-mail"]):
-                    email_columns.append({
-                        "index": i,
-                        "name": header.strip(),
-                        "type": "email"
-                    })
+        email_columns = [
+            {
+                "index": i,
+                "name": header.strip(),
+                "type": "email"
+            }
+            for i, header in enumerate(headers)
+            if header and any(keyword in header.strip().lower() for keyword in email_keywords)
+        ]
         
         return {
-            "total_rows": total_rows,
-            "data_rows_count": data_rows_count,
-            "total_columns": total_columns,
+            "total_rows": len(csv_data),
+            "data_rows_count": max(0, len(csv_data) - 1),
+            "total_columns": len(headers),
             "email_columns": email_columns
         }
     
@@ -178,16 +207,8 @@ class CSVProcessor:
         if not title:
             return None
         
-        # Look for 4-digit years
-        year_pattern = r'\b(20\d{2})\b'
-        matches = re.findall(year_pattern, title)
-        
-        if matches:
-            # Return the most recent year found
-            years = [int(year) for year in matches]
-            return max(years)
-        
-        return None
+        matches = re.findall(r'\b(20\d{2})\b', title)
+        return max((int(year) for year in matches), default=None) if matches else None
     
     def filter_valid_emails(self, emails: List[str]) -> List[str]:
         """
@@ -199,14 +220,11 @@ class CSVProcessor:
         Returns:
             List of valid email addresses
         """
-        valid_emails = []
-        for email in emails:
-            if email and email.strip() and "@" in email.strip():
-                email_clean = email.strip()
-                if self._is_valid_email(email_clean):
-                    valid_emails.append(email_clean.lower())
-        
-        return valid_emails
+        return [
+            normalized
+            for email in emails
+            if (normalized := self._is_valid_and_normalize_email(email))
+        ]
     
     def extract_column_values(self, csv_data: List[List[str]], column_index: int) -> List[str]:
         """
@@ -219,16 +237,12 @@ class CSVProcessor:
         Returns:
             List of non-empty values from the specified column (excluding header)
         """
-        if not csv_data or len(csv_data) < 2:
+        if not self._has_min_rows(csv_data):
             return []
         
-        values = []
-        for row in csv_data[1:]:
-            if column_index < len(row):
-                value = row[column_index].strip()
-                if value:
-                    values.append(value)
-        
-        return values
-
-
+        return [
+            value
+            for row in csv_data[1:]
+            if column_index < len(row)
+            and (value := row[column_index].strip())
+        ]

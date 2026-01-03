@@ -1,10 +1,74 @@
 #!/usr/bin/env python3
 """
-Check equivalence of two dictionary structures and identify differences.
+Dictionary utility functions for flattening and comparing nested structures.
 """
+
 import json
 import sys
-from typing import Any, List
+from typing import Dict, Any, List
+
+
+def flatten_dict_data(
+    obj: Dict[str, Any], result: Dict[str, Any] | None = None
+) -> Dict[str, Any]:
+    """
+    Recursively flatten a nested dictionary structure.
+
+    Args:
+        obj: The dictionary to flatten
+        result: Optional result dictionary to accumulate flattened key-value pairs.
+                If None, a new dict is created.
+
+    Returns:
+        Dict with all nested keys flattened to top level
+
+    Example:
+        Input: {"a": {"b": 1}, "c": 2}
+        Output: {"b": 1, "c": 2}
+    """
+    if result is None:
+        result = {}
+
+    for key, value in obj.items():
+        if isinstance(value, dict) and value is not None:
+            flatten_dict_data(value, result)
+        else:
+            result[key] = value
+
+    return result
+
+
+def flatten_dict_data_with_prefix(
+    obj: Dict[str, Any], result: Dict[str, Any] | None = None, prefix: str = ""
+) -> Dict[str, Any]:
+    """
+    Recursively flatten a nested dictionary structure with dot notation keys.
+
+    Args:
+        obj: The dictionary to flatten
+        result: Optional result dictionary to accumulate flattened key-value pairs.
+                If None, a new dict is created.
+        prefix: The current key prefix for nested structures
+
+    Returns:
+        Dict with all nested keys flattened using dot notation
+
+    Example:
+        Input: {"a": {"b": 1}, "c": 2}
+        Output: {"a.b": 1, "c": 2}
+    """
+    if result is None:
+        result = {}
+
+    for key, value in obj.items():
+        new_key = f"{prefix}.{key}" if prefix else key
+
+        if isinstance(value, dict) and value is not None:
+            flatten_dict_data_with_prefix(value, result, new_key)
+        else:
+            result[new_key] = value
+
+    return result
 
 
 def check_dict_equivalence(obj1: Any, obj2: Any, path: str = "") -> List[str]:
@@ -27,7 +91,6 @@ def check_dict_equivalence(obj1: Any, obj2: Any, path: str = "") -> List[str]:
         return differences
     
     if isinstance(obj1, dict):
-        # Check for missing keys
         keys1 = set(obj1.keys())
         keys2 = set(obj2.keys())
         
@@ -40,7 +103,6 @@ def check_dict_equivalence(obj1: Any, obj2: Any, path: str = "") -> List[str]:
         for key in missing_in_1:
             differences.append(f"{path}.{key}: Missing in obj1, present in obj2")
         
-        # Compare common keys
         for key in keys1 & keys2:
             new_path = f"{path}.{key}" if path else key
             differences.extend(check_dict_equivalence(obj1[key], obj2[key], new_path))
@@ -53,7 +115,6 @@ def check_dict_equivalence(obj1: Any, obj2: Any, path: str = "") -> List[str]:
             differences.extend(check_dict_equivalence(obj1[idx], obj2[idx], f"{path}[{idx}]"))
     
     else:
-        # Primitive types
         if obj1 != obj2:
             differences.append(f"{path}: Value mismatch - '{obj1}' vs '{obj2}'")
     
@@ -61,8 +122,9 @@ def check_dict_equivalence(obj1: Any, obj2: Any, path: str = "") -> List[str]:
 
 
 def main():
+    """CLI tool for comparing two JSON files."""
     if len(sys.argv) < 3:
-        print("Usage: python check_dict_equivalence.py file1.json file2.json")
+        print("Usage: python dict_utils.py file1.json file2.json")
         return 1
     
     file1_path = sys.argv[1]
