@@ -8,6 +8,7 @@ Usage:
     shopify-get-page --page contact --output json
 """
 
+import os
 import sys
 import json
 import argparse
@@ -15,32 +16,45 @@ import requests
 from typing import Optional, Dict, Any
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# Add bars-scripts to path for shared utilities
+sys.path.insert(0, str(Path(__file__).parent))
 
-from config import config
+from shared_utils import load_environment, get_shopify_config
 
 
-def fetch_page(page_handle: str, output_format: str = "text") -> Optional[Dict[str, Any]]:
+def get_ssl_verification():
+    """Get SSL verification setting (same as shared_utils pattern)."""
+    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
+    return ssl_cert_file if os.path.exists(ssl_cert_file) else True
+
+
+def fetch_page(page_handle: str, output_format: str = "text", environment: str = "production") -> Optional[Dict[str, Any]]:
     """
     Fetch a Shopify page by handle.
     
     Args:
         page_handle: The page handle (e.g., "contact", "about")
         output_format: Output format ("text", "json", "html")
+        environment: Environment to use (production, staging, dev)
     
     Returns:
         Page data dictionary or None if not found
     """
-    store_url = f"https://{config.Shopify.store_id}.myshopify.com"
+    load_environment(environment)
+    shopify_config = get_shopify_config(environment)
+    
+    store_url = f"https://{shopify_config['store_id']}.myshopify.com"
     api_url = f"{store_url}/admin/api/2024-10/pages.json"
     
     headers = {
-        "X-Shopify-Access-Token": config.Shopify.token,
+        "X-Shopify-Access-Token": shopify_config['token'],
         "Content-Type": "application/json"
     }
     
+    verify_ssl = get_ssl_verification()
+    
     try:
-        response = requests.get(api_url, headers=headers, timeout=10)
+        response = requests.get(api_url, headers=headers, timeout=10, verify=verify_ssl)
         response.raise_for_status()
         
         pages_data = response.json()
@@ -76,7 +90,7 @@ def fetch_page(page_handle: str, output_format: str = "text") -> Optional[Dict[s
         return None
 
 
-def fetch_theme_asset(theme_id: str, asset_key: str, output_format: str = "text") -> Optional[str]:
+def fetch_theme_asset(theme_id: str, asset_key: str, output_format: str = "text", environment: str = "production") -> Optional[str]:
     """
     Fetch a theme asset (template, section, snippet).
     
@@ -84,22 +98,27 @@ def fetch_theme_asset(theme_id: str, asset_key: str, output_format: str = "text"
         theme_id: The theme ID
         asset_key: The asset key (e.g., "templates/page.about-us-2.json")
         output_format: Output format ("text", "json")
+        environment: Environment to use (production, staging, dev)
     
     Returns:
         Asset content or None if not found
     """
-    store_url = f"https://{config.Shopify.store_id}.myshopify.com"
+    load_environment(environment)
+    shopify_config = get_shopify_config(environment)
+    
+    store_url = f"https://{shopify_config['store_id']}.myshopify.com"
     api_url = f"{store_url}/admin/api/2024-10/themes/{theme_id}/assets.json"
     
     headers = {
-        "X-Shopify-Access-Token": config.Shopify.token,
+        "X-Shopify-Access-Token": shopify_config['token'],
         "Content-Type": "application/json"
     }
     
     params = {"asset[key]": asset_key}
+    verify_ssl = get_ssl_verification()
     
     try:
-        response = requests.get(api_url, headers=headers, params=params, timeout=10)
+        response = requests.get(api_url, headers=headers, params=params, timeout=10, verify=verify_ssl)
         response.raise_for_status()
         
         asset_data = response.json()
@@ -135,24 +154,30 @@ def fetch_theme_asset(theme_id: str, asset_key: str, output_format: str = "text"
         return None
 
 
-def list_theme_assets(theme_id: str, filter_pattern: Optional[str] = None):
+def list_theme_assets(theme_id: str, filter_pattern: Optional[str] = None, environment: str = "production"):
     """
     List all assets in a theme.
     
     Args:
         theme_id: The theme ID
         filter_pattern: Optional pattern to filter assets (e.g., "template", "about")
+        environment: Environment to use (production, staging, dev)
     """
-    store_url = f"https://{config.Shopify.store_id}.myshopify.com"
+    load_environment(environment)
+    shopify_config = get_shopify_config(environment)
+    
+    store_url = f"https://{shopify_config['store_id']}.myshopify.com"
     api_url = f"{store_url}/admin/api/2024-10/themes/{theme_id}/assets.json"
     
     headers = {
-        "X-Shopify-Access-Token": config.Shopify.token,
+        "X-Shopify-Access-Token": shopify_config['token'],
         "Content-Type": "application/json"
     }
     
+    verify_ssl = get_ssl_verification()
+    
     try:
-        response = requests.get(api_url, headers=headers, timeout=10)
+        response = requests.get(api_url, headers=headers, timeout=10, verify=verify_ssl)
         response.raise_for_status()
         
         assets_data = response.json()
@@ -242,17 +267,24 @@ Examples:
         default="text",
         help="Output format (default: text)"
     )
+    parser.add_argument(
+        "--env",
+        "--environment",
+        choices=["production", "staging", "dev"],
+        default="production",
+        help="Environment (default: production)"
+    )
     
     args = parser.parse_args()
     
     # Determine what to fetch
     if args.theme and args.list:
-        list_theme_assets(args.theme, args.filter)
+        list_theme_assets(args.theme, args.filter, args.env)
     elif args.theme and args.asset:
-        fetch_theme_asset(args.theme, args.asset, args.output)
+        fetch_theme_asset(args.theme, args.asset, args.output, args.env)
     elif args.page or args.page_handle:
         page_handle = args.page or args.page_handle
-        fetch_page(page_handle, args.output)
+        fetch_page(page_handle, args.output, args.env)
     else:
         parser.print_help()
         sys.exit(1)
