@@ -107,11 +107,55 @@ Target State (Clean Separation):
 
 ## 🗺️ **Migration Roadmap**
 
+### **🔥 CRITICAL: Legacy Code Elimination Tracker**
+
+**Goal:** ZERO backward compatibility. Complete deletion of old dict-based builders.
+
+| Phase | Action | Files to DELETE | Status |
+|-------|--------|-----------------|--------|
+| **Phase 1** | Create typed builders | - | ✅ Done |
+| **Phase 2** | Leadership uses typed builders | - | ⬜ Pending |
+| **Phase 3** | Refunds uses typed builders | `message_builder_legacy.py` (partial) | ⬜ Pending |
+| **Phase 4** | Orders uses typed builders | - | ⬜ Pending |
+| **Phase 5** | Products uses typed builders | - | ⬜ Pending |
+| **Phase 6** | **DELETE ALL LEGACY** | `message_builder.py`<br>`message_builder_legacy.py` | ⬜ Pending |
+
+**Legacy Code to ELIMINATE:**
+```
+❌ backend/modules/integrations/slack/builders/message_builder.py (489 lines)
+   - SlackMessageBuilder class (dict-based)
+   - build_header_block() → Replaced by GenericMessageBuilder.header()
+   - build_section_block() → Replaced by GenericMessageBuilder.section()
+   - build_hyperlink() → Replaced by GenericMessageBuilder.hyperlink()
+   - get_group_mention() → Move to config/slack.py helper
+   
+❌ backend/modules/integrations/slack/builders/message_builder_legacy.py (1,292 lines)
+   - SlackMessageBuilderLegacy class (refund-specific)
+   - All 18 refund formatting methods → Migrate to refunds/formatters.py
+   
+❌ backend/modules/integrations/slack/slack_service.py (500 lines)
+   - Monolithic service → Replace with domain-specific Bolt apps
+   
+❌ backend/modules/integrations/slack/slack_refunds_utils.py (103 lines)
+   - Business logic in Slack layer → Move to refunds/services/
+```
+
+**Call Sites to Migrate (Found 10 files):**
+- [ ] `slack_service.py` → Delete
+- [ ] `slack_refunds_utils.py` → Delete
+- [ ] `order_handlers.py` → Migrate to orders/formatters.py
+- [ ] `order_create_handler.py` → Update to use typed builders
+- [ ] `slack_notifier.py` → Update to use typed builders
+- [ ] `test_message_building_consolidated.py` → Update tests
+- [ ] `test_custom_refund_modal.py` → Update tests
+
+---
+
 ### **Phase 1: Foundation** (Week 1, 8-12 hours)
 - [x] ✅ Baseline audit complete
-- [ ] Create domain service interfaces
-- [ ] Extract generic message builder utilities
-- [ ] Establish testing patterns
+- [x] ✅ Create domain service interfaces
+- [x] ✅ Extract generic message builder utilities (TYPED)
+- [x] ✅ Establish testing patterns
 
 ### **Phase 2: Leadership Domain** (Week 1, 12-20 hours)
 - [x] ✅ Stage 0: Baseline tests exist
@@ -356,13 +400,20 @@ backend/modules/integrations/slack/leadership/
 ❌ Business Logic Scattered:
 ├── modules/integrations/slack/slack_refunds_utils.py   (103 lines)
 ├── modules/integrations/slack/order_handlers.py        (203 lines)
-├── modules/integrations/slack/message_builder_legacy.py (1,292 lines)
+├── modules/integrations/slack/message_builder_legacy.py (1,292 lines) ← DELETE
+├── modules/integrations/slack/message_builder.py       (489 lines)  ← DELETE
 └── modules/refunds/app/main.py                         (28 lines)
 
 ✅ Domain Logic Exists (Good Foundation):
 └── modules/refunds/app/
     ├── calculate_refund_due.py
     └── helpers/process_initial_refund_request.py
+
+❌ Call Sites Using Old SlackMessageBuilder:
+├── slack_service.py                 (uses old builder)
+├── slack_refunds_utils.py          (uses old builder)
+├── order_handlers.py               (uses old builder)
+└── order_create_handler.py         (uses old builder)
 ```
 
 ### **Target Structure:**
@@ -639,36 +690,44 @@ def handle_process_refund(ack, body, client):
 
 ### **Stage 3.4: Extract Refund Message Formatters** (2 hours)
 
+**Goal:** Create typed formatters and **migrate away from old `SlackMessageBuilder`**
+
 **Create:**
 ```python
 # backend/modules/integrations/slack/refunds/formatters.py
-from typing import Dict, Any
+from typing import Dict, Any, List
 from modules.refunds.services.refund_eligibility_service import EligibilityResult
-from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
+from modules.integrations.slack.builders import GenericMessageBuilder  # ← NEW TYPED
+from slack_sdk.models.blocks import Block
 
 class RefundMessageFormatter:
-    """Format refund domain objects into Slack messages."""
+    """
+    Format refund domain objects into Slack messages using TYPED builders.
+    
+    Replaces all functionality from:
+    - message_builder.py (old dict-based builder)
+    - message_builder_legacy.py (refund-specific legacy code)
+    """
     
     def __init__(self):
-        self.builder = GenericMessageBuilder()
+        self.builder = GenericMessageBuilder()  # ← TYPED, not old SlackMessageBuilder
     
     def format_eligibility_result(
         self, 
         result: EligibilityResult, 
         order_number: str
     ) -> Dict[str, Any]:
-        """Format eligibility check result for Slack."""
+        """Format eligibility check result for Slack using TYPED blocks."""
         
         if result.eligible:
             emoji = "✅"
             status = "Eligible"
-            color = "good"
         else:
             emoji = "❌"
             status = "Ineligible"
-            color = "danger"
         
-        blocks = [
+        # ✅ Build with TYPED Slack SDK models
+        blocks: List[Block] = [
             self.builder.header(f"{emoji} Refund {status}"),
             self.builder.section(f"*Order:* #{order_number}"),
         ]
@@ -686,8 +745,58 @@ class RefundMessageFormatter:
                 )
             )
         
-        return {"blocks": blocks, "text": f"Refund {status}"}
+        # Convert to dict for Slack API
+        return {
+            "blocks": self.builder.blocks_to_dict(blocks),
+            "text": f"Refund {status}"
+        }
+    
+    def format_refund_decision(
+        self,
+        order_number: str,
+        customer_name: str,
+        refund_amount: float,
+        refund_type: str
+    ) -> Dict[str, Any]:
+        """
+        Format refund decision message.
+        Replaces message_builder_legacy.create_refund_decision_message()
+        """
+        # ✅ Use TYPED builders, not old dict-based methods
+        blocks = [
+            self.builder.header(f"💵 Refund Request: #{order_number}"),
+            self.builder.section(
+                f"*Customer:* {customer_name}\n"
+                f"*Amount:* ${refund_amount:.2f}\n"
+                f"*Type:* {refund_type.title()}"
+            ),
+            self.builder.divider(),
+        ]
+        
+        # Action buttons
+        approve_btn = self.builder.button(
+            text="Approve Refund",
+            action_id="approve_refund",
+            value=order_number,
+            style="primary"
+        )
+        deny_btn = self.builder.button(
+            text="Deny Request",
+            action_id="deny_refund",
+            value=order_number,
+            style="danger"
+        )
+        
+        blocks.append(self.builder.actions([approve_btn, deny_btn]))
+        
+        return {"blocks": self.builder.blocks_to_dict(blocks)}
 ```
+
+**Migration Checklist:**
+- [ ] All refund messages use `RefundMessageFormatter` (typed)
+- [ ] Zero calls to old `SlackMessageBuilder.build_*()` methods
+- [ ] Zero calls to `message_builder_legacy` methods
+- [ ] All tests updated to use typed builders
 
 ### **Stage 3.5: Deprecate slack_refunds_utils.py** (1 hour)
 
@@ -996,16 +1105,76 @@ def handle_low_inventory(event, client):
 3. Delete `slack_service.py`
 4. Run full test suite
 
-### **Stage 6.2: Archive message_builder_legacy.py** (1 hour)
+### **Stage 6.2: DELETE Legacy Message Builders** (2 hours)
 
-**Current:** 1,292 lines of refund-specific formatting  
-**Target:** Archive (don't delete, in case needed for reference)
+**Current:** 
+- `message_builder.py` (489 lines) - Old dict-based builder with `build_hyperlink()`, etc.
+- `message_builder_legacy.py` (1,292 lines) - Refund-specific formatting
+
+**Target:** **COMPLETE DELETION** - Zero backward compatibility
 
 **Steps:**
-1. Verify all refund formatting moved to `refunds/formatters.py`
-2. Move to `archived/message_builder_legacy.py`
-3. Remove imports
-4. Update documentation
+1. **Verify Migration Complete:**
+   - ✅ All refund formatting moved to `refunds/formatters.py` (using typed builders)
+   - ✅ All order formatting moved to `orders/formatters.py` (using typed builders)
+   - ✅ All leadership formatting moved to `leadership/formatters.py` (using typed builders)
+   - ✅ All call sites updated to use `GenericMessageBuilder` + `SlackBlockBuilder`
+
+2. **Find All Call Sites:**
+   ```bash
+   grep -r "SlackMessageBuilder" backend/ --files-with-matches
+   grep -r "build_hyperlink" backend/ --files-with-matches
+   grep -r "build_header_block" backend/ --files-with-matches
+   ```
+
+3. **Migrate Each Call Site:**
+   ```python
+   # ❌ OLD (Dict-based)
+   from modules.integrations.slack.builders import SlackMessageBuilder
+   builder = SlackMessageBuilder(sport_groups)
+   header = builder.build_header_block("Title")  # Returns Dict[str, Any]
+   link = builder.build_hyperlink(url, "Click")
+   
+   # ✅ NEW (Typed)
+   from modules.integrations.slack.builders import GenericMessageBuilder
+   builder = GenericMessageBuilder()
+   header = builder.header("Title")  # Returns HeaderBlock
+   link = builder.hyperlink(url, "Click")
+   blocks_dict = builder.blocks_to_dict([header])  # Convert for API
+   ```
+
+4. **Delete Files:**
+   ```bash
+   rm backend/modules/integrations/slack/builders/message_builder.py
+   rm backend/modules/integrations/slack/builders/message_builder_legacy.py
+   ```
+
+5. **Update Exports:**
+   ```python
+   # backend/modules/integrations/slack/builders/__init__.py (AFTER)
+   from .generic_builders import GenericMessageBuilder
+   from .block_builders import SlackBlockBuilder
+   
+   __all__ = [
+       "GenericMessageBuilder",
+       "SlackBlockBuilder",
+       # SlackMessageBuilder REMOVED
+       # SlackCacheManager moved to client/
+       # SlackMetadataBuilder moved to client/
+   ]
+   ```
+
+6. **Run Full Test Suite:**
+   - All tests must use new typed builders
+   - Zero references to old `SlackMessageBuilder`
+   - No backward compatibility code
+
+**Critical:**
+- ❌ NO archives
+- ❌ NO backward compatibility wrappers
+- ❌ NO "just in case" code
+- ✅ COMPLETE deletion
+- ✅ Git history is the only reference
 
 ### **Stage 6.3: Update Routers to Use Bolt Apps** (2 hours)
 
@@ -1047,23 +1216,127 @@ async def inventory_interactions(request: Request):
     return await inventory_handler.handle(request)
 ```
 
-### **Stage 6.4: Final Integration Testing** (1 hour)
+### **Stage 6.4: Final Verification & Zero-Legacy Audit** (2 hours)
 
-**Test:**
-- [ ] Leadership bot: CSV upload, slash commands
-- [ ] Refunds bot: Eligibility checks, refund processing
-- [ ] Orders bot: Cancellations, restock notifications
-- [ ] Inventory bot: Low stock alerts
-- [ ] All webhooks still working
-- [ ] Performance same or better
+**Goal:** Ensure **ZERO** legacy code remains
 
-**Checklist:**
-- [ ] slack_service.py deleted
-- [ ] message_builder_legacy.py archived
-- [ ] All routers updated
-- [ ] All Bolt apps working
-- [ ] Full test suite passes
-- [ ] Manual testing complete
+#### **1. Code Verification**
+
+```bash
+# ❌ These searches MUST return ZERO results:
+grep -r "SlackMessageBuilder" backend/ --files-with-matches
+# Expected: No files (class completely removed)
+
+grep -r "message_builder_legacy" backend/ --files-with-matches
+# Expected: No files (module completely removed)
+
+grep -r "build_header_block\|build_section_block" backend/ --files-with-matches
+# Expected: No files (old methods removed)
+
+grep -r "slack_service.handle_slack_interaction" backend/ --files-with-matches
+# Expected: No files (monolith removed)
+
+# ✅ These searches SHOULD return results (new typed builders):
+grep -r "GenericMessageBuilder" backend/ --files-with-matches
+# Expected: All new handler files
+
+grep -r "SlackBlockBuilder" backend/ --files-with-matches
+# Expected: Modal handlers
+```
+
+#### **2. Integration Testing**
+
+**Test All Flows:**
+- [ ] Leadership bot: CSV upload, slash commands, user ID lookup
+- [ ] Refunds bot: Eligibility checks, refund processing, approval workflow
+- [ ] Orders bot: Cancellations, restock notifications, fulfillment updates
+- [ ] Inventory bot: Low stock alerts, restock triggers
+- [ ] All webhooks still working (Shopify product updates, order creates)
+- [ ] Performance same or better (typed models have zero overhead)
+
+#### **3. Final Checklist**
+
+**Files DELETED (not archived):**
+- [ ] ✅ `backend/modules/integrations/slack/builders/message_builder.py`
+- [ ] ✅ `backend/modules/integrations/slack/builders/message_builder_legacy.py`
+- [ ] ✅ `backend/modules/integrations/slack/slack_service.py`
+- [ ] ✅ `backend/modules/integrations/slack/slack_refunds_utils.py`
+- [ ] ✅ `backend/modules/integrations/slack/builders/order_handlers.py`
+
+**Imports Updated:**
+- [ ] ✅ `builders/__init__.py` exports only `GenericMessageBuilder` + `SlackBlockBuilder`
+- [ ] ✅ No references to `SlackMessageBuilder` anywhere
+- [ ] ✅ No references to `message_builder_legacy` anywhere
+- [ ] ✅ No references to `slack_service.handle_slack_interaction`
+
+**Tests:**
+- [ ] ✅ All test files use typed builders
+- [ ] ✅ All test fixtures use typed builders
+- [ ] ✅ Full test suite passes (100% with typed builders)
+- [ ] ✅ No tests reference old builders
+
+**Routers:**
+- [ ] ✅ All routers use domain-specific Bolt apps
+- [ ] ✅ `/slack/leadership/*` routes to `leadership_bolt_app`
+- [ ] ✅ `/slack/refunds/*` routes to `refunds_bolt_app`
+- [ ] ✅ `/slack/orders/*` routes to `orders_bolt_app`
+- [ ] ✅ `/slack/inventory/*` routes to `inventory_bolt_app`
+
+#### **4. Git Verification**
+
+```bash
+# Verify files are actually deleted, not just ignored
+git status
+# Should show deletions, not renames
+
+git log --oneline --grep="DELETE" | head -5
+# Should show deletion commits
+
+# Ensure no "backward compatibility" commits
+git log --oneline --grep="compat\|archive\|legacy" | head -10
+# Should ONLY show deletion commits, not "keep for reference"
+```
+
+#### **5. Documentation Final Check**
+
+- [ ] ✅ `TYPED_BUILDERS_USAGE.md` is the ONLY builder documentation
+- [ ] ✅ No references to old builders in any README
+- [ ] ✅ Migration plan updated to show "COMPLETED"
+- [ ] ✅ All docstrings reference typed builders only
+
+**Final Verdict:**
+- ✅ **ZERO legacy code remains**
+- ✅ **ZERO backward compatibility**
+- ✅ **100% typed builders**
+- ✅ **All tests pass**
+- ✅ **All manual tests pass**
+
+---
+
+**Commit Message:**
+```
+Phase 6 Complete: Delete all legacy Slack builders
+
+DELETED FILES (no archives, no compatibility):
+- message_builder.py (489 lines)
+- message_builder_legacy.py (1,292 lines)
+- slack_service.py (500 lines)
+- slack_refunds_utils.py (103 lines)
+- order_handlers.py (203 lines)
+
+REPLACED WITH:
+- GenericMessageBuilder (typed, 277 lines)
+- SlackBlockBuilder (typed, 283 lines)
+- Domain-specific Bolt apps (leadership, refunds, orders, inventory)
+- Domain-specific formatters (business-agnostic)
+
+VERIFICATION:
+✅ Zero references to SlackMessageBuilder
+✅ Zero references to old builder methods
+✅ 100% typed Slack SDK models
+✅ All tests pass
+✅ No backward compatibility code
+```
 
 ---
 
