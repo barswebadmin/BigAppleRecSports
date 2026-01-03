@@ -7,7 +7,7 @@ domain logic and Slack transport.
 """
 from typing import List, Dict, Optional
 from dataclasses import dataclass, field
-from modules.leadership.domain.models import LeadershipHierarchy, PersonInfo
+from modules.leadership.domain.models import LeadershipHierarchy, LeadershipMember
 from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
 from shared.csv import cell_reference
 from slack_sdk.models.blocks import Block
@@ -76,7 +76,7 @@ class LeadershipResultsFormatter:
         analysis = AnalysisResult()
         
         def check_position(
-            person: PersonInfo,
+            person: LeadershipMember,
             position_name: str,
             path: str,
             is_committee_member: bool = False
@@ -187,7 +187,7 @@ class LeadershipResultsFormatter:
         for section_name, section_data in hierarchy.sections.items():
             if section_name == "committee_members" and section_data:
                 for idx, person_dict in enumerate(section_data):
-                    person = PersonInfo(**person_dict)
+                    person = LeadershipMember(**person_dict)
                     position_name = person_dict.get("position", "Committee Member")
                     check_position(person, position_name, f"committee_members[{idx}]", is_committee_member=True)
                 continue
@@ -200,7 +200,7 @@ class LeadershipResultsFormatter:
                     continue
                 
                 if "name" in value:
-                    person = PersonInfo(**value)
+                    person = LeadershipMember(**value)
                     position_name = value.get("position", key)
                     path = f"{section_name}.{key}"
                     check_position(person, position_name, path, is_committee_member=False)
@@ -215,11 +215,11 @@ class LeadershipResultsFormatter:
                         
                         if isinstance(person_data, list):
                             for idx, p_dict in enumerate(person_data):
-                                person = PersonInfo(**p_dict)
+                                person = LeadershipMember(**p_dict)
                                 position_name = p_dict.get("position", role_key)
                                 check_position(person, position_name, f"{path}[{idx}]", is_committee_member=False)
                         else:
-                            person = PersonInfo(**person_data)
+                            person = LeadershipMember(**person_data)
                             position_name = person_data.get("position", role_key)
                             check_position(person, position_name, path, is_committee_member=False)
         

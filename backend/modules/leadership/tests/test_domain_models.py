@@ -1,44 +1,44 @@
 """
 Test domain models using pytest parameterization.
 
-Tests: PersonInfo, Position, LeadershipHierarchy
+Tests: LeadershipMember, Position, LeadershipHierarchy
 """
 import pytest
 from modules.leadership.domain.models import (
-    PersonInfo,
+    LeadershipMember,
     Position,
     LeadershipHierarchy,
 )
 
 
-class TestPersonInfo:
-    """Test PersonInfo domain model."""
+class TestLeadershipMember:
+    """Test LeadershipMember (LeadershipMember) domain model."""
     
-    @pytest.mark.parametrize("name,bars_email,expected_vacant", [
-        ("Vacant", "", True),
-        ("  vacant  ", "", True),
-        ("John Doe", "john@bars.com", False),
+    @pytest.mark.parametrize("name,personal_email,role,expected_vacant", [
+        ("Vacant", "vacant@placeholder.com", "test.role", True),
+        ("  vacant  ", "vacant@placeholder.com", "test.role", True),
+        ("John Doe", "john@gmail.com", "executive_board.commissioner", False),
     ])
-    def test_is_vacant(self, name, bars_email, expected_vacant):
+    def test_is_vacant(self, name, personal_email, role, expected_vacant):
         """Test vacant position detection with various inputs."""
-        person = PersonInfo(name=name, bars_email=bars_email)
+        person = LeadershipMember(name=name, personal_email=personal_email, role=role)
         assert person.is_vacant() == expected_vacant
     
-    @pytest.mark.parametrize("name,bars_email,personal_email,phone,birthday,expected_complete", [
-        ("John Doe", "john@bars.com", "john@gmail.com", "555-0100", "01/15", True),
-        ("John Doe", "john@bars.com", None, None, None, True),
-        ("John Doe", "", None, None, None, False),
-        ("", "john@bars.com", None, None, None, False),
-        ("Vacant", "", None, None, None, True),
+    @pytest.mark.parametrize("name,personal_email,role,bars_email,slack_user_id,expected_complete", [
+        ("John Doe", "john@gmail.com", "exec.comm", "john@bars.com", "U123", True),
+        ("John Doe", "john@gmail.com", "exec.comm", "john@bars.com", None, False),
+        ("John Doe", "john@gmail.com", "exec.comm", None, "U123", False),
+        ("", "john@gmail.com", "exec.comm", "john@bars.com", "U123", False),
+        ("Vacant", "vacant@placeholder.com", "exec.comm", None, None, True),
     ])
-    def test_is_complete(self, name, bars_email, personal_email, phone, birthday, expected_complete):
+    def test_is_complete(self, name, personal_email, role, bars_email, slack_user_id, expected_complete):
         """Test completeness validation with various field combinations."""
-        person = PersonInfo(
+        person = LeadershipMember(
             name=name,
-            bars_email=bars_email,
             personal_email=personal_email,
-            phone=phone,
-            birthday=birthday
+            role=role,
+            bars_email=bars_email,
+            slack_user_id=slack_user_id
         )
         assert person.is_complete() == expected_complete
     
@@ -49,26 +49,35 @@ class TestPersonInfo:
     ])
     def test_email_normalization(self, input_email, expected_email):
         """Test that emails are normalized (lowercased, stripped)."""
-        person = PersonInfo(name="John Doe", bars_email=input_email)
+        person = LeadershipMember(
+            name="John Doe",
+            personal_email="john@gmail.com",
+            role="test.role",
+            bars_email=input_email
+        )
         assert person.bars_email == expected_email
     
     def test_full_person_creation(self):
-        """Test creating PersonInfo with all fields."""
-        person = PersonInfo(
+        """Test creating LeadershipMember with all fields."""
+        person = LeadershipMember(
             name="John Doe",
-            bars_email="john@bigapplerecsports.com",
             personal_email="john@gmail.com",
+            role="executive_board.commissioner",
+            bars_email="john@bigapplerecsports.com",
             phone="555-0100",
             birthday="01/15",
-            slack_user_id="U1234567890"
+            slack_user_id="U1234567890",
+            photo_url="https://example.com/photo.jpg"
         )
         
         assert person.name == "John Doe"
-        assert person.bars_email == "john@bigapplerecsports.com"
         assert person.personal_email == "john@gmail.com"
+        assert person.role == "executive_board.commissioner"
+        assert person.bars_email == "john@bigapplerecsports.com"
         assert person.phone == "555-0100"
         assert person.birthday == "01/15"
         assert person.slack_user_id == "U1234567890"
+        assert person.photo_url == "https://example.com/photo.jpg"
 
 
 class TestPosition:
@@ -81,7 +90,12 @@ class TestPosition:
     ])
     def test_display_name(self, section, sub_section, role, expected_display):
         """Test display name generation for various position structures."""
-        person = PersonInfo(name="John Doe", bars_email="john@bars.com")
+        person = LeadershipMember(
+            name="John Doe",
+            personal_email="john@gmail.com",
+            role=f"{section}.{role}",
+            bars_email="john@bars.com"
+        )
         position = Position(
             section=section,
             role=role,
@@ -92,8 +106,10 @@ class TestPosition:
     
     def test_to_dict_serialization(self):
         """Test serialization to dict matches existing JSON format."""
-        person = PersonInfo(
+        person = LeadershipMember(
             name="John Doe",
+            personal_email="john@gmail.com",
+            role="executive_board.commissioner",
             bars_email="john@bars.com",
             slack_user_id="U1234567890"
         )
@@ -136,7 +152,12 @@ class TestLeadershipHierarchy:
     def test_add_and_get_position(self, section, role, sub_section):
         """Test adding and retrieving positions with various structures."""
         hierarchy = LeadershipHierarchy()
-        person = PersonInfo(name="John Doe", bars_email="john@bars.com")
+        person = LeadershipMember(
+            name="John Doe",
+            personal_email="john@gmail.com",
+            role=f"{section}.{role}",
+            bars_email="john@bars.com"
+        )
         
         hierarchy.add_position(
             section=section,
@@ -152,7 +173,11 @@ class TestLeadershipHierarchy:
     def test_vacant_position_handling(self):
         """Test that vacant positions are tracked separately."""
         hierarchy = LeadershipHierarchy()
-        vacant_person = PersonInfo(name="Vacant", bars_email="")
+        vacant_person = LeadershipMember(
+            name="Vacant",
+            personal_email="vacant@placeholder.com",
+            role="dodgeball.ops_manager"
+        )
         
         hierarchy.add_position(
             section="dodgeball",
@@ -171,9 +196,23 @@ class TestLeadershipHierarchy:
         """Test extracting all non-vacant BARS emails."""
         hierarchy = LeadershipHierarchy()
         
-        person1 = PersonInfo(name="John Doe", bars_email="john@bars.com")
-        person2 = PersonInfo(name="Jane Smith", bars_email="jane@bars.com")
-        person3 = PersonInfo(name="Vacant", bars_email="")
+        person1 = LeadershipMember(
+            name="John Doe",
+            personal_email="john@gmail.com",
+            role="executive_board.commissioner",
+            bars_email="john@bars.com"
+        )
+        person2 = LeadershipMember(
+            name="Jane Smith",
+            personal_email="jane@gmail.com",
+            role="executive_board.vice_commissioner",
+            bars_email="jane@bars.com"
+        )
+        person3 = LeadershipMember(
+            name="Vacant",
+            personal_email="vacant@placeholder.com",
+            role="dodgeball.director"
+        )
         
         hierarchy.add_position("executive_board", "commissioner", person1)
         hierarchy.add_position("executive_board", "vice_commissioner", person2)
@@ -189,8 +228,10 @@ class TestLeadershipHierarchy:
     def test_to_dict_compatibility(self):
         """Test serialization matches existing JSON format."""
         hierarchy = LeadershipHierarchy()
-        person = PersonInfo(
+        person = LeadershipMember(
             name="John Doe",
+            personal_email="john@gmail.com",
+            role="executive_board.commissioner",
             bars_email="john@bars.com",
             slack_user_id="U1234567890"
         )
@@ -206,9 +247,24 @@ class TestLeadershipHierarchy:
         """Test summary statistics generation."""
         hierarchy = LeadershipHierarchy()
         
-        person1 = PersonInfo(name="John Doe", bars_email="john@bars.com", slack_user_id="U123")
-        person2 = PersonInfo(name="Jane Smith", bars_email="jane@bars.com")
-        person3 = PersonInfo(name="Vacant", bars_email="")
+        person1 = LeadershipMember(
+            name="John Doe",
+            personal_email="john@gmail.com",
+            role="executive_board.commissioner",
+            bars_email="john@bars.com",
+            slack_user_id="U123"
+        )
+        person2 = LeadershipMember(
+            name="Jane Smith",
+            personal_email="jane@gmail.com",
+            role="executive_board.vice_commissioner",
+            bars_email="jane@bars.com"
+        )
+        person3 = LeadershipMember(
+            name="Vacant",
+            personal_email="vacant@placeholder.com",
+            role="dodgeball.director"
+        )
         
         hierarchy.add_position("executive_board", "commissioner", person1)
         hierarchy.add_position("executive_board", "vice_commissioner", person2)

@@ -1,6 +1,6 @@
 import pytest
 from typing import Dict, List, Any, Optional
-from modules.leadership.domain.models import PersonInfo, Position, LeadershipHierarchy
+from modules.leadership.domain.models import LeadershipMember, Position, LeadershipHierarchy
 from modules.integrations.slack.leadership.results_formatter import (
     LeadershipResultsFormatter,
     AnalysisResult,
@@ -22,9 +22,9 @@ def create_person(
     slack_user_id: Optional[str] = None,
     csv_row: Optional[int] = None,
     csv_columns: Optional[Dict[str, int]] = None
-) -> PersonInfo:
+) -> LeadershipMember:
     """
-    Factory function to create PersonInfo with optional fields.
+    Factory function to create LeadershipMember with optional fields.
     
     Args:
         name: Person's name (use "Vacant" for vacant positions)
@@ -37,7 +37,7 @@ def create_person(
         csv_columns: CSV column mapping for error reporting
     
     Returns:
-        PersonInfo instance with extra fields if provided
+        LeadershipMember instance with extra fields if provided
     """
     kwargs = {
         "name": name,
@@ -53,13 +53,13 @@ def create_person(
     if csv_columns is not None:
         kwargs["_csv_columns"] = csv_columns  # type: ignore
     
-    return PersonInfo(**kwargs)
+    return LeadershipMember(**kwargs)
 
 
 def create_hierarchy_with_position(
     section: str,
     role: str,
-    person: PersonInfo,
+    person: LeadershipMember,
     sub_section: Optional[str] = None,
     team: Optional[str] = None
 ) -> LeadershipHierarchy:
@@ -69,7 +69,7 @@ def create_hierarchy_with_position(
     Args:
         section: Section name
         role: Role name
-        person: PersonInfo object
+        person: LeadershipMember object
         sub_section: Optional subsection
         team: Optional team
     
