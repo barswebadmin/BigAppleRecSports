@@ -1,21 +1,24 @@
 """Slack Bolt command and modal handlers for Leadership bot."""
+import json
 import logging
+from pathlib import Path
 from typing import List, Optional, Dict, Tuple
 
 from slack_bolt import Ack
 from slack_sdk import WebClient
 from slack_sdk.models.blocks import Block
 
-from modules.integrations.slack.leadership.bolt_app import app
-from modules.integrations.slack.services.user_lookup_service import UserLookupService
+from config.leadership import load_hierarchy_config
+from modules.integrations.google import GoogleSheetsClient
+from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
+from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
 from modules.integrations.slack.client.slack_config import SlackConfig
 from modules.integrations.slack.helpers import update_ephemeral_message, download_and_parse_csv
+from modules.integrations.slack.leadership.bolt_app import app
+from modules.integrations.slack.leadership.results_formatter import LeadershipResultsFormatter
+from modules.integrations.slack.services.user_lookup_service import UserLookupService
 from modules.leadership.services.csv_parser import LeadershipCSVParser
 from modules.leadership.services.user_enrichment_service import UserEnrichmentService
-from modules.integrations.slack.leadership.results_formatter import LeadershipResultsFormatter
-from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
-from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
-from modules.integrations.google import GoogleSheetsClient
 from shared.csv import parse_csv_text
 from shared.csv.csv_processor import CSVProcessor
 
@@ -99,9 +102,7 @@ def handle_update_leadership_submission(ack: Ack, body: dict, view: dict, client
             elif isinstance(section_data, list):
                 logger.info(f"  {section_name}: {len(section_data)} members")
         
-        from config.leadership import load_hierarchy_config
         expected_config = load_hierarchy_config()
-        
         expected_positions = expected_config.get_all_expected_positions()
         total_expected = sum(len(positions) for positions in expected_positions.values())
         
