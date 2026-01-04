@@ -1,60 +1,51 @@
 from __future__ import annotations
-from pydantic import BaseModel, Field
+from pydantic import Field
 from typing import List, Optional, Dict, Any
-from shared.model_config import BaseModelConfig
+from shared.model_config import ApiModel
 
 
-class Money(BaseModel):
-    model_config = BaseModelConfig
+class Money(ApiModel):
     amount: str
     currency_code: str
 
 
-class TotalPriceSet(BaseModel):
-    model_config = BaseModelConfig
+class TotalPriceSet(ApiModel):
     shop_money: Money
 
 
-class MoneySet(BaseModel):
-    model_config = BaseModelConfig
+class MoneySet(ApiModel):
     presentment_money: Money
     shop_money: Money
 
 
-class ParentTransaction(BaseModel):
-    model_config = BaseModelConfig
+class ParentTransaction(ApiModel):
     id: Optional[str] = None
 
 
-class Transaction(BaseModel):
-    model_config = BaseModelConfig
+class Transaction(ApiModel):
     id: str
     kind: Optional[str] = None
     gateway: Optional[str] = None
     parent_transaction: Optional[ParentTransaction] = None
 
 
-class CustomerRef(BaseModel):
-    model_config = BaseModelConfig
+class CustomerRef(ApiModel):
     id: Optional[str] = None
     email: Optional[str] = None
 
 
-class RefundStaffMember(BaseModel):
-    model_config = BaseModelConfig
+class RefundStaffMember(ApiModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
 
 
-class Refund(BaseModel):
-    model_config = BaseModelConfig
+class Refund(ApiModel):
     created_at: Optional[str] = None
     staff_member: Optional[RefundStaffMember] = None
     total_refunded_set: Optional[MoneySet] = None
 
 
-class Order(BaseModel):
-    model_config = BaseModelConfig
+class Order(ApiModel):
     id: str
     name: str
     email: Optional[str] = None

@@ -1,11 +1,75 @@
 #!/usr/bin/env python3
 """
-Dictionary utility functions for flattening and comparing nested structures.
+Dictionary utility functions for flattening, comparing, and navigating nested structures.
 """
 
 import json
 import sys
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Union
+
+
+def get_nested_value(
+    data: Union[Dict[str, Any], List[Any]], 
+    path: Union[str, List[Union[str, int]]]
+) -> Optional[Any]:
+    """Get nested value from dict or list using dot notation path or list of keys/indices.
+    
+    Supports both string paths (dot notation) and list paths (with string keys and int indices).
+    Can navigate through both dictionaries and lists.
+    
+    Args:
+        data: Dictionary or list to navigate
+        path: Either:
+            - Dot-notation string path (e.g., "request_model.field" or "subAccountTypeKey")
+            - List of keys/indices (e.g., ["data", "items", 0] for dict["data"]["items"][0])
+        
+    Returns:
+        Value at path, or None if path doesn't exist
+    """
+    # Normalize path to list format
+    if isinstance(path, str):
+        keys = path.split(".") if path else []
+    else:
+        keys = path if path else []
+    
+    # Handle empty path
+    if not keys:
+        return data if data is not None else None
+    
+    current = data
+    for key in keys:
+        if isinstance(current, dict):
+            current = current.get(key) if key in current else None
+            if current is None:
+                return None
+        elif isinstance(current, list) and isinstance(key, int):
+            if 0 <= key < len(current):
+                current = current[key]
+            else:
+                return None
+        else:
+            return None
+    
+    return current
+
+
+def set_nested_value(data: Dict[str, Any], path: str, value: Any) -> None:
+    """Set nested value in dict using dot notation path.
+    
+    Creates intermediate dictionaries if they don't exist.
+    
+    Args:
+        data: Dictionary to modify
+        path: Dot-notation path (e.g., "a.b.c")
+        value: Value to set
+    """
+    keys = path.split(".")
+    current = data
+    for k in keys[:-1]:
+        if k not in current or not isinstance(current[k], dict):
+            current[k] = {}
+        current = current[k]
+    current[keys[-1]] = value
 
 
 def flatten_dict_data(

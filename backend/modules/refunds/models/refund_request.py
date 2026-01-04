@@ -1,8 +1,8 @@
-from pydantic import BaseModel, model_validator, Field
+from pydantic import model_validator, Field
 from typing import Optional
 from datetime import datetime, timezone
 
-from shared.model_config import BaseModelConfig
+from shared.model_config import ApiModel
 from shared.validators import (
     validate_email_format,
     validate_shopify_order_number_format,
@@ -10,15 +10,13 @@ from shared.validators import (
 )
 
 
-class RefundRequest(BaseModel):
+class RefundRequest(ApiModel):
     """
     Request model for initiating a refund.
 
     Accepts both snake_case (order_number) and camelCase (orderNumber) input thanks
-    to the shared BaseModelConfig alias_generator.
+    to ApiModel's alias_generator.
     """
-
-    model_config = BaseModelConfig
 
     email: str
     order_number: str

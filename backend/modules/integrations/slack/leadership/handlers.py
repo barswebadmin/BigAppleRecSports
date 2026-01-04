@@ -13,7 +13,8 @@ from config.slack import SlackConfig
 from modules.integrations.google import GoogleSheetsClient
 from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
 from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
-from modules.integrations.slack.helpers import update_ephemeral_message, download_and_parse_csv
+from modules.integrations.slack.client import SlackClient
+from modules.integrations.slack.helpers import download_and_parse_csv
 from modules.integrations.slack.leadership.leadership_bot import leadership_bot
 from modules.integrations.slack.leadership.results_formatter import LeadershipResultsFormatter
 from modules.integrations.slack.services.user_lookup_service import UserLookupService
@@ -436,14 +437,16 @@ def handle_confirm_file_process(ack: Ack, body: dict, client: WebClient, action:
         blocks = _process_leadership_csv(csv_data, header_row, position_col, email_col)
         
         if response_url:
-            update_ephemeral_message(response_url, "Processing complete", blocks)
+            slack_client = SlackClient()
+            slack_client.update_ephemeral_message(response_url, "Processing complete", blocks)
         
     except Exception as e:
         logger.error(f"Error processing file: {e}", exc_info=True)
         
         if response_url:
             builder = GenericMessageBuilder()
-            update_ephemeral_message(
+            slack_client = SlackClient()
+            slack_client.update_ephemeral_message(
                 response_url,
                 "Error",
                 [builder.section(f"❌ *Error* - {str(e)}")],
@@ -460,7 +463,8 @@ def handle_cancel_file_process(ack: Ack, body: dict, client: WebClient):
     
     if response_url:
         builder = GenericMessageBuilder()
-        update_ephemeral_message(
+        slack_client = SlackClient()
+        slack_client.update_ephemeral_message(
             response_url,
             "Cancelled",
             [builder.section("❌ Processing cancelled")],
@@ -548,14 +552,16 @@ def handle_column_selection_modal(ack: Ack, body: dict, view: dict, client: WebC
         blocks = _process_leadership_csv(csv_data, header_row_index, position_col, email_col)
         
         if response_url:
-            update_ephemeral_message(response_url, "Processing complete", blocks)
+            slack_client = SlackClient()
+            slack_client.update_ephemeral_message(response_url, "Processing complete", blocks)
         
     except Exception as e:
         logger.error(f"Error processing file with manual column selection: {e}", exc_info=True)
         
         if response_url:
             builder = GenericMessageBuilder()
-            update_ephemeral_message(
+            slack_client = SlackClient()
+            slack_client.update_ephemeral_message(
                 response_url,
                 "Error",
                 [builder.section(f"❌ *Error* - {str(e)}")],

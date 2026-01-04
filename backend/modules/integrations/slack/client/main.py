@@ -3,8 +3,10 @@ Core Slack API methods.
 Handles direct Slack API interactions: sending messages, updating messages, ephemeral messages.
 """
 
+import time
 import logging
-from typing import Dict, Any, Optional, List, Union, Callable
+from typing import Dict, Any, Optional, List, Union, Callable, TypeVar
+from urllib3.exceptions import NameResolutionError
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError, SlackClientError
 from slack_sdk.models.blocks import Block, SectionBlock, MarkdownTextObject
@@ -13,6 +15,81 @@ from slack_sdk.webhook import WebhookClient
 from config.main import SlackConfig
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar('T')
+
+
+def is_transient_error(exception: Exception) -> bool:
+    """
+    Check if an exception is a transient error that should be retried.
+    
+    Transient errors include:
+    - DNS resolution failures
+    - Network connectivity issues (connection refused, timeout, reset)
+    - Slack API rate limiting (429)
+    - Server errors (502, 503, 504)
+    
+    Non-transient errors (won't retry):
+    - Authentication failures (invalid_auth, token_revoked)
+    - Permission errors (missing_scope, not_in_channel)
+    - Resource not found (channel_not_found, user_not_found)
+    - Invalid parameters (invalid_arguments)
+    
+    Args:
+        exception: The exception to check
+        
+    Returns:
+        True if the error is transient and should be retried
+    """
+    # DNS resolution errors
+    if isinstance(exception, NameResolutionError):
+        return True
+    
+    # Slack API errors
+    if isinstance(exception, SlackApiError):
+        error_code = exception.response.get("error")
+        status_code = exception.response.status_code
+        
+        # Rate limiting
+        if error_code == "rate_limited" or status_code == 429:
+            return True
+        
+        # Server errors (Slack's fault, not ours)
+        if status_code in (502, 503, 504):
+            return True
+        
+        # Non-transient Slack errors (fail fast)
+        non_transient_errors = {
+            "invalid_auth",
+            "token_revoked",
+            "token_expired",
+            "account_inactive",
+            "missing_scope",
+            "not_authed",
+            "invalid_arguments",
+            "channel_not_found",
+            "user_not_found",
+            "not_in_channel",
+        }
+        if error_code in non_transient_errors:
+            return False
+    
+    # Check error message for transient indicators
+    error_str = str(exception).lower()
+    transient_indicators = [
+        "failed to resolve",
+        "connection refused",
+        "connection reset",
+        "connection timeout",
+        "read timeout",
+        "rate limit",
+        "429",
+        "502",
+        "503",
+        "504"
+    ]
+    
+    return any(indicator in error_str for indicator in transient_indicators)
 
 
 class SlackClient:
@@ -24,36 +101,93 @@ class SlackClient:
         self._timeout_seconds = 10
         self._max_retries = 3
 
+    def _retry_with_backoff(
+        self,
+        func: Callable[[], T],
+        max_retries: int,
+        operation_name: str,
+        initial_delay: float = 0.5,
+        backoff_factor: float = 2.0
+    ) -> T:
+        """
+        Retry a function with exponential backoff for transient errors.
+        
+        Only retries transient errors (rate limits, network issues, server errors).
+        Non-transient errors (auth, permissions, not found) fail immediately.
+        
+        Args:
+            func: The function to retry (no arguments)
+            max_retries: Maximum number of retry attempts
+            operation_name: Human-readable operation name for logging
+            initial_delay: Initial delay in seconds (default: 0.5)
+            backoff_factor: Multiplier for delay on each retry (default: 2.0)
+            
+        Returns:
+            The result of the function call
+            
+        Raises:
+            The last exception if all retries fail
+        """
+        delay = initial_delay
+        
+        for attempt in range(max_retries + 1):
+            try:
+                return func()
+            except Exception as e:
+                # Last attempt - always re-raise
+                if attempt == max_retries:
+                    logger.error(
+                        f"❌ {operation_name} failed after {max_retries} retries: {e}"
+                    )
+                    raise
+                
+                # Check if error is transient
+                if not is_transient_error(e):
+                    logger.error(
+                        f"❌ {operation_name} failed with non-transient error: {e}"
+                    )
+                    raise
+                
+                # Transient error - log and retry
+                logger.warning(
+                    f"⚠️  {operation_name} failed (attempt {attempt + 1}/{max_retries + 1}): {e}. "
+                    f"Retrying in {delay:.1f}s..."
+                )
+                time.sleep(delay)
+                delay *= backoff_factor
+        
+        raise RuntimeError(f"{operation_name} failed: unreachable code")
+
     def _execute_slack_api_call(
         self,
         api_method: Callable,
-        payload: Dict[str, Any],
-        operation_name: str,
+        payload: Optional[Dict[str, Any]] = None,
+        operation_name: str = "Slack API call",
     ) -> Dict[str, Any]:
         """
-        Execute a Slack API call with retry logic and error handling.
+        Execute a Slack API call with smart retry logic and error handling.
+        
+        Uses exponential backoff and only retries transient errors
+        (rate limits, network issues, server errors). Fails fast for
+        non-transient errors (auth, permissions, not found).
         
         Args:
             api_method: The Slack SDK method to call (e.g., client.chat_postMessage)
-            payload: The payload to send to the API
+            payload: Optional payload to send to the API (defaults to empty dict)
             operation_name: Human-readable operation name for logging
             
         Returns:
             Dict containing success status and response data
         """
         try:
-            last_error = None
-            for attempt in range(1, self._max_retries + 1):
-                try:
-                    response = api_method(**payload, timeout=self._timeout_seconds)
-                    break
-                except Exception as e:
-                    last_error = e
-                    if attempt < self._max_retries:
-                        logger.warning(f"⚠️ Retry {attempt}/{self._max_retries} for {operation_name}: {str(e)}")
-            else:
-                logger.error(f"❌ All {self._max_retries} retries failed for {operation_name}: {str(last_error)}")
-                return {"success": False, "error": f"Unexpected error: {str(last_error)}", "response": None}
+            def _api_call():
+                return api_method(**(payload or {}), timeout=self._timeout_seconds)
+            
+            response = self._retry_with_backoff(
+                _api_call,
+                max_retries=self._max_retries,
+                operation_name=operation_name
+            )
             
             if response["ok"]:
                 logger.info(f"✅ {operation_name}")
@@ -66,13 +200,10 @@ class SlackClient:
             return {"success": False, "error": response.get("error", "Unknown error"), "response": response}
                 
         except SlackApiError as e:
-            logger.error(f"❌ Slack API error: {e.response['error']}")
             return {"success": False, "error": f"Slack API error: {e.response['error']}", "response": e.response}
         except SlackClientError as e:
-            logger.error(f"❌ Slack client error: {str(e)}")
             return {"success": False, "error": f"Slack client error: {str(e)}", "response": None}
         except Exception as e:
-            logger.error(f"❌ Unexpected error: {str(e)}")
             return {"success": False, "error": f"Unexpected error: {str(e)}", "response": None}
 
     def send_message(

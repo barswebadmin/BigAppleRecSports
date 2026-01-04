@@ -20,6 +20,14 @@ from .csv_patterns import (
     SectionPatterns,
     CSVPatternRegistry,
 )
+from .hierarchy_bridge import (
+    validate_member_role,
+    get_position_config,
+    create_position_from_config,
+    validate_hierarchy_completeness,
+    get_expected_title,
+    validate_all_members,
+)
 
 __all__ = [
     "LeadershipMember",
@@ -34,5 +42,11 @@ __all__ = [
     "PositionPattern",
     "SectionPatterns",
     "CSVPatternRegistry",
+    "validate_member_role",
+    "get_position_config",
+    "create_position_from_config",
+    "validate_hierarchy_completeness",
+    "get_expected_title",
+    "validate_all_members",
 ]
 

@@ -4,7 +4,8 @@ Tests for shared CSV text utilities.
 Tests: clean_unicode_control_chars, to_snake_case, find_column
 """
 import pytest
-from shared.csv import clean_unicode_control_chars, to_snake_case, find_column
+from shared.csv import clean_unicode_control_chars, find_column
+from shared.string_utils import to_snake_case
 
 
 class TestCleanUnicodeControlChars:

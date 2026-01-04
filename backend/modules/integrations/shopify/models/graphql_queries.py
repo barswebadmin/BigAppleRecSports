@@ -12,10 +12,10 @@ class ShopifyGraphQLQuery(BaseModel):
     """
 
     query: str
-    variables: Dict[str, Any] = Field(default_factory=dict)
+    variables: Optional[Dict[str, Any]] = None
 
     def to_payload(self) -> Dict[str, Any]:
-        return {"query": self.query, "variables": self.variables}
+        return {"query": self.query, "variables": self.variables or {}}
 
     @staticmethod
     def order_search(search: str) -> "ShopifyGraphQLQuery":

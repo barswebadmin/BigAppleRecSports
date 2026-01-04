@@ -1,96 +1,217 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
-import time
-from urllib3.exceptions import NameResolutionError
-from slack_sdk.errors import SlackApiError
+from slack_sdk import WebClient
 
-from modules.integrations.slack.client.users_client import SlackUsersClient
+from modules.integrations.slack.client import SlackClient
+from modules.integrations.slack.models.slack_user import SlackUser
 
 logger = logging.getLogger(__name__)
 
 
-def _is_transient_error(exception: Exception) -> bool:
-    """
-    Check if an exception is a transient error that should be retried.
-    
-    Args:
-        exception: The exception to check
-        
-    Returns:
-        True if the error is transient and should be retried
-    """
-    # DNS resolution errors
-    if isinstance(exception, NameResolutionError):
-        return True
-    
-    # Slack API rate limiting and server errors
-    if isinstance(exception, SlackApiError):
-        if exception.response.get("error") == "rate_limited":
-            return True
-        if exception.response.status_code in (429, 502, 503, 504):
-            return True
-    
-    # Check for specific error messages
-    error_str = str(exception).lower()
-    transient_indicators = [
-        "failed to resolve",
-        "connection refused",
-        "connection reset",
-        "connection timeout",
-        "read timeout",
-        "rate limit",
-        "429",
-        "502",
-        "503",
-        "504"
-    ]
-    
-    return any(indicator in error_str for indicator in transient_indicators)
-
-
-def _retry_with_backoff(func, max_retries: int = 3, initial_delay: float = 0.5):
-    """
-    Retry a function with exponential backoff for transient errors.
-    
-    Args:
-        func: The function to retry
-        max_retries: Maximum number of retry attempts
-        initial_delay: Initial delay in seconds (doubles with each retry)
-        
-    Returns:
-        The result of the function call
-        
-    Raises:
-        The last exception if all retries fail
-    """
-    delay = initial_delay
-    
-    for attempt in range(max_retries + 1):
-        try:
-            return func()
-        except Exception as e:
-            if attempt == max_retries:
-                # Final attempt failed, re-raise
-                raise
-            
-            if not _is_transient_error(e):
-                # Not a transient error, don't retry
-                raise
-            
-            logger.warning(
-                f"Transient error on attempt {attempt + 1}/{max_retries + 1}: {e}. "
-                f"Retrying in {delay:.1f}s..."
-            )
-            time.sleep(delay)
-            delay *= 2  # Exponential backoff
-
-
 class UserLookupService:
-    """Service for looking up Slack user IDs from email addresses."""
+    """Service for looking up Slack users by email addresses."""
     
     def __init__(self, token: str):
-        self.client = SlackUsersClient(token)
+        self.slack_client = SlackClient()
+        self.slack_client.client = WebClient(token=token)
+    
+    @staticmethod
+    def normalize_email(email: str) -> str:
+        """
+        Normalize email address for consistent lookups.
+        
+        Args:
+            email: Raw email address
+            
+        Returns:
+            Normalized email (trimmed and lowercased)
+        """
+        return email.strip().lower()
+    
+    def _paginate_slack_api_call(
+        self,
+        api_method: Callable,
+        result_key: str,
+        operation_name: str,
+        payload: Optional[Dict[str, Any]] = None,
+        limit: int = 200
+    ) -> List[Dict[str, Any]]:
+        """
+        Generic pagination helper for Slack API calls that support cursor-based pagination.
+        
+        Args:
+            api_method: Slack API method to call (e.g., self.slack_client.client.users_list)
+            result_key: Key in the response containing the list of results (e.g., "members")
+            operation_name: Human-readable operation name for logging
+            payload: Optional base payload to include in each request
+            limit: Number of results per page (default: 200)
+            
+        Returns:
+            List of all results from all pages
+        """
+        results: List[Dict[str, Any]] = []
+        cursor = None
+        page = 1
+        base_payload = payload or {}
+        
+        while True:
+            try:
+                page_payload = {**base_payload, "limit": limit}
+                if cursor:
+                    page_payload["cursor"] = cursor
+                
+                response = self.slack_client._execute_slack_api_call(
+                    api_method=api_method,
+                    payload=page_payload,
+                    operation_name=f"{operation_name} (page {page})"
+                )
+                
+                if not response.get("success"):
+                    logger.error(f"Slack API error: {response.get('error')}")
+                    break
+                
+                api_response = response.get("response", {})
+                page_results = api_response.get(result_key, [])
+                results.extend(page_results)
+                
+                cursor = api_response.get("response_metadata", {}).get("next_cursor")
+                if not cursor:
+                    break
+                
+                page += 1
+                    
+            except Exception as e:
+                logger.error(f"Error during {operation_name} (page {page}): {e}")
+                break
+        
+        return results
+    
+    def list_all_users(self) -> List[Dict[str, Any]]:
+        """
+        List all Slack users with pagination and smart retry logic.
+        
+        Uses SlackClient's _execute_slack_api_call for exponential backoff
+        and transient error retry. Fails fast for non-transient errors.
+        
+        Returns:
+            List of all user objects
+        """
+        return self._paginate_slack_api_call(
+            api_method=self.slack_client.client.users_list,
+            result_key="members",
+            operation_name="Fetch users"
+        )
+    
+    def find_candidates_by_last_name(self, last_name: str) -> List[SlackUser]:
+        """
+        Find Slack users by last name.
+        
+        Fetches all users and filters by last name match.
+        
+        Args:
+            last_name: Last name to search for (case-insensitive)
+            
+        Returns:
+            List of SlackUser models matching the last name
+        """
+        lname = (last_name or "").strip().lower()
+        if not lname:
+            return []
+        
+        users = self.list_all_users()
+        candidates: List[SlackUser] = []
+        
+        for user_dict in users:
+            try:
+                user = SlackUser(**user_dict)
+                profile = user_dict.get("profile", {})
+                real_name = (
+                    profile.get("real_name_normalized") or 
+                    profile.get("real_name") or 
+                    user_dict.get("name") or 
+                    ""
+                ).lower()
+                
+                if lname and (real_name.endswith(" " + lname) or real_name.split()[-1] == lname or lname in real_name):
+                    candidates.append(user)
+            except Exception as e:
+                logger.debug(f"Could not parse user {user_dict.get('id')}: {e}")
+                continue
+        
+        return candidates
+    
+    def lookup_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Look up a Slack user by email address.
+        
+        Normalizes the email and uses SlackClient for the actual API call.
+        
+        Args:
+            email: Email address to look up (will be normalized)
+            
+        Returns:
+            Full user object if found, None otherwise
+        """
+        normalized_email = self.normalize_email(email)
+        logger.debug(f"Looking up user by email: {normalized_email}")
+        
+        try:
+            response = self.slack_client._execute_slack_api_call(
+                api_method=self.slack_client.client.users_lookupByEmail,
+                payload={"email": normalized_email},
+                operation_name=f"Lookup user by email: {normalized_email}"
+            )
+            
+            if response.get("success"):
+                user = response.get("response", {}).get("user")
+                if user:
+                    logger.debug(f"✓ Found user: {user.get('id')}")
+                    return user
+            
+            logger.debug(f"✗ No user found for {normalized_email}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to lookup {normalized_email}: {e}")
+            return None
+    
+    def lookup_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Look up a Slack user by user ID.
+        
+        Validates the user ID format before performing the lookup.
+        
+        Args:
+            user_id: Slack user ID (e.g., U03LZKQSHEU)
+            
+        Returns:
+            Full user object if found, None otherwise
+            
+        Raises:
+            ValueError: If user_id format is invalid
+        """
+        # Validate user ID format
+        if not SlackUser.is_valid_user_id(user_id):
+            raise ValueError(
+                f"Invalid Slack user ID format: '{user_id}'. "
+                f"Must start with 'U', be 11 characters, and contain only alphanumeric characters."
+            )
+        
+        logger.debug(f"Looking up user by ID: {user_id}")
+        
+        try:
+            users = self.list_all_users()
+            for user in users:
+                if user.get('id') == user_id:
+                    logger.debug(f"✓ Found user: {user_id}")
+                    return user
+            
+            logger.debug(f"✗ No user found for {user_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to lookup {user_id}: {e}")
+            return None
     
     def lookup_user_ids_by_emails(
         self, 
@@ -143,24 +264,26 @@ class UserLookupService:
     
     def _lookup_single_email(self, email: str, max_retries: int = 3) -> Optional[str]:
         """
-        Look up a single email address with retry logic for transient errors.
+        Look up a single email address and return only the user ID.
+        
+        Used internally for batch lookups. Normalizes email before lookup.
+        
+        Note: The underlying lookup_user_by_email() already has retry logic via SlackClient.
+        The max_retries parameter is unused but kept for backward compatibility.
         
         Args:
-            email: Email address to look up
-            max_retries: Maximum number of retry attempts for transient errors
+            email: Email address to look up (will be normalized)
+            max_retries: Unused (kept for backward compatibility)
             
         Returns:
             Slack user ID if found, None otherwise
         """
-        def _do_lookup():
-            user = self.client.lookup_by_email(email)
+        try:
+            user = self.lookup_user_by_email(email)
             if user:
                 return user.get("id")
             return None
-        
-        try:
-            return _retry_with_backoff(_do_lookup, max_retries=max_retries)
         except Exception as e:
-            logger.error(f"Failed to lookup {email} after {max_retries} retries: {e}")
+            logger.error(f"Failed to lookup {email}: {e}")
             return None
 

@@ -13,7 +13,7 @@ os.environ["ENVIRONMENT"] = "dev"
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from modules.integrations.slack.slack_service import SlackService
-from models.slack import Slack, RefundType, SlackMessageType
+from models.slack import RefundSlackNotificationRequest, RefundType, SlackMessageType
 from config.slack import SlackConfig
 
 def test_consolidated_slack_service():
@@ -104,7 +104,7 @@ def test_consolidated_slack_service():
     print("💼 Testing Business Logic Methods:")
     
     # Test refund notification
-    refund_request = Slack.RefundNotification(
+    refund_request = RefundSlackNotificationRequest(
         order_number="#12345",
         requestor_name="John Doe",
         requestor_email="john.doe@example.com",
@@ -228,11 +228,11 @@ result = service.send_custom_message(
 )
 
 # Example 3: Business logic usage
-refund_request = Slack.RefundNotification(
+refund_request = RefundSlackNotificationRequest(
     order_number="#12345",
     requestor_name="John Doe",
     requestor_email="john.doe@example.com",
-    refund_type=Slack.RefundType.REFUND,
+    refund_type=RefundType.REFUND,
     notes="Customer requested refund"
 )
 

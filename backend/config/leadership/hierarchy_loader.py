@@ -8,8 +8,8 @@ import re
 import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
 
+from shared.model_config import ApiModel
 from shared.csv.clean_text import clean_unicode_control_chars
 
 
@@ -34,8 +34,7 @@ def normalize_title(title: str) -> str:
     return cleaned.lower()
 
 
-@dataclass
-class PositionConfig:
+class PositionConfig(ApiModel):
     """Configuration for a single leadership position."""
     role_key: str
     title: str
@@ -43,17 +42,15 @@ class PositionConfig:
     required: bool = False
 
 
-@dataclass
-class SectionConfig:
+class SectionConfig(ApiModel):
     """Configuration for a section of the leadership hierarchy."""
     name: str
     csv_section_headers: List[str]
     positions: List[PositionConfig]
-    is_list: bool = False  # True for committee_members (flat list, not position-based)
+    is_list: bool = False
 
 
-@dataclass
-class HierarchyConfig:
+class HierarchyConfig(ApiModel):
     """Complete leadership hierarchy configuration."""
     version: str
     sections: Dict[str, SectionConfig]
@@ -100,11 +97,11 @@ def load_hierarchy_config(config_path: Optional[Path] = None) -> HierarchyConfig
         config_path: Path to YAML file. If None, uses default location.
     
     Returns:
-        HierarchyConfig object
+        HierarchyConfig object with validated structure
     
     Raises:
         FileNotFoundError: If config file doesn't exist
-        ValueError: If config is invalid
+        ValidationError: If config structure is invalid (via Pydantic)
     """
     if config_path is None:
         config_path = Path(__file__).parent / "hierarchy.yaml"
@@ -115,32 +112,6 @@ def load_hierarchy_config(config_path: Optional[Path] = None) -> HierarchyConfig
     with open(config_path) as f:
         data = yaml.safe_load(f)
     
-    if not data or "sections" not in data:
-        raise ValueError("Invalid hierarchy config: missing 'sections'")
-    
-    sections = {}
-    for section_key, section_data in data["sections"].items():
-        positions = []
-        
-        # Parse positions (if not a list section like committee_members)
-        if "positions" in section_data:
-            for pos_data in section_data["positions"]:
-                positions.append(PositionConfig(
-                    role_key=pos_data["role_key"],
-                    title=pos_data["title"],
-                    match_patterns=pos_data["match_patterns"],
-                    required=pos_data.get("required", False)
-                ))
-        
-        sections[section_key] = SectionConfig(
-            name=section_data["name"],
-            csv_section_headers=section_data["csv_section_headers"],
-            positions=positions,
-            is_list=section_data.get("is_list", False)
-        )
-    
-    return HierarchyConfig(
-        version=data.get("version", "unknown"),
-        sections=sections
-    )
+    # Pydantic validates the entire structure automatically
+    return HierarchyConfig.model_validate(data)
 

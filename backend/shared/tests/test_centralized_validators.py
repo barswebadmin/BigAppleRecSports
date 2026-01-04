@@ -3,7 +3,7 @@ Tests for centralized multi-field validation functionality.
 """
 
 import pytest
-from ../../../shared.validators import (
+from shared.validators import (
     validate_multiple_fields,
     validate_email_format,
     validate_shopify_order_number_format,
@@ -95,5 +95,5 @@ class TestCentralizedValidation:
         
         assert result["success"] is False
         assert len(result["errors"]) == 2
-        assert any("email:" in error and "Email was not provided" in error for error in result["errors"])
-        assert any("order_number:" in error and "Order number was not provided" in error for error in result["errors"])
+        assert any("email:" in error and "Email is required" in error for error in result["errors"])
+        assert any("order_number:" in error and "Order number is required" in error for error in result["errors"])

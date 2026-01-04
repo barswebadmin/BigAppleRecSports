@@ -8,7 +8,8 @@ from typing import List, Dict, Optional, Tuple, Any
 
 from modules.leadership.domain.models import LeadershipMember, LeadershipHierarchy
 from modules.leadership.domain.csv_patterns import CSVPatternRegistry
-from shared.csv import clean_unicode_control_chars, to_snake_case, find_column
+from shared.csv import clean_unicode_control_chars, find_column
+from shared.string_utils import to_snake_case
 
 
 class LeadershipCSVParser:

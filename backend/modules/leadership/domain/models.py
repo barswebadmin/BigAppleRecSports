@@ -5,10 +5,12 @@ Pure domain objects with NO external integration dependencies.
 """
 from enum import Enum
 from typing import Optional, Dict, Any, List, Set
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from shared.model_config import ApiModel
 
 
-class LeadershipMember(BaseModel):
+class LeadershipMember(ApiModel):
     """
     A member of BARS leadership team.
     
@@ -56,7 +58,7 @@ class LeadershipMember(BaseModel):
     }
 
 
-class Position(BaseModel):
+class Position(ApiModel):
     """Single position in hierarchy with section/sub_section/team/role structure."""
     section: str = Field(description="Top-level section (executive_board, bowling, etc.)")
     role: str = Field(description="Specific role (commissioner, director, etc.)")
@@ -95,7 +97,7 @@ class Position(BaseModel):
         }
 
 
-class LeadershipHierarchy(BaseModel):
+class LeadershipHierarchy(ApiModel):
     """Complete organizational hierarchy. Maintains existing JSON format compatibility."""
     sections: Dict[str, Any] = Field(
         default_factory=lambda: {
@@ -255,7 +257,7 @@ class ProvisionStepType(str, Enum):
     SHOPIFY_ROLES = "shopify_roles"
 
 
-class MemberProvisionStatus(BaseModel):
+class MemberProvisionStatus(ApiModel):
     """
     Tracks provisioning status for a single member across all steps.
     
@@ -294,7 +296,7 @@ class MemberProvisionStatus(BaseModel):
         )
 
 
-class RoleMapping(BaseModel):
+class RoleMapping(ApiModel):
     """
     Maps a leadership role to platform-specific groups/channels/roles.
     
@@ -314,7 +316,7 @@ class RoleMapping(BaseModel):
     }
 
 
-class WorkflowState(BaseModel):
+class WorkflowState(ApiModel):
     """
     Complete state of the /update-bars-leadership workflow.
     

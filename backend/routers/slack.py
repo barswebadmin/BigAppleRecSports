@@ -5,7 +5,6 @@ import json
 from modules.orders.services.orders_service import OrdersService
 from modules.integrations.slack.slack_service import SlackService
 from modules.integrations.slack.client.usergroup_client import SlackUsergroupClient
-from modules.integrations.slack.client.users_client import SlackUsersClient
 from config import config
 
 from slack_bolt.adapter.fastapi import SlackRequestHandler
@@ -18,7 +17,6 @@ orders_service = OrdersService()
 slack_service = SlackService()
 # Note: These clients are not currently used in the simplified router
 # usergroup_client = SlackUsergroupClient(config.active_slack_bot_token or "")
-# users_client = SlackUsersClient(config.active_slack_bot_token or "")
 
 leadership_handler = SlackRequestHandler(leadership_bot)
 

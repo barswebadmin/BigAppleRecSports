@@ -141,7 +141,7 @@ Post ephemeral results
 - `leadership_bot.py` - Bolt app initialization
 - `handlers.py` - Command and modal handlers
 - `../services/user_lookup_service.py` - User lookup logic
-- `../client/users_client.py` - Slack API client
+- `../client/main.py` - Slack API client
 - `../../../../shared/csv/csv_processor.py` - CSV parsing utilities
 
 ## Testing

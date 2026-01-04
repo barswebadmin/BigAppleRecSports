@@ -3,67 +3,113 @@ import sys
 import json
 
 import click
-from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-from ..utils import get_bot_token
+sys.path.insert(0, 'backend')
+from modules.integrations.slack.services.user_lookup_service import UserLookupService
+
+sys.path.insert(0, '.')
+from bars_cli._core.param_types import SLACK_USER_IDENTIFIER
+
+from ..utils import (
+    get_bot_token,
+    handle_slack_api_error
+)
+
+
+def format_user(user: dict) -> str:
+    """Format user data for display."""
+    profile = user.get('profile', {})
+    name = user.get('real_name', 'N/A')
+    email = profile.get('email', 'N/A')
+    display = profile.get('display_name', 'N/A')
+    user_id = user.get('id', 'N/A')
+    deleted = user.get('deleted', False)
+    
+    output = []
+    output.append("\n👤 User Details:\n")
+    output.append(f"  Name: {name}")
+    output.append(f"  Email: {email}")
+    output.append(f"  Display: {display}")
+    output.append(f"  User ID: {user_id}")
+    
+    if deleted:
+        output.append("  ⚠️  Status: DELETED")
+    
+    title = profile.get('title')
+    if title:
+        output.append(f"  Title: {title}")
+    
+    phone = profile.get('phone')
+    if phone:
+        output.append(f"  Phone: {phone}")
+    
+    if user.get('is_admin'):
+        output.append("  Role: Workspace Admin")
+    elif user.get('is_owner'):
+        output.append("  Role: Workspace Owner")
+    else:
+        output.append("  Role: Member")
+    
+    timezone = user.get('tz_label')
+    if timezone:
+        output.append(f"  Timezone: {timezone}")
+    
+    return '\n'.join(output)
 
 
 @click.command('get')
-@click.argument('identifier')
-@click.option('--bot', default='leadership', help='Which bot to use')
+@click.argument('identifier', type=SLACK_USER_IDENTIFIER, required=False)
+@click.option('--bot', default='leadership', help='Which bot to use (default: leadership)')
 @click.pass_context
-def get_user(ctx: click.Context, identifier: str, bot: str):
+def get_user_cmd(ctx: click.Context, identifier: dict, bot: str):
     """
     Get Slack user details by email or ID.
     
-    IDENTIFIER: User's email address or Slack user ID (e.g., 'U01ABC123')
+    IDENTIFIER: User's email address or Slack user ID (e.g., 'U01ABC123').
+                If omitted, will prompt for input.
+    
+    Examples:
+      bars slack user get stephen@bigapplerecsports.com
+      bars slack user get U03LZKQSHEU
+      bars --json slack user get stephen@example.com
     """
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False
     
     try:
         token = get_bot_token(bot)
-        client = WebClient(token=token)
+        service = UserLookupService(token)
         
-        # Determine if identifier is email or ID
-        if identifier.startswith('U') and len(identifier) == 11:
-            # Looks like a user ID
-            response = client.users_info(user=identifier)
-            user_data = response.get('user')
-        elif '@' in identifier:
-            # Looks like an email
-            response = client.users_lookupByEmail(email=identifier)
-            user_data = response.get('user')
-        else:
-            click.echo(f"❌ Invalid identifier: '{identifier}'", err=True)
-            click.echo("   Must be an email (contains @) or user ID (starts with U)", err=True)
-            sys.exit(1)
+        # identifier is a dict with either {"email": str} or {"user_id": str}
+        user_data = None
+        if "email" in identifier:
+            email = identifier["email"]
+            if not json_output:
+                click.echo(f"🔍 Looking up email: {email}", err=True)
+            user_data = service.lookup_user_by_email(email)
+        elif "user_id" in identifier:
+            user_id = identifier["user_id"]
+            if not json_output:
+                click.echo(f"🔍 Looking up user ID: {user_id}", err=True)
+            user_data = service.lookup_user_by_id(user_id)
         
+        # Display result
         if not user_data:
-            click.echo(f"❌ User '{identifier}' not found.", err=True)
+            lookup_value = identifier.get("email") or identifier.get("user_id")
+            if not json_output:
+                click.echo(f"❌ User not found: {lookup_value}", err=True)
             sys.exit(1)
         
         if json_output:
             click.echo(json.dumps(user_data, indent=2))
         else:
-            profile = user_data.get('profile', {})
-            click.echo(f"\n👤 User Details:\n")
-            click.echo(f"  Name: {user_data.get('real_name', 'N/A')}")
-            click.echo(f"  Display Name: {profile.get('display_name', 'N/A')}")
-            click.echo(f"  Email: {profile.get('email', 'N/A')}")
-            click.echo(f"  ID: {user_data.get('id', 'N/A')}")
-            click.echo(f"  Title: {profile.get('title', 'N/A')}")
-            click.echo(f"  Phone: {profile.get('phone', 'N/A')}")
-            
-            if user_data.get('is_admin'):
-                click.echo(f"  Role: Workspace Admin")
-            elif user_data.get('is_owner'):
-                click.echo(f"  Role: Workspace Owner")
-            else:
-                click.echo(f"  Role: Member")
+            click.echo(format_user(user_data))
     
     except SlackApiError as e:
-        click.echo(f"❌ Slack API error: {e.response['error']}", err=True)
+        handle_slack_api_error(e, json_output)
+        sys.exit(1)
+    except click.BadParameter as e:
+        click.echo(f"❌ {e}", err=True)
         sys.exit(1)
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)

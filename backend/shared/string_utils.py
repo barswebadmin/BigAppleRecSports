@@ -1,7 +1,8 @@
 """
-Text transformation utilities for CSV processing.
+String manipulation utilities for text normalization.
 
-Provides common text transformations like snake_case conversion.
+For case conversion (snake_case ↔ camelCase), use Pydantic's built-in:
+    from pydantic.alias_generators import to_camel, to_snake
 """
 import re
 

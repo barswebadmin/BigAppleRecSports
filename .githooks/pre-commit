@@ -1,24 +1,130 @@
 #!/bin/bash
 #
-# Pre-commit hook for automatic version management
+# Pre-commit hook for automatic version management and code quality checks
 # Handles lambda function versioning only (backend versioning happens on merge/deploy)
 #
 
 set -e
 
-echo "🔍 Checking for lambda function changes..."
-
-# Check if we have python3 available
-if ! command -v python3 &> /dev/null; then
-    echo "⚠️  Warning: python3 not found. Skipping version management."
-    exit 0
-fi
+echo "🔍 Running pre-commit checks..."
 
 # Get the directory where this script is located (should be .githooks)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
-# Check for lambda function changes only
+# Check if we have python3 available
+if ! command -v python3 &> /dev/null; then
+    echo "⚠️  Warning: python3 not found. Skipping checks."
+    exit 0
+fi
+
+# 1. Ruff Linting and Formatting
+if command -v ruff &> /dev/null || [ -f ".venv/bin/ruff" ]; then
+    RUFF_CMD="ruff"
+    if [ -f ".venv/bin/ruff" ]; then
+        RUFF_CMD=".venv/bin/ruff"
+    fi
+    
+    echo "🔍 Running Ruff linter..."
+    if $RUFF_CMD check scripts/ lambda-functions/ backend/ shared-utilities/ --quiet; then
+        echo "✅ Ruff linting passed"
+    else
+        echo "❌ Ruff linting failed"
+        exit 1
+    fi
+    
+    echo "✨ Running Ruff formatter..."
+    $RUFF_CMD format scripts/ lambda-functions/ backend/ shared-utilities/ --quiet
+    echo "✅ Ruff formatting complete"
+else
+    echo "⚠️  Ruff not found, skipping linting and formatting"
+fi
+
+# 2. Check Pydantic required fields have no defaults
+REQUIRED_FIELDS_CHECKER="$REPO_ROOT/scripts/check_required_fields.py"
+if [ -f "$REQUIRED_FIELDS_CHECKER" ]; then
+    echo "📋 Checking Pydantic required fields..."
+    python3 "$REQUIRED_FIELDS_CHECKER"
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -ne 0 ]; then
+        exit $EXIT_CODE
+    fi
+fi
+
+# 3. Test CI Deployment Workflows (if workflows changed)
+if git diff --cached --name-only | grep -q "^\.github/workflows/\|^shared-utilities/\|^lambda-functions/"; then
+    echo "🧪 Testing CI Deployment Logic..."
+    
+    if ! grep -q "shared-utilities" .github/workflows/deploy-self-contained-lambdas.yml; then
+        echo "❌ FAIL: Self-contained workflow should trigger on shared-utilities changes"
+        exit 1
+    fi
+    
+    if ! grep -q "push:" .github/workflows/deploy-self-contained-lambdas.yml; then
+        echo "❌ FAIL: Self-contained workflow should trigger on push"
+        exit 1
+    fi
+    
+    if ! grep -r "inventory\.inventory_checker" lambda-functions/shopifyProductUpdateHandler/ > /dev/null 2>&1; then
+        echo "❌ FAIL: Expected inventory dependency not found in shopifyProductUpdateHandler"
+        exit 1
+    fi
+    
+    if grep -v "^[[:space:]]*#" .github/workflows/deploy-self-contained-lambdas.yml | grep -v "echo" | grep -i "lambda.*layer" > /dev/null; then
+        echo "❌ FAIL: Self-contained workflow mentions lambda layers"
+        exit 1
+    fi
+    
+    if grep -v "^[[:space:]]*#" .github/workflows/deploy-lambda-layer.yml | grep "shared_utilities" > /dev/null; then
+        echo "❌ FAIL: Lambda layer workflow mentions shared_utilities folder"
+        exit 1
+    fi
+    
+    python3 -c "
+import sys
+sys.path.insert(0, 'shared-utilities/src')
+from inventory.inventory_checker import is_sport_product
+
+bars_sports = [
+    {'title': 'Big Apple Kickball'},
+    {'title': 'BARS Bowling League'},
+    {'title': 'Pickleball Tournament'},
+    {'title': 'Friday Dodgeball'}
+]
+
+for product in bars_sports:
+    if not is_sport_product(product):
+        print(f'❌ FAIL: {product[\"title\"]} should be detected as sport')
+        sys.exit(1)
+
+non_bars = [
+    {'title': 'Big Apple Basketball'},
+    {'title': 'Tennis Tournament'},
+    {'title': 'Soccer League'},
+    {'title': 'Gift Card'}
+]
+
+for product in non_bars:
+    if is_sport_product(product):
+        print(f'❌ FAIL: {product[\"title\"]} should NOT be detected as sport')
+        sys.exit(1)
+" || exit 1
+    
+    if ! grep -q "inventory\\\.inventory_checker" .github/workflows/deploy-self-contained-lambdas.yml; then
+        echo "❌ FAIL: CI workflow should detect inventory.inventory_checker pattern"
+        exit 1
+    fi
+    
+    if ! grep -q "DETECTED_MODULES" .github/workflows/deploy-self-contained-lambdas.yml; then
+        echo "❌ FAIL: CI workflow should use selective module detection"
+        exit 1
+    fi
+    
+    echo "✅ CI deployment tests passed"
+fi
+
+# 4. Lambda version management
 LAMBDA_VERSION_MANAGER="$REPO_ROOT/scripts/version_manager.py"
 if [ -f "$LAMBDA_VERSION_MANAGER" ]; then
     echo "📝 Checking lambda function changes..."
@@ -27,10 +133,8 @@ if [ -f "$LAMBDA_VERSION_MANAGER" ]; then
     else
         echo "⚠️  Lambda version management failed"
     fi
-else
-    echo "⚠️  Lambda version manager not found"
 fi
 
 echo "ℹ️  Backend versioning will happen on merge/deploy via GitHub Actions"
-echo "🎉 Pre-commit version management complete!"
+echo "🎉 Pre-commit checks complete!"
 exit 0 
