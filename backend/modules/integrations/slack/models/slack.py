@@ -32,12 +32,27 @@ class SlackMessageType(str, Enum):
     LEADERSHIP_NOTIFICATION = "leadership_notification"
 
 
-class SlackUser(BaseModel):
-    """Slack user information"""
-    id: str
-    name: Optional[str] = None
-    email: Optional[str] = None
-    display_name: Optional[str] = None
+class SlackBase(BaseModel):
+    """Base model for all Slack API response objects"""
+    model_config = ConfigDict(extra='ignore')
+    
+    def __getattr__(self, attr_name: str):
+        """
+        Delegate attribute access to any nested BaseModel objects.
+        If an attribute is not found on the model, searches through all nested
+        BaseModel instances (e.g., profile, metadata, etc.) and returns the first match.
+        """
+        # Only check nested BaseModel instances to avoid primitive type methods
+        for key, value in self.__dict__.items():
+            # Only delegate to BaseModel instances (data containers, not primitives)
+            if isinstance(value, BaseModel) and hasattr(value, attr_name):
+                return getattr(value, attr_name)
+        
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
+
+
+# Import SlackUser models (after SlackBase definition to avoid circular imports)
+from .slack_user import SlackUser, SlackUserProfile  # noqa: E402
 
 
 class SlackChannel(BaseModel):

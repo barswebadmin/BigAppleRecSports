@@ -2,11 +2,14 @@
 # Simple wrapper script to look up Slack user by email or ID
 # Usage: ./bars-scripts/slack-get-user stephen@bigapplerecsports.com
 #        ./bars-scripts/slack-get-user U03LZKQSHEU
-#        ./bars-scripts/slack-get-user (prompts for email/ID)
+#        ./bars-scripts/slack-get-user --raw U03LZKQSHEU (raw JSON output)
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 SCRIPT="$SCRIPT_DIR/slack_get_user.py"
+
+# Source shared bash helpers
+source "$SCRIPT_DIR/slack_bash_helpers.sh"
 
 # Check for venv in multiple locations (prioritize project root)
 if [ -f "$PROJECT_ROOT/.venv/bin/python3" ]; then
@@ -28,7 +31,10 @@ if [ ! -f "$SCRIPT" ]; then
     exit 1
 fi
 
-# Run the script with all arguments passed through
+# Process arguments (convert --raw to --json)
+processed_args=$(process_slack_flags "$@")
+
+# Run the script with processed arguments
 cd "$PROJECT_ROOT"
-exec "$VENV_PYTHON" "$SCRIPT" "$@"
+exec "$VENV_PYTHON" "$SCRIPT" $processed_args
 

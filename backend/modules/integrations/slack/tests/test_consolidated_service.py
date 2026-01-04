@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from modules.integrations.slack.slack_service import SlackService
 from models.slack import Slack, RefundType, SlackMessageType
-from modules.integrations.slack.slack_config import SlackConfig
+from config.slack import SlackConfig
 
 def test_consolidated_slack_service():
     """Test the consolidated Slack service functionality"""

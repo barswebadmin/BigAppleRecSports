@@ -13,9 +13,10 @@ from new_structure_target.services.webhooks.parsers.product_parser import get_sl
 from new_structure_target.clients.shopify.core.shopify_security import ShopifySecurity
 from new_structure_target.clients.slack.core.slack_client import SlackClient
 from new_structure_target.clients.google_apps_script.gas_client import GASClient
-from .handlers.order_create_handler import evaluate_order_create_webhook, slack_message_builder
+from .handlers.order_create_handler import evaluate_order_create_webhook
 from .handlers.product_update_handler import evaluate_product_update_webhook
 from ../../../../config import SlackChannel, SlackBot, SlackGroup
+from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
 
 
 class WebhooksOrchestrator:
@@ -110,32 +111,25 @@ class WebhooksOrchestrator:
         slack_group_mention = product_data.get("slack_group_mention")
         config_data = status_config[reasons] if reasons in status_config else status_config["unknown"]
         
-        header_text = f"{config_data['emoji']} Attention: {product_title}"
-        header_block = slack_message_builder.build_header_block(header_text)
-
-        section_text_1 = f"*Reason(s):* {config_data['description']}\n\n*Sold Out At:* {sold_out_at}" if reasons == "product_sold_out" else f"{config_data['emoji']} *{config_data['status']}*\n\n*Product:* {product_title}\n*ID:* {product_id}\n\n*Analysis:*\n{config_data['description']}\n\n*Sold Out At:* {sold_out_at}"
-        section_block_1 = slack_message_builder.build_section_block(section_text_1)
-
-        section_text_2 = f"*View Product in Shopify:* {slack_message_builder.build_hyperlink(product_url, product_title)}"
-        section_block_2 = slack_message_builder.build_section_block(section_text_2)
-
-        section_text_3 = f"*Waitlist Responses:* {slack_message_builder.build_hyperlink('https://docs.google.com/spreadsheets/d/1rrmEu6QKNnDoNJs2XnAD08W-7smUhFPKYnNC5y7iNI0?resourcekey=&usp=forms_web_b&urp=linked#gid=1214906876', 'View in Google Sheets')}"
-        section_block_3 = slack_message_builder.build_section_block(section_text_3)
-
+        builder = GenericMessageBuilder()
+        
         product_tags = product_data.get("tags")
         slack_group_mention = get_slack_group_mention(product_tags)
         group_info = SlackGroup.get(slack_group_mention) if slack_group_mention else None
-        
         mention_target = group_info.get('id') if isinstance(group_info, dict) else "@here"
-        mention_text = f"*Attn*: {mention_target}"
-        mention_block = slack_message_builder.build_section_block(mention_text)
-
+        
+        section_text_1 = (
+            f"*Reason(s):* {config_data['description']}\n\n*Sold Out At:* {sold_out_at}"
+            if reasons == "product_sold_out"
+            else f"{config_data['emoji']} *{config_data['status']}*\n\n*Product:* {product_title}\n*ID:* {product_id}\n\n*Analysis:*\n{config_data['description']}\n\n*Sold Out At:* {sold_out_at}"
+        )
+        
         blocks = [
-            header_block,
-            section_block_1,
-            section_block_2,
-            section_block_3,
-            mention_block,
+            builder.header(f"{config_data['emoji']} Attention: {product_title}"),
+            builder.section(section_text_1),
+            builder.section(f"*View Product in Shopify:* <{product_url}|{product_title}>"),
+            builder.section(f"*Waitlist Responses:* <https://docs.google.com/spreadsheets/d/1rrmEu6QKNnDoNJs2XnAD08W-7smUhFPKYnNC5y7iNI0?resourcekey=&usp=forms_web_b&urp=linked#gid=1214906876|View in Google Sheets>"),
+            builder.section(f"*Attn*: {mention_target}"),
         ]
 
         self.slack_client.send_message(

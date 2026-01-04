@@ -9,7 +9,7 @@ from modules.integrations.slack.client.users_client import SlackUsersClient
 from config import config
 
 from slack_bolt.adapter.fastapi import SlackRequestHandler
-from modules.integrations.slack.leadership.bolt_app import app as leadership_bolt_app
+from modules.integrations.slack.leadership.leadership_bot import leadership_bot
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/slack", tags=["slack"])
@@ -20,7 +20,7 @@ slack_service = SlackService()
 # usergroup_client = SlackUsergroupClient(config.active_slack_bot_token or "")
 # users_client = SlackUsersClient(config.active_slack_bot_token or "")
 
-leadership_handler = SlackRequestHandler(leadership_bolt_app)
+leadership_handler = SlackRequestHandler(leadership_bot)
 
 
 # Note: parse_original_message_data function removed - data now preserved in button values

@@ -152,12 +152,12 @@ _compile_backend_internal:
 			cd "$$TARGET_DIR" && python3 -m pip check 2>/dev/null || echo "⚠️  Some dependencies may be missing"; \
 		fi; \
 		if [ -f "$$TARGET_DIR/config.py" ]; then \
-			echo "⚙️  Testing config import..."; \
-			if [ -f ".venv/bin/activate" ]; then \
-				cd "$$TARGET_DIR" && source ../.venv/bin/activate && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
-			else \
-				cd "$$TARGET_DIR" && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
-			fi; \
+		echo "⚙️  Testing config import..."; \
+		if [ -f ".venv/bin/activate" ]; then \
+			cd "$$TARGET_DIR" && source ../.venv/bin/activate && python3 -c "from config import config; print('✅ Config loads successfully')" || exit 1; \
+		else \
+			cd "$$TARGET_DIR" && python3 -c "from config import config; print('✅ Config loads successfully')" || exit 1; \
+		fi; \
 		fi; \
 		if [ -f "$$TARGET_DIR/main.py" ]; then \
 			echo "🚀 Testing FastAPI app import..."; \

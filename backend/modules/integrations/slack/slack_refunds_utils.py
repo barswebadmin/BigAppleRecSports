@@ -78,14 +78,12 @@ class SlackRefundsUtils:
             
             return {
                 "text": message_text,
-                "action_buttons": []  # No action buttons for final messages
             }
             
         except Exception as e:
             logger.error(f"Error building comprehensive no refund message: {str(e)}")
             return {
                 "text": f"❌ No refund approved for {raw_order_number} (Error building message: {str(e)})",
-                "action_buttons": []
             }
 
     # def get_sport_group_mention(self, product_title: str) -> str:

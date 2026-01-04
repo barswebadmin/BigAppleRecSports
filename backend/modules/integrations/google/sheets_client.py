@@ -1,11 +1,11 @@
 """
 Google Sheets API Client.
 
-Handles authentication and fetching data from Google Sheets using Service Account credentials.
+Handles authentication and reading/writing data from Google Sheets using Service Account credentials.
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pathlib import Path
 
 from google.oauth2 import service_account
@@ -158,4 +158,174 @@ class GoogleSheetsClient:
                 raise ValueError(f"Invalid Google Sheets URL format: {url}")
         else:
             return url.strip()
+    
+    def update_sheet_values(
+        self,
+        spreadsheet_id: str,
+        range_name: str,
+        values: List[List[str]],
+        value_input_option: str = "USER_ENTERED"
+    ) -> Dict[str, Any]:
+        """
+        Update a range of cells in a Google Sheet.
+        
+        Args:
+            spreadsheet_id: The ID of the Google Sheet
+            range_name: The A1 notation range to update (e.g., "A1:C10")
+            values: 2D list of values to write (rows x columns)
+            value_input_option: How to interpret input values:
+                - "USER_ENTERED": Parse as if typed by user (formulas, dates, etc.)
+                - "RAW": Values stored as-is (strings)
+        
+        Returns:
+            Dictionary with update metadata (updatedCells, updatedRows, etc.)
+        
+        Raises:
+            PermissionError: If the sheet is not shared with write access
+            ValueError: If the spreadsheet ID is invalid
+            HttpError: For other Google API errors
+        
+        Example:
+            >>> client = GoogleSheetsClient()
+            >>> values = [
+            ...     ["Name", "Email", "Phone"],
+            ...     ["John Doe", "john@example.com", "555-1234"],
+            ...     ["Jane Smith", "jane@example.com", "555-5678"]
+            ... ]
+            >>> result = client.update_sheet_values("ABC123", "A1:C3", values)
+            >>> print(f"Updated {result['updatedCells']} cells")
+        """
+        try:
+            body = {'values': values}
+            
+            result = self.service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id,
+                range=range_name,
+                valueInputOption=value_input_option,
+                body=body
+            ).execute()
+            
+            logger.info(
+                f"✅ Updated {result.get('updatedCells', 0)} cells in range {range_name} "
+                f"(spreadsheet: {spreadsheet_id[:20]}...)"
+            )
+            
+            return result
+            
+        except HttpError as e:
+            error_reason = 'unknown'
+            if e.error_details and isinstance(e.error_details, list) and len(e.error_details) > 0:
+                if isinstance(e.error_details[0], dict):
+                    error_reason = e.error_details[0].get('reason', 'unknown')
+            
+            if e.resp.status == 403:
+                raise PermissionError(
+                    f"Write access denied to spreadsheet {spreadsheet_id}. "
+                    f"Please ensure the sheet is shared with EDIT permissions to: {self.service_account_email}"
+                ) from e
+            
+            elif e.resp.status == 404:
+                raise ValueError(
+                    f"Spreadsheet not found: {spreadsheet_id}. "
+                    f"Please check the spreadsheet ID is correct."
+                ) from e
+            
+            else:
+                logger.error(
+                    f"Google Sheets API error ({e.resp.status}): {error_reason}"
+                )
+                raise
+    
+    def batch_update_sheet_values(
+        self,
+        spreadsheet_id: str,
+        updates: List[Dict[str, Any]],
+        value_input_option: str = "USER_ENTERED"
+    ) -> Dict[str, Any]:
+        """
+        Update multiple ranges in a Google Sheet in a single API call (more efficient).
+        
+        Args:
+            spreadsheet_id: The ID of the Google Sheet
+            updates: List of update dictionaries, each with 'range' and 'values' keys:
+                [
+                    {'range': 'A1:B2', 'values': [['Name', 'Email'], ['John', 'john@example.com']]},
+                    {'range': 'D1:E2', 'values': [['Phone', 'Status'], ['555-1234', 'Active']]}
+                ]
+            value_input_option: How to interpret input values:
+                - "USER_ENTERED": Parse as if typed by user (formulas, dates, etc.)
+                - "RAW": Values stored as-is (strings)
+        
+        Returns:
+            Dictionary with batch update metadata
+        
+        Raises:
+            PermissionError: If the sheet is not shared with write access
+            ValueError: If the spreadsheet ID is invalid or updates format is wrong
+            HttpError: For other Google API errors
+        
+        Example:
+            >>> client = GoogleSheetsClient()
+            >>> updates = [
+            ...     {'range': 'A1:C1', 'values': [['Name', 'Email', 'Phone']]},
+            ...     {'range': 'A2:C3', 'values': [
+            ...         ['John Doe', 'john@example.com', '555-1234'],
+            ...         ['Jane Smith', 'jane@example.com', '555-5678']
+            ...     ]}
+            ... ]
+            >>> result = client.batch_update_sheet_values("ABC123", updates)
+            >>> print(f"Updated {result['totalUpdatedCells']} cells")
+        """
+        try:
+            data = [
+                {
+                    'range': update['range'],
+                    'values': update['values']
+                }
+                for update in updates
+            ]
+            
+            body = {
+                'valueInputOption': value_input_option,
+                'data': data
+            }
+            
+            result = self.service.spreadsheets().values().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body=body
+            ).execute()
+            
+            total_cells = result.get('totalUpdatedCells', 0)
+            total_ranges = len(updates)
+            
+            logger.info(
+                f"✅ Batch updated {total_cells} cells across {total_ranges} ranges "
+                f"(spreadsheet: {spreadsheet_id[:20]}...)"
+            )
+            
+            return result
+            
+        except HttpError as e:
+            error_reason = 'unknown'
+            if e.error_details and isinstance(e.error_details, list) and len(e.error_details) > 0:
+                if isinstance(e.error_details[0], dict):
+                    error_reason = e.error_details[0].get('reason', 'unknown')
+            
+            if e.resp.status == 403:
+                raise PermissionError(
+                    f"Write access denied to spreadsheet {spreadsheet_id}. "
+                    f"Please ensure the sheet is shared with EDIT permissions to: {self.service_account_email}"
+                ) from e
+            
+            elif e.resp.status == 404:
+                raise ValueError(
+                    f"Spreadsheet not found: {spreadsheet_id}. "
+                    f"Please check the spreadsheet ID is correct."
+                ) from e
+            
+            else:
+                logger.error(
+                    f"Google Sheets API error ({e.resp.status}): {error_reason}"
+                )
+                raise
 

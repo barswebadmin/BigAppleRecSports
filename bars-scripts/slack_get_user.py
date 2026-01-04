@@ -41,8 +41,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 from shared_utils import load_environment
-from modules.integrations.slack.client.slack_config import SlackConfig
+from config.slack import SlackConfig
 from slack_sdk import WebClient
+from slack_helpers import format_display
 
 
 def is_email(value: str) -> bool:
@@ -77,7 +78,7 @@ def get_bot_token(bot_name: str) -> str:
     return bot.token
 
 
-def lookup_user_by_email(client: WebClient, email: str) -> Optional[Dict[str, Any]]:
+def lookup_user_by_email(client: WebClient, email: str, display: bool = True) -> Optional[Dict[str, Any]]:
     """Look up a Slack user by email address."""
     try:
         response = client.users_lookupByEmail(email=email)
@@ -86,11 +87,12 @@ def lookup_user_by_email(client: WebClient, email: str) -> Optional[Dict[str, An
         else:
             return None
     except Exception as e:
-        print(f"❌ Error looking up email: {e}", file=sys.stderr)
+        if display:
+            print(f"❌ Error looking up email: {e}", file=sys.stderr)
         return None
 
 
-def lookup_user_by_id(client: WebClient, user_id: str) -> Optional[Dict[str, Any]]:
+def lookup_user_by_id(client: WebClient, user_id: str, display: bool = True) -> Optional[Dict[str, Any]]:
     """Look up a Slack user by user ID."""
     try:
         response = client.users_info(user=user_id)
@@ -99,15 +101,41 @@ def lookup_user_by_id(client: WebClient, user_id: str) -> Optional[Dict[str, Any
         else:
             return None
     except Exception as e:
-        print(f"❌ Error looking up user ID: {e}", file=sys.stderr)
+        if display:
+            print(f"❌ Error looking up user ID: {e}", file=sys.stderr)
         return None
 
 
-def format_user_output(user: Dict[str, Any], output_json: bool = False) -> str:
-    """Format user data for display."""
-    if output_json:
-        return json.dumps(user, indent=2)
+def get_user(client: WebClient, identifier: str, display: bool = True) -> Optional[Dict[str, Any]]:
+    """
+    Look up a Slack user by email or user ID.
     
+    Args:
+        client: Initialized Slack WebClient
+        identifier: Email address or user ID
+        display: If True, print status messages and errors
+        
+    Returns:
+        User dict if found, None otherwise
+    """
+    if is_email(identifier):
+        if display:
+            print(f"🔍 Looking up email: {identifier}", file=sys.stderr)
+        return lookup_user_by_email(client, identifier, display=display)
+    elif is_user_id(identifier):
+        if display:
+            print(f"🔍 Looking up user ID: {identifier}", file=sys.stderr)
+        return lookup_user_by_id(client, identifier, display=display)
+    else:
+        if display:
+            print(f"❌ Error: '{identifier}' doesn't look like an email or user ID", file=sys.stderr)
+            print("   Email should contain '@' and '.'", file=sys.stderr)
+            print("   User ID should start with 'U' and be 11 characters", file=sys.stderr)
+        return None
+
+
+def format_user(user: Dict[str, Any]) -> str:
+    """Format user data for display (formatted output only)."""
     profile = user.get('profile', {})
     name = user.get('real_name', 'N/A')
     email = profile.get('email', 'N/A')
@@ -213,31 +241,19 @@ Examples:
     # Create Slack client
     client = WebClient(token=token)
     
-    # Determine lookup type and perform lookup
-    user = None
-    
-    if is_email(identifier):
-        if not args.json:
-            print(f"🔍 Looking up email: {identifier}", file=sys.stderr)
-        user = lookup_user_by_email(client, identifier)
-    elif is_user_id(identifier):
-        if not args.json:
-            print(f"🔍 Looking up user ID: {identifier}", file=sys.stderr)
-        user = lookup_user_by_id(client, identifier)
-    else:
-        print(f"❌ Error: '{identifier}' doesn't look like an email or user ID", file=sys.stderr)
-        print("   Email should contain '@' and '.'", file=sys.stderr)
-        print("   User ID should start with 'U' and be 11 characters", file=sys.stderr)
-        sys.exit(1)
+    # Look up user
+    user = get_user(client, identifier, display=not args.json)
     
     # Display result
     if user:
         if not args.json:
             print("", file=sys.stderr)  # Blank line before output
-        print(format_user_output(user, args.json))
+        print(format_display(user, formatter_func=format_user, should_format=not args.json))
+        print()
         sys.exit(0)
     else:
-        print(f"❌ User not found: {identifier}", file=sys.stderr)
+        if not args.json:
+            print(f"❌ User not found: {identifier}", file=sys.stderr)
         sys.exit(1)
 
 

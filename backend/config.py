@@ -1,4 +1,4 @@
-from config import config, settings
+from config import config
 
-__all__ = ["config", "settings"]
+__all__ = ["config"]
 

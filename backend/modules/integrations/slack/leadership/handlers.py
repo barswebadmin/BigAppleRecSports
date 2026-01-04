@@ -9,12 +9,12 @@ from slack_sdk import WebClient
 from slack_sdk.models.blocks import Block
 
 from config.leadership import load_hierarchy_config
+from config.slack import SlackConfig
 from modules.integrations.google import GoogleSheetsClient
 from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
 from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
-from modules.integrations.slack.client.slack_config import SlackConfig
 from modules.integrations.slack.helpers import update_ephemeral_message, download_and_parse_csv
-from modules.integrations.slack.leadership.bolt_app import app
+from modules.integrations.slack.leadership.leadership_bot import leadership_bot
 from modules.integrations.slack.leadership.results_formatter import LeadershipResultsFormatter
 from modules.integrations.slack.services.user_lookup_service import UserLookupService
 from modules.leadership.services.csv_parser import LeadershipCSVParser
@@ -25,7 +25,7 @@ from shared.csv.csv_processor import CSVProcessor
 logger = logging.getLogger(__name__)
 
 
-@app.command("/update-bars-leadership")
+@leadership_bot.command("/update-bars-leadership")
 def handle_update_bars_leadership_command(ack: Ack, command: dict, client: WebClient):
     """Handle /update-bars-leadership slash command. Opens a modal for Google Sheet URL."""
     ack()
@@ -56,7 +56,7 @@ def handle_update_bars_leadership_command(ack: Ack, command: dict, client: WebCl
     client.views_open(trigger_id=trigger_id, view=modal_view)
 
 
-@app.view("update_leadership_modal")
+@leadership_bot.view("update_leadership_modal")
 def handle_update_leadership_submission(ack: Ack, body: dict, view: dict, client: WebClient):
     """Handle leadership update modal submission - fetch and parse Google Sheet."""
     ack()
@@ -189,7 +189,7 @@ def handle_update_leadership_submission(ack: Ack, body: dict, view: dict, client
         )
 
 
-@app.command("/get-user-ids")
+@leadership_bot.command("/get-user-ids")
 def handle_get_user_ids_command(ack: Ack, command: dict, client: WebClient):
     """Handle /get-user-ids slash command. Opens a modal for CSV paste."""
     ack()
@@ -230,7 +230,7 @@ def handle_get_user_ids_command(ack: Ack, command: dict, client: WebClient):
     client.views_open(trigger_id=trigger_id, view=modal_view)
 
 
-@app.view("csv_user_lookup_modal")
+@leadership_bot.view("csv_user_lookup_modal")
 def handle_csv_user_lookup_submission(ack: Ack, body: dict, view: dict, client: WebClient):
     """Handle CSV user lookup modal submission."""
     ack()
@@ -299,7 +299,7 @@ def _post_error_message(client: WebClient, user_id: str, error_message: str):
     )
 
 
-@app.event("file_shared")
+@leadership_bot.event("file_shared")
 def handle_file_shared(event: dict, client: WebClient, logger):
     """Handle file_shared event for CSV uploads."""
     file_id = event.get("file_id")
@@ -401,7 +401,7 @@ def _post_file_upload_prompt(
     )
 
 
-@app.action("confirm_file_process")
+@leadership_bot.action("confirm_file_process")
 def handle_confirm_file_process(ack: Ack, body: dict, client: WebClient, action: dict):
     """Handle user confirming they want to process the uploaded CSV."""
     ack()
@@ -418,14 +418,6 @@ def handle_confirm_file_process(ack: Ack, body: dict, client: WebClient, action:
         return
     
     response_url = body.get("response_url")
-    
-    if response_url:
-        builder = GenericMessageBuilder()
-        update_ephemeral_message(
-            response_url,
-            "Processing...",
-            [builder.section("⏳ *Processing...* Looking up Slack user IDs")]
-        )
     
     try:
         file_info = client.files_info(file=file_id).get("file", {})
@@ -454,11 +446,12 @@ def handle_confirm_file_process(ack: Ack, body: dict, client: WebClient, action:
             update_ephemeral_message(
                 response_url,
                 "Error",
-                [builder.section(f"❌ *Error* - {str(e)}")]
+                [builder.section(f"❌ *Error* - {str(e)}")],
+                show_loading=False
             )
 
 
-@app.action("cancel_file_process")
+@leadership_bot.action("cancel_file_process")
 def handle_cancel_file_process(ack: Ack, body: dict, client: WebClient):
     """Handle user canceling file processing."""
     ack()
@@ -470,11 +463,12 @@ def handle_cancel_file_process(ack: Ack, body: dict, client: WebClient):
         update_ephemeral_message(
             response_url,
             "Cancelled",
-            [builder.section("❌ Processing cancelled")]
+            [builder.section("❌ Processing cancelled")],
+            show_loading=False
         )
 
 
-@app.action("edit_file_columns")
+@leadership_bot.action("edit_file_columns")
 def handle_edit_file_columns(ack: Ack, body: dict, client: WebClient, action: dict):
     """Handle user requesting to edit column selection."""
     ack()
@@ -521,7 +515,7 @@ def handle_edit_file_columns(ack: Ack, body: dict, client: WebClient, action: di
     client.views_open(trigger_id=body["trigger_id"], view=modal_view)
 
 
-@app.view("column_selection_modal")
+@leadership_bot.view("column_selection_modal")
 def handle_column_selection_modal(ack: Ack, body: dict, view: dict, client: WebClient):
     """Handle modal submission with manually selected columns."""
     ack()
@@ -536,14 +530,6 @@ def handle_column_selection_modal(ack: Ack, body: dict, view: dict, client: WebC
     
     position_col = int(view["state"]["values"]["position_column_block"]["position_column_select"]["selected_option"]["value"])
     email_col = int(view["state"]["values"]["email_column_block"]["email_column_select"]["selected_option"]["value"])
-    
-    if response_url:
-        builder = GenericMessageBuilder()
-        update_ephemeral_message(
-            response_url,
-            "Processing...",
-            [builder.section("⏳ *Processing...* Looking up Slack user IDs")]
-        )
     
     try:
         file_info = client.files_info(file=file_id).get("file", {})
@@ -572,7 +558,8 @@ def handle_column_selection_modal(ack: Ack, body: dict, view: dict, client: WebC
             update_ephemeral_message(
                 response_url,
                 "Error",
-                [builder.section(f"❌ *Error* - {str(e)}")]
+                [builder.section(f"❌ *Error* - {str(e)}")],
+                show_loading=False
             )
 
 

@@ -24,7 +24,6 @@ from config.slack import SlackBot, SlackChannel
 
 from .client.main import SlackClient
 from .client.slack_security import SlackSecurity
-from .client.mock_client import MockSlackClient
 from .parsers.message_parsers import SlackMessageParsers
 from .builders import (
     SlackMessageBuilder,
@@ -294,12 +293,6 @@ class SlackService:
                 trigger_id or "", original_channel or "", original_mention or ""
             )
 
-        elif action_id == "deny_refund_request_show_modal":
-            return await self.handle_deny_refund_request_show_modal(
-                request_data=request_data, channel_id=channel_id, thread_ts=thread_ts,
-                slack_user_name=slack_user_name, slack_user_id=slack_user_id,
-                trigger_id=trigger_id or "", current_message_full_text=current_message_full_text
-            )
 
         # === STEP 2 HANDLERS: REFUND DECISION (Process / Custom / No Refund) ===
         elif action_id == "process_refund":
@@ -402,14 +395,6 @@ class SlackService:
         logger.warning("handle_proceed_without_cancel not implemented")
         return {"text": "Proceed without cancel functionality not yet implemented"}
 
-    async def handle_deny_refund_request_show_modal(self, request_data: Dict[str, Any], 
-                                                  channel_id: str, thread_ts: str, 
-                                                  slack_user_name: str, slack_user_id: str, 
-                                                  trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
-        """Handle deny refund request show modal action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_deny_refund_request_show_modal not implemented")
-        return {"text": "Deny refund request modal functionality not yet implemented"}
 
     async def handle_custom_refund_amount(self, request_data: Dict[str, Any], channel_id: str, 
                                         thread_ts: str, requestor_name: Dict[str, str], 

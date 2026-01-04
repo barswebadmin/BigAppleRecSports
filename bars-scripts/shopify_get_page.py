@@ -233,6 +233,98 @@ def list_theme_assets(theme_id: str, filter_pattern: Optional[str] = None, envir
                 print(f"\n📋 Response Text: {e.response.text}", file=sys.stderr)
 
 
+def extract_leadership_positions(theme_id: str, asset_key: str = "templates/page.template-about-us-2.json", environment: str = "production", raw: bool = False):
+    """
+    Extract leadership position titles from the About Us page template.
+    
+    Args:
+        theme_id: The Shopify theme ID
+        asset_key: The template asset key (defaults to About Us template)
+        environment: Environment to use (production, staging, dev)
+        raw: If True, print raw API response instead of extracted positions
+    """
+    load_environment(environment)
+    shopify_config = get_shopify_config(environment)
+    
+    store_url = f"https://{shopify_config['store_id']}.myshopify.com"
+    api_url = f"{store_url}/admin/api/2024-10/themes/{theme_id}/assets.json"
+    
+    headers = {
+        "X-Shopify-Access-Token": shopify_config['token'],
+        "Content-Type": "application/json"
+    }
+    params = {"asset[key]": asset_key}
+    
+    verify_ssl = get_ssl_verification()
+    
+    try:
+        response = requests.get(api_url, headers=headers, params=params, verify=verify_ssl, timeout=10)
+        response.raise_for_status()
+        
+        asset = response.json().get('asset', {})
+        content = asset.get('value', '')
+        
+        if not content:
+            print(f"❌ Asset '{asset_key}' has no content", file=sys.stderr)
+            return
+        
+        template_data = json.loads(content)
+        
+        # If raw mode, just print the pretty JSON and exit
+        if raw:
+            print(f"📄 Raw API Response for: {asset_key}\n")
+            print(f"{'='*80}\n")
+            print(json.dumps(template_data, indent=2))
+            print(f"\n{'='*80}")
+            return
+        
+        # Otherwise, extract and display positions
+        print(f"🎯 Extracting leadership positions from: {asset_key}\n")
+        print(f"{'='*80}\n")
+        
+        positions = []
+        
+        if 'sections' in template_data:
+            for section_id, section_data in template_data['sections'].items():
+                if 'blocks' in section_data:
+                    for block_id, block_data in section_data['blocks'].items():
+                        if block_data.get('type') == 'Text':
+                            settings = block_data.get('settings', {})
+                            name = settings.get('text', '').strip()
+                            position = settings.get('description', '').strip()
+                            
+                            if position and name:
+                                positions.append((name, position))
+        
+        if positions:
+            unique_positions = sorted(set([p[1] for p in positions]), key=lambda x: x.lower())
+            
+            print(f"📊 Found {len(positions)} total leadership entries")
+            print(f"📊 Found {len(unique_positions)} unique position titles\n")
+            print(f"{'='*80}\n")
+            
+            for idx, position in enumerate(unique_positions, 1):
+                print(f"{idx:3}. {position}")
+            
+            print(f"\n{'='*80}")
+        else:
+            print(f"⚠️  No leadership positions found in template", file=sys.stderr)
+        
+    except requests.exceptions.HTTPError as e:
+        print(f"❌ Error fetching theme asset: {e}", file=sys.stderr)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_details = e.response.json()
+                print("\n📋 API Response:", file=sys.stderr)
+                print(json.dumps(error_details, indent=2), file=sys.stderr)
+            except json.JSONDecodeError:
+                print(f"\n📋 Raw API Response: {e.response.text}", file=sys.stderr)
+    except json.JSONDecodeError as e:
+        print(f"❌ Error parsing template JSON: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Fetch Shopify page or theme template content",
@@ -253,6 +345,14 @@ Examples:
   
   # List theme assets matching pattern
   shopify-get-page --theme 134424232030 --list --filter about
+  
+  # Extract leadership position titles from About Us page
+  shopify-get-page --extract-positions
+  shopify-get-page --extract-positions --theme 134424232030
+  
+  # Show raw API response (for debugging/analysis)
+  shopify-get-page --extract-positions-raw
+  shopify-get-page --extract-positions-raw > about_page_raw.json
 """
     )
     
@@ -295,11 +395,26 @@ Examples:
         default="production",
         help="Environment (default: production)"
     )
+    parser.add_argument(
+        "--extract-positions",
+        action="store_true",
+        help="Extract leadership position titles from About Us template"
+    )
+    parser.add_argument(
+        "--extract-positions-raw",
+        action="store_true",
+        help="Print raw API response (pretty JSON) instead of extracted positions"
+    )
     
     args = parser.parse_args()
     
     # Determine what to fetch
-    if args.theme and args.list:
+    if args.extract_positions or args.extract_positions_raw:
+        # Default to production theme if not specified
+        theme_id = args.theme or "134424232030"
+        asset_key = args.asset or "templates/page.template-about-us-2.json"
+        extract_leadership_positions(theme_id, asset_key, args.env, raw=args.extract_positions_raw)
+    elif args.theme and args.list:
         list_theme_assets(args.theme, args.filter, args.env)
     elif args.theme and args.asset:
         fetch_theme_asset(args.theme, args.asset, args.output, args.env)

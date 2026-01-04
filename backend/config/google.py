@@ -27,9 +27,11 @@ class GoogleConfig:
                 "Google Sheets integration will not work until credentials are configured."
             )
         
+        # Full read/write access to Google Sheets
+        # Note: For security, you can switch back to readonly if write access is not needed
         self.scopes = [
-            'https://www.googleapis.com/auth/spreadsheets.readonly',
-            'https://www.googleapis.com/auth/drive.readonly'
+            'https://www.googleapis.com/auth/spreadsheets',  # Full read/write access
+            'https://www.googleapis.com/auth/drive.readonly'  # Read-only for Drive
         ]
     
     @property

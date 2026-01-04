@@ -46,6 +46,8 @@ coverage_html/
 .envrc
 .direnv/
 *.log
+*.egg-info/
+zz_local_dev_plans/
 
 # Google Service Account credentials
 backend/google-service-account.json

@@ -1,3 +1,22 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bars"
+version = "1.0.0"
+description = "Big Apple Rec Sports - Backend & CLI"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1.7",
+]
+
+[project.scripts]
+bars = "bars_cli.main:cli"
+
+[tool.setuptools]
+packages = ["bars_cli", "bars_cli.commands"]
+
 [tool.pyright]
 extraPaths = [
     "./lambda-layers/bars-common-utils/python",

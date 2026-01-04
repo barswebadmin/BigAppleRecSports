@@ -30,7 +30,7 @@ def get_shopify_config(environment: str) -> Dict[str, Any]:
         # Try multiple token variable names for flexibility
         token = (
             os.getenv("SHOPIFY_TOKEN_ADMIN") or 
-            os.getenv("SHOPIFY_TOKEN") or
+            os.getenv("shopify/token.admin") or
             os.getenv("SHOPIFY_TOKEN_WRITE_ORDERS_READ_PRODUCTS_CUSTOMERS")
         )
     else:

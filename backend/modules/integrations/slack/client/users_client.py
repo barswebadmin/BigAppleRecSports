@@ -1,36 +1,39 @@
 from __future__ import annotations
 
-import os
-from typing import Dict, Any, List
-import requests
+import logging
+from typing import Dict, Any, List, Optional
+from slack_sdk import WebClient
+
+logger = logging.getLogger(__name__)
 
 
 class SlackUsersClient:
-    base_url = "https://slack.com/api"
-
     def __init__(self, bearer_token: str):
-        self.bearer_token = bearer_token
-        self.verify = (
-            "/etc/ssl/certs/ca-certificates.crt" if os.getenv("ENVIRONMENT") == "production" else True
-        )
+        self.client = WebClient(token=bearer_token)
 
     def list_all_users(self) -> List[Dict[str, Any]]:
         users: List[Dict[str, Any]] = []
         cursor = None
-        headers = {"Authorization": f"Bearer {self.bearer_token}"}
+        
         while True:
-            params = {"limit": 200}
-            if cursor:
-                params["cursor"] = cursor
-            resp = requests.get(f"{self.base_url}/users.list", headers=headers, params=params, verify=self.verify)
-            data = resp.json()
-            if not data.get("ok"):
+            try:
+                response = self.client.users_list(limit=200, cursor=cursor)
+                
+                if not response["ok"]:
+                    logger.error(f"Slack API error: {response.get('error')}")
+                    break
+                
+                members = response.get("members", [])
+                users.extend(members)
+                
+                cursor = response.get("response_metadata", {}).get("next_cursor")
+                if not cursor:
+                    break
+                    
+            except Exception as e:
+                logger.error(f"Error fetching users: {e}")
                 break
-            members = data.get("members", [])
-            users.extend(members)
-            cursor = (data.get("response_metadata") or {}).get("next_cursor")
-            if not cursor:
-                break
+        
         return users
 
     @staticmethod
@@ -57,19 +60,14 @@ class SlackUsersClient:
         Returns:
             User object if found, None otherwise
         """
-        headers = {"Authorization": f"Bearer {self.bearer_token}"}
-        params = {"email": email.strip().lower()}
-        
-        resp = requests.get(
-            f"{self.base_url}/users.lookupByEmail",
-            headers=headers,
-            params=params,
-            verify=self.verify
-        )
-        
-        data = resp.json()
-        if data.get("ok"):
-            return data.get("user")
+        try:
+            response = self.client.users_lookupByEmail(email=email.strip().lower())
+            
+            if response["ok"]:
+                return response.get("user")
+                
+        except Exception as e:
+            logger.error(f"Error looking up user by email {email}: {e}")
         
         return None
 

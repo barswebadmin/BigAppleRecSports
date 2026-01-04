@@ -138,7 +138,7 @@ Post ephemeral results
 
 ## Files
 
-- `bolt_app.py` - Bolt app initialization
+- `leadership_bot.py` - Bolt app initialization
 - `handlers.py` - Command and modal handlers
 - `../services/user_lookup_service.py` - User lookup logic
 - `../client/users_client.py` - Slack API client

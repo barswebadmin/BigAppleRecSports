@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import time
 from urllib3.exceptions import NameResolutionError
-from requests.exceptions import ConnectionError, Timeout
+from slack_sdk.errors import SlackApiError
 
 from modules.integrations.slack.client.users_client import SlackUsersClient
 
@@ -24,9 +24,12 @@ def _is_transient_error(exception: Exception) -> bool:
     if isinstance(exception, NameResolutionError):
         return True
     
-    # Connection errors and timeouts
-    if isinstance(exception, (ConnectionError, Timeout)):
-        return True
+    # Slack API rate limiting and server errors
+    if isinstance(exception, SlackApiError):
+        if exception.response.get("error") == "rate_limited":
+            return True
+        if exception.response.status_code in (429, 502, 503, 504):
+            return True
     
     # Check for specific error messages
     error_str = str(exception).lower()

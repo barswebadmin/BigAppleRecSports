@@ -47,6 +47,208 @@ Phone: 9292920391
 Timezone: Eastern Standard Time
 ```
 
+---
+
+### ✏️ Slack User Profile Updater (`./bars-scripts/slack-update-user`)
+Update Slack user profile fields including title, phone, and status. **Always shows a preview first, then prompts for confirmation.**
+
+**Usage:**
+```bash
+# Update title only (shows preview, then asks for confirmation)
+./bars-scripts/slack-update-user chase@bigapplerecsports.com --title "Commissioner"
+
+# Update multiple fields
+./bars-scripts/slack-update-user chase@bigapplerecsports.com \
+    --title "Commissioner of Dodgeball" \
+    --phone "+1-555-123-4567" \
+    --status-text "BARS Leadership Team"
+
+# Update with status emoji
+./bars-scripts/slack-update-user chase@bigapplerecsports.com \
+    --status-text "BARS Leadership" \
+    --status-emoji ":dodgeball:"
+
+# Interactive mode (prompts for all fields)
+./bars-scripts/slack-update-user
+
+# Dry run (preview only, no confirmation prompt)
+./bars-scripts/slack-update-user chase@bigapplerecsports.com --title "Commissioner" --dry-run
+
+# Use different bot token
+./bars-scripts/slack-update-user --bot dev chase@example.com --title "Developer"
+
+# Update by user ID instead of email
+./bars-scripts/slack-update-user U03LZKQSHEU --title "Commissioner"
+```
+
+**Features:**
+- **Preview-first workflow**: ALWAYS shows what will change before applying
+- **Confirmation prompt**: Requires Enter to confirm, or 'n' to cancel
+- **Smart detection**: Automatically detects email (contains `@`) vs user ID
+- **Interactive mode**: Prompts for user and fields to update
+- **Multiple fields**: Update title, phone, status text, and status emoji
+- **Dry run mode**: Preview only, no confirmation prompt, no changes applied
+- **Before/after comparison**: Shows old and new values for each field
+- **Multiple bot tokens**: Supports leadership, refunds, registrations, etc.
+- **Code reuse**: Leverages `slack-get-user` for user lookup logic
+- **Safe by design**: Two-step process prevents accidental updates
+- Environment support (production/staging/dev)
+
+**Example Output:**
+```
+✅ Found user: Chase Tucker (U01234ABCDE)
+
+👤 User: Chase Tucker (chase)
+📧 Email: chase@bigapplerecsports.com
+
+🔄 Profile updates that will be made:
+------------------------------------------------------------
+  title:
+    Old: 'Vice Commissioner'
+    New: 'Commissioner'
+  phone:
+    Old: ''
+    New: '+1-555-123-4567'
+------------------------------------------------------------
+
+Press Enter to apply changes, or 'n' to cancel: 
+
+⏳ Applying changes...
+✅ Profile updated successfully!
+```
+
+**Workflow:**
+1. **Preview**: Shows exactly what will change (old → new values)
+2. **Confirm**: Waits for user to press Enter (or 'n' to cancel)
+3. **Apply**: Only if confirmed, updates the profile
+4. **Result**: Shows success or error message
+
+**Required Scope:**
+- Bot token needs `users.profile:write` scope
+
+**Note:** This script uses the Slack bot token to update user profiles. Make sure the bot has appropriate permissions in your Slack workspace.
+
+---
+
+### 📺 Slack Channel Lookup (`./bars-scripts/slack-get-channel`)
+Look up Slack channel details by name or ID. Can also list all channels.
+
+**Usage:**
+```bash
+# By channel name
+./bars-scripts/slack-get-channel general
+
+# By channel ID
+./bars-scripts/slack-get-channel C03LZKQSHEU
+
+# List all channels
+./bars-scripts/slack-get-channel
+
+# JSON output
+./bars-scripts/slack-get-channel general --json
+
+# Use different bot token
+./bars-scripts/slack-get-channel --bot leadership kickball-leadership
+
+# Different environment
+./bars-scripts/slack-get-channel general --env development
+```
+
+**Features:**
+- **Smart detection**: Automatically detects channel name vs ID (starts with `C`)
+- **List all channels**: If no identifier provided, lists all visible channels
+- **Reusable `get_channel()` function**: Can be imported with `display` flag
+- **Channel metadata**: Shows name, ID, type (public/private), topic, purpose, member count
+- **Archived indicator**: Shows if channel is archived
+- **Multiple bot tokens**: Supports leadership, refunds, registrations, etc.
+- **JSON output**: For programmatic use
+- Environment support (production/staging/dev)
+
+**Example Output:**
+```
+🔍 Looking up channel name: general
+
+Name: #general
+Channel ID: C03LZKQSHEU
+Type: Public Channel
+Topic: Company-wide announcements and updates
+Members: 150
+```
+
+**List All Channels:**
+```
+📺 Available channels (25 total):
+
+     #general                      (C03LZKQSHEU) - 150 members
+     #random                       (C03LZKRANDOM) - 120 members
+  🔒 #leadership                   (C03LZKLEAD) - 15 members
+     #kickball-leadership          (C03LZKQKICK) - 8 members (archived)
+  ...
+```
+
+---
+
+### 👥 Slack User Group Lookup (`./bars-scripts/slack-get-group`)
+Look up Slack user group (usergroup) details by name, handle, or ID. Can also list all groups.
+
+**Usage:**
+```bash
+# By group name
+./bars-scripts/slack-get-group leadership
+
+# By group handle
+./bars-scripts/slack-get-group @leadership
+
+# By group ID
+./bars-scripts/slack-get-group S03LZKQSHEU
+
+# List all groups
+./bars-scripts/slack-get-group
+
+# JSON output
+./bars-scripts/slack-get-group leadership --json
+
+# Use different bot token
+./bars-scripts/slack-get-group --bot leadership executive-board
+
+# Different environment
+./bars-scripts/slack-get-group leadership --env development
+```
+
+**Features:**
+- **Smart detection**: Automatically detects name/handle vs ID (starts with `S`)
+- **List all groups**: If no identifier provided, lists all user groups
+- **Reusable `get_group()` function**: Can be imported with `display` flag
+- **Group metadata**: Shows name, ID, handle, description, member count
+- **Disabled indicator**: Shows if group is disabled
+- **Multiple bot tokens**: Supports leadership, refunds, registrations, etc.
+- **JSON output**: For programmatic use
+- Environment support (production/staging/dev)
+
+**Example Output:**
+```
+🔍 Looking up user group name: leadership
+
+Name: Leadership
+Group ID: S03LZKQSHEU
+Handle: @leadership
+Description: BARS Leadership Team
+Members: 15
+```
+
+**List All Groups:**
+```
+👥 Available user groups (8 total):
+
+  • Leadership                     (S03LZKQSHEU) - @leadership - 15 members
+  • Executive Board                (S03LZKEXEC) - @exec-board - 12 members
+  • Kickball Leadership            (S03LZKKICK) - @kickball-leadership - 8 members
+  • Dodgeball Leadership           (S03LZKDODGE) - @dodgeball-leadership - 7 members (disabled)
+  ...
+```
+
+---
+
 ### 🛍️ Shopify Page & Template Fetcher (`./bars-scripts/shopify-get-page`)
 Fetch Shopify page content or theme template assets via the Shopify Admin API.
 
@@ -70,6 +272,15 @@ Fetch Shopify page content or theme template assets via the Shopify Admin API.
 # List assets matching a pattern
 ./bars-scripts/shopify-get-page --theme 134424232030 --list --filter about
 
+# Extract leadership position titles from About Us page
+./bars-scripts/shopify-get-page --extract-positions
+
+# Show raw API response (for debugging/analysis)
+./bars-scripts/shopify-get-page --extract-positions-raw
+
+# Save raw response to file
+./bars-scripts/shopify-get-page --extract-positions-raw > about_page_raw.json
+
 # Use different environment
 ./bars-scripts/shopify-get-page contact --env staging
 ```
@@ -78,6 +289,8 @@ Fetch Shopify page content or theme template assets via the Shopify Admin API.
 - **Fetch pages**: Get page content by handle (e.g., `contact`, `about`)
 - **Fetch theme assets**: Get templates, sections, or snippets from a theme
 - **List assets**: Browse all assets in a theme with optional filtering
+- **Extract positions**: Extract all leadership position titles from About Us page for YAML validation
+- **Extract positions (raw)**: View the raw API response (pretty JSON) for debugging or manual analysis
 - **Multiple formats**: Output as text, JSON, or raw HTML
 - **Environment support**: production (default), staging, dev
 - **Shared utilities**: Uses same config system as other BARS scripts
@@ -93,6 +306,9 @@ Fetch Shopify page content or theme template assets via the Shopify Admin API.
 
 # Extract contact page HTML for parsing
 ./bars-scripts/shopify-get-page contact --output html
+
+# Extract position titles for YAML hierarchy validation
+./bars-scripts/shopify-get-page --extract-positions > shopify_positions.txt
 ```
 
 **Example Output (List Assets):**
@@ -107,6 +323,139 @@ Fetch Shopify page content or theme template assets via the Shopify Admin API.
 📐 Sections:
   - sections/leadership-grid.liquid
   - sections/contact-form.liquid
+```
+
+**Example Output (Extract Positions):**
+```
+🎯 Extracting leadership positions from: templates/page.template-about-us-2.json
+================================================================================
+📊 Found 66 total leadership entries
+📊 Found 61 unique position titles
+================================================================================
+  1. Commissioner
+  2. Commissioner of Bowling
+  3. Commissioner of Diversity, Equity & Inclusion
+  4. Commissioner of Dodgeball
+  5. Commissioner of Kickball
+  ... (56 more positions)
+================================================================================
+```
+
+### 🖼️ Shopify About Page Image Updater (`./bars-scripts/shopify-update-about-page`)
+Update leadership images on the Shopify About Us page. Supports three modes: bulk CSV updates, single block updates, and image upload + update.
+
+**Usage:**
+```bash
+# Bulk update from CSV (name -> image URL mappings)
+./bars-scripts/shopify-update-about-page --bulk-update leadership_images.csv
+
+# Single block update by ID
+./bars-scripts/shopify-update-about-page --single-update --block-id abc123 --image shopify://shop_images/new.jpg
+
+# Upload images from folder and update blocks (filename must match person name)
+./bars-scripts/shopify-update-about-page --upload-and-update images_folder/
+
+# Dry run (preview changes without applying)
+./bars-scripts/shopify-update-about-page --bulk-update leadership_images.csv --dry-run
+
+# Use specific theme
+./bars-scripts/shopify-update-about-page --bulk-update leaders.csv --theme 134424232030
+
+# Use different environment
+./bars-scripts/shopify-update-about-page --bulk-update leaders.csv --env staging
+```
+
+**Features:**
+- **Bulk CSV updates**: Update multiple images at once from a CSV file
+- **Single block updates**: Precise control to update one specific block
+- **Image upload + update**: Upload new images to Shopify and automatically update blocks
+- **Dry run mode**: Preview changes before applying them
+  - Shows exact HTTP request that would be sent (headers + body)
+  - Displays full PUT request URL and redacted token
+  - Prints JSON payload preview (first 1000 chars)
+- **Name matching**: Automatically finds blocks by person's name
+- **Environment support**: production (default), staging, dev
+- **Shared utilities**: Uses same config system as other BARS scripts
+
+**CSV Format (for --bulk-update):**
+```csv
+name,image_url
+Chase Tucker,shopify://shop_images/Chase_Tucker2026.jpg
+Stephen Torres,shopify://shop_images/Stephen_Torres2026.jpg
+```
+
+**Image Folder Structure (for --upload-and-update):**
+```
+images_folder/
+  Chase_Tucker.jpg
+  Stephen_Torres.png
+  Jane_Smith.webp
+```
+
+**Notes:**
+- Filenames should match person names (underscores will be converted to spaces)
+- Supported image formats: jpg, jpeg, png, gif, webp
+- Images are uploaded to `assets/leadership/` in Shopify theme
+- Requires `write_themes` scope in Shopify Admin API token
+
+**Example Output (Bulk Update):**
+```
+📄 Reading CSV: leadership_images.csv
+📊 Found 2 update(s) in CSV
+📥 Fetching template: templates/page.template-about-us-2.json
+================================================================================
+✅ Updated: Chase Tucker
+   Old: shopify://shop_images/Chase_Tucker2025.jpg
+   New: shopify://shop_images/Chase_Tucker2026.jpg
+✅ Updated: Stephen Torres
+   Old: shopify://shop_images/Stephen_Torres2025.jpg
+   New: shopify://shop_images/Stephen_Torres2026.jpg
+================================================================================
+📊 Summary:
+   ✅ Updated: 2
+   ⚠️  Not found: 0
+📤 Uploading changes to Shopify...
+✅ Successfully updated template: templates/page.template-about-us-2.json
+🎉 Bulk update complete!
+```
+
+**Example Output (Dry Run):**
+```
+📄 Reading CSV: leadership_images.csv
+📊 Found 2 update(s) in CSV
+📥 Fetching template: templates/page.template-about-us-2.json
+================================================================================
+✅ Would update: Chase Tucker
+   Section: 1647480389497d7c43, Block: 4fa051b7-7efe-4fea-ba27-4589826d875a
+   Old: shopify://shop_images/Chase_Tucker2025.jpg
+   New: shopify://shop_images/Chase_Tucker2026.jpg
+================================================================================
+📊 Summary:
+   ✅ Updated: 2
+   ⚠️  Not found: 0
+
+📤 Would upload changes to Shopify (dry-run mode)...
+
+================================================================================
+🔍 DRY RUN - Request that would be sent to Shopify:
+================================================================================
+
+📍 URL: PUT https://09fe59-3.myshopify.com/admin/api/2024-10/themes/134424232030/assets.json
+
+📋 Headers:
+   X-Shopify-Access-Token: shpat_abcd...xyz9 (redacted)
+   Content-Type: application/json
+
+📦 Body (first 1000 chars of JSON):
+{
+  "asset": {
+    "key": "templates/page.template-about-us-2.json",
+    "value": "{\"sections\":{\"1647480389497d7c43\":{\"type\":\"image-with-text\",\"blocks\":{\"4fa051b7-7efe-4fea-ba27-4589826d875a\":{\"type\":\"text\",\"settings\":{\"image\":\"shopify://shop_images/Chase_Tucker2026.jpg\",\"text\":\"<p><strong>Chase Tucker</strong></p><p>Commissioner</p>\"}}...
+   ... (truncated, total length: 45832 chars)
+
+================================================================================
+
+🔍 Dry run complete. No changes were made.
 ```
 
 ### 🔍 Order Lookup (`./bars-scripts/order`)
@@ -249,6 +598,60 @@ Or if multiple people registered under same email:
 ```
 
 **Note**: Each birthday displays the name from that order's registration form fields ("First Name" / "Last Name" properties), not from the customer profile. This shows exactly what was entered during each registration, which is useful when one email is used for multiple people.
+
+---
+
+### 🏳️‍🌈 Pronouns Lookup (`./bars-scripts/pronouns`)
+Get customer's pronouns by searching through their most recent orders for "Pronouns" line item properties. Orders are sorted by most recent first (by created_at).
+
+**Usage:**
+```bash
+# By email
+./bars-scripts/pronouns customer@example.com
+
+# By name (supports same formats as customer lookup)
+./bars-scripts/pronouns "John Doe"           # First and last name
+./bars-scripts/pronouns "f:John"             # First name only
+./bars-scripts/pronouns "l:Doe"              # Last name only
+
+# By customer ID
+./bars-scripts/pronouns 123456789
+
+# Interactive prompt (supports email, name, or ID)
+./bars-scripts/pronouns
+
+# Different environment
+./bars-scripts/pronouns customer@example.com --env development
+```
+
+**Features:**
+- **Multiple search methods**: Email, customer ID, or name (first, last, or both)
+- **Name search with selection**: If multiple customers match, displays list and prompts for selection
+- **Concurrent fetching**: Searches 5 most recent orders in parallel for speed
+- **Most recent first**: Orders sorted by `created_at` date (newest first) so you see the most current pronouns
+- **Automatic lowercasing**: Pronouns are normalized to lowercase for consistency
+- **Case insensitive**: Finds "Pronouns", "pronouns", "PRONOUNS", "First Name", "Last Name", etc.
+- **Multiple registrations**: If customer has different pronouns across orders, each is shown with order date
+- **DRY design**: Reuses customer lookup logic from `get_customer_details.py`
+- Line-separated output for easy parsing
+- Exits with error if customer not found or no orders exist
+
+**Example Output:**
+```
+he/him - Chase Tucker (order: 2025-12-10T00:45:07Z)
+he/him - Chase Tucker (order: 2025-09-12T23:26:00Z)
+he/him - Chase Tucker (order: 2025-09-04T02:26:12Z)
+```
+
+Or if pronouns changed over time:
+```
+they/them - Alex Li (order: 2025-12-10T00:45:07Z)
+she/her - Alex Li (order: 2025-06-15T18:30:22Z)
+```
+
+**Note**: Each pronouns entry displays the name from that order's registration form fields ("First Name" / "Last Name" properties), not from the customer profile. Orders are sorted by most recent first, so if a customer updated their pronouns, the newest value appears first.
+
+---
 
 ### ❌ Order Cancellation (`./bars-scripts/cancel`)
 Cancel orders with built-in safety checks, confirmation prompts, and already-cancelled detection. Shows product name before cancellation.
@@ -619,6 +1022,7 @@ These Python scripts mirror the behavior of `bars-scripts-standalone/` bash scri
 - `bars-scripts/get_order_details.py` - Order lookup Python implementation
 - `bars-scripts/get_customer_details.py` - Customer lookup Python implementation
 - `bars-scripts/get_bday.py` - Birthday lookup Python implementation
+- `bars-scripts/get_pronouns.py` - Pronouns lookup Python implementation
 - `bars-scripts/cancel_order.py` - Order cancellation Python implementation
 - `bars-scripts/refund_order.py` - Refund processing Python implementation
 - `bars-scripts/restock_order.py` - Inventory restocking Python implementation
@@ -630,6 +1034,7 @@ These Python scripts mirror the behavior of `bars-scripts-standalone/` bash scri
 - `bars-scripts/order` - Order lookup bash wrapper
 - `bars-scripts/customer` - Customer lookup bash wrapper
 - `bars-scripts/bday` - Birthday lookup bash wrapper
+- `bars-scripts/pronouns` - Pronouns lookup bash wrapper
 - `bars-scripts/cancel` - Order cancellation bash wrapper
 - `bars-scripts/refund` - Refund processing bash wrapper
 - `bars-scripts/restock` - Inventory restocking bash wrapper

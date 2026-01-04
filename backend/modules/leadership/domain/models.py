@@ -25,6 +25,7 @@ class LeadershipMember(BaseModel):
     birthday: Optional[str] = Field(default=None, description="Birthday (MM/DD or MM/DD/YYYY)")
     slack_user_id: Optional[str] = Field(default=None, description="Slack user ID (enriched from Slack)")
     photo_url: Optional[str] = Field(default=None, description="Profile photo URL (for About page)")
+    pronouns: Optional[str] = Field(default=None, description="Pronouns (e.g., 'he/him', 'she/her', 'they/them')")
     
     @field_validator('personal_email', 'bars_email')
     @classmethod
@@ -90,6 +91,7 @@ class Position(BaseModel):
             "phone": self.person.phone,
             "birthday": self.person.birthday,
             "slack_user_id": self.person.slack_user_id,
+            "pronouns": self.person.pronouns,
         }
 
 
