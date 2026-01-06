@@ -34,6 +34,7 @@ def _register_from_module(
         parent_group: Optional parent group to add commands to
     """
     target = parent_group if parent_group else cli
+    first_group = None  # Track the first group found in this module
     
     for _, obj in inspect.getmembers(module):
         if _is_click_group(obj):
@@ -41,11 +42,19 @@ def _register_from_module(
             if not name or name in _DISCOVERED:
                 continue
             
+            # Register group: use parent_group if provided, otherwise use first_group or root
             if parent_group:
                 parent_group.add_command(obj, name)
+            elif first_group is not None:
+                # If we've already found a group in this module, register subsequent groups under it
+                first_group.add_command(obj, name)
             else:
                 cli.add_command(obj, name)
+                # This is the first group - remember it for subsequent groups/commands
+                first_group = obj
             _DISCOVERED.add(name)
+            # Update target so subsequent commands in this module register under this group
+            target = obj
             
         elif _is_click_command(obj):
             name = getattr(obj, "name", None)
@@ -95,12 +104,14 @@ def discover_commands(
                 subpackage = importlib.import_module(full_module_name)
                 _register_from_module(cli, subpackage, parent_group)
                 
-                # Check if we found a group in this subpackage
+                # Check if we found a group in this subpackage to use as parent for recursive discovery
+                # This matches engine-cli logic: use groups that were just discovered
                 current_group = parent_group
                 for _, obj in inspect.getmembers(subpackage):
                     if _is_click_group(obj):
                         name = getattr(obj, "name", None)
                         if name and name in _DISCOVERED:
+                            # Use this group as the parent for commands in this subpackage
                             current_group = obj
                             break
                 

@@ -20,48 +20,7 @@ from typing import Dict, Any, Optional, Literal, Tuple
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from shared_utils import load_environment, get_shopify_config, make_graphql_request
-
-
-CUSTOMER_FIELDS = """
-    id
-    firstName
-    lastName
-    email
-    displayName
-    phone
-    tags
-    numberOfOrders
-    createdAt
-    updatedAt
-    state
-    verifiedEmail
-    addresses {
-        address1
-        address2
-        city
-        province
-        zip
-        country
-    }
-    defaultAddress {
-        address1
-        address2
-        city
-        province
-        zip
-        country
-    }
-    orders(first: 5, sortKey: CREATED_AT, reverse: true) {
-        edges {
-            node {
-                id
-                name
-                createdAt
-            }
-        }
-    }
-"""
+from shared_utils import load_environment, get_shopify_config, make_graphql_request, CUSTOMER_FIELDS
 
 
 IdentifierType = Literal["email", "id", "name"]

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
@@ -115,4 +115,14 @@ class ApiModel(BaseModel):
         Returns:
             JSON string with snake_case keys
         """
-        return self.model_dump_json()
+        return self.model_dump_json(exclude_none=True)
+    
+    def to_dict_snake(self) -> Dict[str, Any]:
+        """
+        Serialize to dict with snake_case keys, excluding None values.
+        Use for APIs like Slack when you need a dict instead of JSON string.
+        
+        Returns:
+            Dict with snake_case keys, None values excluded
+        """
+        return self.model_dump(exclude_none=True)

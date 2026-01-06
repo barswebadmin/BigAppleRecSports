@@ -1,0 +1,8 @@
+#!/bin/bash
+# Wrapper script for product_orders.py
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+python3 "$SCRIPT_DIR/product_orders.py" "$@"
+
+
+

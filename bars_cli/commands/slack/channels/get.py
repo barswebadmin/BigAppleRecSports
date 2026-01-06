@@ -1,20 +1,17 @@
 """Get Slack channel details command."""
-import sys
 import json
+import sys
 
 import click
-from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-sys.path.insert(0, 'backend')
+# Import from backend (sys.path is set in main.py)
 from modules.integrations.slack.models.slack_channel import SlackChannel
 
-from ..utils import (
-    get_bot_token,
-    lookup_channel_by_id,
-    lookup_channel_by_name,
-    handle_slack_api_error
-)
+from bars_cli._core.decorators.handle_display_options import handle_display_options
+from bars_cli._core.param_types import SLACK_CHANNEL_IDENTIFIER
+from ..utils import handle_slack_api_error
+from typing import Optional, Dict, Any
 
 
 def format_channel(channel: dict) -> str:
@@ -53,10 +50,10 @@ def format_channel(channel: dict) -> str:
 
 
 @click.command('get')
-@click.argument('identifier', required=False)
-@click.option('--bot', default='leadership', help='Which bot to use (default: leadership)')
+@handle_display_options(display=True, exit_on_error=True)
+@click.argument('identifier', type=SLACK_CHANNEL_IDENTIFIER, required=False)
 @click.pass_context
-def get_channel_cmd(ctx: click.Context, identifier: str, bot: str):
+def get_channel_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]]):
     """
     Get Slack channel details by name or ID.
     
@@ -70,52 +67,87 @@ def get_channel_cmd(ctx: click.Context, identifier: str, bot: str):
       bars --json slack channel get general
     """
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False
-    
-    # Prompt for identifier if not provided
-    if not identifier:
-        try:
-            click.echo("Enter Slack channel name or ID:", err=True)
-            identifier = input().strip()
-        except (EOFError, KeyboardInterrupt):
-            click.echo("\n❌ Cancelled", err=True)
-            sys.exit(1)
+    display_override = ctx.obj.get('display_override') if ctx.obj else None
+    exit_override = ctx.obj.get('exit_override') if ctx.obj else None
+    should_display = display_override if display_override is not None else True
     
     if not identifier:
-        click.echo("❌ Error: Channel name or ID required", err=True)
-        sys.exit(1)
+        error_msg = "Channel identifier required"
+        if should_display:
+            if json_output:
+                click.echo(json.dumps({"error": error_msg}, indent=2), err=True)
+            else:
+                click.echo(f"❌ {error_msg}", err=True)
+        raise click.ClickException(error_msg)
     
     try:
-        token = get_bot_token(bot)
-        client = WebClient(token=token)
+        # Get leadership_bot from context meta (initialized at slack group level)
+        bot = ctx.meta['leadership_bot']
         
-        # Lookup channel by ID or name
-        if SlackChannel.is_valid_channel_id(identifier):
-            if not json_output:
-                click.echo(f"🔍 Looking up channel ID: {identifier}", err=True)
-            channel_data = lookup_channel_by_id(client, identifier, display=not json_output)
+        # Extract identifier value from dict
+        if 'channel_id' in identifier:
+            identifier_value = identifier['channel_id']
+            if should_display and not json_output:
+                click.echo(f"🔍 Looking up channel ID: {identifier_value}", err=True)
+        elif 'name' in identifier:
+            identifier_value = identifier['name']
+            if should_display and not json_output:
+                click.echo(f"🔍 Looking up channel name: {identifier_value}", err=True)
         else:
-            if not json_output:
-                click.echo(f"🔍 Looking up channel name: {identifier}", err=True)
-            channel_data = lookup_channel_by_name(client, identifier, display=not json_output)
+            raise ValueError("Invalid identifier format")
+        
+        # Use leadership_bot's lookup_channel method
+        channel_data = bot.lookup_channel(identifier_value)
         
         if not channel_data:
-            if not json_output:
-                click.echo(f"❌ Channel not found: {identifier}", err=True)
-            sys.exit(1)
+            error_msg = f"Channel not found: {identifier}"
+            if should_display:
+                if json_output:
+                    click.echo(json.dumps({"error": error_msg}, indent=2), err=True)
+                else:
+                    click.echo(f"❌ {error_msg}", err=True)
+                    click.echo(f"💡 Try checking the name/ID spelling or use 'bars slack channel list' to see all channels", err=True)
+            raise click.ClickException(error_msg)
         
         # Display result
         if json_output:
             click.echo(json.dumps(channel_data, indent=2))
-        else:
+        elif should_display:
             click.echo(format_channel(channel_data))
+        
+        return channel_data
     
     except SlackApiError as e:
-        handle_slack_api_error(e, json_output)
-        sys.exit(1)
-    except click.BadParameter as e:
-        click.echo(f"❌ {e}", err=True)
-        sys.exit(1)
+        # Get token from bot if available
+        token = None
+        try:
+            bot = ctx.meta.get('leadership_bot')
+            if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
+                token = bot.client.token
+        except Exception:
+            pass
+        
+        handle_slack_api_error(e, json_output=json_output, token=token, api_method='conversations.info')
+        if exit_override is None or exit_override:
+            sys.exit(1)
+        raise
+    except (click.ClickException, ValueError) as e:
+        if should_display:
+            if json_output:
+                click.echo(json.dumps({"error": str(e)}, indent=2), err=True)
+            else:
+                click.echo(f"❌ {e}", err=True)
+        if exit_override is None or exit_override:
+            sys.exit(1)
+        raise
     except Exception as e:
-        click.echo(f"❌ Error: {e}", err=True)
-        sys.exit(1)
+        error_msg = f"Error: {e}"
+        if should_display:
+            if json_output:
+                click.echo(json.dumps({"error": error_msg}, indent=2), err=True)
+            else:
+                click.echo(f"❌ {error_msg}", err=True)
+        if exit_override is None or exit_override:
+            sys.exit(1)
+        raise
 

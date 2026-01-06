@@ -14,8 +14,10 @@ Usage:
 import sys
 import json
 import argparse
+import csv
+import html
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from rich.console import Console
 from rich.table import Table
@@ -51,13 +53,40 @@ def fetch_order_with_metadata(order_number: str, config: Dict[str, Any]) -> Dict
                     name
                     email
                     createdAt
+                    updatedAt
+                    phone
                     displayFinancialStatus
                     displayFulfillmentStatus
+                    subtotalLineItemsQuantity
                     totalPriceSet {
                         shopMoney {
                             amount
                             currencyCode
                         }
+                    }
+                    discountApplications(first: 10) {
+                        edges {
+                            node {
+                                ... on DiscountCodeApplication {
+                                    code
+                                }
+                                ... on ScriptDiscountApplication {
+                                    title
+                                }
+                                ... on AutomaticDiscountApplication {
+                                    title
+                                }
+                            }
+                        }
+                    }
+                    billingAddress {
+                        firstName
+                        lastName
+                        address1
+                        city
+                        zip
+                        country
+                        phone
                     }
                     customer {
                         id
@@ -124,17 +153,44 @@ def fetch_order_with_metadata(order_number: str, config: Dict[str, Any]) -> Dict
                                 name
                                 title
                                 quantity
+                                fulfillableQuantity
+                                fulfillmentStatus
+                                originalUnitPriceSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                                discountedUnitPriceSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                                originalTotalSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                                discountedTotalSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
                                 customAttributes {
                                     key
                                     value
                                 }
                                 product {
-                                    title
+                                    """ + shared_utils.get_product_fields() + """
                                 }
                                 variant {
                                     id
                                     title
                                     price
+                                    sku
                                 }
                             }
                         }
@@ -322,6 +378,198 @@ def display_order_rich(order_data: Dict[str, Any], console: Console, show_proper
         console.print("[dim]No refunds found for this order.[/dim]\n")
 
 
+def order_to_csv_row(order_data: Dict[str, Any]) -> List[str]:
+    """Convert order data to CSV row matching the Shopify export format."""
+    order = order_data
+    
+    # Helper to get custom attribute value
+    def get_custom_attr(line_item, key: str) -> str:
+        attrs = line_item.get('customAttributes', [])
+        # Decode HTML entities in the search key for matching
+        key_decoded = html.unescape(key)
+        for attr in attrs:
+            attr_key = attr.get('key', '')
+            # Decode HTML entities in the attribute key for comparison
+            attr_key_decoded = html.unescape(attr_key)
+            if attr_key_decoded == key_decoded:
+                return attr.get('value', '')
+        return ''
+    
+    # Get first line item (assuming one line item per order for this use case)
+    line_items = order.get('lineItems', {}).get('edges', [])
+    line_item = line_items[0]['node'] if line_items else {}
+    
+    # Get discount code
+    discount_apps = order.get('discountApplications', {}).get('edges', [])
+    discount_code = ''
+    if discount_apps:
+        # Try to get code from DiscountCodeApplication
+        for edge in discount_apps:
+            node = edge.get('node', {})
+            if 'code' in node:
+                discount_code = node.get('code', '')
+                break
+            # Fallback to title for other discount types
+            if not discount_code and 'title' in node:
+                discount_code = node.get('title', '')
+    
+    # Get billing address
+    billing = order.get('billingAddress', {}) or {}
+    
+    # Format updatedAt date (9/11/2025 format)
+    updated_at = ''
+    if order.get('updatedAt'):
+        try:
+            dt = datetime.fromisoformat(order['updatedAt'].replace('Z', '+00:00'))
+            # Format without leading zeros: 9/11/2025
+            month = str(dt.month)
+            day = str(dt.day)
+            year = str(dt.year)
+            updated_at = f"{month}/{day}/{year}"
+        except:
+            updated_at = order.get('updatedAt', '')
+    
+    # Fully paid (true if financial status is PAID)
+    fully_paid = str(order.get('displayFinancialStatus', '') == 'PAID').lower()
+    
+    # Phone - prefer billing address phone, fallback to order phone
+    phone = billing.get('phone') or order.get('phone') or ''
+    
+    # Build CSV row matching the exact column order from the sample CSV
+    row = [
+        order.get('name', ''),  # Order Number
+        order.get('email', ''),  # Email
+        updated_at,  # Updated at
+        fully_paid,  # Fully paid
+        order.get('displayFulfillmentStatus', ''),  # Fulfillment status
+        str(order.get('subtotalLineItemsQuantity', 0)),  # Current subtotal quantity
+        discount_code,  # Discount code
+        line_item.get('name', ''),  # Line items: Name
+        order.get('totalPriceSet', {}).get('shopMoney', {}).get('amount', ''),  # Total price
+        line_item.get('variant', {}).get('sku', ''),  # Line items: SKU
+        line_item.get('product', {}).get('vendor', ''),  # Line items: Vendor
+        line_item.get('product', {}).get('descriptionHtml', ''),  # Line items: Product description HTML
+        line_item.get('title', ''),  # Line items: Title
+    ]
+    
+    row.extend([
+        line_item.get('variant', {}).get('title', ''),  # Line items: Variant title
+        billing.get('firstName', ''),  # Billing address: First name
+        billing.get('lastName', ''),  # Billing address: Last name
+        billing.get('address1', ''),  # Billing address: Address first line
+        billing.get('city', ''),  # Billing address: City
+        billing.get('zip', ''),  # Billing address: Zip
+        billing.get('country', ''),  # Billing address: Country
+        phone,  # Phone
+        get_custom_attr(line_item, '_Form Fields'),  # Line items: Custom attributes _Form Fields
+        get_custom_attr(line_item, 'Are you interested in being a captain?'),  # Line items: Custom attributes Are you interested in being a captain?
+        get_custom_attr(line_item, 'Are you interested in reffing?'),  # Line items: Custom attributes Are you interested in reffing?
+        get_custom_attr(line_item, 'Best Contact Email Address'),  # Line items: Custom attributes Best Contact Email Address
+        get_custom_attr(line_item, 'Best Contact Number (Cell Phone Number Preferred)'),  # Line items: Custom attributes Best Contact Number (Cell Phone Number Preferred)
+        get_custom_attr(line_item, 'Date of Birth'),  # Line items: Custom attributes Date of Birth
+        get_custom_attr(line_item, 'Emergency Contact Name'),  # Line items: Custom attributes Emergency Contact Name
+        get_custom_attr(line_item, 'Emergency Contact Phone Number'),  # Line items: Custom attributes Emergency Contact Phone Number
+        get_custom_attr(line_item, 'Gender Identity '),  # Line items: Custom attributes Gender Identity (note the trailing space)
+        get_custom_attr(line_item, 'Have you ever played any sport(s) with B.A.R.S. before?'),  # Line items: Custom attributes Have you ever played any sport(s) with B.A.R.S. before?
+        get_custom_attr(line_item, "Have you played the sport you're registering for with B.A.R.S?"),  # Line items: Custom attributes Have you played the sport you're registering for with B.A.R.S?
+        get_custom_attr(line_item, 'If you chose "Two or More Races", please identify those races.'),  # Line items: Custom attributes If you chose "Two or More Races", please identify those races.
+        get_custom_attr(line_item, 'Last Name'),  # Line items: Custom attributes Last Name
+        get_custom_attr(line_item, 'Please select the one that best applies: Which racial categories best describe you?'),  # Line items: Custom attributes Please select the one that best applies: Which racial categories best describe you?
+        get_custom_attr(line_item, 'Preferred First Name'),  # Line items: Custom attributes Preferred First Name
+        get_custom_attr(line_item, 'Pronouns'),  # Line items: Custom attributes Pronouns
+        get_custom_attr(line_item, 'Shirt Size'),  # Line items: Custom attributes Shirt Size
+        get_custom_attr(line_item, 'What is your self rated skill ranking?'),  # Line items: Custom attributes What is your self rated skill ranking?
+        get_custom_attr(line_item, 'Best Contact Phone Number (Cell Phone Number Preferred)'),  # Line items: Custom attributes: Best Contact Phone Number (Cell Phone Number Preferred)
+    ])
+    
+    # Check if order is canceled
+    is_canceled = 'true' if order.get('cancelledAt') else 'false'
+    
+    # Calculate total refunded amount
+    refunds = order.get('refunds', [])
+    total_refunded = '0.00'
+    if refunds:
+        total = 0.0
+        for refund in refunds:
+            total_refunded_set = refund.get('totalRefundedSet', {})
+            shop_money = total_refunded_set.get('shopMoney', {})
+            amount_str = shop_money.get('amount', '0')
+            try:
+                total += float(amount_str)
+            except (ValueError, TypeError):
+                continue
+        total_refunded = f"{total:.2f}"
+    
+    row.extend([is_canceled, total_refunded])
+    
+    return row
+
+
+def get_csv_headers() -> List[str]:
+    """Get CSV headers matching the Shopify export format."""
+    return [
+        'Order Number',
+        'Email',
+        'Updated at',
+        'Fully paid',
+        'Fulfillment status',
+        'Current subtotal quantity',
+        'Discount code',
+        'Line items: Name',
+        'Total price',
+        'Line items: SKU',
+        'Line items: Vendor',
+        'Line items: Product description HTML',
+        'Line items: Title',
+        'Line items: Variant title',
+        'Billing address: First name',
+        'Billing address: Last name',
+        'Billing address: Address first line',
+        'Billing address: City',
+        'Billing address: Zip',
+        'Billing address: Country',
+        'Phone',
+        'Line items: Custom attributes _Form Fields',
+        'Line items: Custom attributes Are you interested in being a captain?',
+        'Line items: Custom attributes Are you interested in reffing?',
+        'Line items: Custom attributes Best Contact Email Address',
+        'Line items: Custom attributes Best Contact Number (Cell Phone Number Preferred)',
+        'Line items: Custom attributes Date of Birth',
+        'Line items: Custom attributes Emergency Contact Name',
+        'Line items: Custom attributes Emergency Contact Phone Number',
+        'Line items: Custom attributes Gender Identity ',
+        'Line items: Custom attributes Have you ever played any sport(s) with B.A.R.S. before?',
+        "Line items: Custom attributes Have you played the sport you're registering for with B.A.R.S?",
+        'Line items: Custom attributes If you chose "Two or More Races", please identify those races.',
+        'Line items: Custom attributes Last Name',
+        'Line items: Custom attributes Please select the one that best applies: Which racial categories best describe you?',
+        'Line items: Custom attributes Preferred First Name',
+        'Line items: Custom attributes Pronouns',
+        'Line items: Custom attributes Shirt Size',
+        'Line items: Custom attributes What is your self rated skill ranking?',
+        'Line items: Custom attributes: Best Contact Phone Number (Cell Phone Number Preferred)',
+        'isCanceled',
+        'totalRefunded',
+    ]
+
+
+def output_csv(order_data: Dict[str, Any], output_file: Optional[str] = None):
+    """Output order data as CSV."""
+    headers = get_csv_headers()
+    row = order_to_csv_row(order_data)
+    
+    if output_file:
+        with open(output_file, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            writer.writerow(row)
+        print(f"CSV written to {output_file}")
+    else:
+        writer = csv.writer(sys.stdout)
+        writer.writerow(headers)
+        writer.writerow(row)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Fetch order details from Shopify by order number"
@@ -347,6 +595,16 @@ def main():
         action="store_true",
         dest="show_properties",
         help="Show line item properties as JSON"
+    )
+    parser.add_argument(
+        "--csv",
+        action="store_true",
+        help="Output as CSV format matching Shopify export"
+    )
+    parser.add_argument(
+        "--csv-file",
+        type=str,
+        help="Write CSV to file instead of stdout"
     )
     
     args = parser.parse_args()
@@ -396,7 +654,9 @@ def main():
         order_data = orders[0]['node']
         
         # Output
-        if args.json:
+        if args.csv or args.csv_file:
+            output_csv(order_data, output_file=args.csv_file)
+        elif args.json:
             print(json.dumps(order_data, indent=2))
         else:
             display_order_rich(order_data, console, show_properties=args.show_properties)

@@ -5,6 +5,7 @@ Standalone script to fetch product details from Shopify by product ID or name.
 
 import sys
 import argparse
+import json
 from pathlib import Path
 from typing import Dict, Any
 
@@ -30,11 +31,7 @@ def fetch_product_by_id(product_id: str, config: Dict[str, Any]) -> Dict[str, An
     query = """
     query GetProductById($id: ID!) {
         product(id: $id) {
-            id
-            title
-            handle
-            status
-            description
+            """ + shared_utils.get_product_fields() + """
             variants(first: 100) {
                 edges {
                     node {
@@ -92,6 +89,11 @@ def main():
         default="production",
         help="Environment to use (default: production)"
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output raw JSON instead of formatted display"
+    )
     
     args = parser.parse_args()
     
@@ -105,54 +107,72 @@ def main():
         # Check if identifier is numeric
         if identifier.isdigit():
             # Fetch by ID
-            console.print(f"\n[cyan]Fetching product by ID: {identifier}...[/cyan]\n")
+            if not args.json:
+                console.print(f"\n[cyan]Fetching product by ID: {identifier}...[/cyan]\n")
             result = fetch_product_by_id(identifier, config)
             
             if "error" in result:
-                console.print(f"[red]Error: {result['error']}[/red]")
+                if args.json:
+                    print(json.dumps({"error": result['error']}, indent=2))
+                else:
+                    console.print(f"[red]Error: {result['error']}[/red]")
                 return 1
             
             if "errors" in result:
-                console.print(f"[red]GraphQL Errors:[/red]")
-                for error in result["errors"]:
-                    console.print(f"  - {error.get('message', str(error))}")
+                if args.json:
+                    print(json.dumps({"errors": result["errors"]}, indent=2))
+                else:
+                    console.print(f"[red]GraphQL Errors:[/red]")
+                    for error in result["errors"]:
+                        console.print(f"  - {error.get('message', str(error))}")
                 return 1
             
             product = result.get('data', {}).get('product')
             if not product:
-                console.print(f"[yellow]No product found with ID: {identifier}[/yellow]")
+                if args.json:
+                    print(json.dumps({"error": f"No product found with ID: {identifier}"}, indent=2))
+                else:
+                    console.print(f"[yellow]No product found with ID: {identifier}[/yellow]")
                 return 1
             
-            # Display product
-            console.print(Panel(
-                f"[bold cyan]Product Details[/bold cyan]\n"
-                f"Title: {product.get('title', 'N/A')}\n"
-                f"Status: {product.get('status', 'N/A')}\n"
-                f"Handle: {product.get('handle', 'N/A')}",
-                border_style="cyan"
-            ))
-            console.print()
-            
-            # Display variants
-            variants = product.get('variants', {}).get('edges', [])
-            if variants:
-                variants_table = Table(title="Variants", show_header=True)
-                variants_table.add_column("Variant")
-                variants_table.add_column("Price", justify="right")
-                variants_table.add_column("Inventory", justify="right")
-                
-                for edge in variants:
-                    variant = edge['node']
-                    variants_table.add_row(
-                        variant.get('title', 'N/A'),
-                        f"${float(variant.get('price', 0)):.2f}",
-                        str(variant.get('inventoryQuantity', 0))
-                    )
-                
-                console.print(variants_table)
+            # Output JSON or formatted display
+            if args.json:
+                print(json.dumps(product, indent=2))
+            else:
+                # Display product
+                console.print(Panel(
+                    f"[bold cyan]Product Details[/bold cyan]\n"
+                    f"Title: {product.get('title', 'N/A')}\n"
+                    f"Status: {product.get('status', 'N/A')}\n"
+                    f"Handle: {product.get('handle', 'N/A')}",
+                    border_style="cyan"
+                ))
                 console.print()
+                
+                # Display variants
+                variants = product.get('variants', {}).get('edges', [])
+                if variants:
+                    variants_table = Table(title="Variants", show_header=True)
+                    variants_table.add_column("Variant")
+                    variants_table.add_column("Price", justify="right")
+                    variants_table.add_column("Inventory", justify="right")
+                    
+                    for edge in variants:
+                        variant = edge['node']
+                        variants_table.add_row(
+                            variant.get('title', 'N/A'),
+                            f"${float(variant.get('price', 0)):.2f}",
+                            str(variant.get('inventoryQuantity', 0))
+                        )
+                    
+                    console.print(variants_table)
+                    console.print()
         else:
-            console.print(f"[yellow]Product name search not yet implemented. Please use numeric product ID.[/yellow]")
+            error_msg = "Product name search not yet implemented. Please use numeric product ID."
+            if args.json:
+                print(json.dumps({"error": error_msg}, indent=2))
+            else:
+                console.print(f"[yellow]{error_msg}[/yellow]")
             return 1
         
         return 0

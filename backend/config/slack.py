@@ -42,9 +42,10 @@ class SlackConfig:
 
         class _Bot:
             """Proxy that lazily reads env vars at access time."""
-            def __init__(self, token_env: str, secret_env: str):
+            def __init__(self, token_env: str, secret_env: str, user_token_env: Optional[str] = None):
                 self._token_env_name = token_env
                 self._secret_env_name = secret_env
+                self._user_token_env_name = user_token_env
 
             @property
             def token(self) -> str:
@@ -52,6 +53,13 @@ class SlackConfig:
                 if not v:
                     raise RuntimeError(f"Missing env: {self._token_env_name}")
                 return v
+
+            @property
+            def user_token(self) -> Optional[str]:
+                """Optional User Token for operations requiring User Token Scopes."""
+                if not self._user_token_env_name:
+                    return None
+                return os.getenv(self._user_token_env_name)
 
             @property
             def signing_secret(self) -> str:
@@ -62,7 +70,7 @@ class SlackConfig:
 
         Dev               = _Bot("SLACK_BOT_TOKEN_DEV",               "SLACK_SIGNING_SECRET_DEV")
         Exec              = _Bot("SLACK_BOT_TOKEN_EXEC",              "SLACK_SIGNING_SECRET_EXEC")
-        Leadership        = _Bot("SLACK_BOT_TOKEN_LEADERSHIP",        "SLACK_SIGNING_SECRET_LEADERSHIP")
+        Leadership        = _Bot("SLACK_BOT_TOKEN_LEADERSHIP",        "SLACK_SIGNING_SECRET_LEADERSHIP", "SLACK_BOT_USER_TOKEN_LEADERSHIP")
         PaymentAssistance = _Bot("SLACK_BOT_TOKEN_PAYMENT_ASSISTANCE","SLACK_SIGNING_SECRET_PAYMENT_ASSISTANCE")
         Refunds           = _Bot("SLACK_BOT_TOKEN_REFUNDS",           "SLACK_SIGNING_SECRET_REFUNDS")
         Registrations     = _Bot("SLACK_BOT_TOKEN_REGISTRATIONS",     "SLACK_SIGNING_SECRET_REGISTRATIONS")

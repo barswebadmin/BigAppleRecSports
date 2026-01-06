@@ -13,13 +13,13 @@ from shared.csv import parse_csv_text
 logger = logging.getLogger(__name__)
 
 
-def download_and_parse_csv(url: str, client: WebClient) -> Optional[List[List[str]]]:
+def download_and_parse_csv(url: str, client) -> Optional[List[List[str]]]:
     """
     Download a CSV file from a Slack private URL and parse it.
     
     Args:
         url: Slack private URL to the CSV file
-        client: Initialized Slack WebClient with valid token
+        client: Initialized Slack WebClient (or App with delegated client methods) with valid token
         
     Returns:
         List of rows, where each row is a list of cell values, or None if download/parse fails

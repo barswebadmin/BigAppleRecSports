@@ -81,9 +81,7 @@ def fetch_order(order_number: str, config: Dict[str, Any]) -> Dict[str, Any]:
                                 title
                                 quantity
                                 product {
-                                    id
-                                    title
-                                    descriptionHtml
+                                    """ + shared_utils.get_product_fields() + """
                                 }
                                 variant {
                                     id

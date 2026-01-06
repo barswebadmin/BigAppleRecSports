@@ -3,7 +3,7 @@ Slack-related Pydantic models for the Big Apple Rec Sports system.
 Provides type-safe models for Slack notifications, interactions, and data structures.
 """
 
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import field_validator, ConfigDict
 from typing import List, Optional, Dict, Union, Any
 from enum import Enum
 import re
@@ -38,7 +38,7 @@ from .slack_user import SlackUser
 from .slack_channel import SlackChannel
 
 
-class RefundSlackNotificationRequest(BaseModel):
+class RefundSlackNotificationRequest(ApiModel):
     """
     Request model for sending refund notifications to Slack.
     This is the main model for refund-related Slack notifications.
@@ -96,7 +96,7 @@ class RefundSlackNotificationRequest(BaseModel):
         return v
 
 
-class SlackRefundConfirmation(BaseModel):
+class SlackRefundConfirmation(ApiModel):
     """
     Model for refund confirmation messages sent to Slack.
     Used when a refund has been processed and confirmed.
@@ -127,7 +127,7 @@ class SlackRefundConfirmation(BaseModel):
     shopify_refund_id: Optional[str] = None
 
 
-class SlackRefundDenial(BaseModel):
+class SlackRefundDenial(ApiModel):
     """
     Model for refund denial messages sent to Slack.
     Used when a refund request has been denied.
@@ -155,7 +155,7 @@ class SlackRefundDenial(BaseModel):
     notes: Optional[str] = None
 
 
-class SlackOrderUpdate(BaseModel):
+class SlackOrderUpdate(ApiModel):
     """
     Model for order update notifications sent to Slack.
     Used for general order status changes and updates.
@@ -186,7 +186,7 @@ class SlackOrderUpdate(BaseModel):
     order_data: Optional[Dict[str, Any]] = None
 
 
-class ProcessLeadershipCSVRequest(BaseModel):
+class ProcessLeadershipCSVRequest(ApiModel):
     """
     Request model for processing leadership CSV data.
     Originally from requests.py, now part of the Slack models system.
@@ -211,7 +211,7 @@ class ProcessLeadershipCSVRequest(BaseModel):
     year: Optional[int] = None
 
 
-class SlackLeadershipNotification(BaseModel):
+class SlackLeadershipNotification(ApiModel):
     """
     Model for leadership-related notifications sent to Slack.
     Used for leadership CSV processing and updates.

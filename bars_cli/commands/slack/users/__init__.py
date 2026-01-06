@@ -13,7 +13,10 @@ from .list import list_users_cmd
 from .update import update_user_cmd
 
 
-@click.group(name='user')
+@click.group(
+    name='user',
+    context_settings={"ignore_unknown_options": True}
+)
 def slack_user():
     """User management."""
     pass

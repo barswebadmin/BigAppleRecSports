@@ -1,16 +1,13 @@
 """List Slack channels command."""
 import sys
 import json
+from typing import Optional, List, Dict, Any
 
 import click
-from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-from ..utils import (
-    get_bot_token,
-    list_all_channels,
-    handle_slack_api_error
-)
+from bars_cli._core.decorators.handle_display_options import handle_display_options
+from ..utils import handle_slack_api_error
 
 
 def format_channels(channels: list) -> str:
@@ -47,10 +44,10 @@ def format_channels(channels: list) -> str:
 
 
 @click.command('list')
-@click.option('--bot', default='leadership', help='Which bot to use (default: leadership)')
+@handle_display_options(display=True, exit_on_error=True)
 @click.option('--include-archived', is_flag=True, help='Include archived channels')
 @click.pass_context
-def list_channels_cmd(ctx: click.Context, bot: str, include_archived: bool):
+def list_channels_cmd(ctx: click.Context, include_archived: bool) -> Optional[List[Dict[str, Any]]]:
     """
     List all Slack channels visible to the bot.
     
@@ -62,35 +59,61 @@ def list_channels_cmd(ctx: click.Context, bot: str, include_archived: bool):
       bars --json slack channel list
     """
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False
+    display_override = ctx.obj.get('display_override') if ctx.obj else None
+    exit_override = ctx.obj.get('exit_override') if ctx.obj else None
+    should_display = display_override if display_override is not None else True
     
     try:
-        token = get_bot_token(bot)
-        client = WebClient(token=token)
+        # Get leadership_bot from context meta (initialized at slack group level)
+        bot = ctx.meta['leadership_bot']
         
-        if not json_output:
+        if should_display and not json_output:
             click.echo("🔍 Fetching channels...", err=True)
         
-        channels = list_all_channels(client, display=not json_output)
+        # Use leadership_bot's list_all_channels method
+        channels = bot.list_all_channels(include_archived=include_archived)
         
         if not channels:
-            if not json_output:
-                click.echo("❌ No channels found", err=True)
-            sys.exit(1)
-        
-        # Filter archived channels if requested
-        if not include_archived:
-            channels = [c for c in channels if not c.get('is_archived', False)]
+            error_msg = "No channels found"
+            if should_display:
+                if json_output:
+                    click.echo(json.dumps({"error": error_msg}, indent=2), err=True)
+                else:
+                    click.echo(f"❌ {error_msg}", err=True)
+            if exit_override is None or exit_override:
+                sys.exit(1)
+            return []
         
         # Display result
         if json_output:
             click.echo(json.dumps(channels, indent=2))
-        else:
+        elif should_display:
             click.echo(format_channels(channels))
+        
+        return channels
     
     except SlackApiError as e:
-        handle_slack_api_error(e, json_output)
-        sys.exit(1)
+        # Get token from bot if available
+        token = None
+        try:
+            bot = ctx.meta.get('leadership_bot')
+            if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
+                token = bot.client.token
+        except Exception:
+            pass
+        
+        handle_slack_api_error(e, json_output=json_output, token=token, api_method='conversations.list')
+        if exit_override is None or exit_override:
+            sys.exit(1)
+        raise
     except Exception as e:
-        click.echo(f"❌ Error: {e}", err=True)
-        sys.exit(1)
+        error_msg = f"Error: {e}"
+        if should_display:
+            if json_output:
+                click.echo(json.dumps({"error": error_msg}, indent=2), err=True)
+            else:
+                click.echo(f"❌ {error_msg}", err=True)
+        if exit_override is None or exit_override:
+            sys.exit(1)
+        raise
 
