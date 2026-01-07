@@ -8,7 +8,9 @@ function createVariantsFromRow(rowObject) {
     price,
     division,
     vetRegistrationStartDateTime,
-    earlyRegistrationStartDateTime,
+    tnbWtnbRegistrationStartDateTime,
+    bipocRegistrationStartDateTime,
+    earlyRegistrationStartDateTime, // Backward compatibility
     openRegistrationStartDateTime
   } = rowObject;
 
@@ -51,16 +53,58 @@ function createVariantsFromRow(rowObject) {
     Logger.log("⏭️ Skipping Veteran Registration variant (no startDateTime).");
   }
 
-  // Check early registration date
-  if (hasValidDate(earlyRegistrationStartDateTime)) {
-    Logger.log("✅ Including Early Registration variant.");
+  // Check TNB/WTNB and BIPOC registration dates
+  const hasTnbWtnb = hasValidDate(tnbWtnbRegistrationStartDateTime);
+  const hasBipoc = hasValidDate(bipocRegistrationStartDateTime);
+  
+  // Helper to compare dates (handles both date objects and raw values)
+  const datesEqual = (date1, date2) => {
+    if (!date1 || !date2) return false;
+    const raw1 = typeof date1 === 'object' && date1.raw !== undefined ? date1.raw : date1;
+    const raw2 = typeof date2 === 'object' && date2.raw !== undefined ? date2.raw : date2;
+    if (!raw1 || !raw2) return false;
+    return new Date(raw1).getTime() === new Date(raw2).getTime();
+  };
+  
+  if (hasTnbWtnb && hasBipoc && datesEqual(tnbWtnbRegistrationStartDateTime, bipocRegistrationStartDateTime)) {
+    // Same date - create combined variant
+    Logger.log("✅ Including combined TNB+ and BIPOC Early Registration variant.");
     variantsToCreate.push({
       title: `${division === 'Open' ? 'W' : ''}TNB+ and BIPOC Early Registration`,
       price,
-      inventory: 0
+      inventory: 0,
+      type: 'early'
     });
   } else {
-    Logger.log("⏭️ Skipping Early Registration variant (no startDateTime).");
+    // Different dates or only one present - create separate variants
+    if (hasTnbWtnb) {
+      Logger.log("✅ Including TNB/WTNB Early Registration variant.");
+      variantsToCreate.push({
+        title: `${division === 'Open' ? 'W' : ''}TNB+ Early Registration`,
+        price,
+        inventory: 0,
+        type: 'wtnb'
+      });
+    }
+    if (hasBipoc) {
+      Logger.log("✅ Including BIPOC Early Registration variant.");
+      variantsToCreate.push({
+        title: "BIPOC Early Registration",
+        price,
+        inventory: 0,
+        type: 'bipoc'
+      });
+    }
+    // Backward compatibility: if old earlyRegistrationStartDateTime exists but new columns don't
+    if (!hasTnbWtnb && !hasBipoc && hasValidDate(earlyRegistrationStartDateTime)) {
+      Logger.log("✅ Including Early Registration variant (backward compatibility).");
+      variantsToCreate.push({
+        title: `${division === 'Open' ? 'W' : ''}TNB+ and BIPOC Early Registration`,
+        price,
+        inventory: 0,
+        type: 'early'
+      });
+    }
   }
 
   // Check open registration date
@@ -212,17 +256,29 @@ function createVariantsFromRow(rowObject) {
   updateFirstVariant();
 
   const firstVariantTitle = variantsToCreate[0].title;
+  const firstVariantType = variantsToCreate[0].type || '';
   const columns = {
     "Veteran Registration": sheetHeaders.indexOf("Vet Registration Variant ID") + 1,
-    "Early": sheetHeaders.indexOf("Early Registration Variant ID") + 1,
+    "TNB/WTNB": sheetHeaders.indexOf("TNB/WTNB Registration Variant ID") + 1,
+    "BIPOC": sheetHeaders.indexOf("BIPOC Registration Variant ID (if different)") + 1,
+    "Early": sheetHeaders.indexOf("Early Registration Variant ID") + 1, // Backward compatibility
     "Open": sheetHeaders.indexOf("Open Registration Variant ID") + 1,
     "Waitlist": sheetHeaders.indexOf("Coming Off Waitlist Registration Variant ID") + 1
   };
 
+  // Store first variant GID based on type or title
   if (firstVariantTitle.includes("Veteran")) {
     sheet.getRange(rowNumber, columns["Veteran Registration"]).setValue(firstVariantGid);
-  } else if (firstVariantTitle.includes("Early")) {
-    sheet.getRange(rowNumber, columns["Early"]).setValue(firstVariantGid);
+  } else if (firstVariantType === 'wtnb' || firstVariantTitle.includes("TNB+") && !firstVariantTitle.includes("BIPOC")) {
+    sheet.getRange(rowNumber, columns["TNB/WTNB"]).setValue(firstVariantGid);
+  } else if (firstVariantType === 'bipoc' || firstVariantTitle.includes("BIPOC")) {
+    sheet.getRange(rowNumber, columns["BIPOC"]).setValue(firstVariantGid);
+  } else if (firstVariantTitle.includes("Early") || firstVariantType === 'early') {
+    // Combined early variant - store in both columns if they exist
+    if (columns["TNB/WTNB"] > 0) sheet.getRange(rowNumber, columns["TNB/WTNB"]).setValue(firstVariantGid);
+    if (columns["BIPOC"] > 0) sheet.getRange(rowNumber, columns["BIPOC"]).setValue(firstVariantGid);
+    // Also store in old column for backward compatibility
+    if (columns["Early"] > 0) sheet.getRange(rowNumber, columns["Early"]).setValue(firstVariantGid);
   } else if (firstVariantTitle.includes("Open")) {
     sheet.getRange(rowNumber, columns["Open"]).setValue(firstVariantGid);
   } else if (firstVariantTitle.includes("Waitlist")) {
@@ -262,18 +318,37 @@ function createVariantsFromRow(rowObject) {
 
   const createdVariants = createRemainingVariants();
 
-  createdVariants.forEach(variant => {
+  createdVariants.forEach((variant, index) => {
+    // Get the variant type from the original variantsToCreate array (index + 1 because first was already handled)
+    const variantInfo = variantsToCreate[index + 1];
+    const variantType = variantInfo ? variantInfo.type : '';
+    
     if (variant.title.includes("Veteran")) {
-      sheet.getRange(rowObject.rowNumber, columns["Veteran Registration"]).setValue(variant.id);
-    }
-    if (variant.title.includes("Early")) {
-      sheet.getRange(rowObject.rowNumber, columns["Early"]).setValue(variant.id);
-    }
-    if (variant.title.includes("Open")) {
-      sheet.getRange(rowObject.rowNumber, columns["Open"]).setValue(variant.id);
-    }
-    if (variant.title.includes("Waitlist")) {
-      sheet.getRange(rowObject.rowNumber, columns["Waitlist"]).setValue(variant.id);
+      if (columns["Veteran Registration"] > 0) {
+        sheet.getRange(rowObject.rowNumber, columns["Veteran Registration"]).setValue(variant.id);
+      }
+    } else if (variantType === 'wtnb' || (variant.title.includes("TNB+") && !variant.title.includes("BIPOC"))) {
+      if (columns["TNB/WTNB"] > 0) {
+        sheet.getRange(rowObject.rowNumber, columns["TNB/WTNB"]).setValue(variant.id);
+      }
+    } else if (variantType === 'bipoc' || variant.title.includes("BIPOC")) {
+      if (columns["BIPOC"] > 0) {
+        sheet.getRange(rowObject.rowNumber, columns["BIPOC"]).setValue(variant.id);
+      }
+    } else if (variant.title.includes("Early") || variantType === 'early') {
+      // Combined early variant - store in both new columns if they exist
+      if (columns["TNB/WTNB"] > 0) sheet.getRange(rowObject.rowNumber, columns["TNB/WTNB"]).setValue(variant.id);
+      if (columns["BIPOC"] > 0) sheet.getRange(rowObject.rowNumber, columns["BIPOC"]).setValue(variant.id);
+      // Also store in old column for backward compatibility
+      if (columns["Early"] > 0) sheet.getRange(rowObject.rowNumber, columns["Early"]).setValue(variant.id);
+    } else if (variant.title.includes("Open")) {
+      if (columns["Open"] > 0) {
+        sheet.getRange(rowObject.rowNumber, columns["Open"]).setValue(variant.id);
+      }
+    } else if (variant.title.includes("Waitlist")) {
+      if (columns["Waitlist"] > 0) {
+        sheet.getRange(rowObject.rowNumber, columns["Waitlist"]).setValue(variant.id);
+      }
     }
   });
 

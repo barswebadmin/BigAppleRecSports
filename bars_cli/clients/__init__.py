@@ -9,6 +9,7 @@ Example:
 # Import bots so they're available as bars_cli.clients.*
 from . import leadership_bot
 from . import dev_bot
+from . import shopify_sgqlc_client
 
-__all__ = ['leadership_bot', 'dev_bot']
+__all__ = ['leadership_bot', 'dev_bot', 'shopify_sgqlc_client']
 

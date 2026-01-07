@@ -9,39 +9,81 @@
  * 4. If spots < total inventory, schedules remaining spots at second registration
  */
 function promptAndScheduleGoLiveInventory(productUrl, variantIds, registrationDates, totalInventory, rowObject) {
-  const { vetVariantId, earlyVariantId, openVariantId } = variantIds;
-  const { vetRegistrationStartDateTime, earlyRegistrationStartDateTime } = registrationDates;
+  const { vetVariantId, wtnbVariantId, bipocVariantId, earlyVariantId, openVariantId } = variantIds;
+  const { vetRegistrationStartDateTime, wtnbRegistrationStartDateTime, bipocRegistrationStartDateTime, earlyRegistrationStartDateTime } = registrationDates;
   
-  let firstRegType, firstRegTime, firstVariantId;
-  let secondRegType, secondRegTime, secondVariantId;
+  // Build chronological array of all registration periods
+  const registrations = [];
   
-  if (vetRegistrationStartDateTime && vetRegistrationStartDateTime.raw && 
-      earlyRegistrationStartDateTime && earlyRegistrationStartDateTime.raw &&
-      new Date(vetRegistrationStartDateTime.raw) < new Date(earlyRegistrationStartDateTime.raw)) {
-    firstRegType = 'Veteran';
-    firstRegTime = vetRegistrationStartDateTime;
-    firstVariantId = vetVariantId;
-    secondRegType = 'Early';
-    secondRegTime = earlyRegistrationStartDateTime;
-    secondVariantId = earlyVariantId;
-  } else if (earlyRegistrationStartDateTime && earlyRegistrationStartDateTime.raw) {
-    firstRegType = 'Early';
-    firstRegTime = earlyRegistrationStartDateTime;
-    firstVariantId = earlyVariantId;
-    secondRegType = 'Open';
-    secondRegTime = null;
-    secondVariantId = openVariantId;
-  } else {
+  if (vetVariantId && vetRegistrationStartDateTime?.raw) {
+    registrations.push({
+      type: 'Veteran',
+      time: vetRegistrationStartDateTime,
+      variantId: vetVariantId
+    });
+  }
+  
+  if (wtnbVariantId && wtnbRegistrationStartDateTime?.raw) {
+    registrations.push({
+      type: 'WTNB+ Early',
+      time: wtnbRegistrationStartDateTime,
+      variantId: wtnbVariantId
+    });
+  }
+  
+  if (bipocVariantId && bipocRegistrationStartDateTime?.raw) {
+    registrations.push({
+      type: 'BIPOC Early',
+      time: bipocRegistrationStartDateTime,
+      variantId: bipocVariantId
+    });
+  }
+  
+  // Backward compatibility: if old early variant exists but new ones don't
+  if (earlyVariantId && earlyRegistrationStartDateTime?.raw && !wtnbVariantId && !bipocVariantId) {
+    registrations.push({
+      type: 'Early',
+      time: earlyRegistrationStartDateTime,
+      variantId: earlyVariantId
+    });
+  }
+  
+  if (openVariantId) {
+    registrations.push({
+      type: 'Open',
+      time: null, // Open registration doesn't have a scheduled time for go-live
+      variantId: openVariantId
+    });
+  }
+  
+  // Sort chronologically by date
+  registrations.sort((a, b) => {
+    if (!a.time) return 1; // Open registration goes last
+    if (!b.time) return -1;
+    return new Date(a.time.raw) - new Date(b.time.raw);
+  });
+  
+  if (registrations.length === 0) {
     Logger.log('No valid registration dates found for inventory scheduling');
     SpreadsheetApp.getUi().alert('Cannot schedule inventory: No valid registration start dates found.');
     return;
   }
   
+  const firstReg = registrations[0];
+  const secondReg = registrations.length > 1 ? registrations[1] : null;
+  
+  const firstRegType = firstReg.type;
+  const firstRegTime = firstReg.time;
+  const firstVariantId = firstReg.variantId;
+  const secondRegType = secondReg ? secondReg.type : null;
+  const secondRegTime = secondReg ? secondReg.time : null;
+  const secondVariantId = secondReg ? secondReg.variantId : null;
+  
   const ui = SpreadsheetApp.getUi();
   const promptMessage = 
     `Schedule Initial Inventory\n\n` +
     `How many spots should be added at ${firstRegType} Registration?\n` +
-    `(${firstRegType} Registration: ${firstRegTime.formatted})\n\n` +
+    `${firstRegTime ? `(${firstRegType} Registration: ${firstRegTime.formatted})\n\n` : ''}` +
     `Total Inventory: ${totalInventory}`;
   
   const response = ui.prompt(promptMessage, ui.ButtonSet.OK_CANCEL);
@@ -67,13 +109,13 @@ function promptAndScheduleGoLiveInventory(productUrl, variantIds, registrationDa
     scheduleInitialInventoryAddition(
       productUrl,
       firstVariantId,
-      firstRegTime.raw,
+      firstRegTime ? firstRegTime.raw : new Date().toISOString(), // Fallback if no time
       spotsAtFirst,
       totalInventory,
       rowObject
     );
     
-    if (spotsAtFirst < totalInventory && secondRegTime) {
+    if (spotsAtFirst < totalInventory && secondRegTime && secondVariantId) {
       const remainingSpots = totalInventory - spotsAtFirst;
       scheduleRemainingInventoryAddition(
         productUrl,
@@ -87,13 +129,13 @@ function promptAndScheduleGoLiveInventory(productUrl, variantIds, registrationDa
       
       ui.alert(
         `✅ Inventory scheduled successfully!\n\n` +
-        `${spotsAtFirst} spots at ${firstRegType} registration (${firstRegTime.formatted})\n` +
-        `${remainingSpots} spots at ${secondRegType} registration (${secondRegTime.formatted})`
+        `${spotsAtFirst} spots at ${firstRegType} registration${firstRegTime ? ` (${firstRegTime.formatted})` : ''}\n` +
+        `${remainingSpots} spots at ${secondRegType} registration${secondRegTime ? ` (${secondRegTime.formatted})` : ''}`
       );
     } else {
       ui.alert(
         `✅ Inventory scheduled successfully!\n\n` +
-        `${spotsAtFirst} spots at ${firstRegType} registration (${firstRegTime.formatted})`
+        `${spotsAtFirst} spots at ${firstRegType} registration${firstRegTime ? ` (${firstRegTime.formatted})` : ''}`
       );
     }
   } catch (err) {
@@ -234,13 +276,17 @@ function scheduleGoLiveInventoryFromRow() {
   
   const productUrl = getColumnValue('product url');
   const vetVariantIdValue = getColumnValue('vet registration variant id');
-  const earlyVariantIdValue = getColumnValue('early registration variant id');
+  const wtnbVariantIdValue = getColumnValue('tnb/wtnb registration variant id');
+  const bipocVariantIdValue = getColumnValue('bipoc registration variant id (if different)');
+  const earlyVariantIdValue = getColumnValue('early registration variant id'); // Backward compatibility
   const openVariantIdValue = getColumnValue('open registration variant id');
   const totalInventory = getColumnValue('total inventory');
   
   Logger.log(`📋 Variant IDs read from sheet:`);
   Logger.log(`  Vet: ${vetVariantIdValue}`);
-  Logger.log(`  Early: ${earlyVariantIdValue}`);
+  Logger.log(`  TNB/WTNB: ${wtnbVariantIdValue}`);
+  Logger.log(`  BIPOC: ${bipocVariantIdValue}`);
+  Logger.log(`  Early (old): ${earlyVariantIdValue}`);
   Logger.log(`  Open: ${openVariantIdValue}`);
   
   const sport = getColumnValue('sport');
@@ -249,15 +295,19 @@ function scheduleGoLiveInventoryFromRow() {
   const season = getColumnValue('season');
   const year = getColumnValue('year');
   
-  const vetRegRaw = getColumnValue('vet registration');
-  const earlyRegRaw = getColumnValue('early registration');
+  const vetRegRaw = getColumnValue('veteran registration start date/time');
+  const wtnbRegRaw = getColumnValue('tnb/wtnb registration start date/time');
+  const bipocRegRaw = getColumnValue('bipoc registration start date/time');
+  const earlyRegRaw = getColumnValue('early registration start date/time'); // Backward compatibility
   
   if (!productUrl) {
     ui.alert('Cannot schedule: Product URL not found in row ' + rowNumber);
     return;
   }
   
-  if (!vetVariantIdValue || !earlyVariantIdValue || !openVariantIdValue) {
+  // At least one early variant (TNB/WTNB, BIPOC, or old Early) and open variant must exist
+  const hasEarlyVariant = !!(wtnbVariantIdValue || bipocVariantIdValue || earlyVariantIdValue);
+  if (!hasEarlyVariant || !openVariantIdValue) {
     ui.alert('Cannot schedule: Variant IDs not found in row ' + rowNumber + '. Product may not be created yet.');
     return;
   }
@@ -299,22 +349,29 @@ function scheduleGoLiveInventoryFromRow() {
   };
   
   const vetRegistrationStartDateTime = formatDateTime(vetRegRaw);
-  const earlyRegistrationStartDateTime = formatDateTime(earlyRegRaw);
+  const wtnbRegistrationStartDateTime = formatDateTime(wtnbRegRaw);
+  const bipocRegistrationStartDateTime = formatDateTime(bipocRegRaw);
+  const earlyRegistrationStartDateTime = formatDateTime(earlyRegRaw); // Backward compatibility
   
-  if (!vetRegistrationStartDateTime && !earlyRegistrationStartDateTime) {
+  // At least one registration date must exist
+  if (!vetRegistrationStartDateTime && !wtnbRegistrationStartDateTime && !bipocRegistrationStartDateTime && !earlyRegistrationStartDateTime) {
     ui.alert('Cannot schedule: No valid registration start dates found in row ' + rowNumber);
     return;
   }
   
   const variantIds = {
     vetVariantId: vetVariantIdValue,
-    earlyVariantId: earlyVariantIdValue,
+    wtnbVariantId: wtnbVariantIdValue,
+    bipocVariantId: bipocVariantIdValue,
+    earlyVariantId: earlyVariantIdValue, // Backward compatibility
     openVariantId: openVariantIdValue
   };
   
   const registrationDates = {
     vetRegistrationStartDateTime: vetRegistrationStartDateTime,
-    earlyRegistrationStartDateTime: earlyRegistrationStartDateTime
+    wtnbRegistrationStartDateTime: wtnbRegistrationStartDateTime,
+    bipocRegistrationStartDateTime: bipocRegistrationStartDateTime,
+    earlyRegistrationStartDateTime: earlyRegistrationStartDateTime // Backward compatibility
   };
   
   const rowObject = {

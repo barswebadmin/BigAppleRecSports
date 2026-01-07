@@ -1,4 +1,4 @@
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 import json
 import traceback
@@ -17,8 +17,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Move inventory between variants based on the type of transfer.
     Supports:
-      - Veteran ➡ Early (calculates deltaToMove)
-      - Early/Vet ➡ Open (consolidates inventory)
+      - Any variant type ➡ Any variant type (moves all inventory)
+      - Any variant ➡ Open (consolidates inventory from all non-open variants)
+    
+    Uses variant GIDs only for validation - does not parse variant titles.
     """
     try:
         print("📦 MoveInventoryLambda invoked with event:", json.dumps(event, indent=2))
@@ -37,8 +39,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         num_eligible_veterans = event.get('numEligibleVeterans', 0)
 
         
-        if dest_type in ['vet', 'early']:
-            # 🧠 Case 1: reg1 ➡ reg2 logic
+        if dest_type in ['vet', 'early', 'wtnb', 'bipoc']:
+            # 🧠 Case 1: reg1 ➡ reg2 logic (move all inventory from source to destination)
             source_data = get_inventory_item_and_quantity(source_gid)
             dest_data = get_inventory_item_and_quantity(dest_gid)
 
@@ -65,7 +67,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             })
             
         elif dest_type == 'open':
-            # 🧠 Case 2: Consolidate from veteran+early ➡ open            
+            # 🧠 Case 2: Consolidate from all non-open variants ➡ open
+            # Uses variant GIDs only - no title validation
             product_id = event['productUrl'].split('/')[-1]
             result = get_product_variants(product_id)
             variants = result['product']['variants']['nodes']
@@ -74,17 +77,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             total_delta = 0
 
             for v in variants:
-                title = v['title'].lower()
-                if 'early' in title or 'veteran' in title:
-                    qty = v['inventoryQuantity']
-                    if qty != 0:
-                        item_id = str(v['inventoryItem']['id'])
-                        print(f"🔁 Queuing {qty} from '{title}'")
-                        move_variants.append((item_id, qty))
-                        total_delta += qty
+                variant_gid = v['id']
+                # Exclude destination variant (open) and source variant to avoid double-moving
+                if variant_gid == dest_gid or variant_gid == source_gid:
+                    continue
+                
+                # Move inventory from any variant that has inventory > 0
+                qty = v['inventoryQuantity']
+                if qty != 0:
+                    item_id = str(v['inventoryItem']['id'])
+                    variant_title = v.get('title', 'Unknown')
+                    print(f"🔁 Queuing {qty} from variant {variant_gid} ({variant_title})")
+                    move_variants.append((item_id, qty))
+                    total_delta += qty
 
             if total_delta == 0:
-                raise ValueError("No inventory found to move from early/veteran variants.")
+                raise ValueError("No inventory found to move from other variants.")
 
             dest_data = get_inventory_item_and_quantity(dest_gid)
             dest_id = str(dest_data['inventoryItemId'])
@@ -98,7 +106,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "success": True,
                 "message": f"Moved {total_delta} units into {dest_name}",
                 "details": {
-                    "from": "early+vet",
+                    "from": "all non-open variants",
                     "to": f"{dest_name} ({dest_gid})",
                     "amountMoved": total_delta
                 }

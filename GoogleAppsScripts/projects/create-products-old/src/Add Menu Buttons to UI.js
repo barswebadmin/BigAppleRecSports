@@ -60,7 +60,9 @@ function parseRowData(row, rowIndex) {
     "location": "location",
     "price": "price",
     "veteran registration start date/time\n(leave blank if no vet registration applies for this season)": "vetRegistrationStartDateTime",
-    "early registration start date/time": "earlyRegistrationStartDateTime",
+    "tnb/wtnb registration start date/time": "tnbWtnbRegistrationStartDateTime",
+    "bipoc registration start date/time (set to the same date/time as tnb/wtnb unless splitting the reg periods)": "bipocRegistrationStartDateTime",
+    "early registration start date/time": "earlyRegistrationStartDateTime", // Backward compatibility
     "open registration start date/time": "openRegistrationStartDateTime",
     "total inventory": "totalInventory",
   };
@@ -153,7 +155,14 @@ function createProduct() {
   rowObject.alternativeStartTime = {raw: rowObject['alternativeStartTime'], formatted: formatTimeOnly(rowObject["alternativeStartTime"])};
   rowObject.alternativeEndTime = {raw: rowObject['alternativeEndTime'], formatted: formatTimeOnly(rowObject["alternativeEndTime"])};
   rowObject.vetRegistrationStartDateTime = {raw: rowObject['vetRegistrationStartDateTime'], formatted: formatDateAndTime(rowObject["vetRegistrationStartDateTime"])};
-  rowObject.earlyRegistrationStartDateTime = {raw: rowObject['earlyRegistrationStartDateTime'], formatted: formatDateAndTime(rowObject["earlyRegistrationStartDateTime"])};
+  rowObject.tnbWtnbRegistrationStartDateTime = {raw: rowObject['tnbWtnbRegistrationStartDateTime'], formatted: formatDateAndTime(rowObject["tnbWtnbRegistrationStartDateTime"])};
+  rowObject.bipocRegistrationStartDateTime = {raw: rowObject['bipocRegistrationStartDateTime'], formatted: formatDateAndTime(rowObject["bipocRegistrationStartDateTime"])};
+  // Backward compatibility: derive earlyRegistrationStartDateTime from TNB/WTNB if not explicitly set
+  if (!rowObject['earlyRegistrationStartDateTime'] && rowObject['tnbWtnbRegistrationStartDateTime']) {
+    rowObject.earlyRegistrationStartDateTime = rowObject.tnbWtnbRegistrationStartDateTime;
+  } else {
+    rowObject.earlyRegistrationStartDateTime = {raw: rowObject['earlyRegistrationStartDateTime'], formatted: formatDateAndTime(rowObject["earlyRegistrationStartDateTime"])};
+  }
   rowObject.openRegistrationStartDateTime = {raw: rowObject['openRegistrationStartDateTime'], formatted: formatDateAndTime(rowObject["openRegistrationStartDateTime"])};
 
   const numOfWeeks = Math.round(

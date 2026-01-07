@@ -1,0 +1,1 @@
+../../../shopify/models/sgqlc_models/sgqlc_query.py

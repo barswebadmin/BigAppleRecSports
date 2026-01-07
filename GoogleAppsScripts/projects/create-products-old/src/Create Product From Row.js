@@ -2,7 +2,7 @@ function createProductFromRow(rowObject) {
   
   const apiEndpoint = API_DESTINATION === 'AWS' ? getSecret('AWS_CREATE_PRODUCT_ENDPOINT') : 'https://chubby-grapes-trade.loca.lt/products/create';
 
-  const { rowNumber, sport, day, sportSubCategory, division, season, year, socialOrAdvanced, types, newPlayerOrientationDateTime, scoutNightDateTime, openingPartyDate, seasonStartDate, seasonEndDate, offDatesCommaSeparated, rainDate, closingPartyDate, sportStartTime, sportEndTime, alternativeStartTime, alternativeEndTime, location, price, vetRegistrationStartDateTime, earlyRegistrationStartDateTime, openRegistrationStartDateTime, numOfWeeks } = rowObject;
+  const { rowNumber, sport, day, sportSubCategory, division, season, year, socialOrAdvanced, types, newPlayerOrientationDateTime, scoutNightDateTime, openingPartyDate, seasonStartDate, seasonEndDate, offDatesCommaSeparated, rainDate, closingPartyDate, sportStartTime, sportEndTime, alternativeStartTime, alternativeEndTime, location, price, vetRegistrationStartDateTime, tnbWtnbRegistrationStartDateTime, bipocRegistrationStartDateTime, earlyRegistrationStartDateTime, openRegistrationStartDateTime, numOfWeeks } = rowObject;
 
   Logger.log(`productCreate rowObject: \n ${JSON.stringify(rowObject,null,2)}`)
 
@@ -131,7 +131,7 @@ function createProductFromRow(rowObject) {
 
               <p><h2><span>REGISTRATION DATES/TIMES:</span></h2></p>
               <ul>
-                ${!!vetRegistrationStartDateTime.formatted ? `
+                ${!!vetRegistrationStartDateTime?.formatted ? `
                   <li>
                     <p>
                       <span><b>Vet Registration:</b> ${vetRegistrationStartDateTime.formatted ?? vetRegistrationStartDateTime.raw}
@@ -140,11 +140,46 @@ function createProductFromRow(rowObject) {
                     </p>
                   </li>` : ''
                 }
-                <li>
-                  <p>
-                    <span><b>${division === 'Open' ? 'W' : ''}TNB+ &amp; BIPOC Early Registration</b>: ${earlyRegistrationStartDateTime.formatted}</span>
-                  </p>
-                </li>
+                ${(() => {
+                  const hasTnbWtnb = tnbWtnbRegistrationStartDateTime && tnbWtnbRegistrationStartDateTime.formatted;
+                  const hasBipoc = bipocRegistrationStartDateTime && bipocRegistrationStartDateTime.formatted;
+                  
+                  // Helper to compare dates
+                  const datesEqual = (date1, date2) => {
+                    if (!date1 || !date2) return false;
+                    const raw1 = date1.raw || date1;
+                    const raw2 = date2.raw || date2;
+                    if (!raw1 || !raw2) return false;
+                    return new Date(raw1).getTime() === new Date(raw2).getTime();
+                  };
+                  
+                  if (hasTnbWtnb && hasBipoc && datesEqual(tnbWtnbRegistrationStartDateTime, bipocRegistrationStartDateTime)) {
+                    // Same date - show combined
+                    return `<li><p><span><b>${division === 'Open' ? 'W' : ''}TNB+ &amp; BIPOC Early Registration</b>: ${tnbWtnbRegistrationStartDateTime.formatted}</span></p></li>`;
+                  } else {
+                    // Different dates or only one present - show separately in chronological order
+                    const regs = [];
+                    if (hasTnbWtnb) {
+                      regs.push({
+                        name: `${division === 'Open' ? 'W' : ''}TNB+ Early Registration`,
+                        date: tnbWtnbRegistrationStartDateTime
+                      });
+                    }
+                    if (hasBipoc) {
+                      regs.push({
+                        name: 'BIPOC Early Registration',
+                        date: bipocRegistrationStartDateTime
+                      });
+                    }
+                    // Sort by date
+                    regs.sort((a, b) => {
+                      const dateA = new Date(a.date.raw || a.date);
+                      const dateB = new Date(b.date.raw || b.date);
+                      return dateA - dateB;
+                    });
+                    return regs.map(r => `<li><p><span><b>${r.name}</b>: ${r.date.formatted}</span></p></li>`).join('');
+                  }
+                })()}
                 <li>
                   <p>
                     <span><b>Open Registration:</b> ${openRegistrationStartDateTime.formatted}</span>
@@ -337,7 +372,25 @@ function createProductFromRow(rowObject) {
         const variantIdDigitsOnly = variantId.split("/").pop();
         updateVariantSettings(variantId);
         enableInventoryTracking(variantIdDigitsOnly);
-        const firstRegistrationStartDateTime = vetRegistrationStartDateTime.raw && vetRegistrationStartDateTime < earlyRegistrationStartDateTime ? vetRegistrationStartDateTime.raw : earlyRegistrationStartDateTime.raw  
+        // Determine first registration date (chronologically earliest)
+        const registrationDates = [];
+        if (vetRegistrationStartDateTime?.raw) {
+          registrationDates.push({date: vetRegistrationStartDateTime.raw, type: 'vet'});
+        }
+        if (tnbWtnbRegistrationStartDateTime?.raw) {
+          registrationDates.push({date: tnbWtnbRegistrationStartDateTime.raw, type: 'tnb'});
+        }
+        if (bipocRegistrationStartDateTime?.raw) {
+          registrationDates.push({date: bipocRegistrationStartDateTime.raw, type: 'bipoc'});
+        }
+        // Backward compatibility
+        if (earlyRegistrationStartDateTime?.raw && !tnbWtnbRegistrationStartDateTime?.raw && !bipocRegistrationStartDateTime?.raw) {
+          registrationDates.push({date: earlyRegistrationStartDateTime.raw, type: 'early'});
+        }
+        
+        // Sort by date and get the earliest
+        registrationDates.sort((a, b) => new Date(a.date) - new Date(b.date));
+        const firstRegistrationStartDateTime = registrationDates.length > 0 ? registrationDates[0].date : earlyRegistrationStartDateTime?.raw;  
         scheduleProductPublication(productIdDigitsOnly, firstRegistrationStartDateTime);
         createVariantsFromRow(rowObject)
         

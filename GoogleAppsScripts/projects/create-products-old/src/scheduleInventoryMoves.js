@@ -6,7 +6,9 @@ function scheduleInventoryMoves(selectedRow = null) {
 
   const productUrlColIndex = sheetHeaders.indexOf("Product URL");
   const vetVariantColIndex = sheetHeaders.indexOf("Vet Registration Variant ID");
-  const earlyVariantColIndex = sheetHeaders.indexOf("Early Registration Variant ID");
+  const wtnbVariantColIndex = sheetHeaders.indexOf("TNB/WTNB Registration Variant ID");
+  const bipocVariantColIndex = sheetHeaders.indexOf("BIPOC Registration Variant ID (if different)");
+  const earlyVariantColIndex = sheetHeaders.indexOf("Early Registration Variant ID"); // Backward compatibility
   const openVariantColIndex = sheetHeaders.indexOf("Open Registration Variant ID");
   
   const numTotalInventoryColIndex = sheetHeaders.indexOf("Total Inventory");
@@ -15,7 +17,11 @@ function scheduleInventoryMoves(selectedRow = null) {
   let validRows = [];
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (!!row[earlyVariantColIndex] && !!row[openVariantColIndex]) validRows.push({ rowIndex: i + 1, rowData: row });
+    // Valid if has open variant and at least one early variant (TNB/WTNB, BIPOC, or old Early)
+    const hasEarlyVariant = !!(row[wtnbVariantColIndex] || row[bipocVariantColIndex] || row[earlyVariantColIndex]);
+    if (hasEarlyVariant && !!row[openVariantColIndex]) {
+      validRows.push({ rowIndex: i + 1, rowData: row });
+    }
   }
 
   if (!selectedRow) {
@@ -54,156 +60,157 @@ function scheduleInventoryMoves(selectedRow = null) {
   const { rowData } = validRows.find(row => row.rowIndex == selectedRow);
   const productUrl = rowData[productUrlColIndex]
   const productIdDigitsOnly = productUrl?.split("/")?.pop();
-  // Handle blank/empty variant GIDs - check if they're valid non-empty strings
-  const vetGidRaw = rowData[vetVariantColIndex];
-  const vetGid = vetGidRaw && String(vetGidRaw).trim() !== '' ? String(vetGidRaw).trim() : null;
-  const earlyGidRaw = rowData[earlyVariantColIndex];
-  const earlyGid = earlyGidRaw && String(earlyGidRaw).trim() !== '' ? String(earlyGidRaw).trim() : null;
-  const openGidRaw = rowData[openVariantColIndex];
-  const openGid = openGidRaw && String(openGidRaw).trim() !== '' ? String(openGidRaw).trim() : null;
+  
+  // Helper to extract GID from sheet cell
+  const extractGid = (rawValue) => {
+    if (!rawValue) return null;
+    const str = String(rawValue).trim();
+    return str !== '' ? str : null;
+  };
+  
+  // Extract all variant GIDs
+  const vetGid = extractGid(rowData[vetVariantColIndex]);
+  const wtnbGid = extractGid(rowData[wtnbVariantColIndex]);
+  const bipocGid = extractGid(rowData[bipocVariantColIndex]);
+  const earlyGid = extractGid(rowData[earlyVariantColIndex]); // Backward compatibility
+  const openGid = extractGid(rowData[openVariantColIndex]);
   const numTotalInventory = rowData[numTotalInventoryColIndex]
   
   const sportSlug = mapSportToAbbreviation(rowObject.sport);
   const daySlug = rowObject.day.toLowerCase();
   const divisionSlug = rowObject.division.toLowerCase().split('+')[0] + 'Div'; // splits off the + from wtnb+
 
+  // Extract all registration dates
   const vetDateTime = rowObject.vetRegistrationStartDateTime;
-  const earlyDateTime = rowObject.earlyRegistrationStartDateTime;
+  const wtnbDateTime = rowObject.tnbWtnbRegistrationStartDateTime;
+  const bipocDateTime = rowObject.bipocRegistrationStartDateTime;
+  const earlyDateTime = rowObject.earlyRegistrationStartDateTime; // Backward compatibility
   const openDateTime = rowObject.openRegistrationStartDateTime;
 
-  // Format dates (formatDateToIso now handles empty/null values)
+  // Format dates
   const vetDateString = formatDateToIso(vetDateTime);
+  const wtnbDateString = formatDateToIso(wtnbDateTime);
+  const bipocDateString = formatDateToIso(bipocDateTime);
   const earlyDateString = formatDateToIso(earlyDateTime);
   const openDateString = formatDateToIso(openDateTime);
 
-  Logger.log(`rowObject: ${JSON.stringify(rowObject,null,2)} \n vettime is ${typeof vetDateTime}: ${JSON.stringify(vetDateTime)} \n earlytime is ${typeof earlyDateTime}: ${JSON.stringify(earlyDateTime)} \n opentime is ${typeof openDateTime}: ${JSON.stringify(openDateTime)}`)
-  Logger.log(`vetGid: ${vetGid}, earlyGid: ${earlyGid}, openGid: ${openGid}`);
+  Logger.log(`Variants - vet: ${vetGid}, wtnb: ${wtnbGid}, bipoc: ${bipocGid}, early: ${earlyGid}, open: ${openGid}`);
+  Logger.log(`Dates - vet: ${vetDateString}, wtnb: ${wtnbDateString}, bipoc: ${bipocDateString}, early: ${earlyDateString}, open: ${openDateString}`);
 
-  let reg1, reg2, time1, time2, gid1, gid2
+  // Build chronological array of all variants
+  const variants = [];
+  
   if (vetGid && vetDateString) {
-    Logger.log('yes vetGid and vetDateString')
-    // Compare dates properly - extract raw values for comparison
-    const vetDateRaw = typeof vetDateTime === 'object' && vetDateTime.raw ? vetDateTime.raw : vetDateTime;
-    const earlyDateRaw = typeof earlyDateTime === 'object' && earlyDateTime.raw ? earlyDateTime.raw : earlyDateTime;
-    
-    if (vetDateRaw && earlyDateRaw && new Date(vetDateRaw) < new Date(earlyDateRaw)) {
-      Logger.log('vet is before early')
-      reg1 = 'vet'
-      time1 = vetDateString
-      gid1 = vetGid
-      reg2 = 'early'
-      time2 = earlyDateString
-      gid2 = earlyGid
-    } else {
-      Logger.log('early is before vet (or vet date missing)')
-      reg1 = 'early'
-      time1 = earlyDateString
-      gid1 = earlyGid
-      reg2 = 'vet'
-      time2 = vetDateString
-      gid2 = vetGid
-    }
-  } else {
-    Logger.log('no vetGid or no vetDateString - skipping vet registration')
-    // When there's no vet registration, skip directly to early
-    reg1 = 'early'
-    time1 = earlyDateString
-    gid1 = earlyGid
-    reg2 = 'open'
-    time2 = openDateString
-    gid2 = openGid
-  }
-  Logger.log(`Final assignments - reg1: ${reg1}, time1: ${time1}, gid1: ${gid1}`);
-  Logger.log(`Final assignments - reg2: ${reg2}, time2: ${time2}, gid2: ${gid2}`);
-
-  const requests = []
-  // Only create vet-to-early movement if both vetGid and vetDateString exist
-  // and we're not already going directly from early to open
-  if (vetGid && vetDateString && reg1 === 'vet' && reg2 === 'early') {
-    Logger.log('Creating vet-to-early inventory movement');
-    requests.push({
-      actionType: `create-scheduled-inventory-movements`,
-      scheduleName: `auto-move-${sportSlug}-${daySlug}-${productIdDigitsOnly}-${reg1}-to-${reg2}`,
-      groupName: `move-inventory-between-variants-${sportSlug}`,
-      productUrl: productUrl,
-      sourceVariant: {
-        type: reg1,
-        name: `${capitalize(reg1)} Registration`,
-        gid: gid1
-      },
-      destinationVariant: {
-        type: reg2,
-        name: `${capitalize(reg2)} Registration`,
-        gid: gid2
-      },
-      newDatetime: time2,
-      note: "newDateTime is in UTC (ET is 4 hours earlier than what this says)"
+    variants.push({
+      type: 'vet',
+      name: 'Veteran Registration',
+      gid: vetGid,
+      date: vetDateString,
+      dateRaw: vetDateTime
     });
-  } else if (vetGid && vetDateString && reg1 === 'early' && reg2 === 'vet') {
-    Logger.log('Creating early-to-vet inventory movement');
-    requests.push({
-      actionType: `create-scheduled-inventory-movements`,
-      scheduleName: `auto-move-${sportSlug}-${daySlug}-${productIdDigitsOnly}-${reg1}-to-${reg2}`,
-      groupName: `move-inventory-between-variants-${sportSlug}`,
-      productUrl: productUrl,
-      sourceVariant: {
-        type: reg1,
-        name: `${capitalize(reg1)} Registration`,
-        gid: gid1
-      },
-      destinationVariant: {
-        type: reg2,
-        name: `${capitalize(reg2)} Registration`,
-        gid: gid2
-      },
-      newDatetime: time2,
-      note: "newDateTime is in UTC (ET is 4 hours earlier than what this says)"
-    });
-  } else {
-    Logger.log('Skipping vet-to-early movement (no vet variant or date)');
   }
-
-  requests.push({
-    actionType: `create-scheduled-inventory-movements`,
-    scheduleName: `auto-move-${productIdDigitsOnly}-${sportSlug}-${daySlug}-${divisionSlug}-${reg2}-to-open`,
-    groupName: `move-inventory-between-variants-${sportSlug}`,
-    productUrl: productUrl,
-    sourceVariant: {
-      type: reg2,
-      name: `${capitalize(reg2)} Registration`,
-      gid: gid2
-    },
-    destinationVariant: {
+  
+  // Handle TNB/WTNB and BIPOC variants
+  if (wtnbGid && wtnbDateString) {
+    variants.push({
+      type: 'wtnb',
+      name: `${rowObject.division === 'Open' ? 'W' : ''}TNB+ Early Registration`,
+      gid: wtnbGid,
+      date: wtnbDateString,
+      dateRaw: wtnbDateTime
+    });
+  }
+  
+  if (bipocGid && bipocDateString) {
+    variants.push({
+      type: 'bipoc',
+      name: 'BIPOC Early Registration',
+      gid: bipocGid,
+      date: bipocDateString,
+      dateRaw: bipocDateTime
+    });
+  }
+  
+  // Backward compatibility: if old early variant exists but new ones don't
+  if (earlyGid && earlyDateString && !wtnbGid && !bipocGid) {
+    variants.push({
+      type: 'early',
+      name: `${rowObject.division === 'Open' ? 'W' : ''}TNB+ and BIPOC Early Registration`,
+      gid: earlyGid,
+      date: earlyDateString,
+      dateRaw: earlyDateTime
+    });
+  }
+  
+  if (openGid && openDateString) {
+    variants.push({
       type: 'open',
       name: 'Open Registration',
-      gid: openGid
-    },
-    newDatetime: openDateString,
-    note: "newDateTime is in UTC (ET is 4 hours earlier than what this says)"
-  })
+      gid: openGid,
+      date: openDateString,
+      dateRaw: openDateTime
+    });
+  }
+  
+  // Sort chronologically by date
+  variants.sort((a, b) => {
+    const dateA = a.dateRaw?.raw || a.dateRaw || a.date;
+    const dateB = b.dateRaw?.raw || b.dateRaw || b.date;
+    return new Date(dateA) - new Date(dateB);
+  });
+  
+  Logger.log(`Chronological variants: ${JSON.stringify(variants.map(v => ({type: v.type, date: v.date})), null, 2)}`);
+
+  const requests = []
+  
+  // Create movement requests in chronological order
+  // Each variant moves to the next one in sequence
+  for (let i = 0; i < variants.length - 1; i++) {
+    const source = variants[i];
+    const dest = variants[i + 1];
+    
+    Logger.log(`Creating movement: ${source.type} → ${dest.type}`);
+    requests.push({
+      actionType: `create-scheduled-inventory-movements`,
+      scheduleName: `auto-move-${sportSlug}-${daySlug}-${productIdDigitsOnly}-${source.type}-to-${dest.type}`,
+      groupName: `move-inventory-between-variants-${sportSlug}`,
+      productUrl: productUrl,
+      sourceVariant: {
+        type: source.type,
+        name: source.name,
+        gid: source.gid
+      },
+      destinationVariant: {
+        type: dest.type,
+        name: dest.name,
+        gid: dest.gid
+      },
+      newDatetime: dest.date,
+      note: "newDateTime is in UTC (ET is 4 hours earlier than what this says)"
+    });
+  }
 
   // START OF STARTING INVENTORY UPDATE
-  // Use the first registration variant (vet if exists, otherwise early)
+  // Use the first registration variant (chronologically earliest)
   // Ensure we have a valid variant GID before scheduling
-  const firstVariantGid = vetGid || earlyGid;
-  const firstVariantDate = vetDateString || earlyDateString;
+  const firstVariant = variants.length > 0 ? variants[0] : null;
   
-  if (!firstVariantGid) {
-    Logger.log(`❌ No valid variant GID found for initial inventory addition. vetGid: ${vetGid}, earlyGid: ${earlyGid}`);
-    SpreadsheetApp.getUi().alert(`❌ Error: No valid variant GID found. Please ensure at least one variant (Veteran or Early) has a valid GID in the spreadsheet.`);
+  if (!firstVariant) {
+    Logger.log(`❌ No valid variant found for initial inventory addition.`);
+    SpreadsheetApp.getUi().alert(`❌ Error: No valid variant found. Please ensure at least one variant has a valid GID and date in the spreadsheet.`);
     return;
   }
   
-  if (firstVariantGid && firstVariantDate) {
+  if (firstVariant.gid && firstVariant.date) {
     requests.push({
       actionType: `create-initial-inventory-addition-and-title-change`,
       scheduleName: `auto-set-${productIdDigitsOnly}-${sportSlug}-${daySlug}-${divisionSlug}-live`,
       groupName: `set-product-live`,
       productUrl: productUrl,
       productTitle: `Big Apple ${rowObject.sport} - ${rowObject.day} - ${rowObject.division} Division - ${rowObject.season} ${rowObject.year}`,
-      variantGid: firstVariantGid,
+      variantGid: firstVariant.gid,
       inventoryToAdd: numTotalInventory,
-      newDatetime: firstVariantDate,
+      newDatetime: firstVariant.date,
       note: "newDateTime is in UTC (ET is 4 hours earlier than what this says)"
     });
   }

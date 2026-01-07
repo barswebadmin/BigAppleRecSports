@@ -1,0 +1,1 @@
+../../../../backend/modules/integrations/shopify/models/sgqlc_models/customer.py
