@@ -13,14 +13,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from modules.integrations.slack.client import SlackClient
 
-from config.leadership import load_hierarchy_config
-from config.slack import SlackConfig
+from modules.leadership.domain.hierarchy_config import load_hierarchy_config
+from config_old_deprecated.slack import SlackConfig
 from modules.integrations.google import GoogleSheetsClient
 from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
 from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
 from modules.integrations.slack.helpers import download_and_parse_csv
-from modules.integrations.slack.bot_apps.leadership_bot import leadership_bot
-from modules.integrations.slack.bot_apps.results_formatter import LeadershipResultsFormatter
+from modules.integrations.slack.bot_apps import leadership_bot
+from modules.leadership.services.results_formatter import LeadershipResultsFormatter
 from modules.integrations.slack.user_lookup import lookup_user_ids_by_emails, enrich_hierarchy
 from modules.leadership.services.csv_parser import LeadershipCSVParser
 from shared.csv import parse_csv_text

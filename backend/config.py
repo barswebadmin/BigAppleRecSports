@@ -5,10 +5,12 @@ Supports nested dot notation (e.g., GOOGLE.SERVICE_ACCOUNT_FILE -> config.GOOGLE
 from dotenv import load_dotenv, find_dotenv
 import os
 import json
+import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
 
+logger = logging.getLogger("ConfigLogger")
 class Config:
     """
     Programmatic configuration that loads .env and exposes all environment variables
@@ -57,7 +59,14 @@ class Config:
                 return
             
             # Construct path relative to backend directory
-            backend_dir = Path(__file__).parent
+            # config.py might be in backend/config/__init__.py or backend/config.py
+            # Go up to backend/ directory
+            config_file_dir = Path(__file__).parent
+            # If we're in backend/config/, go up one level to backend/
+            if config_file_dir.name == 'config':
+                backend_dir = config_file_dir.parent
+            else:
+                backend_dir = config_file_dir
             service_account_path = backend_dir / service_account_file
             
             if service_account_path.exists():
@@ -69,10 +78,21 @@ class Config:
                     setattr(self, 'GOOGLE', Config({}))
                 
                 google_config = getattr(self, 'GOOGLE')
+                # Ensure google_config is a Config object, not None
+                if google_config is None:
+                    google_config = Config({})
+                    setattr(self, 'GOOGLE', google_config)
+                
                 setattr(google_config, 'SERVICE_ACCOUNT', service_account_data)
-        except Exception:
-            # Silently fail if file doesn't exist or can't be loaded
-            pass
+            else:
+                # File doesn't exist - log but don't fail (might be optional in some environments)
+                logger.warning(
+                    f"Google service account file not found: {service_account_path}. "
+                    "Google API clients will not be available."
+                )
+        except Exception as e:
+            # Log the error but don't fail config loading
+            logger.error(f"Failed to load Google service account: {e}")
     
     def _load_all_env_vars(self):
         """Load all environment variables and organize by dot notation."""

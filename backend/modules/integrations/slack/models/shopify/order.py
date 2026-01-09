@@ -1,1 +1,0 @@
-../../../shopify/models/sgqlc_models/order.py

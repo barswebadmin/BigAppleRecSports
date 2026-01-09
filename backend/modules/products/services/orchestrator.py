@@ -15,7 +15,8 @@ from new_structure_target.clients.slack.core.slack_client import SlackClient
 from new_structure_target.clients.google_apps_script.gas_client import GASClient
 from .handlers.order_create_handler import evaluate_order_create_webhook
 from .handlers.product_update_handler import evaluate_product_update_webhook
-from ../../../../config import SlackChannel, SlackBot, SlackGroup
+from backend.modules.integrations.slack.models.slack_group import SlackGroupConstants as SlackGroup
+from backend.modules.integrations.slack.models.slack_channel import SlackChannel
 from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
 
 

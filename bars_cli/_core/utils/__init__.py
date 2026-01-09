@@ -10,6 +10,14 @@ from .normalizers import (
     camel_to_snake,
 )
 
+from .json_output import (
+    to_json_data,
+    output_json,
+    output_json_item,
+    output_json_list,
+    output_json_error,
+)
+
 __all__ = [
     "normalize_phone_number",
     "normalize_ssn",
@@ -18,5 +26,10 @@ __all__ = [
     "normalize_string",
     "snake_to_camel",
     "camel_to_snake",
+    "to_json_data",
+    "output_json",
+    "output_json_item",
+    "output_json_list",
+    "output_json_error",
 ]
 

@@ -13,9 +13,11 @@ from pathlib import Path
 from sgqlc.operation import Operation
 from sgqlc.endpoint.http import HTTPEndpoint
 
-# Import from shared_utils for environment/config loading
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from shared_utils import load_environment, get_shopify_config
+# Import from backend config
+backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
+if str(backend_path) not in sys.path:
+    sys.path.insert(0, str(backend_path))
+from config import config as global_config  # type: ignore[import-untyped]
 
 
 class ShopifySGQLCClient:
@@ -45,9 +47,66 @@ class ShopifySGQLCClient:
             RuntimeError: If environment loading fails or required credentials are missing
         """
         if config is None:
-            # Load environment and get config
-            load_environment(environment)
-            config = get_shopify_config(environment)
+            # Get config from global config singleton
+            env = environment.lower()
+            # Type ignore: global_config is a global singleton, not None
+            shopify_config = getattr(global_config, 'SHOPIFY', None)  # type: ignore[attr-defined]
+            
+            if env in ["staging", "production"]:
+                # Access nested structure: SHOPIFY.STORE_ID, SHOPIFY.TOKEN.ADMIN, etc.
+                store_id = None
+                token = None
+                
+                if shopify_config:
+                    store_id = getattr(shopify_config, "STORE_ID", None) or getattr(shopify_config, "STORE", None)
+                    # Handle nested TOKEN namespace: SHOPIFY.TOKEN.ADMIN
+                    token_obj = getattr(shopify_config, "TOKEN", None)
+                    if token_obj:
+                        token = (
+                            getattr(token_obj, "ADMIN", None) or
+                            getattr(token_obj, "WRITE_ORDERS_READ_PRODUCTS_CUSTOMERS", None)
+                        )
+                
+                # Fallback to direct env var access (handles SHOPIFY.TOKEN.ADMIN format)
+                import os
+                if not store_id:
+                    store_id = os.getenv("SHOPIFY_STORE_ID") or os.getenv("SHOPIFY_STORE") or os.getenv("SHOPIFY.STORE_ID")
+                if not token:
+                    # Try multiple formats: SHOPIFY.TOKEN.ADMIN, SHOPIFY_TOKEN_ADMIN, etc.
+                    token = (
+                        os.getenv("SHOPIFY.TOKEN.ADMIN") or
+                        os.getenv("SHOPIFY.TOKEN.WRITE_ORDERS_READ_PRODUCTS_CUSTOMERS") or
+                        os.getenv("SHOPIFY_TOKEN_ADMIN") or
+                        os.getenv("SHOPIFY_TOKEN") or
+                        os.getenv("SHOPIFY_TOKEN_WRITE_ORDERS_READ_PRODUCTS_CUSTOMERS")
+                    )
+            else:
+                # Development environment
+                store_id = None
+                token = None
+                
+                if shopify_config:
+                    store_id = getattr(shopify_config, "DEV_STORE_ID", None) or getattr(shopify_config, "DEV_STORE", None)
+                    token = getattr(shopify_config, "DEV_TOKEN", None)
+                
+                # Fallback to direct env var access
+                if not store_id or not token:
+                    import os
+                    store_id = store_id or os.getenv("SHOPIFY_DEV_STORE_ID") or os.getenv("SHOPIFY_DEV_STORE")
+                    token = token or os.getenv("SHOPIFY_DEV_TOKEN")
+            
+            if not store_id or not token:
+                raise RuntimeError(f"Missing Shopify credentials for environment: {env}")
+            
+            config = {
+                "store_id": store_id,
+                "token": token,
+                "graphql_url": f"https://{store_id}.myshopify.com/admin/api/2025-07/graphql.json",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "X-Shopify-Access-Token": token,
+                }
+            }
         
         self.config = config
         self.environment = environment

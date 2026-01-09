@@ -1,7 +1,7 @@
 import pytest
 from typing import Dict, List, Any, Optional
 from modules.leadership.domain.models import LeadershipMember, Position, LeadershipHierarchy
-from modules.integrations.slack.bot_apps.results_formatter import (
+from modules.leadership.services.results_formatter import (
     LeadershipResultsFormatter,
     AnalysisResult,
     PositionStatus

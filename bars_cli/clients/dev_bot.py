@@ -1,1 +1,0 @@
-../../backend/modules/integrations/slack/bot_apps/dev_bot.py

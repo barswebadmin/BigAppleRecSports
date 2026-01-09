@@ -7,7 +7,7 @@ import logging
 
 from backend.modules.integrations.shopify.models import FetchOrderRequest
 from .shopify_client import ShopifyClient
-from ..builders.shopify_request_builders import build_order_fetch_request_payload
+# from ..builders.shopify_request_builders import build_order_fetch_request_payload  # DEPRECATED: replaced by sgqlc
 from backend.config import config
 
 # Add parent directory to path for imports

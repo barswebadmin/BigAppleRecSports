@@ -5,7 +5,7 @@ Handles common authentication and transport logic for all Google API clients.
 """
 
 import logging
-from typing import Optional, Dict, Any, NoReturn, List, Callable, Tuple, TypeVar, cast
+from typing import Optional, Dict, Any, NoReturn, List, Callable, Tuple, TypeVar, cast, TypedDict
 from abc import ABC, abstractmethod
 from functools import wraps
 
@@ -20,6 +20,25 @@ from backend.config import config
 logger = logging.getLogger(__name__)
 
 F = TypeVar('F', bound=Callable[..., Any])
+
+
+class GoogleServiceAccountInfo(TypedDict, total=False):
+    """Google service account JSON structure.
+    
+    All fields are strings. The 'subject' field is optional (for domain-wide delegation).
+    """
+    type: str  # 'service_account'
+    project_id: str
+    private_key_id: str
+    private_key: str
+    client_email: str
+    client_id: str
+    auth_uri: str
+    token_uri: str
+    auth_provider_x509_cert_url: str
+    client_x509_cert_url: str
+    universe_domain: str
+    subject: str  # Optional - for domain-wide delegation
 
 
 def handle_http_errors(func: F) -> F:
@@ -54,7 +73,7 @@ class GoogleAPIClient(ABC):
     
     def __init__(
         self,
-        service_account_info: Optional[Dict[str, Any]] = None,
+        service_account_info: Optional[GoogleServiceAccountInfo] = None,
         subject: Optional[str] = None
     ):
         """
@@ -73,41 +92,71 @@ class GoogleAPIClient(ABC):
         scopes = self._get_scopes()
         
         try:
+            # Get subject from parameter first, then fall back to service_account_info dict
+            if subject is None and isinstance(service_account_info, dict):
+                subject = service_account_info.get("subject", None)
+            
+            # Pass subject directly to from_service_account_info (this works, with_subject() doesn't)
             self.base_credentials = service_account.Credentials.from_service_account_info(
                 service_account_info,
+                subject=subject,
                 scopes=scopes
             )
+            self.credentials = self.base_credentials
             
             if subject:
-                self.credentials = self.base_credentials.with_subject(subject)
                 logger.info(f"✅ Using domain-wide delegation with subject: {subject}")
             else:
-                self.credentials = self.base_credentials
+                logger.warning("⚠️ No subject provided - using service account directly (may have limited permissions)")
             
             logger.info(
                 f"✅ {self.__class__.__name__} initialized with service account: "
                 f"{self.base_credentials.service_account_email}"
             )
-            
         except Exception as e:
             logger.error(f"Failed to initialize {self.__class__.__name__}: {e}")
             raise ValueError(f"Invalid Google service account credentials: {e}")
     
     @staticmethod
     def _get_service_account_info(
-        service_account_info: Optional[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        service_account_info: Optional[GoogleServiceAccountInfo]
+    ) -> GoogleServiceAccountInfo:
         """Load service account info from config if not provided."""
         if service_account_info is not None:
+            if not isinstance(service_account_info, dict):
+                raise ValueError(
+                    f"service_account_info must be a dict, got {type(service_account_info).__name__}"
+                )
             return service_account_info
         
         google_config = getattr(config, 'GOOGLE', None)
-        if not google_config or not hasattr(google_config, 'SERVICE_ACCOUNT'):
+        if not google_config:
             raise ValueError(
                 "Google service account credentials not found in config. "
                 "Please ensure google-service-account.json exists in the backend/ directory."
             )
-        return getattr(google_config, 'SERVICE_ACCOUNT')
+        
+        if not hasattr(google_config, 'SERVICE_ACCOUNT'):
+            raise ValueError(
+                "Google service account credentials not found in config.GOOGLE. "
+                "Please ensure google-service-account.json exists in the backend/ directory."
+            )
+        
+        service_account: Optional[GoogleServiceAccountInfo] = getattr(google_config, 'SERVICE_ACCOUNT')
+        
+        if service_account is None:
+            raise ValueError(
+                "Google service account credentials are None in config.GOOGLE.SERVICE_ACCOUNT. "
+                "Please ensure google-service-account.json exists in the backend/ directory and is valid JSON."
+            )
+        
+        if not isinstance(service_account, dict):
+            raise ValueError(
+                f"Google service account credentials must be a dict, got {type(service_account).__name__}. "
+                "Please check that google-service-account.json contains valid JSON."
+            )
+        
+        return service_account
     
     def _get_scopes(self) -> List[str]:
         """Return list of OAuth scopes required for this API."""

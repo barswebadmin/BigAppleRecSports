@@ -2,12 +2,12 @@
 Integration bridge between hierarchy config (schema) and domain models (data).
 
 This module connects:
-- config/leadership/hierarchy_loader.py (expected structure)
+- modules/leadership/domain/hierarchy_config.py (expected structure)
 - modules/leadership/domain/models.py (actual people/data)
 """
 from typing import Optional, List, Tuple
 
-from config.leadership import HierarchyConfig, PositionConfig, SectionConfig
+from modules.leadership.domain.hierarchy_config import HierarchyConfig, PositionConfig, SectionConfig
 from modules.leadership.domain.models import (
     Position,
     LeadershipMember,

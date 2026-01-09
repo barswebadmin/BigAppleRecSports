@@ -218,7 +218,7 @@ def get_required_scope_for_error(error_code: str, api_method: Optional[str] = No
         Required scope name if known, None otherwise
     """
     # Import from backend (sys.path is set in main.py)
-    from modules.integrations.slack.client import SlackClient
+    from bars_cli.backend_services.slack.client import SlackClient
     return SlackClient.get_required_scope_for_error(error_code, api_method)
 
 

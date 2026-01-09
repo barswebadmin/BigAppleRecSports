@@ -14,7 +14,7 @@ from slack_sdk.errors import SlackApiError, SlackClientError
 
 # Our systems
 from config import config
-from config.slack import SlackBot, SlackChannel
+from config_old_deprecated.slack import SlackBot, SlackChannel
 # from models.slack import Slack, RefundType, SlackMessageType
 
 # Existing services
@@ -80,6 +80,330 @@ class SlackService:
         # self.message_parsers = self._get_message_parsers()
         # self.order_handlers = SlackOrderHandlers(self.orders_service, self, self.message_builder)
 
+    # ============================================================================
+    # IDENTIFIER NORMALIZATION METHODS (for CLI parameter types)
+    # ============================================================================
+    
+    @staticmethod
+    def normalize_user_identifier(identifier: str) -> Dict[str, Any]:
+        """Convert Slack user identifier input to dict format.
+        
+        Slack users can be identified by:
+        - Email address
+        - User ID (e.g., U03LZKQSHEU)
+        - Handle/username (e.g., "jrandazzo")
+        - Display name (e.g., "John Randazzo")
+        
+        Args:
+            identifier: Raw identifier string from user input
+            
+        Returns:
+            Dict with keys: "email", "user_id", "handle", or "display_name"
+            
+        Raises:
+            ValueError: If identifier format is invalid
+        """
+        import validators
+        import re
+        from modules.integrations.slack.models.slack_user import SlackUser
+        
+        identifier = identifier.strip() if identifier else ""
+        if not identifier:
+            raise ValueError("Slack user identifier cannot be empty")
+        
+        params: Dict[str, Any] = {}
+        
+        # Check if it's a valid email
+        if validators.email(identifier):
+            params["email"] = identifier
+            return params
+        
+        # Check if it's a valid Slack user ID using model validation
+        if SlackUser.is_valid_user_id(identifier):
+            params["user_id"] = identifier
+            return params
+        
+        # Check if it's a valid handle (username)
+        # Slack usernames are 1-80 characters, alphanumeric, hyphens, underscores, periods
+        # Cannot start with period
+        if re.match(r'^[a-zA-Z0-9_-][a-zA-Z0-9_.-]{0,79}$', identifier):
+            params["handle"] = identifier
+            return params
+        
+        # Otherwise, treat as display name (can contain spaces and other characters)
+        # Display names are typically 1-80 characters but can be longer
+        if len(identifier) > 0:
+            params["display_name"] = identifier
+            return params
+        
+        raise ValueError(
+            f"Invalid Slack user identifier: '{identifier}'\n"
+            f"   Must be a valid email, user ID (e.g., U03LZKQSHEU), handle, or display name"
+        )
+    
+    @staticmethod
+    def normalize_channel_identifier(identifier: str) -> Dict[str, Any]:
+        """Convert Slack channel identifier input to dict format.
+        
+        Slack channels can be identified by channel ID (e.g., C092RU7R6PL) or name
+        (e.g., "general", "#general", "kickball-leadership").
+        
+        Channel names can contain:
+        - Alphanumeric characters
+        - Hyphens (-)
+        - Underscores (_)
+        - Optional leading hash (#)
+        
+        Args:
+            identifier: Raw identifier string from user input
+            
+        Returns:
+            Dict with keys: "channel_id" or "name"
+            
+        Raises:
+            ValueError: If identifier format is invalid
+        """
+        import re
+        from modules.integrations.slack.models.slack_channel import SlackChannel
+        
+        identifier = identifier.strip() if identifier else ""
+        if not identifier:
+            raise ValueError("Slack channel identifier cannot be empty")
+        
+        params: Dict[str, Any] = {}
+        
+        # Check if it's a valid Slack channel ID using model validation
+        if SlackChannel.is_valid_channel_id(identifier):
+            params["channel_id"] = identifier
+            return params
+        
+        # Check if it's a valid channel name
+        # Remove leading # if present
+        name = identifier.lstrip('#')
+        
+        # Validate channel name: alphanumeric, hyphens, underscores only
+        # Slack channel names must be 1-80 characters
+        if not name:
+            raise ValueError(
+                f"Invalid Slack channel identifier: '{identifier}'\n"
+                f"   Channel name cannot be empty (only '#' provided)"
+            )
+        
+        if len(name) > 80:
+            raise ValueError(
+                f"Invalid Slack channel identifier: '{identifier}'\n"
+                f"   Channel name must be 80 characters or less, got {len(name)}"
+            )
+        
+        # Validate characters: alphanumeric, hyphens, underscores only
+        if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+            raise ValueError(
+                f"Invalid Slack channel identifier: '{identifier}'\n"
+                f"   Channel name can only contain alphanumeric characters, hyphens, and underscores"
+            )
+        
+        params["name"] = name
+        return params
+    
+    @staticmethod
+    def normalize_group_identifier(identifier: str) -> Dict[str, Any]:
+        """Convert Slack usergroup identifier input to dict format.
+        
+        Slack usergroups can be identified by:
+        - Group ID (e.g., S03LZKQSHEU)
+        - Handle (e.g., "leadership", "@leadership", "dodgeball-monday")
+        - Name (e.g., "Leadership Team", "#leadership")
+        
+        Usergroup handles/names can contain:
+        - Alphanumeric characters
+        - Hyphens (-)
+        - Underscores (_)
+        - Optional leading @ or #
+        
+        Args:
+            identifier: Raw identifier string from user input
+            
+        Returns:
+            Dict with keys: "group_id", "handle", or "name"
+            
+        Raises:
+            ValueError: If identifier format is invalid
+        """
+        import re
+        
+        identifier = identifier.strip() if identifier else ""
+        if not identifier:
+            raise ValueError("Slack usergroup identifier cannot be empty")
+        
+        params: Dict[str, Any] = {}
+        
+        # Check if it's a valid Slack usergroup ID
+        # Usergroup IDs start with 'S' and are 11 characters long, alphanumeric
+        if identifier.startswith('S') and len(identifier) == 11 and identifier.isalnum():
+            params["group_id"] = identifier
+            return params
+        
+        # Check if it's a valid handle/name
+        # Remove leading @ or # if present (normalize both for convenience)
+        name = identifier.lstrip('@#')
+        
+        # Validate name: alphanumeric, hyphens, underscores only
+        # Slack usergroup handles/names must be 1-255 characters
+        if not name:
+            raise ValueError(
+                f"Invalid Slack usergroup identifier: '{identifier}'\n"
+                f"   Name/handle cannot be empty (only '@' or '#' provided)"
+            )
+        
+        if len(name) > 255:
+            raise ValueError(
+                f"Invalid Slack usergroup identifier: '{identifier}'\n"
+                f"   Name/handle must be 255 characters or less, got {len(name)}"
+            )
+        
+        # Validate characters: alphanumeric, hyphens, underscores only
+        if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+            raise ValueError(
+                f"Invalid Slack usergroup identifier: '{identifier}'\n"
+                f"   Name/handle can only contain alphanumeric characters, hyphens, and underscores"
+            )
+        
+        # Return as "name" to match user's request (handle and name are often the same in practice)
+        params["name"] = name
+        return params
+
+    # ============================================================================
+    # CLIENT AND SERVICE FACTORY METHODS (for CLI commands)
+    # ============================================================================
+    
+    def get_web_client(self, bot_name: str = 'leadership') -> WebClient:
+        """Get a WebClient instance for a specific bot.
+        
+        Args:
+            bot_name: Name of the bot (dev, exec, leadership, etc.)
+            
+        Returns:
+            WebClient instance with bot token configured
+            
+        Raises:
+            ValueError: If bot name is invalid
+        """
+        bot_name = bot_name.lower()
+        
+        bot_map = {
+            'dev': self.config.Slack.Bots.Dev,
+            'exec': self.config.Slack.Bots.Exec,
+            'leadership': self.config.Slack.Bots.Leadership,
+            'payment_assistance': self.config.Slack.Bots.PaymentAssistance,
+            'refunds': self.config.Slack.Bots.Refunds,
+            'registrations': self.config.Slack.Bots.Registrations,
+            'web': self.config.Slack.Bots.Web,
+        }
+        
+        bot = bot_map.get(bot_name)
+        if not bot:
+            available = ', '.join(bot_map.keys())
+            raise ValueError(
+                f"Unknown bot: {bot_name}. Available: {available}"
+            )
+        
+        return WebClient(token=bot.token)
+    
+    def get_usergroup_service(self, bot_name: str = 'leadership') -> 'UsergroupService':  # type: ignore
+        """Get a UsergroupService instance for a specific bot.
+        
+        Args:
+            bot_name: Name of the bot (dev, exec, leadership, etc.)
+            
+        Returns:
+            UsergroupService instance with WebClient configured
+            
+        Raises:
+            ValueError: If bot name is invalid
+        """
+        from .services import UsergroupService
+        client = self.get_web_client(bot_name)
+        return UsergroupService(client)
+    
+    def get_usergroup_provisioner(self, bot_name: str = 'leadership') -> 'UsergroupProvisioner':  # type: ignore
+        """Get a UsergroupProvisioner instance for a specific bot.
+        
+        Args:
+            bot_name: Name of the bot (dev, exec, leadership, etc.)
+            
+        Returns:
+            UsergroupProvisioner instance with UsergroupService configured
+            
+        Raises:
+            ValueError: If bot name is invalid
+        """
+        from .services import UsergroupProvisioner
+        service = self.get_usergroup_service(bot_name)
+        return UsergroupProvisioner(service)
+    
+    def resolve_group_identifier(self, identifier: Dict[str, Any], bot_name: str = 'leadership') -> Optional[Dict[str, Any]]:
+        """Resolve a group identifier dict to a group dict.
+        
+        Args:
+            identifier: Dict with keys: "group_id", "name", or "handle"
+            bot_name: Name of the bot to use
+            
+        Returns:
+            Group dict if found, None otherwise
+        """
+        service = self.get_usergroup_service(bot_name)
+        
+        if 'group_id' in identifier:
+            return service.get_group_by_id(identifier['group_id'])
+        elif 'name' in identifier:
+            # Try handle first (most common)
+            group_data = service.get_group_by_handle(identifier['name'])
+            if group_data:
+                return group_data
+            # Try name field
+            groups = service.list_groups(include_disabled=True)
+            return next((g for g in groups if g.get('name') == identifier['name']), None)
+        
+        return None
+    
+    def resolve_user_identifier(self, identifier: Dict[str, Any], bot_name: str = 'leadership') -> Optional[Dict[str, Any]]:
+        """Resolve a user identifier dict to a user dict.
+        
+        Args:
+            identifier: Dict with keys: "email", "user_id", "handle", or "display_name"
+            bot_name: Name of the bot to use
+            
+        Returns:
+            User dict if found, None otherwise
+        """
+        from .user_lookup import lookup_user, list_all_users
+        from .client.main import SlackUserIdentifier
+        
+        client = self.get_web_client(bot_name)
+        
+        if 'user_id' in identifier:
+            lookup_id = SlackUserIdentifier(user_id=identifier['user_id'])
+            return lookup_user(client, lookup_id)
+        elif 'email' in identifier:
+            lookup_id = SlackUserIdentifier(email=identifier['email'])
+            return lookup_user(client, lookup_id)
+        elif 'handle' in identifier or 'display_name' in identifier:
+            # Search through all users (this is less efficient but necessary)
+            search_term = identifier.get('handle') or identifier.get('display_name', '')
+            users = list_all_users(client)
+            
+            for user_dict in users:
+                # Check handle (name field)
+                if identifier.get('handle') and user_dict.get('name', '').lower() == search_term.lower():
+                    return user_dict
+                # Check display_name
+                if identifier.get('display_name'):
+                    profile = user_dict.get('profile', {})
+                    display_name = profile.get('display_name', '') or profile.get('real_name', '')
+                    if display_name.lower() == search_term.lower():
+                        return user_dict
+        
+        return None
 
     # ============================================================================
     # CONVENIENCE METHODS FOR TESTING

@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from modules.integrations.google import GoogleSheetsClient
-from config.leadership import load_hierarchy_config, normalize_title
+from modules.leadership.domain.hierarchy_config import load_hierarchy_config, normalize_title
 
 
 def main():

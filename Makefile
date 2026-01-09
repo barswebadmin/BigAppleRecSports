@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir deploy-lambda
 
 # Default target
 help:
@@ -43,11 +43,17 @@ help:
 	@echo "  make test-backend-all    - Run all backend tests"
 	@echo "  make test-specific TEST=<path> - Run specific test file or case"
 	@echo ""
+	@echo "☁️  Lambda Deployment:"
+	@echo "  make deploy-lambda        - Deploy Lambda function or layer from current directory"
+	@echo "                             Works from lambda-functions/FunctionName/ or lambda-layers/LayerName/"
+	@echo ""
 	@echo "📋 Examples:"
 	@echo "  make compile backend/services"
 	@echo "  make test lambda-functions/shopifyProductUpdateHandler"
 	@echo "  make test-specific TEST=backend/test_slack_message_formatting.py"
 	@echo "  make test-specific TEST=backend/test_orders_api.py::test_fetch_order"
+	@echo "  cd lambda-functions/MoveInventoryLambda && make deploy-lambda"
+	@echo "  cd lambda-layers/bars-common-utils && make deploy-lambda"
 	@echo ""
 	@echo "🔧 Quick Start:"
 	@echo "  1. make install          - Install dependencies"
@@ -854,3 +860,119 @@ check-dir:
 	@find "$(DIR)" -name "*.gs" -o -name "*.js" -type f 2>/dev/null | head -10 || echo "  None found"
 	@echo "Test files:"
 	@find "$(DIR)" -name "*test*" -type f 2>/dev/null | head -10 || echo "  None found"
+
+# =============================================================================
+# LAMBDA DEPLOYMENT COMMANDS
+# =============================================================================
+
+deploy-lambda:
+	@echo "☁️  Deploying Lambda function or layer..."
+	@CURRENT_DIR=$$(pwd); \
+	AWS_REGION=$${AWS_REGION:-us-east-1}; \
+	FUNCTION_NAME=""; \
+	LAYER_NAME=""; \
+	DEPLOY_DIR=""; \
+	if echo "$$CURRENT_DIR" | grep -q "lambda-functions/"; then \
+		FUNCTION_NAME=$$(echo "$$CURRENT_DIR" | sed 's|.*lambda-functions/\([^/]*\).*|\1|'); \
+		DEPLOY_DIR=$$(find "$$CURRENT_DIR" -maxdepth 3 -name "lambda_function.py" -type f | head -1 | xargs dirname 2>/dev/null); \
+		if [ -z "$$DEPLOY_DIR" ]; then \
+			DEPLOY_DIR=$$(find . -maxdepth 2 -name "lambda_function.py" -type f | head -1 | xargs dirname 2>/dev/null); \
+		fi; \
+		if [ -z "$$DEPLOY_DIR" ] || [ ! -f "$$DEPLOY_DIR/lambda_function.py" ]; then \
+			echo "❌ lambda_function.py not found"; \
+			echo "   Please run 'make deploy-lambda' from within a Lambda function directory"; \
+			exit 1; \
+		fi; \
+		echo "🚀 Deploying Lambda function: $$FUNCTION_NAME"; \
+		echo "📁 Directory: $$DEPLOY_DIR"; \
+		if ! aws sts get-caller-identity > /dev/null 2>&1; then \
+			echo "❌ AWS credentials not configured or expired!"; \
+			echo "   Please run: assume bars (or aws configure/aws sso login)"; \
+			exit 1; \
+		fi; \
+		cd "$$DEPLOY_DIR"; \
+		VERSION=$$(grep "__version__" lambda_function.py 2>/dev/null | cut -d'"' -f2 || echo "1.0.0"); \
+		echo "📦 Version: $$VERSION"; \
+		TEMP_DIR=$$(mktemp -d); \
+		trap "rm -rf $$TEMP_DIR" EXIT; \
+		echo "📦 Creating deployment package..."; \
+		cp *.py "$$TEMP_DIR/" 2>/dev/null || true; \
+		if [ -d "bars_common_utils" ]; then \
+			cp -r bars_common_utils "$$TEMP_DIR/"; \
+		fi; \
+		if [ -f "requirements.txt" ]; then \
+			echo "📋 Installing dependencies..."; \
+			pip install -r requirements.txt -t "$$TEMP_DIR/" --quiet; \
+		fi; \
+		cd "$$TEMP_DIR"; \
+		ZIP_FILE="/tmp/$$FUNCTION_NAME.zip"; \
+		zip -r "$$ZIP_FILE" . -q; \
+		cd - > /dev/null; \
+		echo "📊 Package size: $$(du -h $$ZIP_FILE | cut -f1)"; \
+		echo "☁️  Deploying to AWS Lambda..."; \
+		DESCRIPTION="Version $$VERSION - Updated $$(date '+%Y-%m-%d %H:%M:%S')"; \
+		aws lambda update-function-configuration \
+			--function-name "$$FUNCTION_NAME" \
+			--description "$$DESCRIPTION" \
+			--region "$$AWS_REGION" > /dev/null 2>&1 || true; \
+		aws lambda wait function-updated --function-name "$$FUNCTION_NAME" --region "$$AWS_REGION" 2>/dev/null || true; \
+		aws lambda update-function-code \
+			--function-name "$$FUNCTION_NAME" \
+			--zip-file "fileb://$$ZIP_FILE" \
+			--region "$$AWS_REGION" \
+			--publish; \
+		rm -f "$$ZIP_FILE"; \
+		echo "✅ Successfully deployed $$FUNCTION_NAME version $$VERSION!"; \
+	elif echo "$$CURRENT_DIR" | grep -q "lambda-layers/"; then \
+		LAYER_NAME=$$(echo "$$CURRENT_DIR" | sed 's|.*lambda-layers/\([^/]*\).*|\1|'); \
+		DEPLOY_DIR=$$(find "$$CURRENT_DIR" -maxdepth 2 -type d -name "python" | head -1 | xargs dirname 2>/dev/null); \
+		if [ -z "$$DEPLOY_DIR" ]; then \
+			DEPLOY_DIR=$$(find . -maxdepth 1 -type d -name "python" | head -1 | xargs dirname 2>/dev/null); \
+		fi; \
+		if [ -z "$$DEPLOY_DIR" ] || [ ! -d "$$DEPLOY_DIR/python" ]; then \
+			echo "❌ python/ directory not found"; \
+			echo "   Please run 'make deploy-lambda' from within a Lambda layer directory"; \
+			exit 1; \
+		fi; \
+		echo "🚀 Deploying Lambda layer: $$LAYER_NAME"; \
+		echo "📁 Directory: $$DEPLOY_DIR"; \
+		if ! aws sts get-caller-identity > /dev/null 2>&1; then \
+			echo "❌ AWS credentials not configured or expired!"; \
+			echo "   Please run: assume bars (or aws configure/aws sso login)"; \
+			exit 1; \
+		fi; \
+		cd "$$DEPLOY_DIR"; \
+		if [ -f "requirements.txt" ]; then \
+			echo "📋 Installing layer dependencies..."; \
+			rm -rf python/; \
+			mkdir -p python/; \
+			pip install -r requirements.txt -t python/ --quiet; \
+		fi; \
+		if [ ! -d "python" ]; then \
+			echo "❌ python/ directory not found after dependency installation"; \
+			exit 1; \
+		fi; \
+		echo "📦 Creating layer package..."; \
+		ZIP_FILE="/tmp/$$LAYER_NAME.zip"; \
+		zip -r "$$ZIP_FILE" python/ -q; \
+		echo "📊 Package size: $$(du -h $$ZIP_FILE | cut -f1)"; \
+		echo "☁️  Publishing layer version..."; \
+		LAYER_VERSION=$$(aws lambda publish-layer-version \
+			--layer-name "$$LAYER_NAME" \
+			--description "Common utilities for BARS Lambda functions" \
+			--zip-file "fileb://$$ZIP_FILE" \
+			--compatible-runtimes python3.9 python3.10 python3.11 \
+			--region "$$AWS_REGION" \
+			--query 'Version' \
+			--output text); \
+		rm -f "$$ZIP_FILE"; \
+		echo "✅ Successfully deployed layer $$LAYER_NAME version $$LAYER_VERSION!"; \
+		echo "📋 Layer ARN: arn:aws:lambda:$$AWS_REGION:$$(aws sts get-caller-identity --query Account --output text):layer:$$LAYER_NAME:$$LAYER_VERSION"; \
+	else \
+		echo "❌ Not in a Lambda function or layer directory"; \
+		echo ""; \
+		echo "Usage:"; \
+		echo "  cd lambda-functions/FunctionName && make deploy-lambda"; \
+		echo "  cd lambda-layers/LayerName && make deploy-lambda"; \
+		exit 1; \
+	fi

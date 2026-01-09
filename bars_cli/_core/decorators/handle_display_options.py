@@ -100,6 +100,12 @@ def handle_display_options(
             # json_output is application config, stays in ctx.obj
             json_output = ctx.obj.get('json_output', False) if ctx and ctx.obj else False
             
+            # Store computed values in ctx.obj for commands to access directly
+            if ctx:
+                ctx.ensure_object(dict)
+                ctx.obj['json_output'] = json_output
+                ctx.obj['should_display'] = should_display
+            
             try:
                 result = func(*args, **kwargs)
                 

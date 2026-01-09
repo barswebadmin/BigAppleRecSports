@@ -743,14 +743,14 @@ def update_user_cmd(
             show_profile_changes(user, profile_updates, context)
         
         # Perform API call and handle response
-        bot = ctx.meta['leadership_bot']
+        bot = ctx.meta['admin_bot']
         _execute_profile_update(bot, user, profile_updates, json_output)
     
     except SlackApiError as e:
         # Get token from context if available
         token = None
         try:
-            bot = ctx.meta.get('leadership_bot')
+            bot = ctx.meta.get('admin_bot')
             if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
                 token = bot.client.token
         except Exception:

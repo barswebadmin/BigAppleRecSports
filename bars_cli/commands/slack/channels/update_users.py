@@ -158,8 +158,8 @@ def update_users_cmd(
         raise click.ClickException("User list is required")
     
     try:
-        # Get leadership_bot from context meta
-        bot = ctx.meta['leadership_bot']
+        # Get admin_bot from context meta
+        bot = ctx.meta['admin_bot']
         
         # Look up channel
         if should_display and not json_output:
@@ -362,7 +362,7 @@ def update_users_cmd(
     except SlackApiError as e:
         token = None
         try:
-            bot = ctx.meta.get('leadership_bot')
+            bot = ctx.meta.get('admin_bot')
             if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
                 token = bot.client.token
         except Exception:

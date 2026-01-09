@@ -1,16 +1,12 @@
 """Get Slack user details command."""
-import json
-import sys
 from typing import Dict, Any, Optional
 
 import click
-from slack_sdk.errors import SlackApiError
 
 from bars_cli._core.param_types import SLACK_USER_IDENTIFIER
 from bars_cli._core.decorators.handle_display_options import handle_display_options
-from bars_cli.models.slack_user import SlackUser
-
-from ..utils import handle_slack_api_error
+from bars_cli.backend_services.slack.models.slack_user import SlackUser
+from bars_cli.commands.slack._shared.command_helpers import handle_slack_get_command
 
 
 
@@ -58,11 +54,31 @@ def format_user(user: SlackUser) -> str:
     return '\n'.join(output)
 
 
+def _extract_user_identifier(identifier: Dict[str, Any]) -> str:
+    """Extract user identifier value from dict."""
+    return identifier.get("email") or identifier.get("user_id") or identifier.get("identifier", "")
+
+
+def _format_user_for_display(user_data: Dict[str, Any]) -> str:
+    """Format user data for display, handling both dict and SlackUser model."""
+    # Convert to SlackUser model if it's a dict
+    if isinstance(user_data, dict):
+        try:
+            user = SlackUser(**user_data)
+        except Exception:
+            # Fallback to dict if model creation fails
+            user = user_data
+    else:
+        user = user_data
+    
+    return format_user(user)
+
+
 @click.command('get')
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SLACK_USER_IDENTIFIER, required=True)
 @click.pass_context
-def get_user_cmd(ctx: click.Context, identifier: dict) -> Optional[SlackUser]:
+def get_user_cmd(ctx: click.Context, identifier: Dict[str, Any]) -> Optional[SlackUser]:
     """
     Get Slack user details by email or ID.
     
@@ -75,104 +91,28 @@ def get_user_cmd(ctx: click.Context, identifier: dict) -> Optional[SlackUser]:
       bars slack user get U03LZKQSHEU
       bars --json slack user get stephen@example.com
     """
-    json_output = ctx.obj.get('json_output', False) if ctx.obj else False
-    display_override = ctx.obj.get('display_override', True) if ctx.obj else True
-    should_display = display_override if display_override is not None else True
+    from bars_cli.commands.slack._shared.command_helpers import get_admin_bot
     
-    try:
-        # Get leadership_bot from context meta (initialized at slack group level)
-        bot = ctx.meta['leadership_bot']
-        
-        # Get lookup value
-        lookup_value = identifier.get("email") or identifier.get("user_id")
-        if not lookup_value:
-            error_msg = "Invalid identifier: must provide either email or user_id"
-            if should_display:
-                if json_output:
-                    click.echo(json.dumps({"error": error_msg}, indent=2))
-                else:
-                    click.echo(f"❌ {error_msg}", err=True)
-            raise ValueError(error_msg)
-        
-        if should_display and not json_output:
-            click.echo(f"🔍 Looking up: {lookup_value}", err=True)
-        
-        # Use leadership_bot's lookup_user method (accepts string directly)
-        try:
-            user_data = bot.lookup_user(lookup_value)
-        except Exception as e:
-            error_msg = f"Failed to lookup user '{lookup_value}': {type(e).__name__}: {e}"
-            if should_display:
-                if json_output:
-                    click.echo(json.dumps({"error": error_msg}, indent=2))
-                else:
-                    click.echo(f"❌ {error_msg}", err=True)
-                    import traceback
-                    click.echo(traceback.format_exc(), err=True)
-            raise
-        
-        if not user_data:
-            error_msg = f"User not found: {lookup_value}"
-            if should_display:
-                if json_output:
-                    click.echo(json.dumps({"error": error_msg}, indent=2))
-                else:
-                    click.echo(f"❌ {error_msg}", err=True)
-                    click.echo(f"💡 Try checking the email/ID spelling or use 'bars slack user list' to see all users", err=True)
-            raise click.ClickException(error_msg)
-        
-        # Convert dict to SlackUser model for type safety
-        try:
-            user = SlackUser(**user_data)
-        except Exception as e:
-            error_msg = f"Failed to create user model: {type(e).__name__}: {e}"
-            if should_display:
-                if json_output:
-                    click.echo(json.dumps({"error": error_msg, "data_keys": list(user_data.keys())[:10]}, indent=2))
-                else:
-                    click.echo(f"❌ {error_msg}", err=True)
-                    click.echo(f"💡 Received data with keys: {', '.join(list(user_data.keys())[:10])}", err=True)
-            raise
-        
-        # Display result only if display_override is True
-        if should_display:
-            if json_output:
-                click.echo(json.dumps(user.model_dump(exclude_none=True), indent=2))
-            else:
-                click.echo(format_user(user))
-        
-        return user
+    bot = get_admin_bot(ctx)
     
-    except SlackApiError as e:
-        # Get token from context if available
-        token = None
+    # Convert result to SlackUser model if it's a dict
+    result = handle_slack_get_command(
+        ctx=ctx,
+        identifier=identifier,
+        lookup_method=bot.lookup_user,
+        format_func=_format_user_for_display,
+        entity_name="user",
+        identifier_required_msg="User identifier is required (email or user ID)",
+        extract_identifier_value=_extract_user_identifier
+    )
+    
+    # Convert dict to SlackUser model for type safety
+    if result and isinstance(result, dict):
         try:
-            bot = ctx.meta.get('leadership_bot')
-            if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
-                token = bot.client.token
+            return SlackUser(**result)  # type: ignore[return-value]
         except Exception:
-            pass
-        
-        # Don't call sys.exit here - let the decorator handle it based on exit_override
-        handle_slack_api_error(e, json_output=json_output, token=token, api_method='users.info')
-        # Re-raise so decorator can handle exit based on exit_override
-        raise
-    except (RuntimeError, ValueError, click.ClickException, KeyError):
-        # These exceptions are already handled or have good error messages - just re-raise
-        # Decorator will handle exit based on exit_override
-        raise
-    except Exception as e:
-        # Show full traceback for unexpected errors
-        error_type = type(e).__name__
-        error_msg = str(e)
-        if should_display:
-            if json_output:
-                click.echo(json.dumps({"error": error_msg, "type": error_type}, indent=2))
-            else:
-                click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
-                click.echo(f"\n💡 Full traceback:", err=True)
-                import traceback
-                click.echo(traceback.format_exc(), err=True)
-        # Re-raise so decorator can handle exit based on exit_override
-        raise
+            # Return dict if model creation fails (shouldn't happen, but handle gracefully)
+            return None  # type: ignore[return-value]
+    
+    return result  # type: ignore[return-value]
 

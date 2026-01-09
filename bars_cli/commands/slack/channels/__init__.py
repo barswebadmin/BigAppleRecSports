@@ -13,14 +13,14 @@ from .update_users import update_users_cmd
 
 
 @click.group(
-    name='channel',
+    name='channels',
     context_settings={"ignore_unknown_options": True}
 )
 @click.pass_context
 def slack_channel(ctx: click.Context):
     """Channel management."""
-    # leadership_bot is already set in ctx.meta by the slack group
-    # Commands can access it via ctx.meta['leadership_bot']
+    # admin_bot is already set in ctx.meta by the slack group
+    # Commands can access it via ctx.meta['admin_bot']
     pass
 
 

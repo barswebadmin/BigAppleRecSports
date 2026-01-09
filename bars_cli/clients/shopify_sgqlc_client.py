@@ -1,1 +1,0 @@
-../../backend/modules/integrations/shopify/client/shopify_sgqlc_client.py

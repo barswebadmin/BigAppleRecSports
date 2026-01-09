@@ -6,15 +6,14 @@ from typing import List, Dict, Any, cast, Optional
 import click
 from slack_sdk.errors import SlackApiError
 
-from bars_cli.models.slack_user import SlackUser
+from backend_services.slack.models.slack_user import SlackUser
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 
 from ..utils import handle_slack_api_error
+from .._shared.slack_formatters import format_users
 
 
-
-
-def format_users(users: List[SlackUser]) -> str:
+def format_users(users: list[SlackUser]) -> str:
     """Format users list for display."""
     if not users:
         return "No users found."
@@ -57,8 +56,8 @@ def format_users(users: List[SlackUser]) -> str:
 
 @click.command('list')
 @handle_display_options(display=True, exit_on_error=True)
-@click.option('--include-bots', is_flag=True, help='Include bot accounts')
-@click.option('--include-deleted', is_flag=True, help='Include deleted users')
+@click.option('--include-bots', is_flag=False, help='Include bot accounts')
+@click.option('--include-deleted', is_flag=False, help='Include deleted users')
 @click.pass_context
 def list_users_cmd(ctx: click.Context, include_bots: bool, include_deleted: bool) -> Optional[List[SlackUser]]:
     """
@@ -78,11 +77,11 @@ def list_users_cmd(ctx: click.Context, include_bots: bool, include_deleted: bool
         if not json_output:
             click.echo("🔍 Fetching users...", err=True)
         
-        # Get leadership_bot from context meta (initialized at slack group level)
-        bot = ctx.meta['leadership_bot']
+        # Get admin_bot from context meta (initialized at slack group level)
+        bot = ctx.meta['admin_bot']
         
         # Get all users using leadership bot's client method
-        from backend.modules.integrations.slack.user_lookup import list_all_users
+        from bars_cli.backend_services.slack.user_lookup import list_all_users
         users_data = list_all_users(bot.client)
         
         if not users_data:
@@ -114,7 +113,7 @@ def list_users_cmd(ctx: click.Context, include_bots: bool, include_deleted: bool
         # Get token from context if available
         token = None
         try:
-            bot = ctx.meta.get('leadership_bot')
+            bot = ctx.meta.get('admin_bot')
             if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
                 token = bot.client.token
         except Exception:

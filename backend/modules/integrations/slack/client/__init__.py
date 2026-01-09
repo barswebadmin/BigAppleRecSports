@@ -4,7 +4,7 @@ from .main import (
     UserListPayload,
     UserLookupByEmailPayload,
 )
-from config.slack import SlackConfig
+from config_old_deprecated.slack import SlackConfig
 from .modals import show_modal, show_loading_modal, update_modal
 
 __all__ = [

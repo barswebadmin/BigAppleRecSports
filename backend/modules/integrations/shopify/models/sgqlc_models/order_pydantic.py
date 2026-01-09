@@ -7,13 +7,13 @@ Uses forward references to avoid circular imports with Customer models.
 from typing import Optional, List, TYPE_CHECKING, Dict, Any, Type
 from pydantic import BaseModel, Field
 
-from .common import Connection
+from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection
 
-from .common import ShopifyBaseModel, create_list_model
+from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import ShopifyBaseModel, create_list_model
 
 # Forward reference for Customer - only imported at type-checking time
 if TYPE_CHECKING:
-    from .customer import Customer
+    from backend.modules.integrations.shopify.models.sgqlc_models.customer_pydantic import Customer
 
 
 class MoneySet(BaseModel):
@@ -72,6 +72,11 @@ class CustomAttribute(BaseModel):
     value: str
 
 
+class InventoryItem(BaseModel):
+    """Inventory item model for Shopify products."""
+    id: str
+
+
 class LineItemVariant(BaseModel):
     """Variant model for line items."""
     id: Optional[str] = None
@@ -80,7 +85,7 @@ class LineItemVariant(BaseModel):
     price: Optional[str] = None
     sku: Optional[str] = None
     inventoryQuantity: Optional[int] = None
-    inventoryItem: Optional[Dict[str, str]] = None  # Just {id: str}
+    inventoryItem: Optional[InventoryItem] = None
 
 
 class DiscountApplication(BaseModel):
@@ -121,7 +126,7 @@ class Order(ShopifyBaseModel):
     refunds: Optional[List[Refund]] = None
     transactions: Optional[List[Transaction]] = None
     lineItems: Optional[Connection["LineItem"]] = None
-    customer: Optional[Connection["Customer"]] = None
+    customer: Optional["Customer"] = None
     
     # Declare list fields for automatic resolution (field name -> target type name)
     list_fields = {

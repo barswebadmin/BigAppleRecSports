@@ -2,38 +2,45 @@
 import sys
 
 import click
-from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-from modules.integrations.slack.services import UsergroupService
-from ..utils import get_bot_token
+from bars_cli._core.param_types import SLACK_GROUP_IDENTIFIER, SLACK_USER_IDENTIFIER
 
 
 @click.command('remove-user')
-@click.argument('group_handle')
-@click.argument('user_id')
+@click.argument('group_identifier', type=SLACK_GROUP_IDENTIFIER)
+@click.argument('user_identifier', type=SLACK_USER_IDENTIFIER)
 @click.option('--bot', default='leadership', help='Which bot to use')
 @click.option('--dry-run', is_flag=True, help='Preview changes without applying')
-def remove_user_from_group(group_handle: str, user_id: str, bot: str, dry_run: bool):
+@click.pass_context
+def remove_user_from_group(ctx: click.Context, group_identifier: dict, user_identifier: dict, bot: str, dry_run: bool):
     """
     Remove a user from a usergroup.
     
-    GROUP_HANDLE: Usergroup handle (e.g., 'leadership')
-    USER_ID: Slack user ID (e.g., 'U01ABC123')
+    GROUP_IDENTIFIER: Usergroup identifier (ID, name, or handle)
+    USER_IDENTIFIER: User identifier (ID, email, handle, or display name)
     """
+    # Service is guaranteed to be available (initialized in slack group)
+    slack_service = ctx.meta['slack_service']
+    
     try:
-        token = get_bot_token(bot)
-        client = WebClient(token=token)
-        service = UsergroupService(client)
-        
-        # Get group
-        group_data = service.get_group_by_handle(group_handle)
+        # Resolve group identifier
+        group_data = slack_service.resolve_group_identifier(group_identifier, bot)
         if not group_data:
-            click.echo(f"❌ Usergroup '{group_handle}' not found.", err=True)
+            click.echo(f"❌ Usergroup not found.", err=True)
             sys.exit(1)
         
         group_id = group_data['id']
+        group_handle = group_data.get('handle', group_data.get('name', 'unknown'))
         current_members = group_data.get('users', [])
+        
+        # Resolve user identifier
+        user_data = slack_service.resolve_user_identifier(user_identifier, bot)
+        if not user_data:
+            click.echo(f"❌ User not found.", err=True)
+            sys.exit(1)
+        
+        user_id = user_data['id']
         
         if user_id not in current_members:
             click.echo(f"ℹ️  User {user_id} is not in @{group_handle}")
@@ -45,6 +52,7 @@ def remove_user_from_group(group_handle: str, user_id: str, bot: str, dry_run: b
             click.echo(f"  New total: {len(current_members) - 1}")
             return
         
+        service = slack_service.get_usergroup_service(bot)
         success = service.remove_user_from_group(group_id, user_id)
         
         if success:

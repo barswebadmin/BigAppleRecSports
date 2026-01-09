@@ -4,11 +4,7 @@ import json
 from typing import Optional, TextIO
 
 import click
-from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-
-from modules.integrations.slack.services import UsergroupService, UsergroupProvisioner
-from ..utils import get_bot_token
 
 
 @click.command('sync')
@@ -16,7 +12,8 @@ from ..utils import get_bot_token
 @click.option('--bot', default='leadership', help='Which bot to use')
 @click.option('--dry-run', is_flag=True, help='Preview changes without applying')
 @click.option('--create-missing', is_flag=True, default=True, help='Create groups that don\'t exist')
-def sync_groups(hierarchy_json: Optional[TextIO], bot: str, dry_run: bool, create_missing: bool):
+@click.pass_context
+def sync_groups(ctx: click.Context, hierarchy_json: Optional[TextIO], bot: str, dry_run: bool, create_missing: bool):
     """
     Bulk sync usergroups from leadership hierarchy.
     
@@ -33,11 +30,11 @@ def sync_groups(hierarchy_json: Optional[TextIO], bot: str, dry_run: bool, creat
         # Load hierarchy data
         hierarchy_data = json.load(hierarchy_json)
         
+        # Service is guaranteed to be available (initialized in slack group)
+        slack_service = ctx.meta['slack_service']
+        
         # Initialize services
-        token = get_bot_token(bot)
-        client = WebClient(token=token)
-        service = UsergroupService(client)
-        provisioner = UsergroupProvisioner(service)
+        provisioner = slack_service.get_usergroup_provisioner(bot)
         
         # Build group plans
         from modules.leadership.domain.models import LeadershipHierarchy

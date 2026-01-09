@@ -14,7 +14,7 @@ from slack_sdk.http_retry import RetryHandler, RetryState, HttpRequest, HttpResp
 from slack_sdk.models.blocks import Block, SectionBlock, MarkdownTextObject
 from slack_sdk.webhook import WebhookClient
 
-from config.main import SlackConfig
+from config_old_deprecated.slack import SlackConfig
 from shared.model_config import ApiModel
 
 logger = logging.getLogger(__name__)

@@ -1,1 +1,0 @@
-../../../../backend/modules/integrations/shopify/models/sgqlc_models/customer_pydantic.py

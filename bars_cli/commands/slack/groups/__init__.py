@@ -17,7 +17,7 @@ from .remove_user import remove_user_from_group
 from .sync import sync_groups
 
 
-@click.group(name='group')
+@click.group(name='groups')
 def slack_group():
     """Usergroup (team) management."""
     pass

@@ -6,12 +6,14 @@ using Service Account credentials with domain-wide delegation.
 """
 
 import logging
-from typing import List, Optional, Dict, Any, TypedDict, Literal
+from typing import List, Optional, Dict, Any, Literal
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from .base_client import GoogleAPIClient, handle_http_errors
+from backend.shared.model_config import ApiModel
+
+from .base_client import GoogleAPIClient, GoogleServiceAccountInfo, handle_http_errors
 
 # Google Groups member roles
 GroupMemberRole = Literal["MEMBER", "OWNER", "MANAGER"]
@@ -19,78 +21,85 @@ GroupMemberRole = Literal["MEMBER", "OWNER", "MANAGER"]
 logger = logging.getLogger(__name__)
 
 
-class MemberResource(TypedDict, total=False):
+class UserName(ApiModel):
+    """Google Admin SDK Directory API User name structure."""
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
+    full_name: Optional[str] = None
+
+
+class MemberResource(ApiModel):
     """Google Admin SDK Directory API Member resource structure."""
-    kind: str  # 'admin#directory#member'
-    etag: str
-    id: str
-    email: str
-    role: str  # 'MEMBER', 'OWNER', 'MANAGER'
-    type: str  # 'USER', 'GROUP', 'CUSTOMER', 'EXTERNAL'
-    status: str  # 'ACTIVE', 'ARCHIVED', etc.
-    delivery_settings: str  # 'ALL_MAIL', 'DAILY', 'DIGEST', 'NONE'
+    kind: Optional[str] = None  # 'admin#directory#member'
+    etag: Optional[str] = None
+    id: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None  # 'MEMBER', 'OWNER', 'MANAGER'
+    type: Optional[str] = None  # 'USER', 'GROUP', 'CUSTOMER', 'EXTERNAL'
+    status: Optional[str] = None  # 'ACTIVE', 'ARCHIVED', etc.
+    delivery_settings: Optional[str] = None  # 'ALL_MAIL', 'DAILY', 'DIGEST', 'NONE'
 
 
-class MembersListResponse(TypedDict, total=False):
+class MembersListResponse(ApiModel):
     """Google Admin SDK Directory API Members list response structure."""
-    kind: str  # 'admin#directory#members'
-    etag: str
-    members: List[MemberResource]
-    nextPageToken: str
+    kind: Optional[str] = None  # 'admin#directory#members'
+    etag: Optional[str] = None
+    members: Optional[List[MemberResource]] = None
+    next_page_token: Optional[str] = None
 
 
-class GroupResource(TypedDict, total=False):
+class GroupResource(ApiModel):
     """Google Admin SDK Directory API Group resource structure."""
-    kind: str  # 'admin#directory#group'
-    id: str
-    etag: str
-    email: str
-    name: str
-    description: str
-    adminCreated: bool
-    directMembersCount: str
-    aliases: List[str]
+    kind: Optional[str] = None  # 'admin#directory#group'
+    id: Optional[str] = None
+    etag: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    admin_created: Optional[bool] = None
+    direct_members_count: Optional[str] = None
+    aliases: Optional[List[str]] = None
 
 
-class GroupsListResponse(TypedDict, total=False):
+class GroupsListResponse(ApiModel):
     """Google Admin SDK Directory API Groups list response structure."""
-    kind: str  # 'admin#directory#groups'
-    etag: str
-    groups: List[GroupResource]
-    nextPageToken: str
+    kind: Optional[str] = None  # 'admin#directory#groups'
+    etag: Optional[str] = None
+    groups: Optional[List[GroupResource]] = None
+    next_page_token: Optional[str] = None
 
 
-class UserResource(TypedDict, total=False):
+class UserResource(ApiModel):
     """Google Admin SDK Directory API User resource structure."""
-    kind: str  # 'admin#directory#user'
-    id: str
-    etag: str
-    primaryEmail: str
-    name: Dict[str, str]  # {'givenName': str, 'familyName': str, 'fullName': str}
-    emails: List[Dict[str, str]]
-    aliases: List[str]
-    suspended: bool
-    archived: bool
-    isAdmin: bool
-    isDelegatedAdmin: bool
-    creationTime: str
-    lastLoginTime: str
-    orgUnitPath: str
-    customerId: str
+    kind: Optional[str] = None  # 'admin#directory#user'
+    id: Optional[str] = None
+    etag: Optional[str] = None
+    primary_email: Optional[str] = None
+    name: Optional[UserName] = None
+    emails: Optional[List[Dict[str, str]]] = None
+    aliases: Optional[List[str]] = None
+    suspended: Optional[bool] = None
+    archived: Optional[bool] = None
+    is_admin: Optional[bool] = None
+    is_delegated_admin: Optional[bool] = None
+    creation_time: Optional[str] = None
+    last_login_time: Optional[str] = None
+    org_unit_path: Optional[str] = None
+    customer_id: Optional[str] = None
 
 
-class UsersListResponse(TypedDict, total=False):
+class UsersListResponse(ApiModel):
     """Google Admin SDK Directory API Users list response structure."""
-    kind: str  # 'admin#directory#users'
-    etag: str
-    users: List[UserResource]
-    nextPageToken: str
+    kind: Optional[str] = None  # 'admin#directory#users'
+    etag: Optional[str] = None
+    users: Optional[List[UserResource]] = None
+    next_page_token: Optional[str] = None
 
 
 class GoogleDirectoryClient(GoogleAPIClient):
     """Client for interacting with Google Admin SDK Directory API (groups, users, members)."""
     
-    def __init__(self, service_account_info: Optional[Dict[str, Any]] = None, subject: Optional[str] = None):
+    def __init__(self, service_account_info: Optional[GoogleServiceAccountInfo] = None, subject: Optional[str] = None):
         """
         Initialize Google Directory client with service account credentials.
         
@@ -116,7 +125,9 @@ class GoogleDirectoryClient(GoogleAPIClient):
         ]
         if subject is None:
             logger.warning(
-                "⚠️ No subject provided. Group management may fail without domain-wide delegation."
+                "⚠️ No subject provided for domain-wide delegation. "
+                "Set GOOGLE.SUBJECT in your .env file or add 'subject' field to google-service-account.json. "
+                "Some operations may fail without proper delegation."
             )
         super().__init__(service_account_info=service_account_info, subject=subject)
         self.service = self._build_service('admin', 'directory_v1')
@@ -133,7 +144,7 @@ class GoogleDirectoryClient(GoogleAPIClient):
             max_results: Maximum number of results per page (default: 500, max: 500)
         
         Returns:
-            List of UserResource dictionaries, each with 'primaryEmail', 'name', 'id', etc.
+            List of UserResource Pydantic models, each with primary_email, name, id, etc.
         
         Raises:
             HttpError: For Google API errors
@@ -143,18 +154,21 @@ class GoogleDirectoryClient(GoogleAPIClient):
             >>> users = client.list_all_users()
             >>> print(f"Found {len(users)} users")
             >>> for user in users:
-            ...     print(f"{user['primaryEmail']}: {user['name'].get('fullName', 'N/A')}")
+            ...     print(f"{user.primary_email}: {user.name.full_name if user.name else 'N/A'}")
         """
         params = {
             'customer': 'my_customer',
             'maxResults': min(max_results, 500)
         }
         
-        users = self._paginate_api_call(
+        users_dicts = self._paginate_api_call(
             self.service.users().list,
             result_key='users',
             **params
         )
+        
+        # Convert dicts to Pydantic models
+        users = [UserResource(**user_dict) for user_dict in users_dicts]
         
         logger.info(f"✅ Found {len(users)} users")
         
@@ -168,7 +182,7 @@ class GoogleDirectoryClient(GoogleAPIClient):
         List all groups in the organization.
         
         Returns:
-            List of GroupResource dictionaries, each with 'email', 'name', 'id', etc.
+            List of GroupResource Pydantic models, each with email, name, id, etc.
         
         Raises:
             HttpError: For Google API errors
@@ -178,15 +192,18 @@ class GoogleDirectoryClient(GoogleAPIClient):
             >>> groups = client.list_all_groups()
             >>> print(f"Found {len(groups)} groups")
             >>> for group in groups:
-            ...     print(f"{group['email']}: {group['name']}")
+            ...     print(f"{group.email}: {group.name}")
         """
         params = {'customer': 'my_customer'}
         
-        groups = self._paginate_api_call(
+        groups_dicts = self._paginate_api_call(
             self.service.groups().list,
             result_key='groups',
             **params
         )
+        
+        # Convert dicts to Pydantic models
+        groups = [GroupResource(**group_dict) for group_dict in groups_dicts]
         
         logger.info(f"✅ Found {len(groups)} groups")
         
@@ -207,7 +224,7 @@ class GoogleDirectoryClient(GoogleAPIClient):
                   If None, returns all members regardless of role
         
         Returns:
-            List of MemberResource dictionaries, each with 'email', 'role', 'type', etc.
+            List of MemberResource Pydantic models, each with email, role, type, etc.
         
         Raises:
             HttpError: For Google API errors
@@ -222,11 +239,14 @@ class GoogleDirectoryClient(GoogleAPIClient):
         if roles:
             params['roles'] = ','.join(roles)
         
-        members = self._paginate_api_call(
+        members_dicts = self._paginate_api_call(
             self.service.members().list,
             result_key='members',
             **params
         )
+        
+        # Convert dicts to Pydantic models
+        members = [MemberResource(**member_dict) for member_dict in members_dicts]
         
         logger.info(
             f"✅ Found {len(members)} members in group {group_email}"
@@ -250,7 +270,7 @@ class GoogleDirectoryClient(GoogleAPIClient):
             role: Member role - "MEMBER", "OWNER", or "MANAGER" (default: "MEMBER")
         
         Returns:
-            MemberResource dictionary with member information (email, role, id, etc.)
+            MemberResource Pydantic model with member information (email, role, id, etc.)
         
         Raises:
             HttpError: For Google API errors
@@ -258,17 +278,20 @@ class GoogleDirectoryClient(GoogleAPIClient):
         Example:
             >>> client = GoogleDirectoryClient(subject="admin@example.com")
             >>> result = client.add_member_to_group("team@example.com", "user@example.com")
-            >>> print(f"Added {result['email']} to group")
+            >>> print(f"Added {result.email} to group")
         """
         member_body = {
             'email': user_email,
             'role': role
         }
         
-        result: MemberResource = self.service.members().insert(
+        result_dict = self.service.members().insert(
             groupKey=group_email,
             body=member_body
         ).execute()
+        
+        # Convert dict to Pydantic model
+        result = MemberResource(**result_dict)
         
         logger.info(
             f"✅ Added {user_email} to group {group_email} with role {role}"
@@ -329,10 +352,12 @@ class GoogleDirectoryClient(GoogleAPIClient):
             ...     print("User is a member")
         """
         try:
-            result: MemberResource = self.service.members().get(
+            result_dict = self.service.members().get(
                 groupKey=group_email,
                 memberKey=user_email
             ).execute()
+            # Convert dict to Pydantic model (not used, but validates response)
+            MemberResource(**result_dict)
             return True
         except HttpError as e:
             if e.resp.status == 404:

@@ -12,7 +12,7 @@ from googleapiclient.errors import HttpError
 from pydantic import Field
 
 from backend.shared.model_config import ApiModel
-from .base_client import GoogleAPIClient, handle_http_errors
+from .base_client import GoogleAPIClient, GoogleServiceAccountInfo, handle_http_errors
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class BatchUpdateValuesResponse(ApiModel):
 class GoogleSheetsClient(GoogleAPIClient):
     """Client for interacting with Google Sheets API."""
     
-    def __init__(self, service_account_info: Optional[Dict[str, Any]] = None):
+    def __init__(self, service_account_info: Optional[GoogleServiceAccountInfo] = None):
         """
         Initialize Google Sheets client with service account credentials.
         

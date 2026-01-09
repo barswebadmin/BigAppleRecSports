@@ -81,7 +81,7 @@ def example_standardize_position_column():
     
     This is a more realistic use case for the leadership workflow.
     """
-    from config.leadership import load_hierarchy_config
+    from modules.leadership.domain.hierarchy_config import load_hierarchy_config
     
     print("🔄 Example: Standardize position titles based on hierarchy.yaml\n")
     

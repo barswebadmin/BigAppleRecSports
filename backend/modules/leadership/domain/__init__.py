@@ -28,6 +28,13 @@ from .hierarchy_bridge import (
     get_expected_title,
     validate_all_members,
 )
+from .hierarchy_config import (
+    load_hierarchy_config,
+    HierarchyConfig,
+    PositionConfig,
+    SectionConfig,
+    normalize_title,
+)
 
 __all__ = [
     "LeadershipMember",
@@ -48,5 +55,10 @@ __all__ = [
     "validate_hierarchy_completeness",
     "get_expected_title",
     "validate_all_members",
+    "load_hierarchy_config",
+    "HierarchyConfig",
+    "PositionConfig",
+    "SectionConfig",
+    "normalize_title",
 ]
 

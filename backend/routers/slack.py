@@ -8,7 +8,7 @@ from modules.integrations.slack.client.usergroup_client import SlackUsergroupCli
 from config import config
 
 from slack_bolt.adapter.fastapi import SlackRequestHandler
-from modules.integrations.slack.bot_apps.leadership_bot import leadership_bot
+from modules.integrations.slack.bot_apps import leadership_bot
 
 # Import handlers to register them with the bot
 from modules.integrations.slack.bot_apps.handlers import *  # noqa: F401, F403

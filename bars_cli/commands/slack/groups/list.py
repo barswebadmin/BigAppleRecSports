@@ -3,25 +3,22 @@ import sys
 import json
 
 import click
-from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-
-from modules.integrations.slack.services import UsergroupService
-from ..utils import get_bot_token
 
 
 @click.command('list')
 @click.option('--bot', default='leadership', help='Which bot to use')
-@click.option('--include-disabled', is_flag=True, help='Include disabled groups')
+@click.option('--include-disabled', is_flag=False, help='Include disabled groups')
 @click.pass_context
 def list_groups(ctx: click.Context, bot: str, include_disabled: bool):
     """List all usergroups."""
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False
     
+    # Service is guaranteed to be available (initialized in slack group)
+    slack_service = ctx.meta['slack_service']
+    
     try:
-        token = get_bot_token(bot)
-        client = WebClient(token=token)
-        service = UsergroupService(client)
+        service = slack_service.get_usergroup_service(bot)
         
         groups = service.list_groups(include_disabled=include_disabled)
         
