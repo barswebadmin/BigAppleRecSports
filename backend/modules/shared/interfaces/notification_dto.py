@@ -92,7 +92,7 @@ class NotificationResult:
         cls, 
         message_id: str, 
         channel: str,
-        metadata: Dict[str, Any] = None
+        metadata: Optional[Dict[str, Any]] = None
     ) -> "NotificationResult":
         """Create a successful result."""
         return cls(
@@ -107,7 +107,7 @@ class NotificationResult:
     def error_result(
         cls, 
         error: str, 
-        metadata: Dict[str, Any] = None
+        metadata: Optional[Dict[str, Any]] = None
     ) -> "NotificationResult":
         """Create an error result."""
         return cls(

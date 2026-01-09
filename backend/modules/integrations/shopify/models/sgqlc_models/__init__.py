@@ -30,6 +30,17 @@ from .order import (
     Order,
     OrderConnection,
 )
+from .product import (
+    Image,
+    ImageConnection,
+    ProductOptionValue,
+    Metafield,
+    MetafieldConnection,
+    Collection,
+    CollectionConnection,
+    Product,
+    ProductConnection,
+)
 
 __all__ = [
     # Customer models
@@ -56,5 +67,15 @@ __all__ = [
     'LineItemConnection',
     'Order',
     'OrderConnection',
+    # Product models
+    'Image',
+    'ImageConnection',
+    'ProductOptionValue',
+    'Metafield',
+    'MetafieldConnection',
+    'Collection',
+    'CollectionConnection',
+    'Product',
+    'ProductConnection',
 ]
 

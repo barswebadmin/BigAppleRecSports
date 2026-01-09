@@ -144,10 +144,6 @@ class Order(Type):
     email = String
     phone = String
     createdAt = String
-    updatedAt = String
-    displayFinancialStatus = String
-    displayFulfillmentStatus = String
-    subtotalLineItemsQuantity = Int
     cancelledAt = String
     cancelReason = String
     totalPriceSet = MoneySetWrapper

@@ -301,7 +301,7 @@ class RoleMapping(ApiModel):
     Maps a leadership role to platform-specific groups/channels/roles.
     
     Attribute names (e.g., "Leadership", "ExecutiveBoard") are resolved 
-    against SlackConfig, GoogleConfig, ShopifyConfig for actual IDs.
+    against SlackConfig, ShopifyConfig for actual IDs.
     """
     role_key: str = Field(description="Unique role identifier (e.g., 'executive_board.commissioner')")
     display_name: str = Field(description="Human-readable role name")

@@ -9,7 +9,6 @@ from .normalizers import (
     snake_to_camel,
     camel_to_snake,
 )
-from backend.shared.dict_utils import get_nested_value, set_nested_value
 
 __all__ = [
     "normalize_phone_number",
@@ -19,7 +18,5 @@ __all__ = [
     "normalize_string",
     "snake_to_camel",
     "camel_to_snake",
-    "get_nested_value",
-    "set_nested_value",
 ]
 

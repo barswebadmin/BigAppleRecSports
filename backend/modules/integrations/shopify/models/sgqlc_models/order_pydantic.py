@@ -114,10 +114,6 @@ class Order(ShopifyBaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
-    displayFinancialStatus: Optional[str] = None
-    displayFulfillmentStatus: Optional[str] = None
-    subtotalLineItemsQuantity: Optional[int] = None
     cancelledAt: Optional[str] = None
     cancelReason: Optional[str] = None
     totalPriceSet: Optional[MoneySetWrapper] = None

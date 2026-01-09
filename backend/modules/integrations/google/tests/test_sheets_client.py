@@ -29,13 +29,9 @@ def mock_config_with_valid_credentials(tmp_path):
     credentials_file = tmp_path / "test-credentials.json"
     credentials_file.write_text('{"type": "service_account"}')
     
-    with patch('modules.integrations.google.sheets_client.config') as mock_config:
-        mock_config.Google.service_account_path = credentials_file
-        mock_config.Google.scopes = [
-            'https://www.googleapis.com/auth/spreadsheets.readonly',
-            'https://www.googleapis.com/auth/drive.readonly'
-        ]
-        yield mock_config
+    with patch('modules.integrations.google.sheets_client._get_service_account_path') as mock_get_path:
+        mock_get_path.return_value = credentials_file
+        yield mock_get_path
 
 
 class TestGoogleSheetsClientInitialization:
@@ -43,8 +39,8 @@ class TestGoogleSheetsClientInitialization:
     
     def test_init_with_missing_credentials_file(self):
         """Should raise FileNotFoundError when credentials file doesn't exist."""
-        with patch('modules.integrations.google.sheets_client.config') as mock_config:
-            mock_config.Google.service_account_path = Path("/nonexistent/path.json")
+        with patch('modules.integrations.google.sheets_client._get_service_account_path') as mock_get_path:
+            mock_get_path.return_value = Path("/nonexistent/path.json")
             
             with pytest.raises(FileNotFoundError, match="Google service account credentials not found"):
                 GoogleSheetsClient()

@@ -5,63 +5,65 @@ Handles authentication and reading/writing data from Google Sheets using Service
 """
 
 import logging
-from typing import List, Optional, Dict, Any
-from pathlib import Path
+from typing import List, Optional, Dict, Any, cast
 
-from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from pydantic import Field
 
-from config import config
+from backend.shared.model_config import ApiModel
+from .base_client import GoogleAPIClient, handle_http_errors
 
 logger = logging.getLogger(__name__)
 
 
-class GoogleSheetsClient:
+class ValueRange(ApiModel):
+    """Google Sheets API ValueRange response structure."""
+    range_: Optional[str] = Field(None, alias='range')  # 'range' is a Python keyword
+    major_dimension: Optional[str] = None  # 'ROWS' or 'COLUMNS'
+    values: Optional[List[List[str]]] = None
+
+
+class UpdateValuesResponse(ApiModel):
+    """Google Sheets API UpdateValuesResponse structure."""
+    spreadsheet_id: Optional[str] = None
+    updated_cells: Optional[int] = None
+    updated_columns: Optional[int] = None
+    updated_rows: Optional[int] = None
+    updated_range: Optional[str] = None
+
+
+class BatchUpdateValuesResponse(ApiModel):
+    """Google Sheets API BatchUpdateValuesResponse structure."""
+    total_updated_cells: int
+    total_updated_columns: int
+    total_updated_rows: int
+    total_updated_sheets: int
+    responses: List[UpdateValuesResponse]
+
+
+class GoogleSheetsClient(GoogleAPIClient):
     """Client for interacting with Google Sheets API."""
     
-    def __init__(self, credentials_path: Optional[Path] = None):
+    def __init__(self, service_account_info: Optional[Dict[str, Any]] = None):
         """
         Initialize Google Sheets client with service account credentials.
         
         Args:
-            credentials_path: Path to service account JSON file.
-                            If None, uses path from config.
+            service_account_info: Service account JSON dict.
+                                If None, uses config.GOOGLE.SERVICE_ACCOUNT.
         
         Raises:
-            FileNotFoundError: If credentials file doesn't exist
-            ValueError: If credentials are invalid
+            ValueError: If credentials are missing or invalid
         """
-        self.credentials_path = credentials_path or config.Google.service_account_path
-        
-        if not self.credentials_path.exists():
-            raise FileNotFoundError(
-                f"Google service account credentials not found at: {self.credentials_path}. "
-                f"Please follow the setup guide in GOOGLE_SHEETS_SETUP_GUIDE.md"
-            )
-        
-        try:
-            self.credentials = service_account.Credentials.from_service_account_file(
-                str(self.credentials_path),
-                scopes=config.Google.scopes
-            )
-            
-            self.service = build('sheets', 'v4', credentials=self.credentials)
-            
-            logger.info(
-                f"✅ Google Sheets client initialized with service account: "
-                f"{self.credentials.service_account_email}"
-            )
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize Google Sheets client: {e}")
-            raise ValueError(f"Invalid Google service account credentials: {e}")
+        self.scopes = [
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive.readonly',
+        ]
+        super().__init__(service_account_info=service_account_info)
+        self.service = self._build_service('sheets', 'v4')
     
-    @property
-    def service_account_email(self) -> str:
-        """Get the service account email address."""
-        return self.credentials.service_account_email
-    
+    @handle_http_errors
     def fetch_sheet_as_csv(
         self,
         spreadsheet_id: str,
@@ -78,9 +80,7 @@ class GoogleSheetsClient:
             List of rows, where each row is a list of cell values (strings)
         
         Raises:
-            PermissionError: If the sheet is not shared with the service account
-            ValueError: If the spreadsheet ID is invalid
-            HttpError: For other Google API errors
+            HttpError: For Google API errors
         
         Example:
             >>> client = GoogleSheetsClient()
@@ -88,48 +88,24 @@ class GoogleSheetsClient:
             >>> print(data[0])  # Header row
             ['Name', 'Email', 'Phone']
         """
-        try:
-            result = self.service.spreadsheets().values().get(
-                spreadsheetId=spreadsheet_id,
-                range=range_name
-            ).execute()
-            
-            values = result.get('values', [])
-            
-            if not values:
-                logger.warning(f"No data found in sheet: {spreadsheet_id}")
-                return []
-            
-            logger.info(
-                f"✅ Fetched {len(values)} rows from Google Sheet "
-                f"(ID: {spreadsheet_id[:20]}...)"
-            )
-            
-            return values
-            
-        except HttpError as e:
-            error_reason = 'unknown'
-            if e.error_details and isinstance(e.error_details, list) and len(e.error_details) > 0:
-                if isinstance(e.error_details[0], dict):
-                    error_reason = e.error_details[0].get('reason', 'unknown')
-            
-            if e.resp.status == 403:
-                raise PermissionError(
-                    f"Access denied to spreadsheet {spreadsheet_id}. "
-                    f"Please share the sheet with: {self.service_account_email}"
-                ) from e
-            
-            elif e.resp.status == 404:
-                raise ValueError(
-                    f"Spreadsheet not found: {spreadsheet_id}. "
-                    f"Please check the spreadsheet ID is correct."
-                ) from e
-            
-            else:
-                logger.error(
-                    f"Google Sheets API error ({e.resp.status}): {error_reason}"
-                )
-                raise
+        result_dict = self.service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=range_name
+        ).execute()
+        
+        result = ValueRange(**result_dict)
+        values = result.values or []
+        
+        if not values:
+            logger.warning(f"No data found in sheet: {spreadsheet_id}")
+            return []
+        
+        logger.info(
+            f"✅ Fetched {len(values)} rows from Google Sheet "
+            f"(ID: {spreadsheet_id[:20]}...)"
+        )
+        
+        return values
     
     def extract_sheet_id_from_url(self, url: str) -> str:
         """
@@ -159,13 +135,41 @@ class GoogleSheetsClient:
         else:
             return url.strip()
     
+    def _build_update_request(
+        self,
+        spreadsheet_id: str,
+        range_name: str,
+        values: List[List[str]],
+        value_input_option: str = "USER_ENTERED"
+    ) -> Any:
+        """
+        Build an update request object without executing it.
+        
+        Args:
+            spreadsheet_id: The ID of the Google Sheet
+            range_name: The A1 notation range to update (e.g., "A1:C10")
+            values: 2D list of values to write (rows x columns)
+            value_input_option: How to interpret input values
+        
+        Returns:
+            Request object ready to be executed or added to a batch
+        """
+        body = {'values': values}
+        return self.service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            valueInputOption=value_input_option,
+            body=body
+        )
+    
+    @handle_http_errors
     def update_sheet_values(
         self,
         spreadsheet_id: str,
         range_name: str,
         values: List[List[str]],
         value_input_option: str = "USER_ENTERED"
-    ) -> Dict[str, Any]:
+    ) -> UpdateValuesResponse:
         """
         Update a range of cells in a Google Sheet.
         
@@ -181,9 +185,7 @@ class GoogleSheetsClient:
             Dictionary with update metadata (updatedCells, updatedRows, etc.)
         
         Raises:
-            PermissionError: If the sheet is not shared with write access
-            ValueError: If the spreadsheet ID is invalid
-            HttpError: For other Google API errors
+            HttpError: For Google API errors
         
         Example:
             >>> client = GoogleSheetsClient()
@@ -195,63 +197,32 @@ class GoogleSheetsClient:
             >>> result = client.update_sheet_values("ABC123", "A1:C3", values)
             >>> print(f"Updated {result['updatedCells']} cells")
         """
-        try:
-            body = {'values': values}
-            
-            result = self.service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id,
-                range=range_name,
-                valueInputOption=value_input_option,
-                body=body
-            ).execute()
-            
-            logger.info(
-                f"✅ Updated {result.get('updatedCells', 0)} cells in range {range_name} "
-                f"(spreadsheet: {spreadsheet_id[:20]}...)"
-            )
-            
-            return result
-            
-        except HttpError as e:
-            error_reason = 'unknown'
-            if e.error_details and isinstance(e.error_details, list) and len(e.error_details) > 0:
-                if isinstance(e.error_details[0], dict):
-                    error_reason = e.error_details[0].get('reason', 'unknown')
-            
-            if e.resp.status == 403:
-                raise PermissionError(
-                    f"Write access denied to spreadsheet {spreadsheet_id}. "
-                    f"Please ensure the sheet is shared with EDIT permissions to: {self.service_account_email}"
-                ) from e
-            
-            elif e.resp.status == 404:
-                raise ValueError(
-                    f"Spreadsheet not found: {spreadsheet_id}. "
-                    f"Please check the spreadsheet ID is correct."
-                ) from e
-            
-            else:
-                logger.error(
-                    f"Google Sheets API error ({e.resp.status}): {error_reason}"
-                )
-                raise
+        request = self._build_update_request(
+            spreadsheet_id, range_name, values, value_input_option
+        )
+        result_dict = request.execute()
+        result = UpdateValuesResponse(**result_dict)
+        
+        logger.info(
+            f"✅ Updated {result.updated_cells or 0} cells in range {range_name} "
+            f"(spreadsheet: {spreadsheet_id[:20]}...)"
+        )
+        
+        return result
     
+    @handle_http_errors
     def batch_update_sheet_values(
         self,
         spreadsheet_id: str,
         updates: List[Dict[str, Any]],
         value_input_option: str = "USER_ENTERED"
-    ) -> Dict[str, Any]:
+    ) -> BatchUpdateValuesResponse:
         """
-        Update multiple ranges in a Google Sheet in a single API call (more efficient).
+        Update multiple ranges in a Google Sheet using batched API requests.
         
         Args:
             spreadsheet_id: The ID of the Google Sheet
-            updates: List of update dictionaries, each with 'range' and 'values' keys:
-                [
-                    {'range': 'A1:B2', 'values': [['Name', 'Email'], ['John', 'john@example.com']]},
-                    {'range': 'D1:E2', 'values': [['Phone', 'Status'], ['555-1234', 'Active']]}
-                ]
+            updates: List of update dictionaries, each with 'range' and 'values' keys
             value_input_option: How to interpret input values:
                 - "USER_ENTERED": Parse as if typed by user (formulas, dates, etc.)
                 - "RAW": Values stored as-is (strings)
@@ -260,9 +231,7 @@ class GoogleSheetsClient:
             Dictionary with batch update metadata
         
         Raises:
-            PermissionError: If the sheet is not shared with write access
-            ValueError: If the spreadsheet ID is invalid or updates format is wrong
-            HttpError: For other Google API errors
+            HttpError: For Google API errors
         
         Example:
             >>> client = GoogleSheetsClient()
@@ -276,56 +245,40 @@ class GoogleSheetsClient:
             >>> result = client.batch_update_sheet_values("ABC123", updates)
             >>> print(f"Updated {result['totalUpdatedCells']} cells")
         """
-        try:
-            data = [
-                {
-                    'range': update['range'],
-                    'values': update['values']
-                }
-                for update in updates
-            ]
-            
-            body = {
-                'valueInputOption': value_input_option,
-                'data': data
-            }
-            
-            result = self.service.spreadsheets().values().batchUpdate(
-                spreadsheetId=spreadsheet_id,
-                body=body
-            ).execute()
-            
-            total_cells = result.get('totalUpdatedCells', 0)
-            total_ranges = len(updates)
-            
-            logger.info(
-                f"✅ Batch updated {total_cells} cells across {total_ranges} ranges "
-                f"(spreadsheet: {spreadsheet_id[:20]}...)"
+        requests = [
+            self._build_update_request(
+                spreadsheet_id,
+                update['range'],
+                update['values'],
+                value_input_option
             )
-            
-            return result
-            
-        except HttpError as e:
-            error_reason = 'unknown'
-            if e.error_details and isinstance(e.error_details, list) and len(e.error_details) > 0:
-                if isinstance(e.error_details[0], dict):
-                    error_reason = e.error_details[0].get('reason', 'unknown')
-            
-            if e.resp.status == 403:
-                raise PermissionError(
-                    f"Write access denied to spreadsheet {spreadsheet_id}. "
-                    f"Please ensure the sheet is shared with EDIT permissions to: {self.service_account_email}"
-                ) from e
-            
-            elif e.resp.status == 404:
-                raise ValueError(
-                    f"Spreadsheet not found: {spreadsheet_id}. "
-                    f"Please check the spreadsheet ID is correct."
-                ) from e
-            
-            else:
-                logger.error(
-                    f"Google Sheets API error ({e.resp.status}): {error_reason}"
-                )
-                raise
+            for update in updates
+        ]
+        
+        batch_responses = self.batch_request(requests)
+        responses: List[UpdateValuesResponse] = [
+            UpdateValuesResponse(**response) for response in batch_responses
+        ]
+        
+        total_cells = sum(response.updated_cells or 0 for response in responses)
+        total_ranges = len(updates)
+        
+        result = BatchUpdateValuesResponse(
+            total_updated_cells=total_cells,
+            total_updated_columns=sum(response.updated_columns or 0 for response in responses),
+            total_updated_rows=sum(response.updated_rows or 0 for response in responses),
+            total_updated_sheets=len(set(
+                (response.updated_range or '').split('!')[0] 
+                for response in responses 
+                if response.updated_range and '!' in response.updated_range
+            )),
+            responses=responses
+        )
+        
+        logger.info(
+            f"✅ Batch updated {total_cells} cells across {total_ranges} ranges "
+            f"(spreadsheet: {spreadsheet_id[:20]}...)"
+        )
+        
+        return result
 
