@@ -1,4 +1,4 @@
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 import json
 import traceback
@@ -11,7 +11,9 @@ from bars_common_utils.request_utils import wait_until_next_minute
 from bars_common_utils.shopify_utils import (
     get_inventory_item_and_quantity,
     adjust_inventory,
-    update_product_title
+    update_product_title,
+    get_product_tags,
+    update_product_tags
 )
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -52,6 +54,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         variant_gid = event_body['variantGid']
         inventory_to_add = event_body['inventoryToAdd']
         product_title = event_body.get('productTitle')  # Optional field
+        variant_type = event_body.get('variantType', '').lower()  # Optional: for tag management
 
         # Validate inventoryToAdd is a positive integer
         if not isinstance(inventory_to_add, int) or inventory_to_add <= 0:
@@ -71,23 +74,45 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         print(f"📊 Current inventory: {current_quantity}, Adding: {inventory_to_add}")
         
-        # Update product title if provided
-        title_updated = False
-        if product_title:
-            print(f"📝 Updating product title to: {product_title}")
-            print(f"⏱️ Starting title update at: {datetime.now().isoformat()}")
-            update_product_title(product_id, product_title)
-            print(f"✅ Title update completed at: {datetime.now().isoformat()}")
-            title_updated = True
+        # Add 'veteran-only' tag if first variant is veteran (before inventory adjustment)
+        tags_updated = False
+        if variant_type == 'vet':
+            print(f"🏷️ First variant is veteran, adding 'veteran-only' tag")
+            print(f"⏱️ Starting tag update at: {datetime.now().isoformat()}")
+            try:
+                current_tags = get_product_tags(product_id)
+                if 'veteran-only' not in current_tags:
+                    updated_tags = current_tags + ['veteran-only']
+                    update_product_tags(product_id, updated_tags)
+                    print(f"✅ Added 'veteran-only' tag. Updated tags: {updated_tags}")
+                    tags_updated = True
+                else:
+                    print(f"ℹ️ 'veteran-only' tag already exists on product")
+            except Exception as e:
+                print(f"⚠️ Failed to update product tags: {e}")
+                # Don't fail the entire operation if tag update fails
         
         # Wait until next minute before making inventory changes
         wait_until_next_minute()
         
-        # Add the inventory
+        # Add the inventory FIRST
         print(f"➕ Adding {inventory_to_add} units to variant inventory")
         print(f"⏱️ Starting inventory adjustment at: {datetime.now().isoformat()}")
         adjust_inventory(inventory_item_id, inventory_to_add)
         print(f"✅ Inventory adjustment completed at: {datetime.now().isoformat()}")
+        
+        # Update product title AFTER inventory is successfully added
+        title_updated = False
+        if product_title:
+            print(f"📝 Updating product title to: {product_title}")
+            print(f"⏱️ Starting title update at: {datetime.now().isoformat()}")
+            try:
+                update_product_title(product_id, product_title)
+                print(f"✅ Title update completed at: {datetime.now().isoformat()}")
+                title_updated = True
+            except Exception as e:
+                print(f"⚠️ Failed to update product title: {e}")
+                # Don't fail the entire operation if title update fails (inventory was already added)
         
         # Calculate new total
         new_total = current_quantity + inventory_to_add
@@ -96,6 +121,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         message = f"Successfully added {inventory_to_add} units to variant"
         if title_updated:
             message += f" and updated product title to '{product_title}'"
+        if tags_updated:
+            message += " and added 'veteran-only' tag"
         
         return format_response(200, {
             "success": True,
@@ -108,7 +135,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "newTotalQuantity": new_total,
                 "inventoryItemId": inventory_item_id,
                 "titleUpdated": title_updated,
-                "newTitle": product_title if title_updated else None
+                "newTitle": product_title if title_updated else None,
+                "tagsUpdated": tags_updated
             }
         })
 

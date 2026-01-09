@@ -1,4 +1,4 @@
-__version__ = "1.2.0"
+__version__ = "1.4.0"
 
 import json
 import traceback
@@ -10,7 +10,9 @@ from bars_common_utils.request_utils import wait_until_next_minute
 from bars_common_utils.shopify_utils import (
     get_inventory_item_and_quantity,
     adjust_inventory,
-    get_product_variants
+    get_product_variants,
+    get_product_tags,
+    update_product_tags
 )
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -37,7 +39,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         source_type = source.get('type', '').lower()
         dest_type = dest.get('type', '').lower()
         num_eligible_veterans = event.get('numEligibleVeterans', 0)
-
+        
+        product_id = event['productUrl'].split('/')[-1]
+        tags_updated = False
         
         if dest_type in ['vet', 'early', 'wtnb', 'bipoc']:
             # 🧠 Case 1: reg1 ➡ reg2 logic (move all inventory from source to destination)
@@ -55,10 +59,34 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             wait_until_next_minute()
             adjust_inventory(source_id, -source_qty)
             adjust_inventory(dest_id, source_qty)
+            
+            # Remove 'veteran-only' tag if source variant was veteran and now has 0 inventory
+            if source_type == 'vet':
+                # Check if veteran variant still has inventory after the move
+                source_data_after = get_inventory_item_and_quantity(source_gid)
+                remaining_qty = source_data_after['inventoryQuantity']
+                print(f"🔍 Veteran variant inventory after move: {remaining_qty}")
+                
+                if remaining_qty == 0:
+                    print(f"🏷️ Veteran variant has 0 inventory, removing 'veteran-only' tag")
+                    try:
+                        current_tags = get_product_tags(product_id)
+                        if 'veteran-only' in current_tags:
+                            updated_tags = [tag for tag in current_tags if tag != 'veteran-only']
+                            update_product_tags(product_id, updated_tags)
+                            print(f"✅ Removed 'veteran-only' tag. Updated tags: {updated_tags}")
+                            tags_updated = True
+                        else:
+                            print(f"ℹ️ 'veteran-only' tag not found on product")
+                    except Exception as e:
+                        print(f"⚠️ Failed to update product tags: {e}")
+                        # Don't fail the entire operation if tag update fails
+                else:
+                    print(f"ℹ️ Veteran variant still has {remaining_qty} inventory, keeping 'veteran-only' tag")
 
             return format_response(200, {
                 "success": True,
-                "message": f"Moved all {source_qty} units from {source_name} to {dest_name}",
+                "message": f"Moved all {source_qty} units from {source_name} to {dest_name}" + (" and removed 'veteran-only' tag" if tags_updated else ""),
                 "details": {
                     "from": f"{source_name} ({source_gid})",
                     "to": f"{dest_name} ({dest_gid})",
@@ -78,13 +106,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
             for v in variants:
                 variant_gid = v['id']
-                # Exclude destination variant (open) and source variant to avoid double-moving
-                if variant_gid == dest_gid or variant_gid == source_gid:
+                # Exclude only the destination variant (open) - include source variant
+                if variant_gid == dest_gid:
                     continue
                 
                 # Move inventory from any variant that has inventory > 0
                 qty = v['inventoryQuantity']
-                if qty != 0:
+                if qty > 0:
                     item_id = str(v['inventoryItem']['id'])
                     variant_title = v.get('title', 'Unknown')
                     print(f"🔁 Queuing {qty} from variant {variant_gid} ({variant_title})")
@@ -101,14 +129,50 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             for item_id, qty in move_variants:
                 adjust_inventory(item_id, -qty)
             adjust_inventory(dest_id, total_delta)
+            
+            # Check if any veteran variant has 0 inventory after consolidation
+            # Find veteran variant by checking all variants for 'veteran' in title
+            veteran_variant_gid = None
+            for v in variants:
+                variant_title = v.get('title', '').lower()
+                if 'veteran' in variant_title:
+                    veteran_variant_gid = v['id']
+                    break
+            
+            if veteran_variant_gid:
+                veteran_data_after = get_inventory_item_and_quantity(veteran_variant_gid)
+                remaining_qty = veteran_data_after['inventoryQuantity']
+                print(f"🔍 Veteran variant inventory after consolidation: {remaining_qty}")
+                
+                if remaining_qty == 0:
+                    print(f"🏷️ Veteran variant has 0 inventory, removing 'veteran-only' tag")
+                    try:
+                        current_tags = get_product_tags(product_id)
+                        if 'veteran-only' in current_tags:
+                            updated_tags = [tag for tag in current_tags if tag != 'veteran-only']
+                            update_product_tags(product_id, updated_tags)
+                            print(f"✅ Removed 'veteran-only' tag. Updated tags: {updated_tags}")
+                            tags_updated = True
+                        else:
+                            print(f"ℹ️ 'veteran-only' tag not found on product")
+                    except Exception as e:
+                        print(f"⚠️ Failed to update product tags: {e}")
+                        # Don't fail the entire operation if tag update fails
+                else:
+                    print(f"ℹ️ Veteran variant still has {remaining_qty} inventory, keeping 'veteran-only' tag")
 
+            message = f"Moved {total_delta} units into {dest_name}"
+            if tags_updated:
+                message += " and removed 'veteran-only' tag"
+            
             return format_response(200, {
                 "success": True,
-                "message": f"Moved {total_delta} units into {dest_name}",
+                "message": message,
                 "details": {
                     "from": "all non-open variants",
                     "to": f"{dest_name} ({dest_gid})",
-                    "amountMoved": total_delta
+                    "amountMoved": total_delta,
+                    "tagsUpdated": tags_updated
                 }
             })
         
@@ -129,13 +193,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             adjust_inventory(source_id, -source_qty)
             adjust_inventory(dest_id, source_qty)
 
+            message = f"Moved all {source_qty} units from {source_name} to {dest_name}"
+            if tags_updated:
+                message += " and removed 'veteran-only' tag"
+            
             return format_response(200, {
                 "success": True,
-                "message": f"Moved all {source_qty} units from {source_name} to {dest_name}",
+                "message": message,
                 "details": {
                     "from": f"{source_name} ({source_gid})",
                     "to": f"{dest_name} ({dest_gid})",
-                    "amountMoved": source_qty
+                    "amountMoved": source_qty,
+                    "tagsUpdated": tags_updated
                 }
             })
 
