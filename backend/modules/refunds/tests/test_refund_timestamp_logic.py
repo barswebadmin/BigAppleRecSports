@@ -6,7 +6,7 @@ Ensures refund calculations use the request submission timestamp, not processing
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 from modules.orders.services.refund_calculator import RefundCalculator
-from utils.date_utils import calculate_refund_amount
+from shared.date_utils import calculate_refund_amount
 
 
 class TestRefundTimestampLogic:
@@ -42,7 +42,7 @@ class TestRefundTimestampLogic:
         # Current time is 1 week before season start (would get 90% refund if used incorrectly)
         current_time = season_start - timedelta(weeks=1)
 
-        with patch("utils.date_utils.datetime") as mock_datetime:
+        with patch("shared.date_utils.datetime") as mock_datetime:
             # Mock datetime.now() to return current_time
             mock_datetime.now.return_value = current_time
             mock_datetime.fromtimestamp.side_effect = datetime.fromtimestamp
@@ -74,7 +74,7 @@ class TestRefundTimestampLogic:
         # Current time is 1 week before season start (should get 90% refund)
         current_time = season_start - timedelta(weeks=1)
 
-        with patch("utils.date_utils.datetime") as mock_datetime:
+        with patch("shared.date_utils.datetime") as mock_datetime:
             # Mock datetime.now() to return current_time
             mock_datetime.now.return_value = current_time
             mock_datetime.fromtimestamp.side_effect = datetime.fromtimestamp
@@ -127,7 +127,7 @@ class TestRefundTimestampLogic:
         ]
 
         for case in test_cases:
-            with patch("utils.date_utils.datetime") as mock_datetime:
+            with patch("shared.date_utils.datetime") as mock_datetime:
                 mock_datetime.fromtimestamp.side_effect = datetime.fromtimestamp
                 mock_datetime.side_effect = lambda *args, **kwargs: datetime(
                     *args, **kwargs
@@ -244,7 +244,7 @@ class TestRefundTimestampLogic:
         assert "processing fee" in refund_message
         assert "processing fee" not in credit_message
 
-    @patch("utils.date_utils.logger")
+    @patch("shared.date_utils.logger")
     def test_logging_shows_correct_timestamps(self, mock_logger):
         """Test that the logging shows both season start and submission timestamps."""
 

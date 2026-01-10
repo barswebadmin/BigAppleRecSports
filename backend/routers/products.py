@@ -1,11 +1,7 @@
 import json
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from typing import Dict, Any
 import logging
-from modules.products.services.products_service import ProductsService
-from modules.integrations.shopify.models.products.product_creation_request.product_creation_request_validation_error import (
-    ProductCreationRequestValidationError,
-)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/products", tags=["products"])

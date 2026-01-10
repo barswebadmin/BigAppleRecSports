@@ -3,7 +3,6 @@ Test utilities for Slack service testing.
 Provides clean interfaces for common test operations.
 """
 
-from typing import Any, Dict, Optional
 from unittest.mock import Mock
 
 

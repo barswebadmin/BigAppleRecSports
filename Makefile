@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install install-prod reinstall clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir lambda clasp
 
 # Default target
 help:
@@ -14,8 +14,9 @@ help:
 	@echo "  make tunnel-daemon       - Start localtunnel as background daemon (survives restarts)"
 	@echo "  make dev                 - Start server + tunnel with auto URL updates (dev mode)"
 	@echo "  make stop                - Stop all processes"
-	@echo "  make install             - Install all dependencies from unified requirements.txt"
+	@echo "  make install             - Install all dependencies (Python + GAS)"
 	@echo "  make install-prod        - Install production dependencies only"
+	@echo "  make reinstall           - Reinstall all dependencies (clean install)"
 	@echo "  make clean               - Clean up processes and cache files"
 	@echo "  make status              - Show running processes"
 	@echo "  make url                 - Show localtunnel URL"
@@ -43,11 +44,23 @@ help:
 	@echo "  make test-backend-all    - Run all backend tests"
 	@echo "  make test-specific TEST=<path> - Run specific test file or case"
 	@echo ""
+	@echo "☁️  Lambda Deployment:"
+	@echo "  make lambda deploy [function] - Deploy Lambda function(s)"
+	@echo "                             If function name provided, deploy that function"
+	@echo "                             If no function name, deploy all functions (with diff check and prompts)"
+	@echo ""
+	@echo "📦 Google Apps Script Deployment:"
+	@echo "  make clasp push <project> - Push GAS project to remote (with diff comparison)"
+	@echo "  make clasp pull <project> - Pull GAS project from remote (with diff comparison)"
+	@echo "  make clasp deploy <project> - Full deployment (push + version management)"
+	@echo ""
 	@echo "📋 Examples:"
 	@echo "  make compile backend/services"
 	@echo "  make test lambda-functions/shopifyProductUpdateHandler"
 	@echo "  make test-specific TEST=backend/test_slack_message_formatting.py"
 	@echo "  make test-specific TEST=backend/test_orders_api.py::test_fetch_order"
+	@echo "  make lambda deploy MoveInventoryLambda"
+	@echo "  make lambda deploy  # Deploy all functions"
 	@echo ""
 	@echo "🔧 Quick Start:"
 	@echo "  1. make install          - Install dependencies"
@@ -152,12 +165,12 @@ _compile_backend_internal:
 			cd "$$TARGET_DIR" && python3 -m pip check 2>/dev/null || echo "⚠️  Some dependencies may be missing"; \
 		fi; \
 		if [ -f "$$TARGET_DIR/config.py" ]; then \
-			echo "⚙️  Testing config import..."; \
-			if [ -f ".venv/bin/activate" ]; then \
-				cd "$$TARGET_DIR" && source ../.venv/bin/activate && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
-			else \
-				cd "$$TARGET_DIR" && python3 -c "from config import settings; print('✅ Config loads successfully')" || exit 1; \
-			fi; \
+		echo "⚙️  Testing config import..."; \
+		if [ -f ".venv/bin/activate" ]; then \
+			cd "$$TARGET_DIR" && source ../.venv/bin/activate && python3 -c "from config import config; print('✅ Config loads successfully')" || exit 1; \
+		else \
+			cd "$$TARGET_DIR" && python3 -c "from config import config; print('✅ Config loads successfully')" || exit 1; \
+		fi; \
 		fi; \
 		if [ -f "$$TARGET_DIR/main.py" ]; then \
 			echo "🚀 Testing FastAPI app import..."; \
@@ -323,7 +336,7 @@ tunnel:
 	@echo "🔄 Starting persistent localtunnel (will auto-restart on failure)..."
 	@while true; do \
 		echo "📡 Connecting to localtunnel..."; \
-		lt -p 8000 -s bars-back-local || { \
+		lt -p 8000 -s bars-backend || { \
 			echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; \
 			sleep 3; \
 		}; \
@@ -336,8 +349,8 @@ tunnel-and-update:
 	@echo "🔄 Starting robust localtunnel (will survive server restarts)..."
 	@while true; do \
 		echo "📡 Connecting to localtunnel..."; \
-		echo "🌐 URL: https://bars-back-local.loca.lt"; \
-		lt -p 8000 -s bars-back-local || { \
+		echo "🌐 URL: https://bars-backend.loca.lt"; \
+		lt -p 8000 -s bars-backend || { \
 			echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; \
 			sleep 3; \
 		}; \
@@ -347,9 +360,9 @@ tunnel-daemon:
 	@echo "🌐 Starting localtunnel as background daemon..."
 	@pkill -f "lt -p 8000" || true
 	@sleep 1
-	@nohup sh -c 'while true; do echo "📡 Connecting to localtunnel..."; echo "🌐 URL: https://bars-back-local.loca.lt"; lt -p 8000 -s bars-back-local || { echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; sleep 3; }; done' > tunnel.log 2>&1 &
+	@nohup sh -c 'while true; do echo "📡 Connecting to localtunnel..."; echo "🌐 URL: https://bars-backend.loca.lt"; lt -p 8000 -s bars-backend || { echo "⚠️  Localtunnel disconnected, restarting in 3 seconds..."; sleep 3; }; done' > tunnel.log 2>&1 &
 	@echo "✅ Localtunnel daemon started in background"
-	@echo "🌐 URL: https://bars-back-local.loca.lt"
+	@echo "🌐 URL: https://bars-backend.loca.lt"
 	@echo "📋 Check tunnel.log for status updates"
 
 update-gas-ngrok:
@@ -399,14 +412,27 @@ stop:
 	@echo "✅ All processes stopped"
 
 install:
-	@echo "📦 Installing all dependencies from unified requirements.txt..."
+	@echo "📦 Installing all dependencies..."
+	@echo "  Installing Python dependencies from requirements.txt..."
 	@pip3 install -r requirements.txt
+	@echo "  Installing GAS dependencies from GoogleAppsScripts/package.json..."
+	@cd GoogleAppsScripts && pnpm install
 	@echo "✅ All dependencies installed!"
 
 install-prod:
 	@echo "📦 Installing production dependencies only..."
 	@pip3 install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil typing-extensions
+	@echo "  Installing GAS dependencies from GoogleAppsScripts/package.json..."
+	@cd GoogleAppsScripts && pnpm install --prod
 	@echo "✅ Production dependencies installed!"
+
+reinstall:
+	@echo "🔄 Reinstalling all dependencies..."
+	@echo "  Reinstalling Python dependencies..."
+	@pip3 install -r requirements.txt --force-reinstall --no-cache-dir
+	@echo "  Reinstalling GAS dependencies..."
+	@cd GoogleAppsScripts && rm -rf node_modules pnpm-lock.yaml && pnpm install
+	@echo "✅ All dependencies reinstalled!"
 
 install-backend-legacy:
 	@echo "📦 Installing backend dependencies (legacy method)..."
@@ -433,7 +459,7 @@ status:
 	@ps aux | grep "lt -p 8000" | grep -v grep || echo "❌ Localtunnel not running"
 	@echo ""
 	@echo "🌐 Localtunnel URL:"
-	@echo "https://bars-back-local.loca.lt"
+	@echo "https://bars-backend.loca.lt"
 	@echo ""
 	@echo "📋 Recent tunnel logs (if daemon is running):"
 	@if [ -f tunnel.log ]; then \
@@ -444,7 +470,7 @@ status:
 	fi
 
 url:
-	@echo "🌐 Localtunnel URL: https://bars-back-local.loca.lt"
+	@echo "🌐 Localtunnel URL: https://bars-backend.loca.lt"
 
 version:
 	@echo "📈 Backend Version Information:"
@@ -495,11 +521,9 @@ ready:
 
 # Note: backend, gas, lambda, etc. aliases are already defined above for compile
 # They will also work for test commands due to the argument parsing logic
+# Use: make test backend, make test GoogleAppsScripts, make test lambda-functions
 
 # Backend-specific test commands
-test-backend:
-	@$(MAKE) _test_directory DIR=backend
-
 test-backend-unit:
 	@echo "🧪 Running backend unit tests with mocked services (no external API calls)..."
 	@echo "🔍 Checking backend compilation first..."
@@ -618,13 +642,6 @@ test-specific:
 		exit 1; \
 	fi
 
-# Legacy commands (still supported)
-test-gas:
-	@$(MAKE) _test_directory DIR=GoogleAppsScripts
-
-test-lambda:
-	@$(MAKE) _test_directory DIR=lambda-functions
-
 # Internal testing logic
 _test_directory:
 	@if [ "$(DIR)" = "." ]; then \
@@ -724,8 +741,6 @@ _test_gas_internal:
 		echo "🧪 Step 3: Running test suites..." && \
 		chmod +x tests/*.sh && \
 		chmod +x projects/*/tests/*.sh && \
-		echo "📋 Running Clasp Helpers Tests..." && \
-		./tests/test_clasp_helpers.sh || true && \
 		echo "📋 Running Product Creation Function Tests..." && \
 		cd projects/create-products-from-registration-info/tests && \
 		node run_consolidated_tests.js && \
@@ -854,3 +869,109 @@ check-dir:
 	@find "$(DIR)" -name "*.gs" -o -name "*.js" -type f 2>/dev/null | head -10 || echo "  None found"
 	@echo "Test files:"
 	@find "$(DIR)" -name "*test*" -type f 2>/dev/null | head -10 || echo "  None found"
+
+# =============================================================================
+# LAMBDA DEPLOYMENT COMMANDS
+# =============================================================================
+
+# Handle lambda command arguments
+ifneq ($(filter lambda,$(MAKECMDGOALS)),)
+  # Get arguments after 'lambda'
+  LAMBDA_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(LAMBDA_ARGS),)
+    LAMBDA_CMD := $(word 1,$(LAMBDA_ARGS))
+    LAMBDA_FUNCTION := $(word 2,$(LAMBDA_ARGS))
+    # Prevent make from trying to build these as targets
+    $(eval $(LAMBDA_ARGS):;@:)
+  endif
+endif
+
+lambda:
+	@if [ -z "$(LAMBDA_CMD)" ]; then \
+		echo "❌ Command required (deploy)"; \
+		echo "Usage: make lambda <command> [function-name]"; \
+		echo "Commands:"; \
+		echo "  deploy  - Deploy Lambda function(s)"; \
+		echo "           If function name provided, deploy that function"; \
+		echo "           If no function name, deploy all functions (with diff check and prompts)"; \
+		echo ""; \
+		echo "Examples:"; \
+		echo "  make lambda deploy MoveInventoryLambda"; \
+		echo "  make lambda deploy  # Deploy all functions"; \
+		exit 1; \
+	fi
+	@if [ "$(LAMBDA_CMD)" = "deploy" ]; then \
+		if [ -z "$(LAMBDA_FUNCTION)" ]; then \
+			echo "🚀 Deploying all Lambda functions..."; \
+			echo ""; \
+			FUNCTIONS=$$(find lambda/functions -maxdepth 1 -type d -name "*Lambda*" -o -name "*Handler*" | grep -v "^lambda/functions$$" | xargs -n1 basename | sort); \
+			if [ -z "$$FUNCTIONS" ]; then \
+				echo "❌ No Lambda functions found"; \
+				exit 1; \
+			fi; \
+			for FUNC in $$FUNCTIONS; do \
+				if [ -f "lambda/functions/$$FUNC/lambda_function.py" ]; then \
+					echo ""; \
+					echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+					echo "📦 Function: $$FUNC"; \
+					echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+					bash scripts/deploy_lambda_function.sh "$$FUNC"; \
+				fi; \
+			done; \
+		else \
+			bash scripts/deploy_lambda_function.sh "$(LAMBDA_FUNCTION)"; \
+		fi; \
+	else \
+		echo "❌ Unknown command: $(LAMBDA_CMD)"; \
+		echo "Valid commands: deploy"; \
+		exit 1; \
+	fi
+
+# =============================================================================
+# GOOGLE APPS SCRIPT DEPLOYMENT COMMANDS
+# =============================================================================
+
+# Handle clasp command arguments
+ifneq ($(filter clasp,$(MAKECMDGOALS)),)
+  # Get arguments after 'clasp'
+  CLASP_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(CLASP_ARGS),)
+    CLASP_CMD := $(word 1,$(CLASP_ARGS))
+    CLASP_PROJECT := $(word 2,$(CLASP_ARGS))
+    # Prevent make from trying to build these as targets
+    $(eval $(CLASP_ARGS):;@:)
+  endif
+endif
+
+clasp:
+	@if [ -z "$(CLASP_CMD)" ]; then \
+		echo "❌ Command required (push, pull, or deploy)"; \
+		echo "Usage: make clasp <command> <project-name>"; \
+		echo "Commands:"; \
+		echo "  push    - Push GAS project to remote (with diff comparison)"; \
+		echo "  pull    - Pull GAS project from remote (with diff comparison)"; \
+		echo "  deploy  - Full deployment (push + version management)"; \
+		echo ""; \
+		echo "Examples:"; \
+		echo "  make clasp push waitlist-script-comprehensive"; \
+		echo "  make clasp pull waitlist-script-comprehensive"; \
+		echo "  make clasp deploy waitlist-script-comprehensive"; \
+		exit 1; \
+	fi
+	@if [ -z "$(CLASP_PROJECT)" ]; then \
+		echo "❌ Project name required"; \
+		echo "Usage: make clasp $(CLASP_CMD) <project-name>"; \
+		echo "Example: make clasp $(CLASP_CMD) waitlist-script-comprehensive"; \
+		exit 1; \
+	fi
+	@if [ "$(CLASP_CMD)" = "push" ]; then \
+		bash GoogleAppsScripts/remote-sync-tools/push.sh "$(CLASP_PROJECT)"; \
+	elif [ "$(CLASP_CMD)" = "pull" ]; then \
+		bash GoogleAppsScripts/remote-sync-tools/pull.sh "$(CLASP_PROJECT)"; \
+	elif [ "$(CLASP_CMD)" = "deploy" ]; then \
+		bash GoogleAppsScripts/remote-sync-tools/deploy.sh "$(CLASP_PROJECT)"; \
+	else \
+		echo "❌ Unknown command: $(CLASP_CMD)"; \
+		echo "Valid commands: push, pull, deploy"; \
+		exit 1; \
+	fi

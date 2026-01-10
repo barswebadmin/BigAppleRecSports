@@ -3,11 +3,12 @@ Slack-related Pydantic models for the Big Apple Rec Sports system.
 Provides type-safe models for Slack notifications, interactions, and data structures.
 """
 
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import field_validator, ConfigDict
 from typing import List, Optional, Dict, Union, Any
 from enum import Enum
 import re
-from datetime import datetime
+
+from shared.model_config import ApiModel
 
 
 class RefundType(str, Enum):
@@ -32,48 +33,11 @@ class SlackMessageType(str, Enum):
     LEADERSHIP_NOTIFICATION = "leadership_notification"
 
 
-class SlackUser(BaseModel):
-    """Slack user information"""
-    id: str
-    name: Optional[str] = None
-    email: Optional[str] = None
-    display_name: Optional[str] = None
+from .slack_user import SlackUser
+from .slack_channel import SlackChannel
 
 
-class SlackChannel(BaseModel):
-    """Slack channel information"""
-    id: str
-    name: Optional[str] = None
-
-
-class SlackAction(BaseModel):
-    """Slack action button/input definition"""
-    type: SlackActionType
-    action_id: str
-    text: str
-    value: Optional[str] = None
-    style: Optional[str] = None  # "primary", "danger", etc.
-    confirm: Optional[Dict[str, Any]] = None
-
-
-class SlackBlock(BaseModel):
-    """Slack block for rich message formatting"""
-    type: str
-    text: Optional[Dict[str, str]] = None
-    elements: Optional[List[SlackAction]] = None
-    accessory: Optional[Dict[str, Any]] = None
-
-
-class SlackMessage(BaseModel):
-    """Base Slack message structure"""
-    channel: str
-    text: str
-    blocks: Optional[List[SlackBlock]] = None
-    attachments: Optional[List[Dict[str, Any]]] = None
-    metadata: Optional[Dict[str, Any]] = None
-
-
-class RefundSlackNotificationRequest(BaseModel):
+class RefundSlackNotificationRequest(ApiModel):
     """
     Request model for sending refund notifications to Slack.
     This is the main model for refund-related Slack notifications.
@@ -131,7 +95,7 @@ class RefundSlackNotificationRequest(BaseModel):
         return v
 
 
-class SlackRefundConfirmation(BaseModel):
+class SlackRefundConfirmation(ApiModel):
     """
     Model for refund confirmation messages sent to Slack.
     Used when a refund has been processed and confirmed.
@@ -162,7 +126,7 @@ class SlackRefundConfirmation(BaseModel):
     shopify_refund_id: Optional[str] = None
 
 
-class SlackRefundDenial(BaseModel):
+class SlackRefundDenial(ApiModel):
     """
     Model for refund denial messages sent to Slack.
     Used when a refund request has been denied.
@@ -190,7 +154,7 @@ class SlackRefundDenial(BaseModel):
     notes: Optional[str] = None
 
 
-class SlackOrderUpdate(BaseModel):
+class SlackOrderUpdate(ApiModel):
     """
     Model for order update notifications sent to Slack.
     Used for general order status changes and updates.
@@ -221,7 +185,7 @@ class SlackOrderUpdate(BaseModel):
     order_data: Optional[Dict[str, Any]] = None
 
 
-class ProcessLeadershipCSVRequest(BaseModel):
+class ProcessLeadershipCSVRequest(ApiModel):
     """
     Request model for processing leadership CSV data.
     Originally from requests.py, now part of the Slack models system.
@@ -246,7 +210,7 @@ class ProcessLeadershipCSVRequest(BaseModel):
     year: Optional[int] = None
 
 
-class SlackLeadershipNotification(BaseModel):
+class SlackLeadershipNotification(ApiModel):
     """
     Model for leadership-related notifications sent to Slack.
     Used for leadership CSV processing and updates.
@@ -279,128 +243,61 @@ class SlackLeadershipNotification(BaseModel):
     csv_data: Optional[List[List[str]]] = None
 
 
-class SlackInteractionPayload(BaseModel):
-    """
-    Model for Slack interaction payloads (button clicks, form submissions, etc.)
-    """
-    type: str
-    user: Optional[SlackUser] = None
-    channel: Optional[SlackChannel] = None
-    actions: Optional[List[Dict[str, Any]]] = None
-    trigger_id: Optional[str] = None
-    view: Optional[Dict[str, Any]] = None
-    response_url: Optional[str] = None
-
-
-class SlackModalSubmission(BaseModel):
-    """
-    Model for Slack modal form submissions
-    """
-    type: str
-    user: SlackUser
-    view: Dict[str, Any]
-    trigger_id: str
-    
-    def get_form_values(self) -> Dict[str, Any]:
-        """Extract form values from the modal submission"""
-        values = {}
-        if "state" in self.view and "values" in self.view["state"]:
-            for block_id, block_values in self.view["state"]["values"].items():
-                for action_id, action_data in block_values.items():
-                    if "value" in action_data:
-                        values[action_id] = action_data["value"]
-        return values
-
-
-class SlackWebhookEvent(BaseModel):
-    """
-    Model for Slack webhook events
-    """
-    token: str
-    team_id: str
-    api_app_id: str
-    event: Dict[str, Any]
-    type: str
-    event_id: str
-    event_time: int
-    authorizations: Optional[List[Dict[str, Any]]] = None
-    is_ext_shared_channel: Optional[bool] = None
-    event_context: Optional[str] = None
-
-
-# Button Classes for Slack Actions
-class SlackButton:
-    """Base class for Slack button definitions"""
-    
-    @staticmethod
-    def create_button(
-        text: str,
-        action_id: str,
-        value: str,
-        style: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Create a Slack button dictionary"""
-        button = {
-            "type": "button",
-            "text": {"type": "plain_text", "text": text},
-            "action_id": action_id,
-            "value": value
-        }
-        if style:
-            button["style"] = style
-        return button
-
-
 class RefundButtons:
     """Button definitions for refund-related actions"""
     
     @staticmethod
     def process_refund(order_number: str) -> Dict[str, Any]:
         """Create a 'Process Refund' button"""
-        return SlackButton.create_button(
-            text="Process Refund",
-            action_id="process_refund",
-            value=order_number,
-            style="primary"
-        )
+        return {
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Process Refund"},
+            "action_id": "process_refund",
+            "value": order_number,
+            "style": "primary"
+        }
     
     @staticmethod
     def custom_amount(order_number: str) -> Dict[str, Any]:
         """Create a 'Custom Amount' button"""
-        return SlackButton.create_button(
-            text="Custom Amount",
-            action_id="custom_refund_amount",
-            value=order_number
-        )
+        return {
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Custom Amount"},
+            "action_id": "custom_refund_amount",
+            "value": order_number
+        }
     
     @staticmethod
     def no_refund(order_number: str) -> Dict[str, Any]:
         """Create a 'No Refund' button"""
-        return SlackButton.create_button(
-            text="No Refund",
-            action_id="no_refund",
-            value=order_number,
-            style="danger"
-        )
+        return {
+            "type": "button",
+            "text": {"type": "plain_text", "text": "No Refund"},
+            "action_id": "no_refund",
+            "value": order_number,
+            "style": "danger"
+        }
     
     @staticmethod
     def edit_details(order_number: str) -> Dict[str, Any]:
         """Create an 'Edit Details' button"""
-        return SlackButton.create_button(
-            text="Edit Details",
-            action_id="edit_request_details",
-            value=order_number
-        )
+        return {
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Edit Details"},
+            "action_id": "edit_request_details",
+            "value": order_number
+        }
     
     @staticmethod
     def deny_request(order_number: str) -> Dict[str, Any]:
         """Create a 'Deny Request' button"""
-        return SlackButton.create_button(
-            text="Deny Request",
-            action_id="deny_refund_request",
-            value=order_number,
-            style="danger"
-        )
+        return {
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Deny Request"},
+            "action_id": "deny_refund_request",
+            "value": order_number,
+            "style": "danger"
+        }
     
     @staticmethod
     def get_error_buttons(order_number: str) -> List[Dict[str, Any]]:
@@ -442,20 +339,11 @@ class Slack:
     OrderUpdate = SlackOrderUpdate
     LeadershipNotification = SlackLeadershipNotification
     
-    # Interaction models
-    InteractionPayload = SlackInteractionPayload
-    ModalSubmission = SlackModalSubmission
-    WebhookEvent = SlackWebhookEvent
-    
     # Base models
     User = SlackUser
     Channel = SlackChannel
-    Action = SlackAction
-    Block = SlackBlock
-    Message = SlackMessage
     
     # Button classes
-    Button = SlackButton
     RefundButtons = RefundButtons
     
     # Enums

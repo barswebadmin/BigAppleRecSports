@@ -8,7 +8,7 @@ both OrdersService and RefundsService without creating circular dependencies.
 from typing import Dict, Any, Optional
 from modules.integrations.shopify.models.requests import FetchOrderRequest
 from modules.integrations.shopify import ShopifyClient
-from modules.integrations.shopify.builders import build_order_fetch_request_payload
+# from modules.integrations.shopify.builders import build_order_fetch_request_payload  # DEPRECATED: replaced by sgqlc
 
 
 def fetch_order_from_shopify(request_args: FetchOrderRequest, client: Optional[ShopifyClient] = None) -> Dict[str, Any]:

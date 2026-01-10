@@ -4,9 +4,12 @@ import json
 
 from modules.orders.services.orders_service import OrdersService
 from modules.integrations.slack.slack_service import SlackService
-from modules.integrations.slack.client.usergroup_client import SlackUsergroupClient
-from modules.integrations.slack.client.users_client import SlackUsersClient
-from config import config
+
+from slack_bolt.adapter.fastapi import SlackRequestHandler
+from modules.integrations.slack.bot_apps import leadership_bot
+
+# Import handlers to register them with the bot
+from modules.integrations.slack.bot_apps.handlers import *  # noqa: F401, F403
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/slack", tags=["slack"])
@@ -15,7 +18,8 @@ orders_service = OrdersService()
 slack_service = SlackService()
 # Note: These clients are not currently used in the simplified router
 # usergroup_client = SlackUsergroupClient(config.active_slack_bot_token or "")
-# users_client = SlackUsersClient(config.active_slack_bot_token or "")
+
+leadership_handler = SlackRequestHandler(leadership_bot)
 
 
 # Note: parse_original_message_data function removed - data now preserved in button values
@@ -195,3 +199,21 @@ async def handle_file_uploaded(request: Request):
 async def health_check():
     """Health check endpoint for the Slack service"""
     return {"status": "healthy", "service": "slack"}
+
+
+@router.post("/leadership/commands")
+async def leadership_slash_commands(request: Request):
+    """
+    Handle Leadership bot slash commands (e.g., /get-user-ids).
+    Routes requests to the Bolt app handler.
+    """
+    return await leadership_handler.handle(request)
+
+
+@router.post("/leadership/interactions")
+async def leadership_interactions(request: Request):
+    """
+    Handle Leadership bot interactive components (modals, buttons, etc.).
+    Routes requests to the Bolt app handler.
+    """
+    return await leadership_handler.handle(request)

@@ -1,3 +1,10 @@
-from .main import config, settings
+"""
+Re-export global config singleton from backend/config.py.
 
-__all__ = ["config", "settings"]
+This allows imports like: from config import config
+"""
+# Import from the symlinked config.py file in this directory
+# This avoids circular import issues with backend.config module
+from .config import config, Config
+
+__all__ = ["config", "Config"]

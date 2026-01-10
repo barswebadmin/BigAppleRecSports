@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+# shopify-update-about-page - Update Shopify About Us page leadership images
+#
+# Usage: shopify-update-about-page [options]
+#
+# Examples:
+#   shopify-update-about-page --bulk-update leadership_images.csv
+#   shopify-update-about-page --single-update --block-id abc123 --image shopify://shop_images/new.jpg
+#   shopify-update-about-page --upload-and-update images_folder/
+#
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR/.."
+
+cd "$PROJECT_ROOT" || exit 1
+
+if [ ! -d ".venv" ]; then
+    echo "❌ Virtual environment not found. Run 'make venv' first."
+    exit 1
+fi
+
+source .venv/bin/activate
+
+python3 "$SCRIPT_DIR/shopify_update_about_page.py" "$@"
+

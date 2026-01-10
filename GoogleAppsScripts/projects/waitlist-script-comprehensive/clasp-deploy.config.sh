@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Project-specific configuration for clasp deployment
-# Override any defaults from gas-clasp-deploy.sh here
+# Project-specific configuration for clasp deployment
+# Override any defaults from deploy.sh here
 
 # Package manager (npm, pnpm, yarn)
 export PACKAGE_MANAGER="pnpm"

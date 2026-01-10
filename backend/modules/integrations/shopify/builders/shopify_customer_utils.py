@@ -155,10 +155,7 @@ class ShopifyCustomerUtils:
         discount_amount: float,
     ) -> bool:
         """Create a discount code for a specific season and segment"""
-        try:
-            from shared.date_utils import get_season_start_and_end
-        except ImportError:
-            from utils.date_utils import get_season_start_and_end
+        from shared.date_utils import get_season_start_and_end
 
         start_date, end_date = get_season_start_and_end(season, year)
 

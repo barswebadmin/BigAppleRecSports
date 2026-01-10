@@ -67,7 +67,7 @@ class TestSlackWebhook:
     def mock_slack_service(self):
         """Use a real SlackService but mock its dependencies to mimic production exactly"""
         from modules.integrations.slack.slack_service import SlackService
-        from unittest.mock import AsyncMock, Mock, patch
+        from unittest.mock import Mock, patch
         
         # Create a real SlackService instance
         real_service = SlackService()

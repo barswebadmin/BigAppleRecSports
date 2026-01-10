@@ -105,7 +105,7 @@ def validate_important_dates(important_dates) -> Dict[str, Any]:
                 else:
                     # Try to validate it can be parsed
                     try:
-                        from utils.date_utils import parse_shopify_datetime
+                        from shared.date_utils import parse_shopify_datetime
 
                         parsed = parse_shopify_datetime(field_value)
                         if parsed is None:

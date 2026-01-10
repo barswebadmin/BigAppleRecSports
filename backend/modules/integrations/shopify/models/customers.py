@@ -1,15 +1,13 @@
 from __future__ import annotations
-from pydantic import BaseModel
-from typing import List, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 import datetime
-from shared.model_config import BaseModelConfig
+from shared.model_config import ApiModel
 from ..models.orders import Order
 
 if TYPE_CHECKING:
     from .orders import Order
 
-class Customer(BaseModel):
-    model_config = BaseModelConfig
+class Customer(ApiModel):
     id: str
     created_at: datetime.datetime
     default_email: Optional[str]
@@ -17,4 +15,4 @@ class Customer(BaseModel):
     first_name: Optional[str]
     last_name: Optional[str]
     last_order: Optional["Order"]
-    tags: List[Optional[str]]
+    tags: list[Optional[str]]

@@ -46,6 +46,12 @@ coverage_html/
 .envrc
 .direnv/
 *.log
+*.egg-info/
+zz_local_dev_plans/
+
+# Google Service Account credentials
+backend/google-service-account.json
+google-service-account.json
 
 # Lambda layer symlinks (for local development only)
 lambda-functions/tests/bars_common_utils
@@ -77,3 +83,6 @@ lambda-functions/*/shared_utilities_dev
 **/.deploy_temp/
 *_temp.sh
 test_*_temp.*
+
+# Planning documents (local working files)
+SLACK_ARCHITECTURE_REFACTOR_PLAN.md

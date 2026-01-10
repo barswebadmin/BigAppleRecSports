@@ -1,10 +1,49 @@
 import re
+from dataclasses import dataclass
 from typing import Optional, TypedDict, Dict, List, Callable, Any
+from pydantic.alias_generators import to_camel as snake_to_camel
 
 
-class ValidationResult(TypedDict, total=True):
-    success: bool
-    message: Optional[str]
+@dataclass(frozen=True)
+class ValidationResult:
+    """
+    Validation result with optional value transformation.
+    
+    Supports both:
+    1. Simple pass/fail validation (backend validators)
+    2. Validation + transformation (CLI parameter types)
+    """
+    input_after_validation: Optional[Any]
+    error_message: Optional[str] = None
+    
+    # Backwards compatibility for dict-like access
+    def get(self, key: str, default=None):
+        """Dict-like .get() for backwards compatibility."""
+        if key == "success":
+            return self.error_message is None
+        elif key == "message":
+            return self.error_message
+        return default
+    
+    def __getitem__(self, key: str):
+        """Dict-like subscript access for backwards compatibility."""
+        if key == "success":
+            return self.error_message is None
+        elif key == "message":
+            return self.error_message
+        raise KeyError(f"Key '{key}' not found")
+    
+    @classmethod
+    def success(cls, input_after_validation: Any = None) -> "ValidationResult":
+        """Create a successful validation result."""
+        return cls(input_after_validation=input_after_validation, error_message=None)
+    
+    @classmethod
+    def failure(cls, error_message: str) -> "ValidationResult":
+        """Create a failed validation result."""
+        if not error_message or not error_message.strip():
+            raise ValueError("error_message must be a non-empty string for failure")
+        return cls(input_after_validation=None, error_message=error_message)
 
 
 class MultiFieldValidationResult(TypedDict, total=True):
@@ -19,11 +58,11 @@ def validate_email_format(email: Optional[str]) -> ValidationResult:
     - domain has at least one dot and valid labels
     """
     if email is None:
-        return {"success": False, "message": "Email is required"}
+        return ValidationResult.failure("Email is required")
     pattern = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$")
     if pattern.match(email) is None:
-        return {"success": False, "message": "Invalid email format"}
-    return {"success": True, "message": "Email is valid"}
+        return ValidationResult.failure("Invalid email format")
+    return ValidationResult.success()
 
 
 def validate_shopify_order_number_format(order_number: Optional[str]) -> ValidationResult:
@@ -31,10 +70,10 @@ def validate_shopify_order_number_format(order_number: Optional[str]) -> Validat
     Validate a Shopify order number: optional leading '#', followed by at least 4 digits.
     """
     if order_number is None:
-        return {"success": False, "message": "Order number is required"}
+        return ValidationResult.failure("Order number is required")
     if re.match(r'^#?\d{4,}$', order_number) is None:
-        return {"success": False, "message": "Invalid order number format"}
-    return {"success": True, "message": "Order number is valid"}
+        return ValidationResult.failure("Invalid order number format")
+    return ValidationResult.success()
 
 
 def validate_shopify_order_id_format(order_id: Optional[str]) -> ValidationResult:
@@ -42,11 +81,11 @@ def validate_shopify_order_id_format(order_id: Optional[str]) -> ValidationResul
     Validate a Shopify order ID: optional leading "gid://shopify/Order/" followed by 10-15 digits.
     """
     if order_id is None:
-        return {"success": False, "message": "Order ID was not provided"}
+        return ValidationResult.failure("Order ID was not provided")
     # Accept either numeric id or full gid form
     if re.match(r'^\d{10,15}$', order_id) is None and re.match(r'^gid://shopify/Order/\d{10,15}$', order_id) is None:
-        return {"success": False, "message": "Invalid order ID format"}
-    return {"success": True, "message": "Order ID is valid"}
+        return ValidationResult.failure("Invalid order ID format")
+    return ValidationResult.success()
 
 
 def validate_shopify_product_id_format(product_id: Optional[str]) -> ValidationResult:
@@ -54,10 +93,10 @@ def validate_shopify_product_id_format(product_id: Optional[str]) -> ValidationR
     Validate a Shopify product ID: allow numeric or full GID (gid://shopify/Product/{digits}).
     """
     if product_id is None:
-        return {"success": False, "message": "Product ID was not provided"}
+        return ValidationResult.failure("Product ID was not provided")
     if re.match(r'^\d{8,20}$', product_id) is None and re.match(r'^gid://shopify/Product/\d{8,20}$', product_id) is None:
-        return {"success": False, "message": "Invalid product ID format"}
-    return {"success": True, "message": "Product ID is valid"}
+        return ValidationResult.failure("Invalid product ID format")
+    return ValidationResult.success()
 
 
 def validate_shopify_customer_id_format(customer_id: Optional[str]) -> ValidationResult:
@@ -65,10 +104,10 @@ def validate_shopify_customer_id_format(customer_id: Optional[str]) -> Validatio
     Validate a Shopify customer ID: allow numeric or full GID (gid://shopify/Customer/{digits}).
     """
     if customer_id is None:
-        return {"success": False, "message": "Customer ID was not provided"}
+        return ValidationResult.failure("Customer ID was not provided")
     if re.match(r'^\d{8,20}$', customer_id) is None and re.match(r'^gid://shopify/Customer/\d{8,20}$', customer_id) is None:
-        return {"success": False, "message": "Invalid customer ID format"}
-    return {"success": True, "message": "Customer ID is valid"}
+        return ValidationResult.failure("Invalid customer ID format")
+    return ValidationResult.success()
 
 
 def validate_shopify_transaction_id_format(transaction_id: Optional[str]) -> ValidationResult:
@@ -76,10 +115,10 @@ def validate_shopify_transaction_id_format(transaction_id: Optional[str]) -> Val
     Validate a Shopify transaction ID: allow numeric or full GID (gid://shopify/Transaction/{digits}).
     """
     if transaction_id is None:
-        return {"success": False, "message": "Transaction ID was not provided"}
+        return ValidationResult.failure("Transaction ID was not provided")
     if re.match(r'^\d{8,20}$', transaction_id) is None and re.match(r'^gid://shopify/Transaction/\d{8,20}$', transaction_id) is None:
-        return {"success": False, "message": "Invalid transaction ID format"}
-    return {"success": True, "message": "Transaction ID is valid"}
+        return ValidationResult.failure("Invalid transaction ID format")
+    return ValidationResult.success()
 
 
 def validate_shopify_variant_id_format(variant_id: Optional[str]) -> ValidationResult:
@@ -87,16 +126,40 @@ def validate_shopify_variant_id_format(variant_id: Optional[str]) -> ValidationR
     Validate a Shopify variant ID: allow numeric or full GID (gid://shopify/Variant/{digits}).
     """
     if variant_id is None:
-        return {"success": False, "message": "Variant ID was not provided"}
+        return ValidationResult.failure("Variant ID was not provided")
     if re.match(r'^\d{8,20}$', variant_id) is None and re.match(r'^gid://shopify/Variant/\d{8,20}$', variant_id) is None:
-        return {"success": False, "message": "Invalid variant ID format"}
-    return {"success": True, "message": "Variant ID is valid"}
+        return ValidationResult.failure("Invalid variant ID format")
+    return ValidationResult.success()
 
 
-def _snake_to_camel(name: str) -> str:
-    """Convert snake_case to camelCase."""
-    parts = name.split("_")
-    return parts[0] + "".join(p.capitalize() for p in parts[1:])
+def validate_enum(value: str, allowed_values: list[str], case_sensitive: bool = False) -> ValidationResult:
+    """
+    Validate that value is in allowed_values with optional case-insensitive matching.
+    
+    Args:
+        value: The value to validate
+        allowed_values: List of allowed values
+        case_sensitive: If True, match exactly. If False, match case-insensitively
+        
+    Returns:
+        ValidationResult with the properly cased value on success
+        
+    Example:
+        result = validate_enum("leadership", ["Leadership", "Refunds"], case_sensitive=False)
+        # Returns ValidationResult.success("Leadership")
+    """
+    if not case_sensitive:
+        value_lower = value.lower()
+        if value_lower in [v.lower() for v in allowed_values]:
+            # Return properly cased version
+            for allowed in allowed_values:
+                if allowed.lower() == value_lower:
+                    return ValidationResult.success(allowed)
+    else:
+        if value in allowed_values:
+            return ValidationResult.success(value)
+    
+    return ValidationResult.failure(f"Must be one of: {', '.join(allowed_values)}")
 
 
 def validate_multiple_fields(
@@ -134,7 +197,7 @@ def validate_multiple_fields(
         # Try snake_case first, then camelCase
         field_value = data.get(field_name)
         if field_value is None:
-            camel_name = _snake_to_camel(field_name)
+            camel_name = snake_to_camel(field_name)
             field_value = data.get(camel_name)
         
         try:
@@ -146,7 +209,7 @@ def validate_multiple_fields(
                 result = validator_func(field_value)
                 if not result.get("success"):
                     message = result.get("message") or f"Invalid {field_name} format"
-                    errors.append(message)
+                    errors.append(f"{field_name}: {message}")
         except Exception as e:
             errors.append(f"{field_name}: Validation error - {str(e)}")
     

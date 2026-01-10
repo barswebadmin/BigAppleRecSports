@@ -93,7 +93,7 @@ try {
 
   // Load constants and config
   if (fs.existsSync(`${basePath}/config/constants.gs`)) {
-    safeEvalGasFile(`${basePath}/config/constants.gs`, 'constants.gs');
+    safeEvalGasFile(`${basePath}/config/constants.gs`, 'constants.js');
   }
 
   // Fallback mocks for Node.js environment if constants aren't available
@@ -128,31 +128,31 @@ try {
   }
 
   // Load shared utilities (apiUtils for toTitleCase)
-  if (fs.existsSync('../../shared-utilities/apiUtils.gs')) {
-    safeEvalGasFile('../../shared-utilities/apiUtils.gs', 'shared-utilities/apiUtils.gs');
+  if (fs.existsSync('../../shared-utilities/apiUtils.js')) {
+    safeEvalGasFile('../../shared-utilities/apiUtils.js', 'shared-utilities/apiUtils.js');
   }
 
   // Load helpers
   if (fs.existsSync(`${basePath}/helpers/normalizers.gs`)) {
-    safeEvalGasFile(`${basePath}/helpers/normalizers.gs`, 'normalizers.gs');
+    safeEvalGasFile(`${basePath}/helpers/normalizers.gs`, 'normalizers.js');
   }
 
   if (fs.existsSync(`${basePath}/helpers/textUtils.gs`)) {
-    safeEvalGasFile(`${basePath}/helpers/textUtils.gs`, 'textUtils.gs');
+    safeEvalGasFile(`${basePath}/helpers/textUtils.gs`, 'textUtils.js');
   }
 
   if (fs.existsSync(`${basePath}/helpers/dateParsers.gs`)) {
-    safeEvalGasFile(`${basePath}/helpers/dateParsers.gs`, 'dateParsers.gs');
+    safeEvalGasFile(`${basePath}/helpers/dateParsers.gs`, 'dateParsers.js');
   }
 
   // Load parsers in dependency order
   const parsers = [
-    'timeParser.gs',
-    'priceParser.gs',
-    'parseColBLeagueDetails.gs',
-    'parseRowC.gs',
-    'parseSeasonDates.gs',
-    '_rowParser.gs'  // Main parser last
+    'timeParser.js',
+    'priceParser.js',
+    'parseColBLeagueDetails.js',
+    'parseRowC.js',
+    'parseSeasonDates.js',
+    '_rowParser.js'  // Main parser last
   ];
 
   for (const parser of parsers) {
@@ -165,7 +165,7 @@ try {
   }
 
   // Load test file
-  safeEvalGasFile('./tests/testParseSourceRowEnhanced.gs', 'testParseSourceRowEnhanced.gs');
+  safeEvalGasFile('./tests/testParseSourceRowEnhanced.js', 'testParseSourceRowEnhanced.js');
 
   console.log('✅ All dependencies loaded successfully');
 

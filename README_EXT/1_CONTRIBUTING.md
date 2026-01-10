@@ -372,7 +372,7 @@ python3 lambda_function.py
 ```bash
 # Setup clasp authentication
 cd GoogleAppsScripts
-./scripts/setup-clasp-auth.sh
+bash remote-sync-tools/setup-auth.sh
 
 # Deploy project
 ./deploy.sh project-name

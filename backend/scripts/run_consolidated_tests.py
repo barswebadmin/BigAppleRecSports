@@ -7,7 +7,6 @@ Runs all consolidated test files in the appropriate directories.
 import os
 import sys
 import subprocess
-import pytest
 
 # Add the backend directory to Python path
 backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

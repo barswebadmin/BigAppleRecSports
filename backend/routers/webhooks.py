@@ -125,11 +125,11 @@ async def handle_shopify_webhook(request: Request):
         # Log the request body for other event types
         try:
             body_json = json.loads(body.decode("utf-8"))
-            logger.info(f"📋 Unexpected webhook received:")
+            logger.info("📋 Unexpected webhook received:")
             logger.info(f"   Event Type: {event_type}")
             logger.info(f"   Request Body: {json.dumps(body_json, indent=2)}")
         except json.JSONDecodeError:
-            logger.info(f"📋 Non-product-update webhook received (non-JSON body):")
+            logger.info("📋 Non-product-update webhook received (non-JSON body):")
             logger.info(f"   Event Type: {event_type}")
             logger.info(f"   Raw Body: {body.decode('utf-8', errors='replace')}")
         except Exception as e:

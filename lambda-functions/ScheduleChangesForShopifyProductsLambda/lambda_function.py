@@ -5,7 +5,7 @@ import traceback
 from typing import Dict, Any
 
 from bars_common_utils.event_utils import parse_event_body
-from bars_common_utils.response_utils import format_response, format_error
+from bars_common_utils.response_utils import format_response
 import inventory_movement_scheduler as inv_sched
 import price_change_scheduler as price_sched
 import inventory_addition_scheduler as add_sched

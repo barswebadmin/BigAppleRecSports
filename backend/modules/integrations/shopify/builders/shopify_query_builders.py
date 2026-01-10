@@ -1,5 +1,4 @@
 import logging
-from config import config
 from typing import Optional, Dict, Any
 from ..models.requests import FetchOrderRequest
 from ..models.graphql_queries import ShopifyGraphQLQuery

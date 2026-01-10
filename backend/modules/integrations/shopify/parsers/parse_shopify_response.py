@@ -247,7 +247,7 @@
 #     }
 #   },
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 
 

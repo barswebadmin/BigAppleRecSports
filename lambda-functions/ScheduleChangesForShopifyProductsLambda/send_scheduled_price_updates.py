@@ -1,5 +1,4 @@
 import json
-import os
 from aws_clients import get_scheduler_client
 
 def send_scheduled_price_updates(action, updated_price_schedule, product_gid, open_variant_gid, waitlist_variant_gid, sport, day, division, season_start_date, off_dates_comma_separated):

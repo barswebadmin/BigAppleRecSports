@@ -1,15 +1,12 @@
-from typing import Dict, Any, Optional, List, Union, cast
-import json
+from typing import Dict, Any, Optional
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import config
-from config.main import Config
+from config_old_deprecated.main import Config
 from ..models.requests import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response
-from ..builders import build_order_fetch_request_payload
-from ..parsers.mappers import map_order_node_to_order
+# from ..builders import build_order_fetch_request_payload  # DEPRECATED: replaced by sgqlc
 
  
 """
@@ -94,11 +91,11 @@ class ShopifyClient:
             )
 
 
-    # def send_batch_requests(self, payloads: List[Dict[str, Any]]) -> List[ShopifyResponse]:
+    # def send_batch_requests(self, payloads: list[Dict[str, Any]]) -> list[ShopifyResponse]:
     #     """Parallel fan-out of multiple single-operation calls."""
     #     if not payloads:
     #         return []
-    #     results: List[ShopifyResponse] = [ShopifyResponse.Error(message="Pending", status_code=500)] * len(payloads)
+    #     results: list[ShopifyResponse] = [ShopifyResponse.Error(message="Pending", status_code=500)] * len(payloads)
     #     with ThreadPoolExecutor(max_workers=min(8, len(payloads))) as pool:
     #         futures = {pool.submit(self.send_request, payloads[i]): i for i in range(len(payloads))}
     #         for fut in as_completed(futures):
@@ -122,10 +119,10 @@ class ShopifyClient:
         otherwise use order_number. Callers must validate inputs.
         """
         # Build query from identifier (order number, order id, or email)
-       
-        payload = build_order_fetch_request_payload(request_args)
-
-        resp = self.send_request(payload)
-        return resp
+        # DEPRECATED: This method should be migrated to use sgqlc via ShopifyService
+        # payload = build_order_fetch_request_payload(request_args)
+        # resp = self.send_request(payload)
+        # return resp
+        raise NotImplementedError("fetch_order_details is deprecated. Use ShopifyService.get_order_by_identifier() instead.")
 
     

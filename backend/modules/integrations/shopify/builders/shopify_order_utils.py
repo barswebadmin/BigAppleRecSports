@@ -1,7 +1,6 @@
 from typing import Dict, Any, Callable
 import logging
 import json
-from config import config
 
 logger = logging.getLogger(__name__)
 

@@ -1,24 +1,150 @@
 #!/bin/bash
 #
-# Pre-commit hook for automatic version management
+# Pre-commit hook for automatic version management and code quality checks
 # Handles lambda function versioning only (backend versioning happens on merge/deploy)
 #
 
 set -e
 
-echo "🔍 Checking for lambda function changes..."
-
-# Check if we have python3 available
-if ! command -v python3 &> /dev/null; then
-    echo "⚠️  Warning: python3 not found. Skipping version management."
-    exit 0
-fi
+echo "🔍 Running pre-commit checks..."
 
 # Get the directory where this script is located (should be .githooks)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
-# Check for lambda function changes only
+# 0. Block commits to main branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+if [ "$CURRENT_BRANCH" = "main" ]; then
+    echo ""
+    echo "❌❌❌ COMMIT BLOCKED ❌❌❌"
+    echo ""
+    echo "🚨 You are attempting to commit directly to the 'main' branch!"
+    echo ""
+    echo "This is not allowed for safety reasons."
+    echo ""
+    echo "Please:"
+    echo "  1. Create a feature branch: git checkout -b feature/your-feature-name"
+    echo "  2. Commit your changes to that branch"
+    echo "  3. Create a pull request to merge into main"
+    echo ""
+    echo "Current branch: [RED]main[/RED]"
+    echo ""
+    exit 1
+fi
+
+# Check if we have python3 available
+if ! command -v python3 &> /dev/null; then
+    echo "⚠️  Warning: python3 not found. Skipping checks."
+    exit 0
+fi
+
+# 1. Ruff Linting and Formatting
+if command -v ruff &> /dev/null || [ -f ".venv/bin/ruff" ]; then
+    RUFF_CMD="ruff"
+    if [ -f ".venv/bin/ruff" ]; then
+        RUFF_CMD=".venv/bin/ruff"
+    fi
+    
+    echo "🔍 Running Ruff linter..."
+    if $RUFF_CMD check scripts/ lambda-functions/ backend/ shared-utilities/ --quiet; then
+        echo "✅ Ruff linting passed"
+    else
+        echo "❌ Ruff linting failed"
+        exit 1
+    fi
+    
+    echo "✨ Running Ruff formatter..."
+    $RUFF_CMD format scripts/ lambda-functions/ backend/ shared-utilities/ --quiet
+    echo "✅ Ruff formatting complete"
+else
+    echo "⚠️  Ruff not found, skipping linting and formatting"
+fi
+
+# 2. Check Pydantic required fields have no defaults
+REQUIRED_FIELDS_CHECKER="$REPO_ROOT/scripts/check_required_fields.py"
+if [ -f "$REQUIRED_FIELDS_CHECKER" ]; then
+    echo "📋 Checking Pydantic required fields..."
+    python3 "$REQUIRED_FIELDS_CHECKER"
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -ne 0 ]; then
+        exit $EXIT_CODE
+    fi
+fi
+
+# 3. Test CI Deployment Workflows (if workflows changed)
+if git diff --cached --name-only | grep -q "^\.github/workflows/\|^shared-utilities/\|^lambda-functions/"; then
+    echo "🧪 Testing CI Deployment Logic..."
+    
+    if ! grep -q "shared-utilities" .github/workflows/deploy-self-contained-lambdas.yml; then
+        echo "❌ FAIL: Self-contained workflow should trigger on shared-utilities changes"
+        exit 1
+    fi
+    
+    if ! grep -q "push:" .github/workflows/deploy-self-contained-lambdas.yml; then
+        echo "❌ FAIL: Self-contained workflow should trigger on push"
+        exit 1
+    fi
+    
+    if ! grep -r "inventory\.inventory_checker" lambda-functions/shopifyProductUpdateHandler/ > /dev/null 2>&1; then
+        echo "❌ FAIL: Expected inventory dependency not found in shopifyProductUpdateHandler"
+        exit 1
+    fi
+    
+    if grep -v "^[[:space:]]*#" .github/workflows/deploy-self-contained-lambdas.yml | grep -v "echo" | grep -i "lambda.*layer" > /dev/null; then
+        echo "❌ FAIL: Self-contained workflow mentions lambda layers"
+        exit 1
+    fi
+    
+    if grep -v "^[[:space:]]*#" .github/workflows/deploy-lambda-layer.yml | grep "shared_utilities" > /dev/null; then
+        echo "❌ FAIL: Lambda layer workflow mentions shared_utilities folder"
+        exit 1
+    fi
+    
+    python3 -c "
+import sys
+sys.path.insert(0, 'shared-utilities/src')
+from inventory.inventory_checker import is_sport_product
+
+bars_sports = [
+    {'title': 'Big Apple Kickball'},
+    {'title': 'BARS Bowling League'},
+    {'title': 'Pickleball Tournament'},
+    {'title': 'Friday Dodgeball'}
+]
+
+for product in bars_sports:
+    if not is_sport_product(product):
+        print(f'❌ FAIL: {product[\"title\"]} should be detected as sport')
+        sys.exit(1)
+
+non_bars = [
+    {'title': 'Big Apple Basketball'},
+    {'title': 'Tennis Tournament'},
+    {'title': 'Soccer League'},
+    {'title': 'Gift Card'}
+]
+
+for product in non_bars:
+    if is_sport_product(product):
+        print(f'❌ FAIL: {product[\"title\"]} should NOT be detected as sport')
+        sys.exit(1)
+" || exit 1
+    
+    if ! grep -q "inventory\\\.inventory_checker" .github/workflows/deploy-self-contained-lambdas.yml; then
+        echo "❌ FAIL: CI workflow should detect inventory.inventory_checker pattern"
+        exit 1
+    fi
+    
+    if ! grep -q "DETECTED_MODULES" .github/workflows/deploy-self-contained-lambdas.yml; then
+        echo "❌ FAIL: CI workflow should use selective module detection"
+        exit 1
+    fi
+    
+    echo "✅ CI deployment tests passed"
+fi
+
+# 4. Lambda version management
 LAMBDA_VERSION_MANAGER="$REPO_ROOT/scripts/version_manager.py"
 if [ -f "$LAMBDA_VERSION_MANAGER" ]; then
     echo "📝 Checking lambda function changes..."
@@ -27,10 +153,65 @@ if [ -f "$LAMBDA_VERSION_MANAGER" ]; then
     else
         echo "⚠️  Lambda version management failed"
     fi
+fi
+
+# 5. GAS doGet/doPost change detection
+GAS_DETECT_SCRIPT="$REPO_ROOT/GoogleAppsScripts/remote-sync-tools/detect-webapp-changes.sh"
+if [ -f "$GAS_DETECT_SCRIPT" ]; then
+    # Only check if there are GAS files in staged changes
+    if git diff --cached --name-only | grep -q "^GoogleAppsScripts/"; then
+        echo "🔍 Checking for GAS doGet/doPost changes..."
+        
+        # Run detection (suppress output, capture exit code)
+        if "$GAS_DETECT_SCRIPT" --staged >/dev/null 2>&1; then
+            # Exit code 0: No changes detected
+            echo "✅ No doGet/doPost changes detected in GAS projects"
+        else
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 2 ]; then
+                # Exit code 2: Changes detected (warning, non-blocking)
+                echo ""
+                echo "⚠️  GAS doGet/doPost function changes detected in your commit!"
+                echo ""
+                echo "🤔 What does this mean?"
+                echo "  • You've modified web app endpoint functions"
+                echo "  • These changes won't be active until deployed to Google Apps Script"
+                echo "  • Users will still see the OLD behavior until deployment"
+                echo ""
+                echo "🚀 Next steps after committing:"
+                echo "  1. Push to master branch (triggers auto-deployment)"
+                echo "  2. Or manually deploy: make clasp deploy [project]"
+                echo "  3. Or use script: bash GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
+                echo ""
+                echo "💡 This is just a warning - your commit will proceed normally."
+                echo ""
+            else
+                # Other exit codes: Error (blocking)
+                echo "❌ Error running GAS doGet/doPost detection script (exit code: $EXIT_CODE)"
+                exit 1
+            fi
+        fi
+    fi
+fi
+
+# 6. Secret detection (check all files, fail on non-test files, warn on test files)
+SECRET_DETECTOR="$REPO_ROOT/scripts/detect_secrets.py"
+if [ -f "$SECRET_DETECTOR" ]; then
+    echo "🔒 Checking for secrets in repository..."
+    if python3 "$SECRET_DETECTOR"; then
+        echo "✅ Secret detection passed"
+    else
+        EXIT_CODE=$?
+        if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Secret detection failed - commit blocked"
+            exit $EXIT_CODE
+        fi
+    fi
 else
-    echo "⚠️  Lambda version manager not found"
+    echo "⚠️  Secret detector not found: $SECRET_DETECTOR"
 fi
 
 echo "ℹ️  Backend versioning will happen on merge/deploy via GitHub Actions"
-echo "🎉 Pre-commit version management complete!"
+echo "🎉 Pre-commit checks complete!"
 exit 0 
