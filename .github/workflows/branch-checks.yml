@@ -61,7 +61,7 @@ jobs:
         if: steps.pr-check.outputs.has_open_pr != 'true'
         run: |
           echo "🧪 Running unit tests..."
-          python -m pytest tests/unit/ -q
+          python -m pytest tests/ -q
           echo "🧪 Running integration tests..."
-          python -m pytest tests/integration/ -q
+          python -m pytest routers/tests/ modules/*/tests/ -q
 
