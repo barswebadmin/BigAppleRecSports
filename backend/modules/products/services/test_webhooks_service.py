@@ -5,7 +5,6 @@ Tests the core webhook processing logic with real Shopify webhook data.
 """
 
 import json
-import os
 from unittest.mock import patch, Mock
 from modules.integrations.webhooks import WebhooksService
 from parsers.product_parser import has_zero_inventory

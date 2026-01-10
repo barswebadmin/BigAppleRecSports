@@ -5,8 +5,7 @@ Handles extraction of links, dates, and other information from Slack message con
 
 import re
 import logging
-from typing import Dict, Any, Optional
-from shared.date_utils import extract_season_dates
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 

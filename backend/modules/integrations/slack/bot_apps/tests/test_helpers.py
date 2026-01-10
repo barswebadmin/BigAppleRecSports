@@ -4,7 +4,7 @@ Allows testing CSV parsing and hierarchy building without Slack API calls.
 """
 import csv
 import os
-from typing import Dict, List
+from typing import Dict
 
 
 def process_csv_to_hierarchy(csv_path: str) -> Dict:
@@ -69,7 +69,6 @@ def normalize_hierarchy_for_comparison(hierarchy: Dict) -> Dict:
     Returns:
         Normalized hierarchy dict with slack_user_id removed
     """
-    import copy
     import json
     
     # Deep copy to avoid modifying original

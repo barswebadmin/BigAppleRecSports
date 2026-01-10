@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple, Set, Optional
 import logging
 
 from .usergroup_service import UsergroupService
-from modules.leadership.domain.models import LeadershipHierarchy, Position
+from modules.leadership.domain.models import LeadershipHierarchy
 
 logger = logging.getLogger(__name__)
 

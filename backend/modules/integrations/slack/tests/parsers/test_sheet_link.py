@@ -3,7 +3,6 @@
 Unit tests for sheet link extraction functionality
 """
 
-import pytest
 from modules.integrations.slack.parsers.message_parsers import SlackMessageParsers
 
 

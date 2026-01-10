@@ -4,9 +4,9 @@ Test CSV Parser Service using pytest parameterization.
 Tests: LeadershipCSVParser - Extracts leadership hierarchy from CSV data
 """
 import pytest
-from typing import List, Any
+from typing import Any
 from modules.leadership.services.csv_parser import LeadershipCSVParser
-from modules.leadership.domain.models import LeadershipHierarchy, LeadershipMember
+from modules.leadership.domain.models import LeadershipMember
 
 
 SAMPLE_CSV_SIMPLE = [

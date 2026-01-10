@@ -20,7 +20,7 @@ from slack_sdk.models.blocks import (
     PlainTextObject,
     MarkdownTextObject,
 )
-from slack_sdk.models.blocks.block_elements import BlockElement, InteractiveElement
+from slack_sdk.models.blocks.block_elements import InteractiveElement
 from slack_sdk.models.blocks.basic_components import ConfirmObject
 
 

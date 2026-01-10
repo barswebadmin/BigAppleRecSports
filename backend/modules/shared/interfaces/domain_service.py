@@ -5,7 +5,7 @@ Domain services must be pure business logic with zero external dependencies.
 They communicate with integration layers via DTOs.
 """
 
-from typing import Protocol, Any, TypeVar, Generic
+from typing import Protocol, TypeVar, Generic
 
 # Type variable for request/response
 TRequest = TypeVar('TRequest')

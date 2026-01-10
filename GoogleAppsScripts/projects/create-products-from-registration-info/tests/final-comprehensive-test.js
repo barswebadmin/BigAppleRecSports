@@ -47,15 +47,15 @@ function loadGasFile(filePath) {
 
 // Load all required files in dependency order
 const files = [
-  'config/constants.gs',
-  'helpers/textUtils.gs',
-  'helpers/normalizers.gs',
-  'parsers/dateParser.gs',
-  'parsers/timeParser.gs',
-  'parsers/priceParser.gs',
-  'parsers/parseColBLeagueBasicInfo_.gs',
-  'parsers/_rowParser.gs',
-  'core/portedFromProductCreateSheet/createShopifyProduct.gs'
+  'config/constants.js',
+  'helpers/textUtils.js',
+  'helpers/normalizers.js',
+  'parsers/dateParser.js',
+  'parsers/timeParser.js',
+  'parsers/priceParser.js',
+  'parsers/parseColBLeagueBasicInfo_.js',
+  'parsers/_rowParser.js',
+  'core/portedFromProductCreateSheet/createShopifyProduct.js'
 ];
 
 console.log('📦 Loading GAS files...');

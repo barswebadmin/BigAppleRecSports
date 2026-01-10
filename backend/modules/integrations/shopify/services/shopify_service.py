@@ -434,9 +434,7 @@ class ShopifyService:
         from sgqlc.operation import Operation
         from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import (
             Mutation,
-            RefundInput,
-            RefundMethod,
-            TransactionInput
+            RefundInput
         )
         
         # Build refund input
@@ -816,7 +814,6 @@ class ShopifyService:
             }
         """
         from sgqlc.operation import Operation
-        from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import Mutation
         from sgqlc.types import String, Int, ID, list_of, Input
         
         # Build mutation input

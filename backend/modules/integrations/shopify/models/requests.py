@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from typing import Optional
 from shared.shopify_normalizers import (
     normalize_order_id,

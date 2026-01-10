@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda test-backend test-gas test-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir deploy-lambda
+.PHONY: help compile test ready backend gas lambda GoogleAppsScripts lambda-functions compile-backend compile-gas compile-lambda start prod tunnel tunnel-and-update update-gas-ngrok dev stop install install-prod reinstall clean status url version changelog version-bump test-backend-unit test-backend-integration test-backend-slack test-backend-all test-specific show-structure check-dir lambda clasp
 
 # Default target
 help:
@@ -14,8 +14,9 @@ help:
 	@echo "  make tunnel-daemon       - Start localtunnel as background daemon (survives restarts)"
 	@echo "  make dev                 - Start server + tunnel with auto URL updates (dev mode)"
 	@echo "  make stop                - Stop all processes"
-	@echo "  make install             - Install all dependencies from unified requirements.txt"
+	@echo "  make install             - Install all dependencies (Python + GAS)"
 	@echo "  make install-prod        - Install production dependencies only"
+	@echo "  make reinstall           - Reinstall all dependencies (clean install)"
 	@echo "  make clean               - Clean up processes and cache files"
 	@echo "  make status              - Show running processes"
 	@echo "  make url                 - Show localtunnel URL"
@@ -44,16 +45,22 @@ help:
 	@echo "  make test-specific TEST=<path> - Run specific test file or case"
 	@echo ""
 	@echo "☁️  Lambda Deployment:"
-	@echo "  make deploy-lambda        - Deploy Lambda function or layer from current directory"
-	@echo "                             Works from lambda-functions/FunctionName/ or lambda-layers/LayerName/"
+	@echo "  make lambda deploy [function] - Deploy Lambda function(s)"
+	@echo "                             If function name provided, deploy that function"
+	@echo "                             If no function name, deploy all functions (with diff check and prompts)"
+	@echo ""
+	@echo "📦 Google Apps Script Deployment:"
+	@echo "  make clasp push <project> - Push GAS project to remote (with diff comparison)"
+	@echo "  make clasp pull <project> - Pull GAS project from remote (with diff comparison)"
+	@echo "  make clasp deploy <project> - Full deployment (push + version management)"
 	@echo ""
 	@echo "📋 Examples:"
 	@echo "  make compile backend/services"
 	@echo "  make test lambda-functions/shopifyProductUpdateHandler"
 	@echo "  make test-specific TEST=backend/test_slack_message_formatting.py"
 	@echo "  make test-specific TEST=backend/test_orders_api.py::test_fetch_order"
-	@echo "  cd lambda-functions/MoveInventoryLambda && make deploy-lambda"
-	@echo "  cd lambda-layers/bars-common-utils && make deploy-lambda"
+	@echo "  make lambda deploy MoveInventoryLambda"
+	@echo "  make lambda deploy  # Deploy all functions"
 	@echo ""
 	@echo "🔧 Quick Start:"
 	@echo "  1. make install          - Install dependencies"
@@ -405,14 +412,27 @@ stop:
 	@echo "✅ All processes stopped"
 
 install:
-	@echo "📦 Installing all dependencies from unified requirements.txt..."
+	@echo "📦 Installing all dependencies..."
+	@echo "  Installing Python dependencies from requirements.txt..."
 	@pip3 install -r requirements.txt
+	@echo "  Installing GAS dependencies from GoogleAppsScripts/package.json..."
+	@cd GoogleAppsScripts && pnpm install
 	@echo "✅ All dependencies installed!"
 
 install-prod:
 	@echo "📦 Installing production dependencies only..."
 	@pip3 install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil typing-extensions
+	@echo "  Installing GAS dependencies from GoogleAppsScripts/package.json..."
+	@cd GoogleAppsScripts && pnpm install --prod
 	@echo "✅ Production dependencies installed!"
+
+reinstall:
+	@echo "🔄 Reinstalling all dependencies..."
+	@echo "  Reinstalling Python dependencies..."
+	@pip3 install -r requirements.txt --force-reinstall --no-cache-dir
+	@echo "  Reinstalling GAS dependencies..."
+	@cd GoogleAppsScripts && rm -rf node_modules pnpm-lock.yaml && pnpm install
+	@echo "✅ All dependencies reinstalled!"
 
 install-backend-legacy:
 	@echo "📦 Installing backend dependencies (legacy method)..."
@@ -501,11 +521,9 @@ ready:
 
 # Note: backend, gas, lambda, etc. aliases are already defined above for compile
 # They will also work for test commands due to the argument parsing logic
+# Use: make test backend, make test GoogleAppsScripts, make test lambda-functions
 
 # Backend-specific test commands
-test-backend:
-	@$(MAKE) _test_directory DIR=backend
-
 test-backend-unit:
 	@echo "🧪 Running backend unit tests with mocked services (no external API calls)..."
 	@echo "🔍 Checking backend compilation first..."
@@ -624,13 +642,6 @@ test-specific:
 		exit 1; \
 	fi
 
-# Legacy commands (still supported)
-test-gas:
-	@$(MAKE) _test_directory DIR=GoogleAppsScripts
-
-test-lambda:
-	@$(MAKE) _test_directory DIR=lambda-functions
-
 # Internal testing logic
 _test_directory:
 	@if [ "$(DIR)" = "." ]; then \
@@ -730,8 +741,6 @@ _test_gas_internal:
 		echo "🧪 Step 3: Running test suites..." && \
 		chmod +x tests/*.sh && \
 		chmod +x projects/*/tests/*.sh && \
-		echo "📋 Running Clasp Helpers Tests..." && \
-		./tests/test_clasp_helpers.sh || true && \
 		echo "📋 Running Product Creation Function Tests..." && \
 		cd projects/create-products-from-registration-info/tests && \
 		node run_consolidated_tests.js && \
@@ -865,114 +874,104 @@ check-dir:
 # LAMBDA DEPLOYMENT COMMANDS
 # =============================================================================
 
-deploy-lambda:
-	@echo "☁️  Deploying Lambda function or layer..."
-	@CURRENT_DIR=$$(pwd); \
-	AWS_REGION=$${AWS_REGION:-us-east-1}; \
-	FUNCTION_NAME=""; \
-	LAYER_NAME=""; \
-	DEPLOY_DIR=""; \
-	if echo "$$CURRENT_DIR" | grep -q "lambda-functions/"; then \
-		FUNCTION_NAME=$$(echo "$$CURRENT_DIR" | sed 's|.*lambda-functions/\([^/]*\).*|\1|'); \
-		DEPLOY_DIR=$$(find "$$CURRENT_DIR" -maxdepth 3 -name "lambda_function.py" -type f | head -1 | xargs dirname 2>/dev/null); \
-		if [ -z "$$DEPLOY_DIR" ]; then \
-			DEPLOY_DIR=$$(find . -maxdepth 2 -name "lambda_function.py" -type f | head -1 | xargs dirname 2>/dev/null); \
-		fi; \
-		if [ -z "$$DEPLOY_DIR" ] || [ ! -f "$$DEPLOY_DIR/lambda_function.py" ]; then \
-			echo "❌ lambda_function.py not found"; \
-			echo "   Please run 'make deploy-lambda' from within a Lambda function directory"; \
-			exit 1; \
-		fi; \
-		echo "🚀 Deploying Lambda function: $$FUNCTION_NAME"; \
-		echo "📁 Directory: $$DEPLOY_DIR"; \
-		if ! aws sts get-caller-identity > /dev/null 2>&1; then \
-			echo "❌ AWS credentials not configured or expired!"; \
-			echo "   Please run: assume bars (or aws configure/aws sso login)"; \
-			exit 1; \
-		fi; \
-		cd "$$DEPLOY_DIR"; \
-		VERSION=$$(grep "__version__" lambda_function.py 2>/dev/null | cut -d'"' -f2 || echo "1.0.0"); \
-		echo "📦 Version: $$VERSION"; \
-		TEMP_DIR=$$(mktemp -d); \
-		trap "rm -rf $$TEMP_DIR" EXIT; \
-		echo "📦 Creating deployment package..."; \
-		cp *.py "$$TEMP_DIR/" 2>/dev/null || true; \
-		if [ -d "bars_common_utils" ]; then \
-			cp -r bars_common_utils "$$TEMP_DIR/"; \
-		fi; \
-		if [ -f "requirements.txt" ]; then \
-			echo "📋 Installing dependencies..."; \
-			pip install -r requirements.txt -t "$$TEMP_DIR/" --quiet; \
-		fi; \
-		cd "$$TEMP_DIR"; \
-		ZIP_FILE="/tmp/$$FUNCTION_NAME.zip"; \
-		zip -r "$$ZIP_FILE" . -q; \
-		cd - > /dev/null; \
-		echo "📊 Package size: $$(du -h $$ZIP_FILE | cut -f1)"; \
-		echo "☁️  Deploying to AWS Lambda..."; \
-		DESCRIPTION="Version $$VERSION - Updated $$(date '+%Y-%m-%d %H:%M:%S')"; \
-		aws lambda update-function-configuration \
-			--function-name "$$FUNCTION_NAME" \
-			--description "$$DESCRIPTION" \
-			--region "$$AWS_REGION" > /dev/null 2>&1 || true; \
-		aws lambda wait function-updated --function-name "$$FUNCTION_NAME" --region "$$AWS_REGION" 2>/dev/null || true; \
-		aws lambda update-function-code \
-			--function-name "$$FUNCTION_NAME" \
-			--zip-file "fileb://$$ZIP_FILE" \
-			--region "$$AWS_REGION" \
-			--publish; \
-		rm -f "$$ZIP_FILE"; \
-		echo "✅ Successfully deployed $$FUNCTION_NAME version $$VERSION!"; \
-	elif echo "$$CURRENT_DIR" | grep -q "lambda-layers/"; then \
-		LAYER_NAME=$$(echo "$$CURRENT_DIR" | sed 's|.*lambda-layers/\([^/]*\).*|\1|'); \
-		DEPLOY_DIR=$$(find "$$CURRENT_DIR" -maxdepth 2 -type d -name "python" | head -1 | xargs dirname 2>/dev/null); \
-		if [ -z "$$DEPLOY_DIR" ]; then \
-			DEPLOY_DIR=$$(find . -maxdepth 1 -type d -name "python" | head -1 | xargs dirname 2>/dev/null); \
-		fi; \
-		if [ -z "$$DEPLOY_DIR" ] || [ ! -d "$$DEPLOY_DIR/python" ]; then \
-			echo "❌ python/ directory not found"; \
-			echo "   Please run 'make deploy-lambda' from within a Lambda layer directory"; \
-			exit 1; \
-		fi; \
-		echo "🚀 Deploying Lambda layer: $$LAYER_NAME"; \
-		echo "📁 Directory: $$DEPLOY_DIR"; \
-		if ! aws sts get-caller-identity > /dev/null 2>&1; then \
-			echo "❌ AWS credentials not configured or expired!"; \
-			echo "   Please run: assume bars (or aws configure/aws sso login)"; \
-			exit 1; \
-		fi; \
-		cd "$$DEPLOY_DIR"; \
-		if [ -f "requirements.txt" ]; then \
-			echo "📋 Installing layer dependencies..."; \
-			rm -rf python/; \
-			mkdir -p python/; \
-			pip install -r requirements.txt -t python/ --quiet; \
-		fi; \
-		if [ ! -d "python" ]; then \
-			echo "❌ python/ directory not found after dependency installation"; \
-			exit 1; \
-		fi; \
-		echo "📦 Creating layer package..."; \
-		ZIP_FILE="/tmp/$$LAYER_NAME.zip"; \
-		zip -r "$$ZIP_FILE" python/ -q; \
-		echo "📊 Package size: $$(du -h $$ZIP_FILE | cut -f1)"; \
-		echo "☁️  Publishing layer version..."; \
-		LAYER_VERSION=$$(aws lambda publish-layer-version \
-			--layer-name "$$LAYER_NAME" \
-			--description "Common utilities for BARS Lambda functions" \
-			--zip-file "fileb://$$ZIP_FILE" \
-			--compatible-runtimes python3.9 python3.10 python3.11 \
-			--region "$$AWS_REGION" \
-			--query 'Version' \
-			--output text); \
-		rm -f "$$ZIP_FILE"; \
-		echo "✅ Successfully deployed layer $$LAYER_NAME version $$LAYER_VERSION!"; \
-		echo "📋 Layer ARN: arn:aws:lambda:$$AWS_REGION:$$(aws sts get-caller-identity --query Account --output text):layer:$$LAYER_NAME:$$LAYER_VERSION"; \
-	else \
-		echo "❌ Not in a Lambda function or layer directory"; \
+# Handle lambda command arguments
+ifneq ($(filter lambda,$(MAKECMDGOALS)),)
+  # Get arguments after 'lambda'
+  LAMBDA_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(LAMBDA_ARGS),)
+    LAMBDA_CMD := $(word 1,$(LAMBDA_ARGS))
+    LAMBDA_FUNCTION := $(word 2,$(LAMBDA_ARGS))
+    # Prevent make from trying to build these as targets
+    $(eval $(LAMBDA_ARGS):;@:)
+  endif
+endif
+
+lambda:
+	@if [ -z "$(LAMBDA_CMD)" ]; then \
+		echo "❌ Command required (deploy)"; \
+		echo "Usage: make lambda <command> [function-name]"; \
+		echo "Commands:"; \
+		echo "  deploy  - Deploy Lambda function(s)"; \
+		echo "           If function name provided, deploy that function"; \
+		echo "           If no function name, deploy all functions (with diff check and prompts)"; \
 		echo ""; \
-		echo "Usage:"; \
-		echo "  cd lambda-functions/FunctionName && make deploy-lambda"; \
-		echo "  cd lambda-layers/LayerName && make deploy-lambda"; \
+		echo "Examples:"; \
+		echo "  make lambda deploy MoveInventoryLambda"; \
+		echo "  make lambda deploy  # Deploy all functions"; \
+		exit 1; \
+	fi
+	@if [ "$(LAMBDA_CMD)" = "deploy" ]; then \
+		if [ -z "$(LAMBDA_FUNCTION)" ]; then \
+			echo "🚀 Deploying all Lambda functions..."; \
+			echo ""; \
+			FUNCTIONS=$$(find lambda/functions -maxdepth 1 -type d -name "*Lambda*" -o -name "*Handler*" | grep -v "^lambda/functions$$" | xargs -n1 basename | sort); \
+			if [ -z "$$FUNCTIONS" ]; then \
+				echo "❌ No Lambda functions found"; \
+				exit 1; \
+			fi; \
+			for FUNC in $$FUNCTIONS; do \
+				if [ -f "lambda/functions/$$FUNC/lambda_function.py" ]; then \
+					echo ""; \
+					echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+					echo "📦 Function: $$FUNC"; \
+					echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+					bash scripts/deploy_lambda_function.sh "$$FUNC"; \
+				fi; \
+			done; \
+		else \
+			bash scripts/deploy_lambda_function.sh "$(LAMBDA_FUNCTION)"; \
+		fi; \
+	else \
+		echo "❌ Unknown command: $(LAMBDA_CMD)"; \
+		echo "Valid commands: deploy"; \
+		exit 1; \
+	fi
+
+# =============================================================================
+# GOOGLE APPS SCRIPT DEPLOYMENT COMMANDS
+# =============================================================================
+
+# Handle clasp command arguments
+ifneq ($(filter clasp,$(MAKECMDGOALS)),)
+  # Get arguments after 'clasp'
+  CLASP_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(CLASP_ARGS),)
+    CLASP_CMD := $(word 1,$(CLASP_ARGS))
+    CLASP_PROJECT := $(word 2,$(CLASP_ARGS))
+    # Prevent make from trying to build these as targets
+    $(eval $(CLASP_ARGS):;@:)
+  endif
+endif
+
+clasp:
+	@if [ -z "$(CLASP_CMD)" ]; then \
+		echo "❌ Command required (push, pull, or deploy)"; \
+		echo "Usage: make clasp <command> <project-name>"; \
+		echo "Commands:"; \
+		echo "  push    - Push GAS project to remote (with diff comparison)"; \
+		echo "  pull    - Pull GAS project from remote (with diff comparison)"; \
+		echo "  deploy  - Full deployment (push + version management)"; \
+		echo ""; \
+		echo "Examples:"; \
+		echo "  make clasp push waitlist-script-comprehensive"; \
+		echo "  make clasp pull waitlist-script-comprehensive"; \
+		echo "  make clasp deploy waitlist-script-comprehensive"; \
+		exit 1; \
+	fi
+	@if [ -z "$(CLASP_PROJECT)" ]; then \
+		echo "❌ Project name required"; \
+		echo "Usage: make clasp $(CLASP_CMD) <project-name>"; \
+		echo "Example: make clasp $(CLASP_CMD) waitlist-script-comprehensive"; \
+		exit 1; \
+	fi
+	@if [ "$(CLASP_CMD)" = "push" ]; then \
+		bash GoogleAppsScripts/remote-sync-tools/push.sh "$(CLASP_PROJECT)"; \
+	elif [ "$(CLASP_CMD)" = "pull" ]; then \
+		bash GoogleAppsScripts/remote-sync-tools/pull.sh "$(CLASP_PROJECT)"; \
+	elif [ "$(CLASP_CMD)" = "deploy" ]; then \
+		bash GoogleAppsScripts/remote-sync-tools/deploy.sh "$(CLASP_PROJECT)"; \
+	else \
+		echo "❌ Unknown command: $(CLASP_CMD)"; \
+		echo "Valid commands: push, pull, deploy"; \
 		exit 1; \
 	fi

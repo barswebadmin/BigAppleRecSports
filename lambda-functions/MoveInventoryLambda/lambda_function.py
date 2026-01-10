@@ -68,7 +68,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 print(f"🔍 Veteran variant inventory after move: {remaining_qty}")
                 
                 if remaining_qty == 0:
-                    print(f"🏷️ Veteran variant has 0 inventory, removing 'veteran-only' tag")
+                    print("🏷️ Veteran variant has 0 inventory, removing 'veteran-only' tag")
                     try:
                         current_tags = get_product_tags(product_id)
                         if 'veteran-only' in current_tags:
@@ -77,7 +77,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             print(f"✅ Removed 'veteran-only' tag. Updated tags: {updated_tags}")
                             tags_updated = True
                         else:
-                            print(f"ℹ️ 'veteran-only' tag not found on product")
+                            print("ℹ️ 'veteran-only' tag not found on product")
                     except Exception as e:
                         print(f"⚠️ Failed to update product tags: {e}")
                         # Don't fail the entire operation if tag update fails
@@ -145,7 +145,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 print(f"🔍 Veteran variant inventory after consolidation: {remaining_qty}")
                 
                 if remaining_qty == 0:
-                    print(f"🏷️ Veteran variant has 0 inventory, removing 'veteran-only' tag")
+                    print("🏷️ Veteran variant has 0 inventory, removing 'veteran-only' tag")
                     try:
                         current_tags = get_product_tags(product_id)
                         if 'veteran-only' in current_tags:
@@ -154,7 +154,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             print(f"✅ Removed 'veteran-only' tag. Updated tags: {updated_tags}")
                             tags_updated = True
                         else:
-                            print(f"ℹ️ 'veteran-only' tag not found on product")
+                            print("ℹ️ 'veteran-only' tag not found on product")
                     except Exception as e:
                         print(f"⚠️ Failed to update product tags: {e}")
                         # Don't fail the entire operation if tag update fails

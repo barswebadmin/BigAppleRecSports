@@ -3,18 +3,14 @@ Main Slack service - Table of Contents.
 Provides a clean interface to all Slack functionality organized by concern.
 """
 
-import sys
-import os
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 # Slack SDK
 from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError, SlackClientError
 
 # Our systems
 from config import config
-from config_old_deprecated.slack import SlackBot, SlackChannel
 # from models.slack import Slack, RefundType, SlackMessageType
 
 # Existing services
@@ -22,7 +18,6 @@ from config_old_deprecated.slack import SlackBot, SlackChannel
 
 # Core functionality
 
-from .client.main import SlackClient
 from .client.slack_security import SlackSecurity
 from .parsers.message_parsers import SlackMessageParsers
 from .builders import (

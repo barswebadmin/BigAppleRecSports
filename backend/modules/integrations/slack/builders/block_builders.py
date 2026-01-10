@@ -12,7 +12,6 @@ from typing import List, Optional
 from slack_sdk.models.blocks import (
     Block,
     InputBlock,
-    SectionBlock,
 )
 from slack_sdk.models.blocks.block_elements import (
     PlainTextInputElement,

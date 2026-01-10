@@ -5,7 +5,7 @@ All other functionality has been moved to appropriate services.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 
 try:

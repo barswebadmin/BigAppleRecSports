@@ -3,8 +3,7 @@ Leadership CSV Parser Service.
 
 Extracts leadership hierarchy from CSV data with NO Slack dependencies.
 """
-import re
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Optional, Tuple
 
 from modules.leadership.domain.models import LeadershipMember, LeadershipHierarchy
 from modules.leadership.domain.csv_patterns import CSVPatternRegistry

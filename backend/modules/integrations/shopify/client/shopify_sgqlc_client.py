@@ -5,7 +5,6 @@ Provides a generic client interface for executing GraphQL queries and mutations
 against the Shopify Admin API using sgqlc operations.
 """
 
-import json
 from typing import Dict, Any, Optional
 import urllib.error
 import sys

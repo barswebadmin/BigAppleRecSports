@@ -2,7 +2,6 @@
 Tests for centralized multi-field validation functionality.
 """
 
-import pytest
 from shared.validators import (
     validate_multiple_fields,
     validate_email_format,

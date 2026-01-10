@@ -5,12 +5,11 @@ Extracted from the main SlackService to improve modularity.
 
 import hashlib
 import time
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, Union
 from datetime import datetime, timezone
 import logging
 from shared.date_utils import format_date_and_time, parse_shopify_datetime
 from modules.integrations.shopify.builders.shopify_url_builders import build_customer_url, build_order_url, build_product_url
-from config import config
 from config_old_deprecated.slack import SlackGroup
 logger = logging.getLogger(__name__)
 

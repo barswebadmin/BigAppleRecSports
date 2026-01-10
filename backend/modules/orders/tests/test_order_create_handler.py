@@ -5,7 +5,6 @@ Tests order creation webhook processing, specifically email mismatch detection
 and waitlist registration identification.
 """
 
-import pytest
 import json
 from typing import Dict, Any
 from new_structure_target.services.webhooks.handlers.order_create_handler import evaluate_order_create_webhook

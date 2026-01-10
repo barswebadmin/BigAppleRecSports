@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Dict, Optional, Any
 
 from shared.model_config import ApiModel
-from shared.csv.clean_text import clean_unicode_control_chars
 
 
 def normalize_title(title: str) -> str:

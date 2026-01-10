@@ -1,6 +1,4 @@
-import requests
-import json
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 import sys
 import os
 import logging
@@ -17,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from backend.config import config
 except ImportError:
-    from backend.config import config
+    pass
 
 logger = logging.getLogger(__name__)
 

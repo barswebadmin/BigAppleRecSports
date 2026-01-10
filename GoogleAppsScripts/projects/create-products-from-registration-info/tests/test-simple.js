@@ -29,13 +29,13 @@ function loadGasFile(filePath) {
 console.log('🚀 Testing file loading...');
 
 // Load dependencies in order
-loadGasFile('config/constants.gs');
-loadGasFile('helpers/textUtils.gs');
-loadGasFile('helpers/normalizers.gs');
-loadGasFile('parsers/dateParser.gs');
-loadGasFile('parsers/parseColBLeagueDetails_.gs');
-loadGasFile('parsers/notesParser.gs');
-loadGasFile('parsers/_rowParser.gs');
+loadGasFile('config/constants.js');
+loadGasFile('helpers/textUtils.js');
+loadGasFile('helpers/normalizers.js');
+loadGasFile('parsers/dateParser.js');
+loadGasFile('parsers/parseColBLeagueDetails_.js');
+loadGasFile('parsers/notesParser.js');
+loadGasFile('parsers/_rowParser.js');
 
 console.log('\n🧪 Testing function availability...');
 console.log('parseSourceRowEnhanced_ defined?', typeof parseSourceRowEnhanced_ !== 'undefined');

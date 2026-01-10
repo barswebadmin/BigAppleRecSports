@@ -6,7 +6,7 @@ using Service Account credentials with domain-wide delegation.
 """
 
 import logging
-from typing import List, Optional, Annotated, Literal
+from typing import Optional, Annotated, Literal
 from dataclasses import dataclass
 
 from pydantic import PlainSerializer

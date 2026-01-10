@@ -6,7 +6,6 @@ Provides mock Slack payloads, events, and objects for testing.
 
 import pytest
 from typing import Dict, Any
-from datetime import datetime
 
 
 @pytest.fixture

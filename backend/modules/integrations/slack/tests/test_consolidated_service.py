@@ -13,7 +13,7 @@ os.environ["ENVIRONMENT"] = "dev"
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from modules.integrations.slack.slack_service import SlackService
-from models.slack import RefundSlackNotificationRequest, RefundType, SlackMessageType
+from models.slack import RefundSlackNotificationRequest, RefundType
 from config_old_deprecated.slack import SlackConfig
 
 def test_consolidated_slack_service():

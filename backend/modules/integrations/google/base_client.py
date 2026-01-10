@@ -5,14 +5,13 @@ Handles common authentication and transport logic for all Google API clients.
 """
 
 import logging
-from typing import Optional, Dict, Any, NoReturn, Callable, Tuple, TypeVar, cast, TypedDict
-from abc import ABC, abstractmethod
+from typing import Optional, Dict, Any, NoReturn, Callable, TypeVar, cast, TypedDict
+from abc import ABC
 from functools import wraps
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import BatchHttpRequest
 import json
 
 from backend.config import config

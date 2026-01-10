@@ -11,9 +11,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
 from new_structure_target.clients.shopify.builders.shopify_url_builders import build_product_url
-from new_structure_target.services.webhooks.handlers.order_create_handler import slack_message_builder
-from ..parsers.product_parser import has_zero_inventory, get_slack_group_mention
-from backend.config import config
+from ..parsers.product_parser import has_zero_inventory
 from shared.date_utils import format_date_and_time, parse_shopify_datetime
 
 logger = logging.getLogger(__name__)

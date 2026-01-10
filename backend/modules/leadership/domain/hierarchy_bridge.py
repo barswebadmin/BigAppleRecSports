@@ -7,7 +7,7 @@ This module connects:
 """
 from typing import Optional, List, Tuple
 
-from modules.leadership.domain.hierarchy_config import HierarchyConfig, PositionConfig, SectionConfig
+from modules.leadership.domain.hierarchy_config import HierarchyConfig, PositionConfig
 from modules.leadership.domain.models import (
     Position,
     LeadershipMember,

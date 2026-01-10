@@ -7,7 +7,6 @@ from typing import Dict, Tuple
 
 from dotenv import load_dotenv, find_dotenv
 import yaml
-from rich import print as rprint
 from rich.console import Console
 from rich.syntax import Syntax
 
@@ -35,7 +34,6 @@ def _initialize_services():
     os.environ["ENVIRONMENT"] = "production"
     
     # Force a fresh config instance with the new environment
-    from config_old_deprecated.main import Config
     fresh_config = Config()
     
     shopify_client = ShopifyClient(fresh_config)

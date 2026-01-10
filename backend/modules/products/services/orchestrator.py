@@ -9,7 +9,7 @@ TODO: should we delete this??? i don't see why it's needed
 
 import os
 from typing import Dict, Any
-from new_structure_target.services.webhooks.parsers.product_parser import get_slack_group_mention, parse_for_waitlist_form
+from new_structure_target.services.webhooks.parsers.product_parser import get_slack_group_mention
 from new_structure_target.clients.shopify.core.shopify_security import ShopifySecurity
 from new_structure_target.clients.slack.core.slack_client import SlackClient
 from new_structure_target.clients.google_apps_script.gas_client import GASClient
@@ -129,7 +129,7 @@ class WebhooksOrchestrator:
             builder.header(f"{config_data['emoji']} Attention: {product_title}"),
             builder.section(section_text_1),
             builder.section(f"*View Product in Shopify:* <{product_url}|{product_title}>"),
-            builder.section(f"*Waitlist Responses:* <https://docs.google.com/spreadsheets/d/1rrmEu6QKNnDoNJs2XnAD08W-7smUhFPKYnNC5y7iNI0?resourcekey=&usp=forms_web_b&urp=linked#gid=1214906876|View in Google Sheets>"),
+            builder.section("*Waitlist Responses:* <https://docs.google.com/spreadsheets/d/1rrmEu6QKNnDoNJs2XnAD08W-7smUhFPKYnNC5y7iNI0?resourcekey=&usp=forms_web_b&urp=linked#gid=1214906876|View in Google Sheets>"),
             builder.section(f"*Attn*: {mention_target}"),
         ]
 

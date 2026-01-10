@@ -35,10 +35,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         import os
         shopify_location = os.environ.get("SHOPIFY_LOCATION_ID")
         # Token now resolved in bars_common_utils.shopify_utils via SSM; we only need location here
-        print(f"🔑 Configuration check:")
+        print("🔑 Configuration check:")
         print(f"   SHOPIFY_LOCATION_ID exists: {bool(shopify_location)}")
         print(f"   SHOPIFY_LOCATION_ID value: {shopify_location}")
-        print(f"   Token will be fetched from SSM: /shopify/token.admin")
+        print("   Token will be fetched from SSM: /shopify/token.admin")
         
         if not shopify_location:
             raise ValueError("SHOPIFY_LOCATION_ID environment variable is missing")
@@ -77,7 +77,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Add 'veteran-only' tag if first variant is veteran (before inventory adjustment)
         tags_updated = False
         if variant_type == 'vet':
-            print(f"🏷️ First variant is veteran, adding 'veteran-only' tag")
+            print("🏷️ First variant is veteran, adding 'veteran-only' tag")
             print(f"⏱️ Starting tag update at: {datetime.now().isoformat()}")
             try:
                 current_tags = get_product_tags(product_id)
@@ -87,7 +87,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     print(f"✅ Added 'veteran-only' tag. Updated tags: {updated_tags}")
                     tags_updated = True
                 else:
-                    print(f"ℹ️ 'veteran-only' tag already exists on product")
+                    print("ℹ️ 'veteran-only' tag already exists on product")
             except Exception as e:
                 print(f"⚠️ Failed to update product tags: {e}")
                 # Don't fail the entire operation if tag update fails

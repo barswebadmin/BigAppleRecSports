@@ -1,5 +1,4 @@
 from __future__ import annotations
-from pydantic import Field
 from typing import Optional, Dict, Any
 from shared.model_config import ApiModel
 

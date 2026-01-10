@@ -38,21 +38,21 @@ function loadGasFile(filePath) {
 console.log('📚 Loading source files...\n');
 
 // Core files
-loadGasFile('config/constants.gs');
-loadGasFile('helpers/formatValidators.gs');
-loadGasFile('helpers/normalizers.gs');
-loadGasFile('helpers/textUtils.gs');
-loadGasFile('parsers/_rowParser.gs');
-loadGasFile('parsers/parseColBLeagueBasicInfo_.gs');
-loadGasFile('parsers/parseColCLeagueDetails_.gs');
-loadGasFile('parsers/parseColDESeasonDates.gs');
-loadGasFile('parsers/parseColFPrice_.gs');
-loadGasFile('parsers/parseColGLeagueTimes_.gs');
-loadGasFile('parsers/parseColMNORegistrationDates_.gs');
-loadGasFile('parsers/parseColHLocation_.gs');
+loadGasFile('config/constants.js');
+loadGasFile('helpers/formatValidators.js');
+loadGasFile('helpers/normalizers.js');
+loadGasFile('helpers/textUtils.js');
+loadGasFile('parsers/_rowParser.js');
+loadGasFile('parsers/parseColBLeagueBasicInfo_.js');
+loadGasFile('parsers/parseColCLeagueDetails_.js');
+loadGasFile('parsers/parseColDESeasonDates.js');
+loadGasFile('parsers/parseColFPrice_.js');
+loadGasFile('parsers/parseColGLeagueTimes_.js');
+loadGasFile('parsers/parseColMNORegistrationDates_.js');
+loadGasFile('parsers/parseColHLocation_.js');
 // dateUtils moved to top-level GoogleAppsScripts/shared-utilities in repo root
 // For the consolidated runner, we can skip this or load the shared utils if needed
-const sharedUtilsPath = path.resolve(__dirname, '../../shared-utilities/dateUtils.gs');
+const sharedUtilsPath = path.resolve(__dirname, '../../shared-utilities/dateUtils.js');
 if (fs.existsSync(sharedUtilsPath)) {
   const content = fs.readFileSync(sharedUtilsPath, 'utf8');
   // biome-ignore lint/security/noGlobalEval: safe in test harness
@@ -61,15 +61,15 @@ if (fs.existsSync(sharedUtilsPath)) {
 } else {
   console.log('ℹ️  Skipping shared-utilities/dateUtils.gs (not found)');
 }
-loadGasFile('validators/fieldValidation.gs');
+loadGasFile('validators/fieldValidation.js');
 
 // New modular files
-loadGasFile('data/productDataProcessing.gs');
-loadGasFile('ui/productCreationDialogs.gs');
-loadGasFile('sheet/cellMapping.gs');
-loadGasFile('utils/formatting.gs');
-loadGasFile('api/backendCommunication.gs');
-loadGasFile('core/portedFromProductCreateSheet/shopifyProductCreation.gs');
+loadGasFile('data/productDataProcessing.js');
+loadGasFile('ui/productCreationDialogs.js');
+loadGasFile('sheet/cellMapping.js');
+loadGasFile('utils/formatting.js');
+loadGasFile('api/backendCommunication.js');
+loadGasFile('core/portedFromProductCreateSheet/shopifyProductCreation.js');
 
 // Load consolidated test files to define test entrypoints
 function loadTestFile(filePath) {
@@ -86,11 +86,11 @@ function loadTestFile(filePath) {
   }
 }
 
-loadTestFile('test_parsers.gs');
-loadTestFile('test_ui_and_workflow.gs');
-loadTestFile('test_utilities.gs');
-loadTestFile('test_backend_response_handling.gs');
-loadTestFile('test_go_live_request.gs');
+loadTestFile('test_parsers.js');
+loadTestFile('test_ui_and_workflow.js');
+loadTestFile('test_utilities.js');
+loadTestFile('test_backend_response_handling.js');
+loadTestFile('test_go_live_request.js');
 
 console.log('\n🧪 Running consolidated tests...\n');
 

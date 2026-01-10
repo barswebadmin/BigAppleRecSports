@@ -16,7 +16,7 @@ from slack_sdk import WebClient
 if TYPE_CHECKING:
     from modules.leadership.domain.models import LeadershipHierarchy
 
-from modules.integrations.slack.client import SlackClient, SlackUserIdentifier, UserListPayload, UserLookupByEmailPayload
+from modules.integrations.slack.client import SlackUserIdentifier, UserLookupByEmailPayload
 from modules.integrations.slack.models.slack_user import SlackUser
 
 logger = logging.getLogger(__name__)

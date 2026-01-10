@@ -4,8 +4,8 @@ Common models shared across Shopify entities.
 
 import inspect
 import json
-from typing import Optional, TypeVar, Generic, Dict, Any, Type, Union, ClassVar, get_type_hints, get_args, get_origin
-from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr, ConfigDict, create_model
+from typing import Optional, TypeVar, Generic, Dict, Any, Type, Union, ClassVar
+from pydantic import BaseModel, Field, PrivateAttr
 
 # Generic type variable for connection nodes
 T = TypeVar('T', bound=BaseModel)

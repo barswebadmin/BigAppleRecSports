@@ -1,8 +1,6 @@
 """Slack Bolt command and modal handlers for Leadership bot."""
-import json
 import logging
-from pathlib import Path
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Tuple
 
 from slack_bolt import Ack
 from slack_bolt.context.respond import Respond
@@ -11,10 +9,9 @@ from slack_sdk.models.blocks import Block
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from modules.integrations.slack.client import SlackClient
+    pass
 
 from modules.leadership.domain.hierarchy_config import load_hierarchy_config
-from config_old_deprecated.slack import SlackConfig
 from modules.integrations.google import GoogleSheetsClient
 from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
 from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
@@ -114,11 +111,11 @@ def handle_update_leadership_submission(ack: Ack, respond: Respond, context: Bol
             for section_data in hierarchy.sections.values()
         )
         
-        logger.warning(f"⚠️  HIERARCHY VALIDATION:")
+        logger.warning("⚠️  HIERARCHY VALIDATION:")
         logger.warning(f"   Expected: {total_expected} positions")
         logger.warning(f"   Parsed:   {parsed_count} positions")
         logger.warning(f"   Missing:  {total_expected - parsed_count} positions")
-        logger.warning(f"")
+        logger.warning("")
         
         for section_key, expected_roles in expected_positions.items():
             section_data = hierarchy.sections.get(section_key, {})

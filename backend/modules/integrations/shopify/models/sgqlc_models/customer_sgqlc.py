@@ -5,7 +5,7 @@ These are separate from Pydantic models and defined directly using sgqlc's Type 
 """
 
 from sgqlc.types import Type, Field, String, Int, Boolean, list_of
-from sgqlc.types.relay import Connection, connection_args
+from sgqlc.types.relay import Connection
 
 
 class Address(Type):

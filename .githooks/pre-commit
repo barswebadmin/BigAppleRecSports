@@ -13,6 +13,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+# 0. Block commits to main branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+if [ "$CURRENT_BRANCH" = "main" ]; then
+    echo ""
+    echo "❌❌❌ COMMIT BLOCKED ❌❌❌"
+    echo ""
+    echo "🚨 You are attempting to commit directly to the 'main' branch!"
+    echo ""
+    echo "This is not allowed for safety reasons."
+    echo ""
+    echo "Please:"
+    echo "  1. Create a feature branch: git checkout -b feature/your-feature-name"
+    echo "  2. Commit your changes to that branch"
+    echo "  3. Create a pull request to merge into main"
+    echo ""
+    echo "Current branch: [RED]main[/RED]"
+    echo ""
+    exit 1
+fi
+
 # Check if we have python3 available
 if ! command -v python3 &> /dev/null; then
     echo "⚠️  Warning: python3 not found. Skipping checks."
@@ -133,6 +153,63 @@ if [ -f "$LAMBDA_VERSION_MANAGER" ]; then
     else
         echo "⚠️  Lambda version management failed"
     fi
+fi
+
+# 5. GAS doGet/doPost change detection
+GAS_DETECT_SCRIPT="$REPO_ROOT/GoogleAppsScripts/remote-sync-tools/detect-webapp-changes.sh"
+if [ -f "$GAS_DETECT_SCRIPT" ]; then
+    # Only check if there are GAS files in staged changes
+    if git diff --cached --name-only | grep -q "^GoogleAppsScripts/"; then
+        echo "🔍 Checking for GAS doGet/doPost changes..."
+        
+        # Run detection (suppress output, capture exit code)
+        if "$GAS_DETECT_SCRIPT" --staged >/dev/null 2>&1; then
+            # Exit code 0: No changes detected
+            echo "✅ No doGet/doPost changes detected in GAS projects"
+        else
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 2 ]; then
+                # Exit code 2: Changes detected (warning, non-blocking)
+                echo ""
+                echo "⚠️  GAS doGet/doPost function changes detected in your commit!"
+                echo ""
+                echo "🤔 What does this mean?"
+                echo "  • You've modified web app endpoint functions"
+                echo "  • These changes won't be active until deployed to Google Apps Script"
+                echo "  • Users will still see the OLD behavior until deployment"
+                echo ""
+                echo "🚀 Next steps after committing:"
+                echo "  1. Push to master branch (triggers auto-deployment)"
+                echo "  2. Or manually deploy: make clasp deploy [project]"
+                echo "  3. Or use script: bash GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
+                echo ""
+                echo "💡 This is just a warning - your commit will proceed normally."
+                echo ""
+            else
+                # Other exit codes: Error (blocking)
+                echo "❌ Error running GAS doGet/doPost detection script (exit code: $EXIT_CODE)"
+                exit 1
+            fi
+        fi
+    fi
+fi
+
+# 6. Secret detection (check all files, fail on non-test files, warn on test files)
+SECRET_DETECTOR="$REPO_ROOT/scripts/detect_secrets.py"
+if [ -f "$SECRET_DETECTOR" ]; then
+    echo "🔒 Checking for secrets in repository..."
+    if python3 "$SECRET_DETECTOR"; then
+        echo "✅ Secret detection passed"
+    else
+        EXIT_CODE=$?
+        if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Secret detection failed - commit blocked"
+            exit $EXIT_CODE
+        fi
+    fi
+else
+    echo "⚠️  Secret detector not found: $SECRET_DETECTOR"
 fi
 
 echo "ℹ️  Backend versioning will happen on merge/deploy via GitHub Actions"

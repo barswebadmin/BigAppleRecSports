@@ -1,12 +1,9 @@
 import pytest
-from typing import Dict, List, Any, Optional
-from modules.leadership.domain.models import LeadershipMember, Position, LeadershipHierarchy
+from typing import Dict, Optional
+from modules.leadership.domain.models import LeadershipMember, LeadershipHierarchy
 from modules.leadership.services.results_formatter import (
-    LeadershipResultsFormatter,
-    AnalysisResult,
-    PositionStatus
+    LeadershipResultsFormatter
 )
-from slack_sdk.models.blocks import HeaderBlock, SectionBlock, ContextBlock
 
 
 # ============================================================================

@@ -1,8 +1,6 @@
 from __future__ import annotations
 import os
-from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
-from typing import Any
 import logging
 
 from .slack import SlackConfig as _SlackConfig

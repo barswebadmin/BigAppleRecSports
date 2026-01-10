@@ -4,16 +4,12 @@ Product models for Shopify GraphQL API.
 Uses forward references to avoid circular imports.
 """
 
-from typing import List, TYPE_CHECKING, Dict, Optional, Any
+from typing import List, TYPE_CHECKING, Optional
 from pydantic import BaseModel, Field
 
 from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection
-from sgqlc.operation import Operation
-from sgqlc.types import Variable
 
 from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import ShopifyBaseModel, create_list_model
-from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_bridge import get_sgqlc_type
-from backend.modules.integrations.shopify.models.sgqlc_models.order_pydantic import MoneySet  # Reuse MoneySet from order_pydantic.py
 
 if TYPE_CHECKING:
     pass

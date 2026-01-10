@@ -36,13 +36,13 @@ function loadGasFile(filePath) {
 console.log('🚀 Loading GAS functions...');
 
 // Load in dependency order
-loadGasFile('config/constants.gs');
-loadGasFile('helpers/textUtils.gs');
-loadGasFile('helpers/normalizers.gs');
-loadGasFile('parsers/dateParser.gs');
-loadGasFile('parsers/parseColBLeagueBasicInfo_.gs');
-loadGasFile('parsers/_rowParser.gs');
-loadGasFile('core/portedFromProductCreateSheet/createShopifyProduct.gs');
+loadGasFile('config/constants.js');
+loadGasFile('helpers/textUtils.js');
+loadGasFile('helpers/normalizers.js');
+loadGasFile('parsers/dateParser.js');
+loadGasFile('parsers/parseColBLeagueBasicInfo_.js');
+loadGasFile('parsers/_rowParser.js');
+loadGasFile('core/portedFromProductCreateSheet/createShopifyProduct.js');
 
 console.log('📋 Running comprehensive product creation tests...\n');
 

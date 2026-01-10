@@ -11,7 +11,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from modules.integrations.google import GoogleSheetsClient
-from config import config
 
 
 def example_update_position_titles():
@@ -27,7 +26,7 @@ def example_update_position_titles():
     # Initialize client
     client = GoogleSheetsClient()
     print(f"✅ Initialized client with service account: {client.service_account_email}")
-    print(f"📧 Make sure the spreadsheet is shared with EDIT permissions to this email!\n")
+    print("📧 Make sure the spreadsheet is shared with EDIT permissions to this email!\n")
     
     # Example spreadsheet ID (replace with actual)
     sheet_id = "YOUR_SPREADSHEET_ID_HERE"

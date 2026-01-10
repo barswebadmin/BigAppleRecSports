@@ -6,7 +6,6 @@ Handles downloading CSV files from Slack private URLs using bearer token authent
 import logging
 from typing import Optional, List
 import requests
-from slack_sdk import WebClient
 
 from shared.csv import parse_csv_text
 

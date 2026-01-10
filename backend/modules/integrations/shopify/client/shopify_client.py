@@ -1,7 +1,5 @@
 from typing import Dict, Any, Optional
-import json
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import config
 from config_old_deprecated.main import Config
@@ -9,7 +7,6 @@ from ..models.requests import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response
 # from ..builders import build_order_fetch_request_payload  # DEPRECATED: replaced by sgqlc
-from ..parsers.mappers import map_order_node_to_order
 
  
 """

@@ -25,7 +25,7 @@ def main():
         print("❌ No URL provided")
         sys.exit(1)
     
-    print(f"\n📊 Initializing Google Sheets client...")
+    print("\n📊 Initializing Google Sheets client...")
     client = GoogleSheetsClient()
     print(f"✅ Service account: {client.service_account_email}\n")
     
