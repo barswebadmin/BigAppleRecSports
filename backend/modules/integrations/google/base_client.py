@@ -5,7 +5,7 @@ Handles common authentication and transport logic for all Google API clients.
 """
 
 import logging
-from typing import Optional, Dict, Any, NoReturn, List, Callable, Tuple, TypeVar, cast, TypedDict
+from typing import Optional, Dict, Any, NoReturn, Callable, Tuple, TypeVar, cast, TypedDict
 from abc import ABC, abstractmethod
 from functools import wraps
 
@@ -67,7 +67,7 @@ class GoogleAPIClient(ABC):
     """Base client for Google API authentication and common transport."""
     
     service: Any
-    scopes: List[str]
+    scopes: list[str]
     base_credentials: service_account.Credentials
     credentials: service_account.Credentials
     
@@ -158,7 +158,7 @@ class GoogleAPIClient(ABC):
         
         return service_account
     
-    def _get_scopes(self) -> List[str]:
+    def _get_scopes(self) -> list[str]:
         """Return list of OAuth scopes required for this API."""
         return self.scopes
     
@@ -176,7 +176,7 @@ class GoogleAPIClient(ABC):
         api_method,
         result_key: str,
         **params: Any
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Generic pagination helper for Google API calls.
         
@@ -186,7 +186,7 @@ class GoogleAPIClient(ABC):
             **params: Additional parameters to pass to the API method
         
         Returns:
-            List of all items from all pages
+            list of all items from all pages
         """
         all_items = []
         page_token = None
@@ -207,18 +207,18 @@ class GoogleAPIClient(ABC):
     
     def batch_request(
         self,
-        requests: List[Any]
-    ) -> List[Dict[str, Any]]:
+        requests: list[Any]
+    ) -> list[Dict[str, Any]]:
         """
         Execute multiple API requests in a single batch HTTP request.
         
         Args:
-            requests: List of prepared API request objects (e.g., service.members().list(...))
+            requests: list of prepared API request objects (e.g., service.members().list(...))
                      Each request should be a callable that returns a request object.
                      Maximum 1,000 requests per batch.
         
         Returns:
-            List of response dictionaries in the same order as requests.
+            list of response dictionaries in the same order as requests.
             Each response is the result of calling .execute() on the request.
         
         Raises:
@@ -240,7 +240,7 @@ class GoogleAPIClient(ABC):
         
         responses: Dict[str, Dict[str, Any]] = {}
         errors: Dict[str, Exception] = {}
-        request_order: List[str] = []
+        request_order: list[str] = []
         
         def batch_callback(request_id: str, response: Any, exception: Optional[Exception]) -> None:
             """Callback for batch request responses."""
@@ -259,7 +259,7 @@ class GoogleAPIClient(ABC):
         batch.execute()
         
         # Reconstruct responses in order
-        ordered_responses: List[Dict[str, Any]] = []
+        ordered_responses: list[Dict[str, Any]] = []
         for request_id in request_order:
             if request_id in errors:
                 raise errors[request_id]

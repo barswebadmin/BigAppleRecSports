@@ -13,14 +13,13 @@ from bars_cli.commands.slack._shared.command_helpers import handle_slack_get_com
 
 def format_user(user: SlackUser) -> str:
     """Format user data for display."""
-    profile = user.profile
     name = user.real_name or 'N/A'
-    email = profile.email or 'N/A'
-    display = profile.display_name or 'N/A'
+    email = user.email or 'N/A'
+    display = user.display_name or 'N/A'
     user_id = user.id
     deleted = user.deleted  # Always present in API response
-    title = profile.title
-    phone = profile.phone
+    title = user.title
+    phone = user.phone
     is_admin = user.is_admin or False  # Optional, may be None
     is_owner = user.is_owner or False  # Optional, may be None
     timezone = user.tz_label

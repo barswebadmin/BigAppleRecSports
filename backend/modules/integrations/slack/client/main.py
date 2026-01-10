@@ -5,7 +5,7 @@ Handles direct Slack API interactions: sending messages, updating messages, ephe
 
 import json
 import logging
-from typing import Dict, Any, Optional, List, Union, Callable, TypeVar, Literal
+from typing import Dict, Any, Optional, List, Union, Callable, TypeVar, Literal, TypedDict
 from pydantic import BaseModel, field_serializer
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError, SlackClientError
@@ -14,12 +14,56 @@ from slack_sdk.http_retry import RetryHandler, RetryState, HttpRequest, HttpResp
 from slack_sdk.models.blocks import Block, SectionBlock, MarkdownTextObject
 from slack_sdk.webhook import WebhookClient
 
-from config_old_deprecated.slack import SlackConfig
 from shared.model_config import ApiModel
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
+
+
+class SlackScopeInfo(TypedDict, total=False):
+    """Scope information included in error responses."""
+    token_type: str
+    current_scopes: List[str]
+    missing_scopes: List[str]
+    required_scope: Optional[str]
+    api_method: Optional[str]
+
+
+class SlackApiSuccessResponse(TypedDict):
+    """Successful Slack API response structure."""
+    success: Literal[True]
+    message_ts: Optional[str]
+    channel: Optional[str]
+    response: Dict[str, Any]
+
+
+class SlackApiErrorResponse(TypedDict, total=False):
+    """Error Slack API response structure."""
+    success: Literal[False]
+    error: str
+    response: Optional[Dict[str, Any]]
+    scope_info: Optional[SlackScopeInfo]
+
+
+SlackApiResponse = Union[SlackApiSuccessResponse, SlackApiErrorResponse]
+
+
+class SlackUserProfileUpdate(TypedDict, total=False):
+    """Type-safe profile fields that can be updated via users.profile.set.
+    
+    Only includes fields that can be updated. Custom fields are supported
+    via the 'fields' key with field IDs.
+    """
+    title: Optional[str]
+    phone: Optional[str]
+    skype: Optional[str]
+    real_name: Optional[str]
+    display_name: Optional[str]
+    status_text: Optional[str]
+    status_emoji: Optional[str]
+    status_expiration: Optional[int]
+    fields: Optional[Dict[str, Dict[str, Any]]]  # Custom fields: {field_id: {value: str, alt: Optional[str]}}
 
 
 class BaseChatPayload(ApiModel):
@@ -177,7 +221,7 @@ class SlackClient(WebClient):
             Dict[str, Any]
         ]] = None,
         operation_name: str = "Slack API call",
-    ) -> Dict[str, Any]:
+    ) -> SlackApiResponse:
         """
         Execute a Slack API call with error handling.
         
@@ -239,7 +283,7 @@ class SlackClient(WebClient):
             # SDK handles retries automatically via retry_handlers
             # Log the actual payload being sent for debugging
             if api_method_name == 'users.profile.set':
-                logger.info(f"users.profile.set - About to call API")
+                logger.info("users.profile.set - About to call API")
                 logger.info(f"  Payload: {json.dumps(api_payload, indent=2, default=str)}")
                 logger.info(f"  Token type: {'User' if client_to_use.token and client_to_use.token.startswith('xoxp-') else 'Bot' if client_to_use.token and client_to_use.token.startswith('xoxb-') else 'Unknown'}")
                 logger.info(f"  Token (first 15): {client_to_use.token[:15] if client_to_use.token else 'None'}...")
@@ -255,7 +299,7 @@ class SlackClient(WebClient):
             
             # Log the raw response immediately
             if api_method_name == 'users.profile.set':
-                logger.info(f"users.profile.set - API call completed")
+                logger.info("users.profile.set - API call completed")
                 logger.info(f"  Response type: {type(response)}")
                 if hasattr(response, 'data'):
                     response_dict = response.data
@@ -270,7 +314,7 @@ class SlackClient(WebClient):
             
             # Log response immediately after call
             if api_method_name == 'users.profile.set':
-                logger.info(f"users.profile.set API call completed")
+                logger.info("users.profile.set API call completed")
                 logger.info(f"  Response type: {type(response)}")
                 logger.info(f"  Response['ok']: {response.get('ok')}")
                 logger.info(f"  Token used: {client_to_use.token[:10] if client_to_use.token else 'None'}... (type: {'User' if client_to_use.token and client_to_use.token.startswith('xoxp-') else 'Bot' if client_to_use.token and client_to_use.token.startswith('xoxb-') else 'Unknown'})")
@@ -289,13 +333,17 @@ class SlackClient(WebClient):
             
             if response["ok"]:
                 logger.info(f"✅ {operation_name}")
-                return {
-                    "success": True,
-                    "message_ts": response.get("message_ts"),
-                    "channel": response.get("channel"),
-                    "response": response
-                }
-            return {"success": False, "error": response.get("error", "Unknown error"), "response": response}
+                return SlackApiSuccessResponse(
+                    success=True,
+                    message_ts=response.get("message_ts"),
+                    channel=response.get("channel"),
+                    response=response
+                )
+            return SlackApiErrorResponse(
+                success=False,
+                error=response.get("error", "Unknown error"),
+                response=response
+            )
                 
         except SlackApiError as e:
             # SDK retry handlers have already attempted retries for transient errors
@@ -366,16 +414,38 @@ class SlackClient(WebClient):
             else:
                 logger.error(f"❌ {operation_name} failed: {error_code or str(e)}")
             
-            result = {"success": False, "error": error_msg, "response": error_response}
+            result: SlackApiErrorResponse = {
+                "success": False,
+                "error": error_msg,
+                "response": error_response
+            }
             if scope_info:
-                result["scope_info"] = scope_info
+                # Type cast to SlackScopeInfo since we've validated the structure
+                typed_scope_info: SlackScopeInfo = {
+                    "token_type": scope_info.get("token_type", "Unknown"),
+                    "current_scopes": scope_info.get("current_scopes", []),
+                    "missing_scopes": scope_info.get("missing_scopes", []),
+                }
+                if "required_scope" in scope_info:
+                    typed_scope_info["required_scope"] = scope_info["required_scope"]
+                if "api_method" in scope_info:
+                    typed_scope_info["api_method"] = scope_info["api_method"]
+                result["scope_info"] = typed_scope_info
             return result
         except SlackClientError as e:
             logger.error(f"❌ {operation_name} failed: {str(e)}")
-            return {"success": False, "error": f"Slack client error: {str(e)}", "response": None}
+            return SlackApiErrorResponse(
+                success=False,
+                error=f"Slack client error: {str(e)}",
+                response=None
+            )
         except Exception as e:
             logger.error(f"❌ {operation_name} failed: {str(e)}")
-            return {"success": False, "error": f"Unexpected error: {str(e)}", "response": None}
+            return SlackApiErrorResponse(
+                success=False,
+                error=f"Unexpected error: {str(e)}",
+                response=None
+            )
 
     def send_message(
         self,
@@ -386,7 +456,7 @@ class SlackClient(WebClient):
         metadata: Optional[Dict[str, Any]] = None,
         thread_ts: Optional[str] = None,
         user_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> SlackApiResponse:
         """
         Send a Slack message with explicit message type.
         
@@ -460,7 +530,7 @@ class SlackClient(WebClient):
         blocks: List[Block],
         metadata: Optional[Dict[str, Any]] = None,
         response_url: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> SlackApiResponse:
         """
         Update an existing Slack message.
         
@@ -487,7 +557,12 @@ class SlackClient(WebClient):
                 blocks=blocks,
                 show_loading=False,
             )
-            return {"success": True, "response": None}
+            return SlackApiSuccessResponse(
+                success=True,
+                message_ts=None,
+                channel=None,
+                response={}
+            )
         else:  # direct
             if not message_ts:
                 raise ValueError("message_ts is required for direct message updates")
@@ -511,7 +586,7 @@ class SlackClient(WebClient):
         bot_token: str,
         blocks: List[Block],
         text: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> SlackApiResponse:
         """
         Send a direct message to a user by user_id.
         
@@ -603,8 +678,8 @@ class SlackClient(WebClient):
     def update_user_profile(
         self,
         user_id: str,
-        profile: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        profile: SlackUserProfileUpdate
+    ) -> SlackApiResponse:
         """
         Update a Slack user's profile with scope error handling.
         
@@ -636,10 +711,10 @@ class SlackClient(WebClient):
         logger.debug(f"update_user_profile result: success={result.get('success')}, error={result.get('error')}")
         if result.get("response"):
             response = result.get("response")
-            if hasattr(response, 'data'):
-                logger.debug(f"Response data: {json.dumps(response.data, indent=2, default=str)}")
+            if isinstance(response, dict):
+                logger.debug(f"Response data: {json.dumps(response, indent=2, default=str)}")
             else:
-                logger.debug(f"Response (no data attr): {response}")
+                logger.debug(f"Response (not dict): {response}")
         
         return result
 

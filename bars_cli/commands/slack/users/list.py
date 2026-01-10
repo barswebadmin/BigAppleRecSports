@@ -32,8 +32,8 @@ def format_users(users: list[SlackUser]) -> str:
         for user in sorted(active_users, key=lambda u: u.real_name or ''):
             name = user.real_name or 'N/A'
             user_id = user.id
-            email = user.profile.email or 'N/A'
-            title = user.profile.title or ''
+            email = user.email or 'N/A'
+            title = user.title or ''
             title_display = f" - {title}" if title else ""
             output.append(f"  • {name:<30} ({user_id}) {email}{title_display}")
     

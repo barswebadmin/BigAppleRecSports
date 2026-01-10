@@ -10,6 +10,7 @@ from bars_cli._core.decorators.handle_display_options import handle_display_opti
 from bars_cli._core.utils.json_output import output_json_list, output_json_error
 
 from bars_cli.backend_services.google.directory_client import UserResource
+from bars_cli.commands.google._shared.google_formatters import _format_users_list
 
 
 @click.command('list')
@@ -65,25 +66,4 @@ def list_users_cmd(ctx: click.Context) -> List[UserResource]:
         raise click.ClickException(error_msg) from e
 
 
-def _format_users_list(users: List[UserResource]) -> None:
-    """Format users list for display.
-    
-    Args:
-        users: List of UserResource Pydantic models from Google Directory API
-    """
-    output = []
-    output.append(f"\n✅ Found {len(users)} user(s)")
-    output.append("=" * 80)
-    
-    for user in users:
-        email = user.primary_email or 'N/A'
-        full_name = user.name.full_name if user.name and user.name.full_name else 'N/A'
-        suspended = "Suspended" if user.suspended else "Active"
-        is_admin = "Admin" if user.is_admin else ""
-        admin_label = f" [{is_admin}]" if is_admin else ""
-        
-        output.append(f"{email:<40} {full_name:<30} {suspended}{admin_label}")
-    
-    output.append("=" * 80)
-    click.echo('\n'.join(output))
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import Field
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 from shared.model_config import ApiModel
 
 
@@ -52,8 +52,8 @@ class Order(ApiModel):
     total_price_set: Optional[TotalPriceSet] = None
     total_capturable_set: Optional[Dict[str, Any]] = None
     customer: Optional[CustomerRef] = None
-    transactions: Optional[List[Transaction]] = None
-    refunds: Optional[List[Refund]] = None
+    transactions: Optional[list[Transaction]] = None
+    refunds: Optional[list[Refund]] = None
     cancelled_at: Optional[str] = None
 
 

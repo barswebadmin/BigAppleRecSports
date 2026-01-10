@@ -13,12 +13,6 @@ def to_snake_case(text: str) -> str:
     
     Removes non-alphanumeric characters, converts spaces to underscores,
     and lowercases the result.
-    
-    Args:
-        text: Input text to convert
-        
-    Returns:
-        snake_case version of the input text
         
     Examples:
         >>> to_snake_case("Director of Bowling")
@@ -31,4 +25,3 @@ def to_snake_case(text: str) -> str:
     text = re.sub(r'[^\w\s]', '', text)
     text = re.sub(r'\s+', '_', text)
     return text.lower().strip('_')
-

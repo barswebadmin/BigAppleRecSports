@@ -8,10 +8,9 @@ or all integration tests for the refund system.
 
 import sys
 import subprocess
-from typing import List
 
 
-def run_pytest_command(args: List[str]) -> int:
+def run_pytest_command(args: list[str]) -> int:
     """Run pytest with the given arguments and return exit code."""
     cmd = ["python", "-m", "pytest"] + args
     print(f"Running: {' '.join(cmd)}")

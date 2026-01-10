@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 import datetime
 from shared.model_config import ApiModel
 from ..models.orders import Order
@@ -15,4 +15,4 @@ class Customer(ApiModel):
     first_name: Optional[str]
     last_name: Optional[str]
     last_order: Optional["Order"]
-    tags: List[Optional[str]]
+    tags: list[Optional[str]]

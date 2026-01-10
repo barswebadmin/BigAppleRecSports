@@ -3,7 +3,7 @@ import sys
 import json
 import argparse
 import logging
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Tuple
 
 from dotenv import load_dotenv, find_dotenv
 import yaml
@@ -118,10 +118,10 @@ def main() -> None:
     sys.exit(1)
 
 
-def _parse_global_flags(argv: List[str]) -> Tuple[Dict[str, bool], List[str]]:
+def _parse_global_flags(argv: list[str]) -> Tuple[Dict[str, bool], list[str]]:
     """Extract supported global flags anywhere in argv. Returns (flags, filtered_argv)."""
     flags: Dict[str, bool] = {"raw": False}
-    filtered: List[str] = []
+    filtered: list[str] = []
     for token in argv:
         if token in ("--raw", "-R"):
             flags["raw"] = True

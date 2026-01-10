@@ -115,7 +115,7 @@ class SlackChannel(ApiModel):
             raise ValueError("Channel ID cannot be empty")
         if not v.startswith('C'):
             raise ValueError(f"Invalid Slack channel ID: must start with 'C', got '{v}'")
-        if len(v) != 11:
+        if len(v) < 9 or len(v) > 13:
             raise ValueError(f"Invalid Slack channel ID: must be 11 characters, got {len(v)} characters")
         if not v.isalnum():
             raise ValueError(f"Invalid Slack channel ID: must be alphanumeric, got '{v}'")

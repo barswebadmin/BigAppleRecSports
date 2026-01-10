@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional, List, Union, cast
+from typing import Dict, Any, Optional
 import json
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -94,11 +94,11 @@ class ShopifyClient:
             )
 
 
-    # def send_batch_requests(self, payloads: List[Dict[str, Any]]) -> List[ShopifyResponse]:
+    # def send_batch_requests(self, payloads: list[Dict[str, Any]]) -> list[ShopifyResponse]:
     #     """Parallel fan-out of multiple single-operation calls."""
     #     if not payloads:
     #         return []
-    #     results: List[ShopifyResponse] = [ShopifyResponse.Error(message="Pending", status_code=500)] * len(payloads)
+    #     results: list[ShopifyResponse] = [ShopifyResponse.Error(message="Pending", status_code=500)] * len(payloads)
     #     with ThreadPoolExecutor(max_workers=min(8, len(payloads))) as pool:
     #         futures = {pool.submit(self.send_request, payloads[i]): i for i in range(len(payloads))}
     #         for fut in as_completed(futures):

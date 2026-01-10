@@ -6,7 +6,7 @@ Provides generic command handlers to reduce duplication across customer, order, 
 
 import json
 import traceback
-from typing import Dict, Any, Optional, List, Callable
+from typing import Dict, Any, Optional, List, Callable, Tuple
 
 import click
 
@@ -150,7 +150,7 @@ def handle_shopify_get_command(
     service_method: Callable[..., List[Any]],
     entity_name: str,
     format_func: Callable[[Any], str],
-    handle_multiple_func: Callable[[List[Any], bool, bool], Optional[Any]],
+    handle_multiple_func: Optional[Tuple[Callable[..., Optional[Any]], Dict[str, Any]]] = None,
     service_method_kwargs: Optional[Dict[str, Any]] = None,
     identifier_required_msg: Optional[str] = None
 ) -> Optional[List[Any]]:
@@ -171,7 +171,8 @@ def handle_shopify_get_command(
         service_method: Service method to call (e.g., shopify_service.get_customer_by_identifier)
         entity_name: Entity name for messages (e.g., "customer", "order")
         format_func: Function to format single entity for display (e.g., format_customer)
-        handle_multiple_func: Function to handle multiple results (e.g., handle_multiple_results)
+        handle_multiple_func: Optional tuple of (callable, kwargs_dict) to handle multiple results.
+                            If provided, will be called as: func(items, json_output, should_display, **kwargs)
         service_method_kwargs: Optional kwargs to pass to service_method
         identifier_required_msg: Custom message when identifier is missing
         
@@ -233,7 +234,18 @@ def handle_shopify_get_command(
             return entities
         else:
             # Multiple entities - use handler
-            selected_result = handle_multiple_func(entities, json_output, should_display)
+            if handle_multiple_func:
+                func, kwargs = handle_multiple_func
+                selected_result = func(entities, json_output, should_display, **kwargs)
+            else:
+                # Default: just return all entities
+                if should_display:
+                    if json_output:
+                        output_json_list(entities)
+                    else:
+                        for item in entities:
+                            click.echo(format_func(item))
+                return entities
             if selected_result:
                 # Check if "All" was selected (returns list) or single item selected
                 if isinstance(selected_result, list):

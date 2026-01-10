@@ -1,16 +1,72 @@
-"""Get Shopify order details command."""
+"""Get Shopify order details command.
+
+# ============================================================================
+# MISSING FUNCTIONALITY FROM get_order_details_pydantic.py
+# ============================================================================
+# 
+# The following features from get_order_details_pydantic.py are not yet
+# implemented in this CLI command:
+#
+# 1. JSON OUTPUT DEFAULT BEHAVIOR
+#    - get_order_details_pydantic.py: --json flag defaults to True
+#    - CLI: --json flag is opt-in (requires explicit flag)
+#    - Impact: Pydantic script outputs raw JSON by default, CLI outputs Rich formatted
+#
+# 2. ENVIRONMENT SELECTION
+#    - get_order_details_pydantic.py: get_order_by_identifier() accepts environment parameter
+#      (defaults to "production", but can be "staging" or "development")
+#    - CLI: Uses context-based service initialization (environment may be set globally)
+#    - Impact: Cannot easily switch environments per-command in CLI
+#    - TODO: Add --env flag to allow environment selection per command
+#
+# 3. INTERACTIVE PROMPT WHEN IDENTIFIER MISSING
+#    - get_order_details_pydantic.py: Prompts user for identifier if --id/--number not provided
+#    - CLI: Uses Click's required=False, but may not prompt interactively
+#    - Impact: Different UX - pydantic script always prompts, CLI may error
+#    - TODO: Ensure Click parameter type handles interactive prompting
+#
+# 4. SEPARATE --id AND --number FLAGS
+#    - get_order_details_pydantic.py: Has separate --id and --number flags
+#    - CLI: Uses unified identifier argument with SHOPIFY_ORDER_IDENTIFIER type
+#    - Impact: Different CLI interface (unified vs separate flags)
+#    - Note: Unified approach is likely better UX, but different from original
+#
+# 5. LOGGING CONFIGURATION
+#    - get_order_details_pydantic.py: Configures logging (WARNING level, stderr handler)
+#    - CLI: Uses default logging configuration
+#    - Impact: May have different log output behavior
+#    - TODO: Consider adding logging configuration if needed
+#
+# 6. DIRECT JSON OUTPUT FORMAT
+#    - get_order_details_pydantic.py: Outputs order.__json_data__ directly as JSON array
+#    - CLI: Uses Rich formatting by default, JSON via --json flag
+#    - Impact: Different output format (pydantic script always JSON array, CLI can be formatted)
+#    - Note: CLI approach is more flexible with Rich formatting
+#
+# ============================================================================
+# ADDITIONAL FEATURES IN CLI (NOT IN get_order_details_pydantic.py)
+# ============================================================================
+#
+# The CLI has these additional features not present in get_order_details_pydantic.py:
+#
+# - Rich formatted display (tables, panels, colors)
+# - CSV export (--csv, --csv-file flags)
+# - Line item properties display (--show-properties flag)
+# - Multiple results handling with selection (--one flag)
+# - Service abstraction (uses ShopifyService instead of direct client calls)
+#
+# ============================================================================
+"""
 import json
 import sys
-import traceback
-from typing import Dict, Any, Optional, List, TYPE_CHECKING, TypedDict, Callable
+from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
 import click
+from rich.console import Console
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_ORDER_IDENTIFIER
-import sys
-sys.path.insert(0, 'backend')
-from modules.integrations.shopify.models.sgqlc_models import Order as OrderSGQLC
+from bars_cli.commands.shopify.orders.order_formatters import format_order_rich
 
 if TYPE_CHECKING:
     from sgqlc.types import Type as SGQLCType
@@ -19,114 +75,15 @@ else:
     OrderSGQLCType = Any
 
 
-# ============================================================================
-# Display Functions (Now Type-Safe)
-# ============================================================================
-
-class OrderDisplayField(TypedDict):
-    """Type definition for order display field configuration."""
-    field_name: str
-    display_label: str
-    default: Optional[str]
-    formatter: Optional[Callable[[Any], str]]
-
-
-def _format_order_total(order: Any) -> str:
-    """Format order total from totalPriceSet."""
-    if hasattr(order, 'totalPriceSet') and order.totalPriceSet:  # type: ignore[attr-defined]
-        if hasattr(order.totalPriceSet, 'shopMoney') and order.totalPriceSet.shopMoney:  # type: ignore[attr-defined]
-            amount = order.totalPriceSet.shopMoney.amount  # type: ignore[attr-defined]
-            currency = order.totalPriceSet.shopMoney.currencyCode  # type: ignore[attr-defined]
-            return f"{currency} {amount}" if currency else str(amount)
-    return "N/A"
-
-
-def _format_customer_name(order: Any) -> str:
-    """Format customer name from order customer connection."""
-    if hasattr(order, 'customer') and order.customer:  # type: ignore[attr-defined]
-        customer_conn = order.customer  # type: ignore[attr-defined]
-        if hasattr(customer_conn, 'nodes') and customer_conn.nodes:  # type: ignore[attr-defined]
-            customer = customer_conn.nodes[0]  # type: ignore[attr-defined]
-            if hasattr(customer, 'displayName') and customer.displayName:  # type: ignore[attr-defined]
-                return customer.displayName  # type: ignore[attr-defined]
-            name_parts = []
-            if hasattr(customer, 'firstName') and customer.firstName:  # type: ignore[attr-defined]
-                name_parts.append(customer.firstName)  # type: ignore[attr-defined]
-            if hasattr(customer, 'lastName') and customer.lastName:  # type: ignore[attr-defined]
-                name_parts.append(customer.lastName)  # type: ignore[attr-defined]
-            if name_parts:
-                return " ".join(name_parts)
-    return "N/A"
-
-
-order_display_fields: List[OrderDisplayField] = [
-    {"field_name": "id", "display_label": "ID", "default": None, "formatter": None},
-    {"field_name": "name", "display_label": "Order Number", "default": "N/A", "formatter": None},
-    {"field_name": "email", "display_label": "Email", "default": "N/A", "formatter": None},
-    {"field_name": "phone", "display_label": "Phone", "default": "N/A", "formatter": None},
-    {"field_name": "createdAt", "display_label": "Created", "default": "N/A", "formatter": None},
-    {"field_name": "totalPriceSet", "display_label": "Total", "default": "N/A", "formatter": _format_order_total},
-    {"field_name": "customer", "display_label": "Customer", "default": "N/A", "formatter": _format_customer_name},
-]
-
-
-def format_order(order: Any) -> str:
-    """Format order data for display."""
-    output = []
-    output.append("\n✅ Order Found!")
-    output.append("=" * 60)
+def format_order(order: Any, show_properties: bool = False) -> None:
+    """Format order data for display using Rich.
     
-    for field_config in order_display_fields:
-        field_name = field_config["field_name"]
-        display_label = field_config["display_label"]
-        default = field_config["default"]
-        formatter = field_config["formatter"]
-        
-        if formatter:
-            value = formatter(order)
-        else:
-            value = getattr(order, field_name, None)  # type: ignore[attr-defined]
-            if value is None:
-                value = default
-            else:
-                value = str(value)
-        
-        output.append(f"{display_label:<15} {value}")
-    
-    # Display line items
-    if hasattr(order, 'lineItems') and order.lineItems:  # type: ignore[attr-defined]
-        line_items_conn = order.lineItems  # type: ignore[attr-defined]
-        line_items = line_items_conn.nodes if hasattr(line_items_conn, 'nodes') else []  # type: ignore[attr-defined]
-        if line_items:
-            output.append(f"\nLine Items ({len(line_items)}):")
-            for item in line_items:
-                name = getattr(item, 'name', 'N/A')  # type: ignore[attr-defined]
-                quantity = getattr(item, 'quantity', 'N/A')  # type: ignore[attr-defined]
-                output.append(f"  • {name} (qty: {quantity})")
-    
-    # Display transactions
-    if hasattr(order, 'transactions') and order.transactions:  # type: ignore[attr-defined]
-        transactions = list(order.transactions)  # type: ignore[attr-defined]
-        if transactions:
-            output.append(f"\nTransactions ({len(transactions)}):")
-            for txn in transactions:
-                kind = getattr(txn, 'kind', 'N/A')  # type: ignore[attr-defined]
-                status = getattr(txn, 'status', 'N/A')  # type: ignore[attr-defined]
-                amount = getattr(txn, 'amount', 'N/A')  # type: ignore[attr-defined]
-                output.append(f"  • {kind} - {status} - {amount}")
-    
-    # Display refunds
-    if hasattr(order, 'refunds') and order.refunds:  # type: ignore[attr-defined]
-        refunds = list(order.refunds)  # type: ignore[attr-defined]
-        if refunds:
-            output.append(f"\nRefunds ({len(refunds)}):")
-            for refund in refunds:
-                refund_id = getattr(refund, 'id', 'N/A')  # type: ignore[attr-defined]
-                note = getattr(refund, 'note', 'N/A')  # type: ignore[attr-defined]
-                output.append(f"  • {refund_id} - {note}")
-    
-    output.append("=" * 60)
-    return '\n'.join(output)
+    Args:
+        order: Order object (sgqlc Type instance)
+        show_properties: Whether to show line item custom attributes
+    """
+    console = Console()
+    format_order_rich(order, console=console, show_properties=show_properties)
 
 
 def _format_order_option(order: Any) -> str:
@@ -162,9 +119,19 @@ def handle_multiple_results(orders: List[Any], json_output: bool, should_display
 @click.command('get')
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--one', 'must_return_one', is_flag=True, default=False, help='Require selecting exactly one order (no "All" option)')
+@click.option('-P', '--show-properties', 'show_properties', is_flag=True, default=False, help='Show line item custom attributes')
+@click.option('--csv', is_flag=True, default=False, help='Output as CSV format matching Shopify export')
+@click.option('--csv-file', type=click.Path(), help='Write CSV to file instead of stdout')
 @click.argument('identifier', type=SHOPIFY_ORDER_IDENTIFIER, required=False)
 @click.pass_context
-def get_order_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]], must_return_one: bool = False) -> Optional[List[Any]]:
+def get_order_cmd(
+    ctx: click.Context,
+    identifier: Optional[Dict[str, Any]],
+    must_return_one: bool = False,
+    show_properties: bool = False,
+    csv: bool = False,
+    csv_file: Optional[str] = None
+) -> Optional[List[Any]]:
     """
     Get Shopify order details by order number or ID.
     
@@ -176,23 +143,54 @@ def get_order_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]], must
       bars shopify order get gid://shopify/Order/123456789
       bars shopify order get 123456789
       bars --json shopify order get 1234
+      bars shopify order get 1234 --show-properties
+      bars shopify order get 1234 --csv
     """
     from bars_cli.commands.shopify._shared.command_helpers import handle_shopify_get_command
+    from bars_cli._core.context import get_display_context
     
     # Service is guaranteed to be available (initialized in shopify group)
     shopify_service = ctx.meta.get('shopify_service')
     
-    def handle_multiple_wrapper(items, json_out, should_disp):
-        return handle_multiple_results(items, json_out, should_disp, must_return_one=must_return_one)
+    json_output, should_display = get_display_context(ctx)
+    
+    def format_order_wrapper(order: Any) -> str:
+        """Wrapper to pass show_properties to format_order.
+        
+        Returns empty string since Rich prints directly.
+        """
+        if csv or csv_file:
+            _output_order_csv(order, csv_file)
+        else:
+            format_order(order, show_properties=show_properties)
+        return ""  # Rich prints directly, return empty string for compatibility
     
     return handle_shopify_get_command(
         ctx=ctx,
         identifier=identifier,
         service_method=shopify_service.get_order_by_identifier,  # type: ignore[attr-defined]
         entity_name="order",
-        format_func=format_order,
-        handle_multiple_func=handle_multiple_wrapper,
+        format_func=format_order_wrapper,
+        handle_multiple_func=(handle_multiple_results, {"must_return_one": must_return_one}),
         service_method_kwargs={"line_items_first": 5},
         identifier_required_msg="Order identifier is required"
     )
+
+
+def _output_order_csv(order: Any, csv_file: Optional[str] = None) -> None:
+    """Output order as CSV."""
+    from bars_cli._core.ui.csv_export import write_csv_to_file, write_csv_to_stdout
+    from bars_cli.commands.shopify.orders.csv_formatter import order_to_csv_row, get_csv_headers
+    
+    # Convert order to dict format for CSV
+    order_dict = order.__json_data__ if hasattr(order, '__json_data__') else {}
+    
+    headers = get_csv_headers()
+    row = order_to_csv_row(order_dict)
+    
+    if csv_file:
+        write_csv_to_file(headers, [row], csv_file)
+        click.echo(f"CSV written to {csv_file}", err=True)
+    else:
+        write_csv_to_stdout(headers, [row])
 

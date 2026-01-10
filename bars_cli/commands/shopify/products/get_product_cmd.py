@@ -137,16 +137,13 @@ def get_product_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]], mu
     # Service is guaranteed to be available (initialized in shopify group)
     shopify_service = ctx.meta.get('shopify_service')
     
-    def handle_multiple_wrapper(items, json_out, should_disp):
-        return handle_multiple_results(items, json_out, should_disp, must_return_one=must_return_one)
-    
     return handle_shopify_get_command(
         ctx=ctx,
         identifier=identifier,
         service_method=shopify_service.get_product_by_identifier,  # type: ignore[attr-defined]
         entity_name="product",
         format_func=format_product,
-        handle_multiple_func=handle_multiple_wrapper,
+        handle_multiple_func=(handle_multiple_results, {"must_return_one": must_return_one}),
         service_method_kwargs={"variants_first": 5},
         identifier_required_msg="Product identifier is required"
     )

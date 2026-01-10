@@ -4,7 +4,7 @@ Order models for Shopify GraphQL API.
 Uses forward references to avoid circular imports with Customer models.
 """
 
-from typing import Optional, List, TYPE_CHECKING, Dict, Any, Type
+from typing import Optional, TYPE_CHECKING, Dict, Any, Type
 from pydantic import BaseModel, Field
 
 from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection
@@ -52,7 +52,7 @@ class Refund(BaseModel):
     note: Optional[str] = None
     totalRefundedSet: Optional[MoneySetWrapper] = None
     refundLineItems: Optional[Dict[str, Any]] = None  # Connection structure
-    transactions: Optional[List[RefundTransaction]] = None
+    transactions: Optional[list[RefundTransaction]] = None
 
 
 class Transaction(BaseModel):
@@ -106,7 +106,7 @@ class LineItem(BaseModel):
     discountedUnitPriceSet: Optional[MoneySetWrapper] = None
     originalTotalSet: Optional[MoneySetWrapper] = None
     discountedTotalSet: Optional[MoneySetWrapper] = None
-    customAttributes: List[CustomAttribute] = Field(default_factory=list)
+    customAttributes: list[CustomAttribute] = Field(default_factory=list)
     product: Optional[Dict[str, Any]] = None  # Full product fields
     variant: Optional[LineItemVariant] = None
 
@@ -123,8 +123,8 @@ class Order(ShopifyBaseModel):
     cancelReason: Optional[str] = None
     totalPriceSet: Optional[MoneySetWrapper] = None
     discountApplications: Optional[Connection["DiscountApplication"]] = None
-    refunds: Optional[List[Refund]] = None
-    transactions: Optional[List[Transaction]] = None
+    refunds: Optional[list[Refund]] = None
+    transactions: Optional[list[Transaction]] = None
     lineItems: Optional[Connection["LineItem"]] = None
     customer: Optional["Customer"] = None
     

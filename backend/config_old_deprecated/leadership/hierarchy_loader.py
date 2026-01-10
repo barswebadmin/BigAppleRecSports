@@ -7,7 +7,7 @@ Loads and validates the expected leadership hierarchy from YAML.
 import re
 import yaml
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 
 from shared.model_config import ApiModel
 from shared.csv.clean_text import clean_unicode_control_chars
@@ -45,8 +45,8 @@ class PositionConfig(ApiModel):
 class SectionConfig(ApiModel):
     """Configuration for a section of the leadership hierarchy."""
     name: str
-    csv_section_headers: List[str]
-    positions: List[PositionConfig]
+    csv_section_headers: list[str]
+    positions: list[PositionConfig]
     is_list: bool = False
 
 
@@ -70,7 +70,7 @@ class HierarchyConfig(ApiModel):
                 return position
         return None
     
-    def get_all_expected_positions(self) -> Dict[str, List[str]]:
+    def get_all_expected_positions(self) -> Dict[str, list[str]]:
         """Get all expected positions grouped by section."""
         result = {}
         for section_key, section in self.sections.items():
@@ -78,7 +78,7 @@ class HierarchyConfig(ApiModel):
                 result[section_key] = [pos.role_key for pos in section.positions]
         return result
     
-    def get_required_positions(self) -> Dict[str, List[str]]:
+    def get_required_positions(self) -> Dict[str, list[str]]:
         """Get all required positions grouped by section."""
         result = {}
         for section_key, section in self.sections.items():

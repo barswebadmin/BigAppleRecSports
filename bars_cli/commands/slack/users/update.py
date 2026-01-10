@@ -2,12 +2,12 @@
 import json
 import re
 import sys
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 
 import click
 from slack_sdk.errors import SlackApiError
 
-from bars_cli.models.slack_user import SlackUser, SlackUserProfile
+from backend_services.slack.models.slack_user import SlackUser, SlackUserProfile
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.decorators.profile_options import profile_options_from_model
 from bars_cli._core.prompts import prompt_text_input, prompt_confirmation, prompt_select_from_options, EXIT_SENTINEL
@@ -172,7 +172,7 @@ def sync_pronouns_with_display_name(
         pronouns = getattr(user.profile, 'pronouns', None)
     
     # Get display_name to update (from updates or current profile)
-    display_name_to_update = profile_updates.get('display_name') or user.profile.display_name or ""
+    display_name_to_update = profile_updates.get('display_name') or user.display_name or ""
     
     # Append pronouns to display_name
     updated_display_name = append_pronouns_to_display_name(display_name_to_update, pronouns)
@@ -368,7 +368,9 @@ def collect_interactive_updates(user: SlackUser) -> Dict[str, Any]:
         Dictionary of profile updates
     """
     profile_updates = {}
-    current_profile = user.profile
+    if not user.profile:
+        raise click.ClickException("User profile is not available")
+    current_profile: SlackUserProfile = user.profile
     
     # Extract current values
     current_values = {
@@ -456,7 +458,7 @@ def _handle_no_changes(user: SlackUser, profile_updates: Dict[str, Any], json_ou
     
     context = {
         "User": f"{user.real_name or 'Unknown'} ({user.name})",
-        "Email": user.profile.email or 'N/A'
+        "Email": user.email or 'N/A'
     }
     show_profile_changes(user, profile_updates, context)
     click.echo("\n⚠️  No actual changes to make")
@@ -496,7 +498,7 @@ def _execute_profile_update(
             user_token_preview = f"{user_token[:10]}...{user_token[-4:]}" if len(user_token) > 14 else "***"
             click.echo(f"🔑 User Token: {user_token_preview} (will be used for users.profile.set)")
         else:
-            click.echo(f"⚠️  No User Token configured - users.profile.set requires User Token!")
+            click.echo("⚠️  No User Token configured - users.profile.set requires User Token!")
         click.echo("\n📤 Payload being sent:")
         click.echo(json.dumps({"user": user.id, "profile": profile_updates}, indent=2))
         click.echo()
@@ -515,13 +517,13 @@ def _execute_profile_update(
                     if auth_data.get('ok'):
                         token_user_id = auth_data.get('user_id')
                         token_user_name = auth_data.get('user')
-                        click.echo(f"🔍 User Token info:")
+                        click.echo("🔍 User Token info:")
                         click.echo(f"   Token belongs to user: {token_user_name} ({token_user_id})")
                         click.echo(f"   User being updated: {user.name} ({user.id})")
                         if token_user_id == user.id:
-                            click.echo(f"   ⚠️  Token is for the same user - this should work for self-updates")
+                            click.echo("   ⚠️  Token is for the same user - this should work for self-updates")
                         else:
-                            click.echo(f"   ✅ Token is for different user - should work for updating others")
+                            click.echo("   ✅ Token is for different user - should work for updating others")
                         click.echo()
             except Exception as e:
                 click.echo(f"   ⚠️  Could not verify token owner: {e}")
@@ -529,7 +531,7 @@ def _execute_profile_update(
     
     # Log the exact call being made
     if not json_output:
-        click.echo(f"🔍 Calling update_user_profile with:")
+        click.echo("🔍 Calling update_user_profile with:")
         click.echo(f"   user_id: {user.id}")
         click.echo(f"   profile: {json.dumps(profile_updates, indent=2)}")
         click.echo()
@@ -541,7 +543,7 @@ def _execute_profile_update(
     
     # Log the raw result
     if not json_output:
-        click.echo(f"📥 Raw result from update_user_profile:")
+        click.echo("📥 Raw result from update_user_profile:")
         click.echo(f"   success: {result.get('success')}")
         click.echo(f"   error: {result.get('error', 'None')}")
         click.echo(f"   response type: {type(result.get('response'))}")
@@ -564,7 +566,7 @@ def _execute_profile_update(
         
         # Log response details
         if not json_output:
-            click.echo(f"📥 Response details:")
+            click.echo("📥 Response details:")
             click.echo(f"   response type: {type(response)}")
             click.echo(f"   has 'data' attr: {hasattr(response, 'data')}")
             if hasattr(response, 'data'):
@@ -598,7 +600,7 @@ def _execute_profile_update(
                         if isinstance(refreshed_user, dict):
                             refreshed_title = refreshed_user.get('profile', {}).get('title')
                         else:
-                            refreshed_title = refreshed_user.profile.title if hasattr(refreshed_user, 'profile') else None
+                            refreshed_title = refreshed_user.title
                         
                         if refreshed_title == profile_updates.get('title'):
                             click.echo(f"✅ Verification: Title was actually updated to '{refreshed_title}'")
@@ -676,7 +678,7 @@ def _execute_profile_update(
                         click.echo(f"   1. Go to OAuth & Permissions → {scope_type}", err=True)
                         click.echo(f"   2. Add the missing scope(s): {', '.join(scope_info['missing_scopes'])}", err=True)
                         click.echo("   3. Reinstall the app to get a new token", err=True)
-            click.echo(f"\n📋 Full Error Response:", err=True)
+            click.echo("\n📋 Full Error Response:", err=True)
             click.echo(json.dumps(result.get("response", {}), indent=2, default=str), err=True)
         sys.exit(1)
 
@@ -738,7 +740,7 @@ def update_user_cmd(
         if not json_output:
             context = {
                 "User": f"{user.real_name or 'Unknown'} ({user.name})",
-                "Email": user.profile.email or 'N/A'
+                "Email": user.email or 'N/A'
             }
             show_profile_changes(user, profile_updates, context)
         

@@ -15,7 +15,7 @@ def _remove_member_impl(
     ctx: click.Context,
     group_email: Optional[str] = None,
     user_email: Optional[str] = None
-) -> None:
+) -> dict[str, str]:
     """
     GROUP_EMAIL: Group email address (must end with @bigapplerecsports.com)
     USER_EMAIL: User email address (must end with @bigapplerecsports.com)
@@ -50,14 +50,26 @@ def _remove_member_impl(
         )
         
         # Display result
-        if should_display and not json_output:
-            output = []
-            output.append("\n✅ Member Removed Successfully!")
-            output.append("=" * 60)
-            output.append(f"{'Group':<15} {group_email}")
-            output.append(f"{'User':<15} {user_email}")
-            output.append("=" * 60)
-            click.echo('\n'.join(output))
+        result = {
+            "group_email": group_email,
+            "user_email": user_email,
+            "status": "removed"
+        }
+        
+        if should_display:
+            if json_output:
+                from bars_cli._core.utils.json_output import output_json_item
+                output_json_item(result)
+            else:
+                output = []
+                output.append("\n✅ Member Removed Successfully!")
+                output.append("=" * 60)
+                output.append(f"{'Group':<15} {group_email}")
+                output.append(f"{'User':<15} {user_email}")
+                output.append("=" * 60)
+                click.echo('\n'.join(output))
+        
+        return result
         
     except click.ClickException:
         raise
@@ -82,7 +94,7 @@ def remove_member_cmd(
     ctx: click.Context,
     group_email: Optional[str] = None,
     user_email: Optional[str] = None
-) -> None:
+) -> dict[str, str]:
     """Remove a user from a Google Workspace group."""
     return _remove_member_impl(ctx, group_email, user_email)
 
@@ -96,7 +108,7 @@ def remove_user_cmd(
     ctx: click.Context,
     group_email: Optional[str] = None,
     user_email: Optional[str] = None
-) -> None:
+) -> dict[str, str]:
     """Remove a user from a Google Workspace group (alias for remove_member)."""
     return _remove_member_impl(ctx, group_email, user_email)
 

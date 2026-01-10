@@ -6,17 +6,29 @@ using Service Account credentials with domain-wide delegation.
 """
 
 import logging
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Annotated, Literal
+from dataclasses import dataclass
 
-from googleapiclient.discovery import build
+from pydantic import PlainSerializer
 from googleapiclient.errors import HttpError
 
 from backend.shared.model_config import ApiModel
 
 from .base_client import GoogleAPIClient, GoogleServiceAccountInfo, handle_http_errors
 
-# Google Groups member roles
-GroupMemberRole = Literal["MEMBER", "OWNER", "MANAGER"]
+
+class EnumField(str):
+    """Single enum class with title case conversion."""
+    
+    @classmethod
+    def serialize(cls, value: str) -> str:
+        """Serialize enum value to title case string."""
+        return value.replace('_', ' ').title()
+    
+    @classmethod
+    def create(cls, *allowed_values: str):
+        """Create a validated enum field type with Literal validation."""
+        return Annotated[Literal[tuple(allowed_values)], PlainSerializer(cls.serialize)]
 
 logger = logging.getLogger(__name__)
 
@@ -28,45 +40,58 @@ class UserName(ApiModel):
     full_name: Optional[str] = None
 
 
+class UserEmail(ApiModel):
+    """Google Admin SDK Directory API User email structure."""
+    address: Optional[str] = None
+    primary: Optional[bool] = None
+
+
 class MemberResource(ApiModel):
     """Google Admin SDK Directory API Member resource structure."""
-    kind: Optional[str] = None  # 'admin#directory#member'
-    etag: Optional[str] = None
-    id: Optional[str] = None
-    email: Optional[str] = None
-    role: Optional[str] = None  # 'MEMBER', 'OWNER', 'MANAGER'
-    type: Optional[str] = None  # 'USER', 'GROUP', 'CUSTOMER', 'EXTERNAL'
-    status: Optional[str] = None  # 'ACTIVE', 'ARCHIVED', etc.
-    delivery_settings: Optional[str] = None  # 'ALL_MAIL', 'DAILY', 'DIGEST', 'NONE'
+    kind: str  # 'admin#directory#member'
+    etag: str
+    id: str
+    email: str
+    role: EnumField.create('MEMBER', 'OWNER', 'MANAGER')  # type: ignore[misc]
+    type: EnumField.create('USER', 'GROUP', 'CUSTOMER', 'EXTERNAL')  # type: ignore[misc]
+    status: EnumField.create('ACTIVE', 'ARCHIVED', 'INACTIVE', 'PENDING')  # type: ignore[misc]
+    delivery_settings: Optional[EnumField.create('ALL_MAIL', 'DAILY', 'DIGEST', 'NONE', 'DISABLED')] = None  # type: ignore[misc]
 
 
-class MembersListResponse(ApiModel):
+class MemberslistResponse(ApiModel):
     """Google Admin SDK Directory API Members list response structure."""
     kind: Optional[str] = None  # 'admin#directory#members'
     etag: Optional[str] = None
-    members: Optional[List[MemberResource]] = None
+    members: Optional[list[MemberResource]] = None
     next_page_token: Optional[str] = None
 
 
 class GroupResource(ApiModel):
     """Google Admin SDK Directory API Group resource structure."""
-    kind: Optional[str] = None  # 'admin#directory#group'
-    id: Optional[str] = None
-    etag: Optional[str] = None
-    email: Optional[str] = None
-    name: Optional[str] = None
-    description: Optional[str] = None
-    admin_created: Optional[bool] = None
-    direct_members_count: Optional[str] = None
-    aliases: Optional[List[str]] = None
+    kind: str  # 'admin#directory#group'
+    id: str
+    etag: str
+    email: str
+    name: str
+    description: str  # Can be empty string
+    admin_created: bool
+    direct_members_count: str
+    aliases: Optional[list[str]] = None  # Can be None or empty list
 
 
-class GroupsListResponse(ApiModel):
+class GroupslistResponse(ApiModel):
     """Google Admin SDK Directory API Groups list response structure."""
     kind: Optional[str] = None  # 'admin#directory#groups'
     etag: Optional[str] = None
-    groups: Optional[List[GroupResource]] = None
+    groups: Optional[list[GroupResource]] = None
     next_page_token: Optional[str] = None
+
+
+@dataclass
+class GroupWithMembers:
+    """Result of get_group() containing group and its members."""
+    group: GroupResource
+    members: list[MemberResource]
 
 
 class UserResource(ApiModel):
@@ -76,8 +101,8 @@ class UserResource(ApiModel):
     etag: Optional[str] = None
     primary_email: Optional[str] = None
     name: Optional[UserName] = None
-    emails: Optional[List[Dict[str, str]]] = None
-    aliases: Optional[List[str]] = None
+    emails: Optional[list[UserEmail]] = None
+    aliases: Optional[list[str]] = None
     suspended: Optional[bool] = None
     archived: Optional[bool] = None
     is_admin: Optional[bool] = None
@@ -88,11 +113,11 @@ class UserResource(ApiModel):
     customer_id: Optional[str] = None
 
 
-class UsersListResponse(ApiModel):
+class UserslistResponse(ApiModel):
     """Google Admin SDK Directory API Users list response structure."""
     kind: Optional[str] = None  # 'admin#directory#users'
     etag: Optional[str] = None
-    users: Optional[List[UserResource]] = None
+    users: Optional[list[UserResource]] = None
     next_page_token: Optional[str] = None
 
 
@@ -136,15 +161,15 @@ class GoogleDirectoryClient(GoogleAPIClient):
     def list_all_users(
         self,
         max_results: int = 500
-    ) -> List[UserResource]:
+    ) -> list[UserResource]:
         """
-        List all users in the organization.
+        list all users in the organization.
         
         Args:
             max_results: Maximum number of results per page (default: 500, max: 500)
         
         Returns:
-            List of UserResource Pydantic models, each with primary_email, name, id, etc.
+            list of UserResource Pydantic models, each with primary_email, name, id, etc.
         
         Raises:
             HttpError: For Google API errors
@@ -175,14 +200,43 @@ class GoogleDirectoryClient(GoogleAPIClient):
         return users
     
     @handle_http_errors
-    def list_all_groups(
-        self
-    ) -> List[GroupResource]:
+    def get_user(
+        self,
+        user_email: str
+    ) -> UserResource:
         """
-        List all groups in the organization.
+        Get a Google Workspace user by email address.
+        
+        Args:
+            user_email: Email address of the user (e.g., "user@example.com")
         
         Returns:
-            List of GroupResource Pydantic models, each with email, name, id, etc.
+            UserResource Pydantic model with user information (primary_email, name, id, etc.)
+        
+        Raises:
+            HttpError: For Google API errors (including 404 if user not found)
+        
+        Example:
+            >>> client = GoogleDirectoryClient(subject="admin@example.com")
+            >>> user = client.get_user("user@example.com")
+            >>> print(f"User: {user.primary_email} - {user.name.full_name if user.name else 'N/A'}")
+        """
+        user_dict = self.service.users().get(userKey=user_email).execute()  # type: ignore[attr-defined]
+        user = UserResource(**user_dict)
+        
+        logger.info(f"✅ Found user: {user.primary_email}")
+        
+        return user
+    
+    @handle_http_errors
+    def list_all_groups(
+        self
+    ) -> list[GroupResource]:
+        """
+        list all groups in the organization.
+        
+        Returns:
+            list of GroupResource Pydantic models, each with email, name, id, etc.
         
         Raises:
             HttpError: For Google API errors
@@ -210,13 +264,57 @@ class GoogleDirectoryClient(GoogleAPIClient):
         return groups
     
     @handle_http_errors
+    def get_group(
+        self,
+        group_email: str,
+        include_members: bool = True
+    ) -> GroupWithMembers:
+        """
+        Get a Google Group by email address, optionally including members.
+        
+        Args:
+            group_email: Email address of the group (e.g., "team@example.com")
+            include_members: If True, also fetch and include group members (default: True)
+        
+        Returns:
+            GroupWithMembers dataclass containing:
+            - group: GroupResource Pydantic model
+            - members: list of MemberResource objects (empty list if include_members=False or error)
+        
+        Raises:
+            HttpError: For Google API errors
+        
+        Example:
+            >>> client = GoogleDirectoryClient(subject="admin@example.com")
+            >>> result = client.get_group("team@example.com")
+            >>> group = result.group
+            >>> members = result.members
+            >>> print(f"Group {group.email} has {len(members)} members")
+        """
+        # Get group using Google Directory API
+        group_dict = self.service.groups().get(groupKey=group_email).execute()  # type: ignore[attr-defined]
+        group = GroupResource(**group_dict)
+        
+        # Get members if requested
+        members: list[MemberResource] = []
+        if include_members:
+            try:
+                members = self.list_group_members(group_email)
+            except Exception as e:
+                # Log but don't fail if member listing fails
+                logger.warning(f"⚠️  Could not list members for {group_email}: {e}")
+                members = []
+        
+        return GroupWithMembers(group=group, members=members)
+    
+    @handle_http_errors
     def list_group_members(
         self,
         group_email: str,
-        roles: Optional[List[GroupMemberRole]] = None
-    ) -> List[MemberResource]:
+        roles: Optional[list[str]] = None
+    ) -> list[MemberResource]:
         """
-        List all members of a Google Group (with pagination).
+        list all members of a Google Group (with pagination).
         
         Args:
             group_email: Email address of the group (e.g., "team@example.com")
@@ -224,7 +322,7 @@ class GoogleDirectoryClient(GoogleAPIClient):
                   If None, returns all members regardless of role
         
         Returns:
-            List of MemberResource Pydantic models, each with email, role, type, etc.
+            list of MemberResource Pydantic models, each with email, role, type, etc.
         
         Raises:
             HttpError: For Google API errors
@@ -259,7 +357,7 @@ class GoogleDirectoryClient(GoogleAPIClient):
         self,
         group_email: str,
         user_email: str,
-        role: GroupMemberRole = "MEMBER"
+        role: str = 'MEMBER'
     ) -> MemberResource:
         """
         Add a user to a Google Group.

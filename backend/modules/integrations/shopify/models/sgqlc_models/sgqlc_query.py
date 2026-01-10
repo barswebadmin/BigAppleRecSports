@@ -6,7 +6,7 @@ customer and order-specific fields and helpers.
 """
 
 from typing import Optional
-from sgqlc.types import Type, Field, String
+from sgqlc.types import Type, Field, String, ID
 from sgqlc.types.relay import connection_args
 from sgqlc.operation import Operation
 
@@ -311,6 +311,9 @@ class Query(BaseQuery):
     # Product-specific field
     products = Field(ProductConnection, args=connection_args(query=String))
     
+    # Node query for fetching any node by ID (used for CalculatedOrder, etc.)
+    node = Field('Node', args={'id': ID})
+    
     # Extract Customer model from CustomerConnection automatically (no import needed)
     @classmethod
     def _get_customer_model(cls):
@@ -519,5 +522,36 @@ class Query(BaseQuery):
         op = Operation(cls)
         products_connection_selector = op.products(query=query_str, first=first)
         cls.get_product_connection(products_connection_selector, variants_first=variants_first)
+        return op
+    
+    @classmethod
+    def build_variant_query(cls, variant_id: str) -> Operation:
+        """Build a query to get a single product variant."""
+        from backend.modules.integrations.shopify.models.sgqlc_models.product_sgqlc import ProductVariant
+        from sgqlc.types import ID
+        
+        class VariantQuery(Type):
+            productVariant = Field(ProductVariant, args={'id': ID})
+        
+        op = Operation(VariantQuery)
+        variant_sel = op.productVariant(id=variant_id)
+        variant_sel.id()  # type: ignore[union-attr]
+        variant_sel.product.id()  # type: ignore[union-attr]
+        variant_sel.product.title()  # type: ignore[union-attr]
+        return op
+    
+    @classmethod
+    def build_location_query(cls, first: int = 1) -> Operation:
+        """Build a query to get locations."""
+        from backend.modules.integrations.shopify.models.sgqlc_models.location_sgqlc import LocationConnection
+        from sgqlc.types.relay import connection_args
+        
+        class LocationQuery(Type):
+            locations = Field(LocationConnection, args=connection_args())
+        
+        op = Operation(LocationQuery)
+        locations_sel = op.locations(first=first)
+        locations_sel.nodes.id()  # type: ignore[union-attr]
+        locations_sel.nodes.name()  # type: ignore[union-attr]
         return op
 

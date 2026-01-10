@@ -147,6 +147,26 @@ class SlackUser(ApiModel):
             raise ValueError(f"Invalid Slack user ID: must be alphanumeric, got '{v}'")
         return v
     
+    @property
+    def email(self) -> Optional[str]:
+        """Safely access profile email."""
+        return self.profile.email if self.profile else None
+    
+    @property
+    def title(self) -> Optional[str]:
+        """Safely access profile title."""
+        return self.profile.title if self.profile else None
+    
+    @property
+    def display_name(self) -> Optional[str]:
+        """Safely access profile display_name."""
+        return self.profile.display_name if self.profile else None
+    
+    @property
+    def phone(self) -> Optional[str]:
+        """Safely access profile phone."""
+        return self.profile.phone if self.profile else None
+    
     @staticmethod
     def is_valid_user_id(user_id: str) -> bool:
         """

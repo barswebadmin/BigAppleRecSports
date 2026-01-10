@@ -4,8 +4,7 @@ Common models shared across Shopify entities.
 
 import inspect
 import json
-import warnings
-from typing import Optional, List, TypeVar, Generic, Dict, Any, Type, Union, ClassVar, get_type_hints, get_args, get_origin
+from typing import Optional, TypeVar, Generic, Dict, Any, Type, Union, ClassVar, get_type_hints, get_args, get_origin
 from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr, ConfigDict, create_model
 
 # Generic type variable for connection nodes
@@ -36,24 +35,24 @@ class Connection(BaseModel, Generic[T]):
     This class is used to represent a connection type for pagination in a GraphQL API.
     Supports both 'edges' and 'nodes' structures (Shopify supports both).
     """
-    edges: Optional[List[Edge[T]]] = None
-    nodes: Optional[List[T]] = None  # Direct nodes (simplified, skipping edges)
+    edges: Optional[list[Edge[T]]] = None
+    nodes: Optional[list[T]] = None  # Direct nodes (simplified, skipping edges)
     page_info: PageInfo = Field(alias="pageInfo")
 
 
-class ShopifyListModel(list):
+class ShopifylistModel(list):
     """Base for list of Shopify model instances."""
     
-    def __init__(self, data: Union[List[Dict], Dict[str, Any]], model_type: Type["ShopifyBaseModel"]):
+    def __init__(self, data: Union[list[Dict], Dict[str, Any]], model_type: Type["ShopifyBaseModel"]):
         """
         Instantiate list from raw data.
         
         Handles:
-        - List of dicts: Direct list of node dicts
+        - list of dicts: Direct list of node dicts
         - Connection dict: Dict with "nodes" or "edges" key (GraphQL Connection structure)
         
         Args:
-            data: List of dicts OR Connection structure (dict with "nodes" or "edges" key)
+            data: list of dicts OR Connection structure (dict with "nodes" or "edges" key)
             model_type: The singular model class (e.g., Customer)
         """
         # Check if data is a Connection structure (dict with "nodes" or "edges" key)
@@ -145,7 +144,7 @@ class ShopifyBaseModel(BaseModel):
             return None
     
     @staticmethod
-    def _resolve_list_items(items: List[Any], target_type: Type[BaseModel]) -> List[BaseModel]:
+    def _resolve_list_items(items: list[Any], target_type: Type[BaseModel]) -> list[BaseModel]:
         """
         Core logic to parse list of dicts into list of model instances.
         
@@ -156,11 +155,11 @@ class ShopifyBaseModel(BaseModel):
         - Invalid items → skip with continue (prints raw data for troubleshooting)
         
         Args:
-            items: List of items (dicts, model instances, or mixed)
+            items: list of items (dicts, model instances, or mixed)
             target_type: Pydantic model class to parse dicts into
             
         Returns:
-            List of parsed model instances
+            list of parsed model instances
         """
         if not items:
             return []
@@ -195,14 +194,14 @@ class ShopifyBaseModel(BaseModel):
     
     def resolve_list(self) -> "ShopifyBaseModel":
         """
-        Resolve all List[Type] fields declared in list_fields class attribute.
+        Resolve all list[Type] fields declared in list_fields class attribute.
         
         Subclasses should set list_fields as a dict mapping field names to target type names.
-        The target type is extracted from the field's type annotation (e.g., List["Refund"]).
+        The target type is extracted from the field's type annotation (e.g., list["Refund"]).
         
         Example:
             class Order(ShopifyBaseModel):
-                refunds: Optional[List[Refund]] = ...
+                refunds: Optional[list[Refund]] = ...
                 list_fields = {"refunds": "Refund"}  # Field name -> type name
         """
         list_fields = getattr(self.__class__, 'list_fields', {})
@@ -242,12 +241,12 @@ def create_list_model(singular_class):
     """
     list_name = f"{singular_class.__name__}s"
     
-    class ListClass(ShopifyListModel):
-        def __init__(self, data: Union[List[Dict[str, Any]], Dict[str, Any]]):
+    class listClass(ShopifylistModel):
+        def __init__(self, data: Union[list[Dict[str, Any]], Dict[str, Any]]):
             super().__init__(data, singular_class)
         
         @classmethod
-        def from_connection(cls, connection_dict: Optional[Dict[str, Any]]) -> "ListClass":
+        def from_connection(cls, connection_dict: Optional[Dict[str, Any]]) -> "listClass":
             """
             Create list from Connection dict.
             
@@ -259,7 +258,7 @@ def create_list_model(singular_class):
                 connection_dict: Connection dict with 'edges' and 'pageInfo' keys
                 
             Returns:
-                ListClass instance with resolved model instances
+                listClass instance with resolved model instances
                 
             Example:
                 connection = result.get_connection("customers")
@@ -290,12 +289,12 @@ def create_list_model(singular_class):
             instance.extend(resolved)
             return instance
     
-    ListClass.__name__ = list_name
-    singular_class.List = ListClass
+    listClass.__name__ = list_name
+    singular_class.list = listClass
     
     # Auto-export to calling module
     caller_frame = inspect.stack()[1].frame
-    caller_frame.f_globals[list_name] = ListClass
+    caller_frame.f_globals[list_name] = listClass
     
     return singular_class
 
@@ -304,9 +303,9 @@ class ShopifyResponse(BaseModel, Generic[T]):
     """Generic type-safe response wrapper with pagination support."""
     success: bool
     message: str
-    data: Union[Dict[str, Any], List[Dict[str, Any]]] = Field(default_factory=list)
+    data: Union[Dict[str, Any], list[Dict[str, Any]]] = Field(default_factory=list)
     page_info: Optional[PageInfo] = Field(default=None, alias="pageInfo")
-    errors: Optional[List[Dict[str, Any]]] = None
+    errors: Optional[list[Dict[str, Any]]] = None
     
     def get_connection(self, field_name: str) -> Optional[Dict[str, Any]]:
         """

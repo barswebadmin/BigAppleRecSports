@@ -5,10 +5,8 @@ Handles authentication and reading/writing data from Google Sheets using Service
 """
 
 import logging
-from typing import List, Optional, Dict, Any, cast
+from typing import Optional, Dict, Any
 
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 from pydantic import Field
 
 from backend.shared.model_config import ApiModel
@@ -21,7 +19,7 @@ class ValueRange(ApiModel):
     """Google Sheets API ValueRange response structure."""
     range_: Optional[str] = Field(None, alias='range')  # 'range' is a Python keyword
     major_dimension: Optional[str] = None  # 'ROWS' or 'COLUMNS'
-    values: Optional[List[List[str]]] = None
+    values: Optional[list[list[str]]] = None
 
 
 class UpdateValuesResponse(ApiModel):
@@ -39,7 +37,7 @@ class BatchUpdateValuesResponse(ApiModel):
     total_updated_columns: int
     total_updated_rows: int
     total_updated_sheets: int
-    responses: List[UpdateValuesResponse]
+    responses: list[UpdateValuesResponse]
 
 
 class GoogleSheetsClient(GoogleAPIClient):
@@ -68,7 +66,7 @@ class GoogleSheetsClient(GoogleAPIClient):
         self,
         spreadsheet_id: str,
         range_name: str = "A:Z"
-    ) -> List[List[str]]:
+    ) -> list[list[str]]:
         """
         Fetch data from a Google Sheet and return as CSV-like list of lists.
         
@@ -77,7 +75,7 @@ class GoogleSheetsClient(GoogleAPIClient):
             range_name: The A1 notation range to fetch (default: "A:Z" - all columns)
         
         Returns:
-            List of rows, where each row is a list of cell values (strings)
+            list of rows, where each row is a list of cell values (strings)
         
         Raises:
             HttpError: For Google API errors
@@ -139,7 +137,7 @@ class GoogleSheetsClient(GoogleAPIClient):
         self,
         spreadsheet_id: str,
         range_name: str,
-        values: List[List[str]],
+        values: list[list[str]],
         value_input_option: str = "USER_ENTERED"
     ) -> Any:
         """
@@ -167,7 +165,7 @@ class GoogleSheetsClient(GoogleAPIClient):
         self,
         spreadsheet_id: str,
         range_name: str,
-        values: List[List[str]],
+        values: list[list[str]],
         value_input_option: str = "USER_ENTERED"
     ) -> UpdateValuesResponse:
         """
@@ -214,7 +212,7 @@ class GoogleSheetsClient(GoogleAPIClient):
     def batch_update_sheet_values(
         self,
         spreadsheet_id: str,
-        updates: List[Dict[str, Any]],
+        updates: list[Dict[str, Any]],
         value_input_option: str = "USER_ENTERED"
     ) -> BatchUpdateValuesResponse:
         """
@@ -222,7 +220,7 @@ class GoogleSheetsClient(GoogleAPIClient):
         
         Args:
             spreadsheet_id: The ID of the Google Sheet
-            updates: List of update dictionaries, each with 'range' and 'values' keys
+            updates: list of update dictionaries, each with 'range' and 'values' keys
             value_input_option: How to interpret input values:
                 - "USER_ENTERED": Parse as if typed by user (formulas, dates, etc.)
                 - "RAW": Values stored as-is (strings)
@@ -256,7 +254,7 @@ class GoogleSheetsClient(GoogleAPIClient):
         ]
         
         batch_responses = self.batch_request(requests)
-        responses: List[UpdateValuesResponse] = [
+        responses: list[UpdateValuesResponse] = [
             UpdateValuesResponse(**response) for response in batch_responses
         ]
         

@@ -4,7 +4,7 @@ Customer models for Shopify GraphQL API.
 Uses forward references to avoid circular imports with Order models.
 """
 
-from typing import List, TYPE_CHECKING, Dict, Type, Optional, Any
+from typing import TYPE_CHECKING, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
 from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection
@@ -48,7 +48,7 @@ class Customer(ShopifyBaseModel):
     orders: Optional[Connection["Order"]] = None
     
     @property
-    def recent_orders(self) -> List["Order"]:
+    def recent_orders(self) -> list["Order"]:
         """Get recent orders from Connection."""
         if self.orders and isinstance(self.orders, Connection):
             from .order import Order

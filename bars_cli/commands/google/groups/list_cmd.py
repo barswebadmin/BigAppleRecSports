@@ -10,6 +10,7 @@ from bars_cli._core.decorators.handle_display_options import handle_display_opti
 from bars_cli._core.utils.json_output import output_json_list, output_json_error
 
 from bars_cli.backend_services.google.directory_client import GroupResource
+from bars_cli.commands.google._shared.google_formatters import _format_groups_list
 
 
 @click.command('list')
@@ -64,23 +65,4 @@ def list_groups_cmd(ctx: click.Context) -> List[GroupResource]:
         
         raise click.ClickException(error_msg) from e
 
-
-def _format_groups_list(groups: List[GroupResource]) -> None:
-    """Format groups list for display.
-    
-    Args:
-        groups: List of GroupResource Pydantic models from Google Directory API
-    """
-    output = []
-    output.append(f"\n✅ Found {len(groups)} group(s)")
-    output.append("=" * 80)
-    
-    for group in groups:
-        email = group.email or 'N/A'
-        name = group.name or 'N/A'
-        members_count = group.direct_members_count or 'N/A'
-        output.append(f"{email:<40} {name:<30} ({members_count} members)")
-    
-    output.append("=" * 80)
-    click.echo('\n'.join(output))
 

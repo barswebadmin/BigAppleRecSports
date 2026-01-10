@@ -85,6 +85,32 @@ class RefundTransaction(Type):
     createdAt = Field(String)
 
 
+class BillingAddress(Type):
+    """Billing address model for orders."""
+    firstName = Field(String)
+    lastName = Field(String)
+    address1 = Field(String)
+    address2 = Field(String)
+    city = Field(String)
+    province = Field(String)
+    zip = Field(String)
+    country = Field(String)
+    phone = Field(String)
+
+
+class ShippingAddress(Type):
+    """Shipping address model for orders."""
+    firstName = Field(String)
+    lastName = Field(String)
+    address1 = Field(String)
+    address2 = Field(String)
+    city = Field(String)
+    province = Field(String)
+    zip = Field(String)
+    country = Field(String)
+    phone = Field(String)
+
+
 class Transaction(Type):
     """Transaction model for Shopify orders."""
     id = Field(String)
@@ -113,14 +139,20 @@ class Order(Type):
     email = Field(String)
     phone = Field(String)
     createdAt = Field(String)
+    updatedAt = Field(String)
     cancelledAt = Field(String)
     cancelReason = Field(String)
+    displayFinancialStatus = Field(String)
+    displayFulfillmentStatus = Field(String)
+    subtotalLineItemsQuantity = Field(Int)
     totalPriceSet = Field(MoneySetWrapper)
     discountApplications = Field('DiscountApplicationConnection', args=connection_args())  # Forward reference with connection args
     refunds = Field(list_of(Refund))
     transactions = Field(list_of(Transaction))
     lineItems = Field('LineItemConnection', args=connection_args())  # Forward reference with connection args
     customer = Field(Customer)  # Direct Customer object, not a Connection
+    billingAddress = Field(BillingAddress)
+    shippingAddress = Field(ShippingAddress)
 
 
 class LineItemConnection(Connection):
