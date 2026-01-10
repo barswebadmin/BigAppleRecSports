@@ -5,7 +5,7 @@ All other functionality has been moved to appropriate services.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 
 try:
@@ -78,14 +78,12 @@ class SlackRefundsUtils:
             
             return {
                 "text": message_text,
-                "action_buttons": []  # No action buttons for final messages
             }
             
         except Exception as e:
             logger.error(f"Error building comprehensive no refund message: {str(e)}")
             return {
                 "text": f"❌ No refund approved for {raw_order_number} (Error building message: {str(e)})",
-                "action_buttons": []
             }
 
     # def get_sport_group_mention(self, product_title: str) -> str:

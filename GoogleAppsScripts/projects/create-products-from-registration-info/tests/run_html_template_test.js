@@ -32,8 +32,8 @@ try {
 
   // Load dependencies in order
   const files = [
-    'src/core/portedFromProductCreateSheet/createShopifyProduct.gs',
-    'tests/testHtmlTemplateVariables.gs'
+    'src/core/portedFromProductCreateSheet/createShopifyProduct.js',
+    'tests/testHtmlTemplateVariables.js'
   ];
 
   for (const file of files) {

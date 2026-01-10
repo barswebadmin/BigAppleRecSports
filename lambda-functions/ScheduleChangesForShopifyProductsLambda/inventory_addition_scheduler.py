@@ -4,8 +4,7 @@ Handles creating EventBridge schedules for setting products live with inventory 
 """
 
 import json
-import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 from typing import Dict, Any, cast, Optional
 from bars_common_utils.date_utils import parse_iso_datetime

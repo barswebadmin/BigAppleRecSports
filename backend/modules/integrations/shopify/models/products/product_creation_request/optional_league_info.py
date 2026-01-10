@@ -2,7 +2,7 @@
 Optional League Information model for product creation
 """
 
-from typing import List, Optional
+from typing import Optional
 from pydantic import BaseModel, field_validator
 from ..regular_season_basic_details import (
     SportSubCategory,
@@ -20,7 +20,7 @@ class OptionalLeagueInfo(BaseModel):
     # League configuration options
     socialOrAdvanced: Optional[SocialOrAdvanced] = None
     sportSubCategory: Optional[SportSubCategory] = None
-    types: Optional[List[LeagueAssignmentTypes]] = None
+    types: Optional[list[LeagueAssignmentTypes]] = None
 
     @field_validator("socialOrAdvanced", "sportSubCategory", mode="before")
     @classmethod

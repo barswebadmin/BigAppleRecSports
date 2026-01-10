@@ -41,7 +41,7 @@ Deploys automatically when pushing to `main` branch with changes to:
 #### 2. Configure Local Environment
 ```bash
 # Run setup script
-./setup_render_env.sh
+./scripts/setup_render_env.sh
 
 # Restart terminal or reload profile
 source ~/.zshrc
@@ -179,7 +179,7 @@ npm install -g @google/clasp
 
 # Setup authentication
 cd GoogleAppsScripts
-./scripts/setup-clasp-auth.sh
+bash remote-sync-tools/setup-auth.sh
 ```
 
 ### Deploy Individual Project

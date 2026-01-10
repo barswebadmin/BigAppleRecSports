@@ -52,13 +52,13 @@ fi
 # Check for required environment variables
 if [ -z "$RENDER_API_KEY" ]; then
     echo "❌ RENDER_API_KEY not set. Run setup first:"
-    echo "   ./setup_render_env.sh"
+    echo "   ./scripts/setup_render_env.sh"
     exit 1
 fi
 
 if [ -z "$RENDER_SERVICE_ID" ]; then
     echo "❌ RENDER_SERVICE_ID not set. Run setup first:"
-    echo "   ./setup_render_env.sh"
+    echo "   ./scripts/setup_render_env.sh"
     exit 1
 fi
 

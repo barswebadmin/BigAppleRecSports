@@ -23,7 +23,7 @@ function doGet(e) {
     debugInfo.push(`📧 Email: ${email}`);
     debugInfo.push(`🏆 Initially Selected League: ${selectedLeague}`);
     
-    if (!email) {
+    if (e.parameter.keys && !email) {
       debugInfo.push("❌ Missing email parameter");
       
       MailApp.sendEmail({

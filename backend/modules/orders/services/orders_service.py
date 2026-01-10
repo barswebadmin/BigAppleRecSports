@@ -1,7 +1,6 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
 from modules.integrations.shopify.models import FetchOrderRequest
-from modules.integrations.shopify.models.responses import ShopifyResponse
 from modules.integrations.shopify import ShopifyClient
 from modules.integrations.slack import SlackClient
 from modules.refunds.app.calculate_refund_due import calculate_refund_due

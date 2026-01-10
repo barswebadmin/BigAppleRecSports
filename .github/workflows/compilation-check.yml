@@ -64,14 +64,14 @@ jobs:
         import sys
         sys.path.append('.')
         try:
-            from config import settings
+            from config import config
             print('✅ Config module imports successfully')
             from main import app
             print('✅ Main FastAPI app imports successfully')
             from modules.orders import OrdersService
             print('✅ Orders service imports successfully')
-            from modules.integrations.slack import SlackClient
-            print('✅ Slack Client imports successfully')
+            from modules.integrations.slack.slack_service import SlackService
+            print('✅ Slack service imports successfully')
             from routers.refunds import router as refunds_router
             print('✅ Refunds router imports successfully')
             print('✅ Backend compilation successful!')
@@ -379,13 +379,13 @@ jobs:
         import sys
         sys.path.append('.')
         try:
-            from config import settings
+            from config import config
             print('✅ Config module imports successfully')
             from main import app
             print('✅ Main FastAPI app imports successfully')
-            from services.orders.orders_service import OrdersService
+            from modules.orders import OrdersService
             print('✅ Orders service imports successfully')
-            from services.slack.slack_service import SlackService
+            from modules.integrations.slack.slack_service import SlackService
             print('✅ Slack service imports successfully')
             try:
                 from routers.refunds import router as refunds_router

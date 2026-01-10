@@ -5,11 +5,11 @@ const path = require('path');
 const vm = require('vm');
 
 function loadValidators() {
-  const filePath = path.join(__dirname, '../src/validators.gs');
+  const filePath = path.join(__dirname, '../src/validators.js');
   const code = fs.readFileSync(filePath, 'utf8');
   const context = {};
   vm.createContext(context);
-  new vm.Script(code, { filename: 'validators.gs' }).runInContext(context);
+  new vm.Script(code, { filename: 'validators.js' }).runInContext(context);
   const { validateEmail, validateOrderNumber, validateInputs } = context;
   if (typeof validateEmail !== 'function' || typeof validateOrderNumber !== 'function') {
     throw new Error('Validators not loaded properly');

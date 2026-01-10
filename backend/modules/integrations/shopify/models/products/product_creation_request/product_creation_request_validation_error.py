@@ -2,7 +2,7 @@
 Custom validation error class for product creation requests
 """
 
-from typing import List, Union
+from typing import Union
 
 
 class ProductCreationRequestValidationError(Exception):
@@ -12,12 +12,12 @@ class ProductCreationRequestValidationError(Exception):
     Provides field_name attribute and maintains full error details.
     """
 
-    def __init__(self, errors: List[dict]):
+    def __init__(self, errors: list[dict]):
         """
         Initialize with standard Pydantic error format
 
         Args:
-            errors: List of pydantic error dictionaries
+            errors: list of pydantic error dictionaries
         """
         self._errors = errors
 
@@ -29,11 +29,11 @@ class ProductCreationRequestValidationError(Exception):
             self.field_name = "unknown"
 
         # Create error message for exception
-        error_messages: List[str] = self.get_errors(formatted=True)  # type: ignore
+        error_messages: list[str] = self.get_errors(formatted=True)  # type: ignore
         message = f"Product validation failed: {', '.join(error_messages)}"
         super().__init__(message)
 
-    def get_errors(self, formatted: bool = True) -> Union[List[str], List[dict]]:
+    def get_errors(self, formatted: bool = True) -> Union[list[str], list[dict]]:
         """
         Get validation errors - either formatted messages or raw Pydantic error dictionaries
 
@@ -42,7 +42,7 @@ class ProductCreationRequestValidationError(Exception):
                       If False, return raw Pydantic error dictionaries.
 
         Returns:
-            List of formatted error messages or raw error dictionaries
+            list of formatted error messages or raw error dictionaries
         """
         if formatted:
             return [

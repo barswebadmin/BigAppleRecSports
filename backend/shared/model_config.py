@@ -1,14 +1,128 @@
-from pydantic import ConfigDict
+from typing import Any, Dict
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
-def snake_to_camel(name: str) -> str:
-    parts = name.split("_")
-    return parts[0] + "".join(p.capitalize() for p in parts[1:])
+def _create_nested_property(model_path: str) -> property:
+    """
+    Internal helper to create a property for a nested attribute.
+    Used by __pydantic_init_subclass__ to process __nested_accessors__ dictionary.
+    
+    Args:
+        model_path: Dot-notation path to nested attribute (e.g., "profile.email")
+    
+    Returns:
+        A property object with getter and setter
+    """
+    def getter(self) -> Any:
+        """Get the nested attribute value."""
+        obj = self
+        for attr in model_path.split('.'):
+            obj = getattr(obj, attr)
+        return obj
+    
+    def setter(self, value: Any) -> None:
+        """Set the nested attribute value."""
+        parts = model_path.split('.')
+        obj = self
+        # Navigate to the parent object
+        for attr in parts[:-1]:
+            obj = getattr(obj, attr)
+        # Set the final attribute
+        setattr(obj, parts[-1], value)
+    
+    return property(getter, setter)
 
 
-BaseModelConfig = ConfigDict(
-    alias_generator=snake_to_camel,
-    populate_by_name=True,
-)
-
-
+class ApiModel(BaseModel):
+    """
+    Universal base model for all external APIs.
+    
+    - Write all fields in snake_case (Python convention)
+    - Accepts both camelCase and snake_case input (populate_by_name=True)
+    - Use to_json_camel() for camelCase APIs (e.g., Shopify)
+    - Use to_json_snake() for snake_case APIs (e.g., Slack)
+    
+    Nested Accessors:
+        Define __nested_accessors__ class variable to automatically create
+        properties for nested attributes:
+        
+        class SlackUser(ApiModel):
+            profile: SlackUserProfile
+            
+            __nested_accessors__ = {
+                'email': 'profile.email',
+                'display_name': 'profile.display_name',
+            }
+        
+        # Now you can use:
+        user.email = "new@example.com"  # Sets profile.email
+    
+    Example:
+        class Order(ApiModel):
+            order_id: str
+            customer_name: str
+        
+        # Accepts both formats
+        order = Order(orderId='123', customerName='Joe')
+        order = Order(order_id='123', customer_name='Joe')
+        
+        # Serialize for Shopify (camelCase)
+        order.to_json_camel()  # '{"orderId":"123","customerName":"Joe"}'
+        
+        # Serialize for Slack (snake_case)
+        order.to_json_snake()  # '{"order_id":"123","customer_name":"Joe"}'
+    """
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        extra='ignore'
+    )
+    
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """
+        Called by Pydantic after the model class is fully configured.
+        Creates properties for nested accessors defined in __nested_accessors__.
+        """
+        super().__pydantic_init_subclass__(**kwargs)
+        
+        # Check if the class defines __nested_accessors__ 
+        # Use double underscore to avoid Pydantic treating it as a field
+        if hasattr(cls, '__nested_accessors__'):
+            nested_accessors = getattr(cls, '__nested_accessors__')
+            if isinstance(nested_accessors, dict):
+                for accessor_name, model_path in nested_accessors.items():
+                    # Create a property for each nested accessor
+                    prop = _create_nested_property(model_path)
+                    setattr(cls, accessor_name, prop)
+    
+    def to_json_camel(self) -> str:
+        """
+        Serialize to JSON string with camelCase keys.
+        Use for APIs like Shopify GraphQL.
+        
+        Returns:
+            JSON string with camelCase keys
+        """
+        return self.model_dump_json(by_alias=True)
+    
+    def to_json_snake(self) -> str:
+        """
+        Serialize to JSON string with snake_case keys.
+        Use for APIs like Slack.
+        
+        Returns:
+            JSON string with snake_case keys
+        """
+        return self.model_dump_json(exclude_none=True)
+    
+    def to_dict_snake(self) -> Dict[str, Any]:
+        """
+        Serialize to dict with snake_case keys, excluding None values.
+        Use for APIs like Slack when you need a dict instead of JSON string.
+        
+        Returns:
+            Dict with snake_case keys, None values excluded
+        """
+        return self.model_dump(exclude_none=True)

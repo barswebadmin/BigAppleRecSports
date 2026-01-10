@@ -1,5 +1,3 @@
-import json
-import pytest
 
 from ..models.responses import ShopifyResponseKind, ShopifyResponse
 from ..parsers.parse_shopify_response import parse_shopify_response

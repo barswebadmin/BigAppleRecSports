@@ -1,13 +1,13 @@
 from __future__ import annotations
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 
 class Product(BaseModel):
     id: str
     title: str
     handle: Optional[str]
     description: Optional[str]
-    variants: Optional[List["Variant"]]
+    variants: Optional[list["Variant"]]
 
 class Variant(BaseModel):
     id: str

@@ -3,19 +3,18 @@ import sys
 import json
 import argparse
 import logging
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Tuple
 
 from dotenv import load_dotenv, find_dotenv
 import yaml
-from rich import print as rprint
 from rich.console import Console
 from rich.syntax import Syntax
 
-from config.main import Config
+from config_old_deprecated.main import Config
 from ..models.requests import FetchOrderRequest
 from ..services.orders_service import OrdersService
 from backend.modules.integrations.shopify import ShopifyClient
-from ..builders.shopify_request_builders import build_order_fetch_request_payload
+# from ..builders.shopify_request_builders import build_order_fetch_request_payload  # DEPRECATED: replaced by sgqlc
 
 # Toggle CLI debug logging here
 DEBUG_LOGGING: bool = True
@@ -35,7 +34,6 @@ def _initialize_services():
     os.environ["ENVIRONMENT"] = "production"
     
     # Force a fresh config instance with the new environment
-    from config.main import Config
     fresh_config = Config()
     
     shopify_client = ShopifyClient(fresh_config)
@@ -80,9 +78,11 @@ def cmd_fetch_order(identifier: str) -> int:
             pass
 
     if RAW_OUTPUT:
-        payload = build_order_fetch_request_payload(ident)
-        resp = shopify_client.send_request(payload)
-        out = resp.to_dict() or {}
+        # DEPRECATED: build_order_fetch_request_payload removed, use sgqlc instead
+        raise NotImplementedError("RAW_OUTPUT mode is deprecated. Use OrdersService instead.")
+        # payload = build_order_fetch_request_payload(ident)
+        # resp = shopify_client.send_request(payload)
+        # out = resp.to_dict() or {}
     else:
         out = _fetch_order_details(ident, orders_service)
 
@@ -116,10 +116,10 @@ def main() -> None:
     sys.exit(1)
 
 
-def _parse_global_flags(argv: List[str]) -> Tuple[Dict[str, bool], List[str]]:
+def _parse_global_flags(argv: list[str]) -> Tuple[Dict[str, bool], list[str]]:
     """Extract supported global flags anywhere in argv. Returns (flags, filtered_argv)."""
     flags: Dict[str, bool] = {"raw": False}
-    filtered: List[str] = []
+    filtered: list[str] = []
     for token in argv:
         if token in ("--raw", "-R"):
             flags["raw"] = True

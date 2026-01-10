@@ -7,11 +7,10 @@ and waitlist registration identification.
 
 import json
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from backend.config import config
 from new_structure_target.clients.shopify.builders.shopify_url_builders import build_order_url
 from new_structure_target.clients.slack.builders.message_builder import SlackMessageBuilder
-from utils.date_utils import format_date_and_time
 
 logger = logging.getLogger(__name__)
 

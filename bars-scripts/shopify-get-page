@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+# shopify-get-page - Fetch Shopify page or theme template content
+#
+# Usage: shopify-get-page [options] <page-handle-or-theme-asset>
+#
+# Examples:
+#   shopify-get-page contact
+#   shopify-get-page --theme 134424232030 --asset templates/page.about-us-2.json
+#   shopify-get-page --page contact --output json
+#
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR/.."
+
+cd "$PROJECT_ROOT" || exit 1
+
+if [ ! -d ".venv" ]; then
+    echo "❌ Virtual environment not found. Run 'make venv' first."
+    exit 1
+fi
+
+source .venv/bin/activate
+
+python3 "$SCRIPT_DIR/shopify_get_page.py" "$@"
+

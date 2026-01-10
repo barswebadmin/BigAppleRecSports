@@ -1,5 +1,5 @@
 from datetime import datetime
-from bars_common_utils.date_utils import parse_date, parse_time, parse_off_dates, calculate_discounted_schedule, parse_iso_datetime
+from bars_common_utils.date_utils import parse_date, parse_time, parse_off_dates, calculate_discounted_schedule
 
 def get_discount_dates_and_prices(season_start_date, off_dates_comma_separated, sport_start_time, price):
     """
