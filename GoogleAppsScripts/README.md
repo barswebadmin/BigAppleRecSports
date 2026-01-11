@@ -57,13 +57,8 @@ clasp push
 clasp deploy
 ```
 
-### 5. Sync shared utilities (when updated)
-```bash
-# From GoogleAppsScripts directory
-./sync-utilities.sh
-```
-
-This copies the latest utilities from `shared-utilities/` to all script directories.
+### 5. Shared Utilities
+Shared utilities are now managed per-project. Each project includes shared utilities directly in its `src/shared-utilities/` directory. No sync script needed.
 
 ## Secret Management
 

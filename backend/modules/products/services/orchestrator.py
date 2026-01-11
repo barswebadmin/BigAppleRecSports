@@ -12,7 +12,7 @@ from typing import Dict, Any
 from new_structure_target.services.webhooks.parsers.product_parser import get_slack_group_mention
 from new_structure_target.clients.shopify.core.shopify_security import ShopifySecurity
 from new_structure_target.clients.slack.core.slack_client import SlackClient
-from new_structure_target.clients.google_apps_script.gas_client import GASClient
+from modules.integrations.google import GoogleApiClient
 from .handlers.order_create_handler import evaluate_order_create_webhook
 from .handlers.product_update_handler import evaluate_product_update_webhook
 from backend.modules.integrations.slack.models.slack_group import SlackGroupConstants as SlackGroup
@@ -30,7 +30,8 @@ class WebhooksOrchestrator:
         # Initialize components (ShopifySecurity resolves secret from ENV internally)
         self.signature_verifier = ShopifySecurity()
         self.slack_client = SlackClient()
-        self.gas_client = GASClient(gas_url)
+        self.sheets_client = GoogleApiClient()
+        self.gas_url = gas_url
     
     def verify_webhook_signature(self, body: bytes, signature: str) -> bool:
         """Verify webhook signature for security"""
@@ -153,4 +154,4 @@ class WebhooksOrchestrator:
     
     def send_to_waitlist_form_gas(self, product_data: Dict[str, Any]) -> Dict[str, Any]:
         """Send product data to Google Apps Script waitlist form"""
-        return self.gas_client.send_to_waitlist_form(product_data)
+        return self.sheets_client.send_to_waitlist_form(product_data, web_app_url=self.gas_url)

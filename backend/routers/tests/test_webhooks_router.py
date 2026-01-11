@@ -88,7 +88,7 @@ class TestWebhooksRouter:
         assert "admin.shopify.com" in product_info["admin_url"]
         assert "myshopify.com/products/big-apple-dodgeball" in product_info["store_url"]
 
-    @patch("services.webhooks.integrations.gas_client.GASClient.send_to_waitlist_form")
+    @patch("modules.integrations.google.google_api_client.GoogleApiClient.send_to_waitlist_form")
     def test_product_update_webhook_sold_out(
         self, mock_gas_send, client, mock_webhook_signature, sample_product_data
     ):

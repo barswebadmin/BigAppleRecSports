@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     pass
 
 from modules.leadership.domain.hierarchy_config import load_hierarchy_config
-from modules.integrations.google import GoogleSheetsClient
+from modules.integrations.google import GoogleApiClient
 from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
 from modules.integrations.slack.builders.generic_builders import GenericMessageBuilder
 from modules.integrations.slack.helpers import download_and_parse_csv
@@ -68,7 +68,7 @@ def handle_update_leadership_submission(ack: Ack, respond: Respond, context: Bol
     sheet_url = view["state"]["values"]["sheet_url_block"]["sheet_url"]["value"]
     
     try:
-        sheets_client = GoogleSheetsClient()
+        sheets_client = GoogleApiClient()
         sheet_id = sheets_client.extract_sheet_id_from_url(sheet_url)
         
         initial_blocks = [

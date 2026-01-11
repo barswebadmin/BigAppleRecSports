@@ -117,10 +117,10 @@ def init_service_callbacks(ctx: click.Context) -> None:
         from bars_cli.backend_services.slack.slack_service import SlackService
         return SlackService()
     
-    # Google Directory client callback
-    def create_google_directory_client() -> Any:
-        """Create GoogleDirectoryClient instance. Raises exception on failure."""
-        from bars_cli.backend_services.google.directory_client import GoogleDirectoryClient
+    # Google API client callback (unified client for all Google services)
+    def create_google_api_client() -> Any:
+        """Create GoogleApiClient instance. Raises exception on failure."""
+        from bars_cli.backend_services.google.google_api_client import GoogleApiClient
         
         # Get subject from config if available (for domain-wide delegation)
         # Priority: 1) GOOGLE.SUBJECT env var, 2) subject field in service account JSON
@@ -138,13 +138,17 @@ def init_service_callbacks(ctx: click.Context) -> None:
             if isinstance(service_account, dict) and 'subject' in service_account:
                 subject = service_account.get('subject')
         
-        return GoogleDirectoryClient(subject=subject)
+        return GoogleApiClient(subject=subject)
     
-    # Google Sheets client callback
+    # Google Directory client callback (returns unified client)
+    def create_google_directory_client() -> Any:
+        """Create GoogleApiClient instance for Directory operations. Raises exception on failure."""
+        return create_google_api_client()
+    
+    # Google Sheets client callback (returns unified client)
     def create_google_sheets_client() -> Any:
-        """Create GoogleSheetsClient instance. Raises exception on failure."""
-        from bars_cli.backend_services.google.sheets_client import GoogleSheetsClient
-        return GoogleSheetsClient()
+        """Create GoogleApiClient instance for Sheets operations. Raises exception on failure."""
+        return create_google_api_client()
     
     # Store callbacks in meta
     ctx.meta['_create_shopify_service'] = create_shopify_service
