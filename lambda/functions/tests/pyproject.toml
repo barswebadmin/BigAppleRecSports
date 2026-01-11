@@ -1,0 +1,19 @@
+[tool.pyright]
+extraPaths = [
+    "../../layers/bars_common_utils",
+    "../MoveInventoryLambda",
+    "../shopifyProductUpdateHandler", 
+    "../ScheduleChangesForShopifyProductsLambda",
+    "../setProductLiveByAddingInventory",
+    "../changePricesOfOpenAndWaitlistVariants"
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "../../layers/bars_common_utils",
+    "../MoveInventoryLambda",
+    "../shopifyProductUpdateHandler",
+    "../ScheduleChangesForShopifyProductsLambda", 
+    "../setProductLiveByAddingInventory",
+    "../changePricesOfOpenAndWaitlistVariants"
+] 

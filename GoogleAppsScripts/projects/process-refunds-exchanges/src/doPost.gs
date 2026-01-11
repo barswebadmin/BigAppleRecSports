@@ -31,28 +31,71 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  const functionName = 'doPost';
+  const startTime = new Date().getTime();
+  const timestamp = new Date().toISOString();
+  
+  Logger.log(`🚀 [${timestamp}] === ENTERING ${functionName} ===`);
+  Logger.log(`   Request received at: ${timestamp}`);
+  
+  let requestContext = {
+    hasPostData: !!e.postData,
+    hasContents: !!(e.postData && e.postData.contents),
+    contentType: e.postData?.type || 'unknown',
+    rawLength: 0,
+    requestType: null
+  };
+  
   try {
-    Logger.log("🚀 doPost called");
-    Logger.log("📨 Request object: " + JSON.stringify(e, null, 2));
+    Logger.log(`📨 [${timestamp}] Request object received`);
+    Logger.log(`   Has postData: ${requestContext.hasPostData}`);
+    Logger.log(`   Has contents: ${requestContext.hasContents}`);
+    Logger.log(`   Content type: ${requestContext.contentType}`);
 
     if (!e.postData || !e.postData.contents) {
-      Logger.log("❌ Missing postData or contents");
-      throw new Error("Missing postData or contents in request");
+      const errorMsg = "Missing postData or contents in request";
+      Logger.log(`❌ [${timestamp}] === VALIDATION ERROR in ${functionName} ===`);
+      Logger.log(`   Operation: Validating request structure`);
+      Logger.log(`   Error: ${errorMsg}`);
+      Logger.log(`   Has postData: ${requestContext.hasPostData}`);
+      Logger.log(`   Has contents: ${requestContext.hasContents}`);
+      Logger.log(`   Full request: ${JSON.stringify(e, null, 2)}`);
+      
+      MailApp.sendEmail({
+        to: DEBUG_EMAIL,
+        subject: `🚨 ${functionName}: Missing Request Data`,
+        htmlBody: `
+          <h2>🚨 Missing Request Data in ${functionName}</h2>
+          <p><strong>Timestamp:</strong> ${timestamp}</p>
+          <p><strong>Error:</strong> ${errorMsg}</p>
+          <p><strong>Has postData:</strong> ${requestContext.hasPostData}</p>
+          <p><strong>Has contents:</strong> ${requestContext.hasContents}</p>
+          <h3>Full Request:</h3>
+          <pre>${JSON.stringify(e, null, 2)}</pre>
+        `
+      });
+      
+      throw new Error(errorMsg);
     }
 
     const raw = decodeURIComponent(e.postData.contents);
-    Logger.log("📝 Raw contents: " + raw);
+    requestContext.rawLength = raw.length;
+    Logger.log(`📝 [${timestamp}] Raw contents decoded`);
+    Logger.log(`   Length: ${raw.length} characters`);
+    Logger.log(`   Preview: ${raw.substring(0, 200)}${raw.length > 200 ? '...' : ''}`);
 
     // Check if this is a Slack webhook (contains "payload=")
     if (raw.startsWith("payload=")) {
-      // This is a Slack webhook - should go to backend instead
-      Logger.log("🔄 Slack webhook detected - redirecting to backend");
+      requestContext.requestType = 'slack_webhook';
+      Logger.log(`🔄 [${timestamp}] Slack webhook detected - redirecting to backend`);
+      Logger.log(`   This should go to backend, not GAS`);
 
       MailApp.sendEmail({
         to: DEBUG_EMAIL,
         subject: "⚠️ Slack Webhook Received by GAS",
         htmlBody: `
           <h3>⚠️ Slack webhook was sent to Google Apps Script</h3>
+          <p><strong>Timestamp:</strong> ${timestamp}</p>
           <p><strong>Expected:</strong> Slack should send directly to backend</p>
           <p><strong>Current Slack URL:</strong> This Google Apps Script</p>
           <p><strong>Correct Slack URL:</strong> ${API_URL}/slack/interactions</p>
@@ -69,48 +112,162 @@ function doPost(e) {
 
     // Check if this is a backend request (JSON with action)
     try {
+      Logger.log(`🔍 [${timestamp}] Attempting to parse as JSON...`);
       const jsonData = JSON.parse(raw);
+      Logger.log(`✅ [${timestamp}] Successfully parsed as JSON`);
+      Logger.log(`   Keys: ${Object.keys(jsonData).join(', ')}`);
+      
       if (jsonData.action) {
-        Logger.log(`🔧 Backend action detected: ${jsonData.action}`);
+        requestContext.requestType = 'backend_action';
+        Logger.log(`🔧 [${timestamp}] Backend action detected: ${jsonData.action}`);
 
         if (jsonData.action === "send_denial_email") {
-          const result = sendDenialEmail(jsonData);
-          return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+          Logger.log(`📧 [${timestamp}] Processing send_denial_email action...`);
+          try {
+            const result = sendDenialEmail(jsonData);
+            Logger.log(`✅ [${timestamp}] Denial email sent successfully`);
+            return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+          } catch (emailError) {
+            const errorContext = {
+              function: functionName,
+              operation: 'sending_denial_email',
+              action: jsonData.action,
+              error: emailError.message,
+              errorName: emailError.name,
+              stack: emailError.stack
+            };
+            
+            Logger.log(`❌ [${timestamp}] === ERROR sending denial email ===`);
+            Logger.log(`   Operation: Sending denial email`);
+            Logger.log(`   Action: ${jsonData.action}`);
+            Logger.log(`   Error: ${emailError.message}`);
+            Logger.log(`   Stack: ${emailError.stack || 'No stack trace'}`);
+            
+            MailApp.sendEmail({
+              to: DEBUG_EMAIL,
+              subject: `🚨 ${functionName}: Denial Email Error`,
+              htmlBody: `
+                <h2>🚨 Error Sending Denial Email in ${functionName}</h2>
+                <p><strong>Timestamp:</strong> ${timestamp}</p>
+                <p><strong>Action:</strong> ${jsonData.action}</p>
+                <p><strong>Error:</strong> ${emailError.message}</p>
+                <h3>Stack Trace:</h3>
+                <pre>${emailError.stack || 'No stack trace'}</pre>
+              `
+            });
+            
+            return ContentService.createTextOutput(JSON.stringify({
+              success: false,
+              message: `Error sending denial email: ${emailError.message}`,
+              context: errorContext
+            })).setMimeType(ContentService.MimeType.JSON);
+          }
         } else {
-          Logger.log(`❌ Unknown action: ${jsonData.action}`);
+          const errorMsg = `Unknown action: ${jsonData.action}`;
+          Logger.log(`❌ [${timestamp}] ${errorMsg}`);
+          Logger.log(`   Available actions: send_denial_email`);
           return ContentService.createTextOutput(JSON.stringify({
             success: false,
-            message: `Unknown action: ${jsonData.action}`
+            message: errorMsg,
+            availableActions: ['send_denial_email']
           })).setMimeType(ContentService.MimeType.JSON);
         }
+      } else {
+        Logger.log(`📝 [${timestamp}] JSON parsed but no action field - assuming form submission`);
       }
     } catch (parseError) {
       // Not JSON, continue to form submission processing
-      Logger.log("📝 Not JSON, assuming form submission");
+      Logger.log(`📝 [${timestamp}] Not valid JSON, assuming form submission`);
+      Logger.log(`   Parse error: ${parseError.message}`);
     }
 
     // If we get here, this should be a Google Form submission
-    Logger.log("📝 Form submission detected - processing with backend API");
+    requestContext.requestType = 'form_submission';
+    Logger.log(`📝 [${timestamp}] Form submission detected - processing with backend API`);
 
     // Process form submission by calling the existing form handler
-    return processFormSubmitViaDoPost(e);
+    try {
+      return processFormSubmitViaDoPost(e);
+    } catch (formError) {
+      const errorContext = {
+        function: functionName,
+        operation: 'processing_form_submission',
+        requestType: requestContext.requestType,
+        error: formError.message,
+        errorName: formError.name,
+        stack: formError.stack
+      };
+      
+      Logger.log(`❌ [${timestamp}] === ERROR processing form submission ===`);
+      Logger.log(`   Operation: Processing form submission`);
+      Logger.log(`   Error: ${formError.message}`);
+      Logger.log(`   Stack: ${formError.stack || 'No stack trace'}`);
+      
+      MailApp.sendEmail({
+        to: DEBUG_EMAIL,
+        subject: `🚨 ${functionName}: Form Submission Error`,
+        htmlBody: `
+          <h2>🚨 Form Submission Error in ${functionName}</h2>
+          <p><strong>Timestamp:</strong> ${timestamp}</p>
+          <p><strong>Operation:</strong> Processing form submission</p>
+          <p><strong>Error:</strong> ${formError.message}</p>
+          <h3>Stack Trace:</h3>
+          <pre>${formError.stack || 'No stack trace'}</pre>
+        `
+      });
+      
+      throw formError;
+    }
 
   } catch (error) {
-    const errorMessage = `Error in doPost: ${error.toString()}`;
-    Logger.log(`❌ ${errorMessage}`);
+    const duration = new Date().getTime() - startTime;
+    const errorContext = {
+      function: functionName,
+      operation: 'unexpected_error',
+      durationMs: duration,
+      requestContext: requestContext,
+      error: error.message,
+      errorName: error.name,
+      stack: error.stack
+    };
+    
+    const errorMessage = `Error in ${functionName}: ${error.toString()}`;
+    Logger.log(`💥 [${timestamp}] === UNEXPECTED ERROR in ${functionName} ===`);
+    Logger.log(`   Duration: ${duration}ms`);
+    Logger.log(`   Error: ${error.message}`);
+    Logger.log(`   Error type: ${error.name}`);
+    Logger.log(`   Stack trace: ${error.stack || 'No stack trace available'}`);
+    Logger.log(`   Request context: ${JSON.stringify(requestContext, null, 2)}`);
 
     MailApp.sendEmail({
       to: DEBUG_EMAIL,
-      subject: `❌ BARS doPost Error`,
+      subject: `🚨 ${functionName}: Unexpected Error`,
       htmlBody: `
-        <h3>❌ Error in doPost Function</h3>
+        <h2>🚨 Unexpected Error in ${functionName}</h2>
+        <p><strong>Timestamp:</strong> ${timestamp}</p>
+        <p><strong>Duration:</strong> ${duration}ms</p>
         <p><strong>Error:</strong> ${errorMessage}</p>
-        <p><strong>Stack:</strong> <pre>${error.stack || 'No stack trace available'}</pre></p>
-        <p><strong>Raw Request Data:</strong> <pre>${raw?.substring(0, 1000) || 'No data'}</pre></p>
+        <p><strong>Error Type:</strong> ${error.name}</p>
+        <h3>Stack Trace:</h3>
+        <pre>${error.stack || 'No stack trace available'}</pre>
+        <h3>Request Context:</h3>
+        <pre>${JSON.stringify(requestContext, null, 2)}</pre>
+        <h3>Raw Request Data:</h3>
+        <pre>${requestContext.rawLength > 0 ? raw?.substring(0, 1000) || 'No data' : 'No raw data available'}</pre>
       `
     });
 
-    return ContentService.createTextOutput("Error processing request").setMimeType(ContentService.MimeType.TEXT);
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: errorMessage,
+      context: errorContext
+    })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    const duration = new Date().getTime() - startTime;
+    const endTimestamp = new Date().toISOString();
+    Logger.log(`🏁 [${endTimestamp}] === EXITING ${functionName} ===`);
+    Logger.log(`   Duration: ${duration}ms`);
+    Logger.log(`   Request type: ${requestContext.requestType || 'unknown'}`);
   }
 }
 

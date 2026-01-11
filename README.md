@@ -234,9 +234,8 @@ clasp login
 cd GoogleAppsScripts/projects/[script-directory]
 clasp push && clasp deploy
 
-# Sync shared utilities (when updated)
-cd GoogleAppsScripts
-./sync-utilities.sh
+# Shared utilities are now managed per-project
+# Each project includes shared utilities directly in its src/shared-utilities/ directory
 ```
 
 ### Secret Management
@@ -316,8 +315,9 @@ Deployed via GitHub Actions:
 
 ### Google Apps Scripts
 ```bash
+# Deploy using remote-sync-tools
 cd GoogleAppsScripts
-./deploy.sh project-name
+./remote-sync-tools/deploy.sh project-name
 ```
 
 ## 🧪 Testing Strategy

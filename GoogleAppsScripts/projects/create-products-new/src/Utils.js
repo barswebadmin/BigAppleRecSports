@@ -1,4 +1,16 @@
 
+/**
+ * Retrieve a secret from PropertiesService
+ * @param {string} key - The secret key
+ * @returns {string} The secret value
+ */
+function getSecret(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  if (!value) {
+    throw new Error(`Secret '${key}' not found. Make sure it's set up in PropertiesService.`);
+  }
+  return value;
+}
 
 function showLinkDialog(url) {
   const htmlOutput = HtmlService.createHtmlOutput(`

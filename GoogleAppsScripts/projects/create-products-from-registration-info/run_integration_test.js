@@ -92,8 +92,8 @@ try {
   const basePath = './src';
 
   // Load constants and config
-  if (fs.existsSync(`${basePath}/config/constants.gs`)) {
-    safeEvalGasFile(`${basePath}/config/constants.gs`, 'constants.js');
+  if (fs.existsSync(`${basePath}/config/constants.js`)) {
+    safeEvalGasFile(`${basePath}/config/constants.js`, 'constants.js');
   }
 
   // Fallback mocks for Node.js environment if constants aren't available
@@ -133,16 +133,16 @@ try {
   }
 
   // Load helpers
-  if (fs.existsSync(`${basePath}/helpers/normalizers.gs`)) {
-    safeEvalGasFile(`${basePath}/helpers/normalizers.gs`, 'normalizers.js');
+  if (fs.existsSync(`${basePath}/helpers/normalizers.js`)) {
+    safeEvalGasFile(`${basePath}/helpers/normalizers.js`, 'normalizers.js');
   }
 
-  if (fs.existsSync(`${basePath}/helpers/textUtils.gs`)) {
-    safeEvalGasFile(`${basePath}/helpers/textUtils.gs`, 'textUtils.js');
+  if (fs.existsSync(`${basePath}/helpers/textUtils.js`)) {
+    safeEvalGasFile(`${basePath}/helpers/textUtils.js`, 'textUtils.js');
   }
 
-  if (fs.existsSync(`${basePath}/helpers/dateParsers.gs`)) {
-    safeEvalGasFile(`${basePath}/helpers/dateParsers.gs`, 'dateParsers.js');
+  if (fs.existsSync(`${basePath}/helpers/dateParsers.js`)) {
+    safeEvalGasFile(`${basePath}/helpers/dateParsers.js`, 'dateParsers.js');
   }
 
   // Load parsers in dependency order

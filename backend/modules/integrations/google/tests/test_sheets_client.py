@@ -1,11 +1,11 @@
-"""Tests for Google Sheets Client."""
+"""Tests for Google API Client (Sheets functionality)."""
 
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from googleapiclient.errors import HttpError
 
-from modules.integrations.google.sheets_client import GoogleSheetsClient
+from modules.integrations.google.google_api_client import GoogleApiClient
 
 
 @pytest.fixture
@@ -29,21 +29,21 @@ def mock_config_with_valid_credentials(tmp_path):
     credentials_file = tmp_path / "test-credentials.json"
     credentials_file.write_text('{"type": "service_account"}')
     
-    with patch('modules.integrations.google.sheets_client._get_service_account_path') as mock_get_path:
-        mock_get_path.return_value = credentials_file
-        yield mock_get_path
+    with patch('modules.integrations.google.base_methods.get_service_account_info') as mock_get_info:
+        mock_get_info.return_value = {"type": "service_account"}
+        yield mock_get_info
 
 
-class TestGoogleSheetsClientInitialization:
-    """Test GoogleSheetsClient initialization."""
+class TestGoogleApiClientInitialization:
+    """Test GoogleApiClient initialization."""
     
-    def test_init_with_missing_credentials_file(self):
-        """Should raise FileNotFoundError when credentials file doesn't exist."""
-        with patch('modules.integrations.google.sheets_client._get_service_account_path') as mock_get_path:
-            mock_get_path.return_value = Path("/nonexistent/path.json")
+    def test_init_with_missing_credentials(self):
+        """Should raise ValueError when credentials are missing."""
+        with patch('modules.integrations.google.base_methods.get_service_account_info') as mock_get_info:
+            mock_get_info.side_effect = ValueError("Google service account credentials not found")
             
-            with pytest.raises(FileNotFoundError, match="Google service account credentials not found"):
-                GoogleSheetsClient()
+            with pytest.raises(ValueError, match="Google service account credentials not found"):
+                GoogleApiClient()
     
     def test_init_with_valid_credentials(
         self,
@@ -52,25 +52,27 @@ class TestGoogleSheetsClientInitialization:
         mock_sheets_service
     ):
         """Should initialize successfully with valid credentials."""
-        with patch('modules.integrations.google.sheets_client.service_account.Credentials') as mock_creds_class:
-            mock_creds_class.from_service_account_file.return_value = mock_credentials
+        with patch('modules.integrations.google.base_methods.initialize_credentials') as mock_init_creds:
+            mock_init_creds.return_value = (mock_credentials, mock_credentials)
             
-            with patch('modules.integrations.google.sheets_client.build') as mock_build:
+            with patch('modules.integrations.google.base_methods.build_service') as mock_build:
                 mock_build.return_value = mock_sheets_service
                 
-                client = GoogleSheetsClient()
+                client = GoogleApiClient()
                 
                 assert client.service_account_email == "test-service@project.iam.gserviceaccount.com"
-                mock_creds_class.from_service_account_file.assert_called_once()
-                mock_build.assert_called_once_with('sheets', 'v4', credentials=mock_credentials)
+                assert client.sheets_service is not None
+                assert client.drive_service is not None
+                assert client.scripts_service is not None
+                assert client.directory_service is not None
     
     def test_init_with_invalid_credentials_format(self, mock_config_with_valid_credentials):
-        """Should raise ValueError when credentials file is invalid."""
-        with patch('modules.integrations.google.sheets_client.service_account.Credentials') as mock_creds_class:
-            mock_creds_class.from_service_account_file.side_effect = ValueError("Invalid JSON")
+        """Should raise ValueError when credentials are invalid."""
+        with patch('modules.integrations.google.base_methods.initialize_credentials') as mock_init_creds:
+            mock_init_creds.side_effect = ValueError("Invalid Google service account credentials")
             
             with pytest.raises(ValueError, match="Invalid Google service account credentials"):
-                GoogleSheetsClient()
+                GoogleApiClient()
 
 
 class TestFetchSheetAsCSV:
@@ -78,15 +80,15 @@ class TestFetchSheetAsCSV:
     
     @pytest.fixture
     def initialized_client(self, mock_config_with_valid_credentials, mock_credentials, mock_sheets_service):
-        """Create an initialized GoogleSheetsClient."""
-        with patch('modules.integrations.google.sheets_client.service_account.Credentials') as mock_creds_class:
-            mock_creds_class.from_service_account_file.return_value = mock_credentials
+        """Create an initialized GoogleApiClient."""
+        with patch('modules.integrations.google.base_methods.initialize_credentials') as mock_init_creds:
+            mock_init_creds.return_value = (mock_credentials, mock_credentials)
             
-            with patch('modules.integrations.google.sheets_client.build') as mock_build:
+            with patch('modules.integrations.google.base_methods.build_service') as mock_build:
                 mock_build.return_value = mock_sheets_service
                 
-                client = GoogleSheetsClient()
-                client.service = mock_sheets_service
+                client = GoogleApiClient()
+                client.sheets_service = mock_sheets_service
                 return client
     
     def test_fetch_sheet_success(self, initialized_client):
@@ -99,7 +101,7 @@ class TestFetchSheetAsCSV:
             ]
         }
         
-        initialized_client.service.spreadsheets().values().get().execute.return_value = mock_response
+        initialized_client.sheets_service.spreadsheets().values().get().execute.return_value = mock_response
         
         result = initialized_client.fetch_sheet_as_csv("test-sheet-id")
         
@@ -111,7 +113,7 @@ class TestFetchSheetAsCSV:
         """Should return empty list when sheet has no data."""
         mock_response = {'values': []}
         
-        initialized_client.service.spreadsheets().values().get().execute.return_value = mock_response
+        initialized_client.sheets_service.spreadsheets().values().get().execute.return_value = mock_response
         
         result = initialized_client.fetch_sheet_as_csv("test-sheet-id")
         
@@ -123,36 +125,36 @@ class TestFetchSheetAsCSV:
         mock_error.resp.status = 403
         mock_error.error_details = [{'reason': 'forbidden'}]
         
-        initialized_client.service.spreadsheets().values().get().execute.side_effect = HttpError(
+        initialized_client.sheets_service.spreadsheets().values().get().execute.side_effect = HttpError(
             mock_error.resp, b'Permission denied'
         )
         
-        with pytest.raises(PermissionError, match="Access denied to spreadsheet"):
+        with pytest.raises(HttpError):
             initialized_client.fetch_sheet_as_csv("test-sheet-id")
     
     def test_fetch_sheet_not_found(self, initialized_client):
-        """Should raise ValueError when spreadsheet is not found (404)."""
+        """Should raise HttpError when spreadsheet is not found (404)."""
         mock_error = Mock()
         mock_error.resp.status = 404
         mock_error.error_details = [{'reason': 'notFound'}]
         
-        initialized_client.service.spreadsheets().values().get().execute.side_effect = HttpError(
+        initialized_client.sheets_service.spreadsheets().values().get().execute.side_effect = HttpError(
             mock_error.resp, b'Not found'
         )
         
-        with pytest.raises(ValueError, match="Spreadsheet not found"):
+        with pytest.raises(HttpError):
             initialized_client.fetch_sheet_as_csv("invalid-sheet-id")
     
     def test_fetch_sheet_with_custom_range(self, initialized_client):
         """Should use custom range when specified."""
         mock_response = {'values': [['A1', 'B1'], ['A2', 'B2']]}
         
-        initialized_client.service.spreadsheets().values().get().execute.return_value = mock_response
+        initialized_client.sheets_service.spreadsheets().values().get().execute.return_value = mock_response
         
         result = initialized_client.fetch_sheet_as_csv("test-sheet-id", range_name="Sheet1!A1:B10")
         
         assert len(result) == 2
-        initialized_client.service.spreadsheets().values().get.assert_called_with(
+        initialized_client.sheets_service.spreadsheets().values().get.assert_called_with(
             spreadsheetId="test-sheet-id",
             range="Sheet1!A1:B10"
         )
@@ -163,14 +165,14 @@ class TestExtractSheetIDFromURL:
     
     @pytest.fixture
     def initialized_client(self, mock_config_with_valid_credentials, mock_credentials, mock_sheets_service):
-        """Create an initialized GoogleSheetsClient."""
-        with patch('modules.integrations.google.sheets_client.service_account.Credentials') as mock_creds_class:
-            mock_creds_class.from_service_account_file.return_value = mock_credentials
+        """Create an initialized GoogleApiClient."""
+        with patch('modules.integrations.google.base_methods.initialize_credentials') as mock_init_creds:
+            mock_init_creds.return_value = (mock_credentials, mock_credentials)
             
-            with patch('modules.integrations.google.sheets_client.build') as mock_build:
+            with patch('modules.integrations.google.base_methods.build_service') as mock_build:
                 mock_build.return_value = mock_sheets_service
                 
-                return GoogleSheetsClient()
+                return GoogleApiClient()
     
     @pytest.mark.parametrize("url,expected_id", [
         (
