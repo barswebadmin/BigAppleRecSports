@@ -1,6 +1,6 @@
 """Google API integrations."""
 
-from .sheets_client import GoogleSheetsClient
+from .google_api_client import GoogleApiClient
 
-__all__ = ["GoogleSheetsClient"]
+__all__ = ["GoogleApiClient"]
 

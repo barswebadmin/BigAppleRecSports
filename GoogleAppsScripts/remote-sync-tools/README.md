@@ -50,7 +50,7 @@ module.exports = {
  * Delegates to shared GAS esbuild tool
  */
 
-require('../../shared-build-tools/gas-esbuild.js');
+require('../../remote-sync-tools/build.js');
 ```
 
 ### **3. Create clasp-deploy.config.sh (optional)**
@@ -85,9 +85,9 @@ Or call the scripts directly:
 
 ```bash
 # From repository root
-bash GoogleAppsScripts/shared-build-tools/gas-clasp-push.sh <project-name>
-bash GoogleAppsScripts/shared-build-tools/gas-clasp-pull.sh <project-name>
-bash GoogleAppsScripts/shared-build-tools/gas-deploy.sh <project-name>
+bash GoogleAppsScripts/remote-sync-tools/push.sh <project-name>
+bash GoogleAppsScripts/remote-sync-tools/pull.sh <project-name>
+bash GoogleAppsScripts/remote-sync-tools/deploy.sh <project-name>
 ```
 
 ---
@@ -145,12 +145,14 @@ pnpm clean <project-name>
 
 ```
 GoogleAppsScripts/
-├── shared-build-tools/
+├── remote-sync-tools/
 │   ├── README.md                    # This file
-│   ├── gas-esbuild.js              # Generic build script
-│   ├── gas-clasp-push.sh           # Push to GAS
-│   ├── gas-clasp-pull.sh           # Pull from GAS
-│   └── gas-deploy.sh               # Full deployment (push + version management)
+│   ├── build.js                     # Generic build script
+│   ├── push.sh                      # Push to GAS
+│   ├── pull.sh                      # Pull from GAS
+│   ├── deploy.sh                     # Full deployment (push + version management)
+│   ├── clean.sh                      # Clean build artifacts
+│   └── shared-helpers.sh             # Shared helper functions
 └── projects/
     └── your-project/
         ├── src/

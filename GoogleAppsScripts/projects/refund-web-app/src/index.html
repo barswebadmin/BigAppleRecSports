@@ -106,7 +106,7 @@
           .withFailureHandler(function(err){
             msg.className = 'error'; text(msg, err && err.message ? err.message : 'Error getting quote');
           })
-          .getRefundQuote(email, order);
+          .submitRefundRequest(email, order);
       }
 
       function onAccept(){

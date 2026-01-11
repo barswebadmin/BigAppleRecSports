@@ -40,7 +40,7 @@ if ! copy_build_artifacts "$PROJECT_DIR" "$TEMP_BUILD_DIR"; then
 fi
 
 # Compare local build vs remote
-if ! run_comparison "$TEMP_BUILD_DIR" "" "push" "HAS_CHANGES"; then
+if ! run_comparison "$TEMP_BUILD_DIR" "" "push" "HAS_CHANGES" "$PROJECT_NAME"; then
     cleanup_temp_dir "$TEMP_BUILD_DIR"
     exit 1
 fi

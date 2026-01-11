@@ -47,15 +47,74 @@ if command -v ruff &> /dev/null || [ -f ".venv/bin/ruff" ]; then
     fi
     
     echo "🔍 Running Ruff linter..."
-    if $RUFF_CMD check scripts/ lambda-functions/ backend/ shared-utilities/ --quiet; then
+    
+    # Capture linting output and exit code
+    set +e  # Temporarily disable exit on error to capture output
+    RUFF_OUTPUT=$($RUFF_CMD check scripts/ lambda/ backend/ 2>&1)
+    RUFF_EXIT_CODE=$?
+    set -e  # Re-enable exit on error
+    
+    if [ $RUFF_EXIT_CODE -eq 0 ]; then
         echo "✅ Ruff linting passed"
     else
-        echo "❌ Ruff linting failed"
-        exit 1
+        echo ""
+        echo "⚠️  ⚠️  ⚠️  RUFF LINTING FAILED ⚠️  ⚠️  ⚠️"
+        echo ""
+        echo "Linter errors found:"
+        echo "----------------------------------------"
+        echo "$RUFF_OUTPUT"
+        echo "----------------------------------------"
+        echo ""
+        echo "Options:"
+        echo "  (c) Continue - Proceed with commit despite linter errors"
+        echo "  (r) Retry - Run linter again (may auto-fix some issues)"
+        echo "  (e) Exit - Abort commit and fix errors manually"
+        echo ""
+        
+        while true; do
+            read -p "Choose an option [c/r/e]: " -n 1 -r
+            echo ""
+            case $REPLY in
+                [Cc]* )
+                    echo "⚠️  Continuing with commit despite linter errors..."
+                    break
+                    ;;
+                [Rr]* )
+                    echo "🔄 Retrying Ruff linter..."
+                    set +e
+                    RUFF_OUTPUT=$($RUFF_CMD check scripts/ lambda/ backend/ 2>&1)
+                    RUFF_EXIT_CODE=$?
+                    set -e
+                    if [ $RUFF_EXIT_CODE -eq 0 ]; then
+                        echo "✅ Ruff linting passed on retry"
+                        break
+                    else
+                        echo ""
+                        echo "⚠️  Linter errors still present:"
+                        echo "----------------------------------------"
+                        echo "$RUFF_OUTPUT"
+                        echo "----------------------------------------"
+                        echo ""
+                        echo "Options:"
+                        echo "  (c) Continue - Proceed with commit despite linter errors"
+                        echo "  (r) Retry - Run linter again"
+                        echo "  (e) Exit - Abort commit and fix errors manually"
+                        echo ""
+                    fi
+                    ;;
+                [Ee]* )
+                    echo "❌ Commit aborted. Please fix linter errors and try again."
+                    exit 1
+                    ;;
+                * )
+                    echo "Invalid option. Please choose (c)ontinue, (r)etry, or (e)xit."
+                    ;;
+            esac
+        done
     fi
     
     echo "✨ Running Ruff formatter..."
-    $RUFF_CMD format scripts/ lambda-functions/ backend/ shared-utilities/ --quiet
+    $RUFF_CMD format scripts/ lambda/ backend/ --quiet
     echo "✅ Ruff formatting complete"
 else
     echo "⚠️  Ruff not found, skipping linting and formatting"

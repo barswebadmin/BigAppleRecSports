@@ -1,6 +1,7 @@
 {
   "scriptId": "1Eu52MVUK-8Byxg2ypciljaXDl_sPkNiN2AZDvCUZyNqVlWDuFOA53I9T",
-  "rootDir": "",
+  "rootDir": "src",
+  "scriptUrl": "https://script.google.com/u/1/home/projects/1Eu52MVUK-8Byxg2ypciljaXDl_sPkNiN2AZDvCUZyNqVlWDuFOA53I9T/edit",
   "scriptExtensions": [
     ".js",
     ".gs"
