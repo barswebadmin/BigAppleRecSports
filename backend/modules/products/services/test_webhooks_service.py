@@ -352,7 +352,7 @@ class TestWebhooksService:
     # They test that the webhook handler correctly coordinates multiple services
     # and handles the complete end-to-end processing pipeline.
 
-    @patch("services.webhooks.integrations.gas_client.GASClient.send_to_waitlist_form")
+    @patch("modules.integrations.google.google_api_client.GoogleApiClient.send_to_waitlist_form")
     def test_handle_shopify_webhook(self, mock_send):
         """Test webhook handler integration - orchestration and end-to-end flow"""
         mock_send.return_value = {"success": True, "response": "GAS success"}

@@ -8,14 +8,14 @@ from fastapi import APIRouter, Request, HTTPException
 import logging
 import json
 from services.webhooks import WebhooksService
-from services.webhooks.integrations.gas_client import GASClient
+from modules.integrations.google import GoogleApiClient
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["shopify-webhooks"])
 
 webhooks_service = WebhooksService()
-gas_client = GASClient()
+sheets_client = GoogleApiClient()
 
 @router.post("/shopify")
 async def handle_shopify_webhook(request: Request):
@@ -80,16 +80,10 @@ async def handle_shopify_webhook(request: Request):
                     "season": "fall-2025"
                 }
                 
-                try:
-                    waitlist_result = gas_client.send_to_waitlist_form({
-                        "product": body_json,
-                        "parsed": parsed_product
-                    })
-                except NotImplementedError:
-                    waitlist_result = {
-                        "form_updated": True,
-                        "option_added": True
-                    }
+                waitlist_result = sheets_client.send_to_waitlist_form({
+                    "product": body_json,
+                    "parsed": parsed_product
+                })
                 
                 result = {
                     "success": True,

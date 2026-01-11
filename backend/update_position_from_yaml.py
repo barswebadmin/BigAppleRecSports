@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from modules.integrations.google import GoogleSheetsClient
+from modules.integrations.google import GoogleApiClient
 from modules.leadership.domain.hierarchy_config import load_hierarchy_config, normalize_title
 
 
@@ -26,7 +26,7 @@ def main():
     
     # Initialize client
     print("📊 Initializing Google Sheets client...")
-    client = GoogleSheetsClient()
+    client = GoogleApiClient()
     print(f"✅ Service account: {client.service_account_email}\n")
     
     # Extract sheet ID

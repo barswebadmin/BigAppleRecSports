@@ -18,9 +18,32 @@ export function shouldSkipRow(rowBackgrounds, notes) {
     return true;
   }
   
+  // Check for background colors
+  if (!rowBackgrounds || rowBackgrounds.length === 0) {
+    return false;
+  }
+  
   const hasBackgroundColor = rowBackgrounds.some(bg => {
-    const bgLower = (bg || '').toLowerCase();
-    return bgLower && bgLower !== '#ffffff' && bgLower !== '#fff' && bgLower !== 'white';
+    if (!bg) return false;
+    
+    // Handle RGB object format from Google Sheets API
+    // Google Sheets returns objects like {red: 1, green: 1, blue: 1} where values are 0-1
+    if (typeof bg === 'object' && bg.red !== undefined) {
+      // Check if it's NOT white (allowing small floating point differences)
+      // White = {red: 1, green: 1, blue: 1}
+      const isWhite = Math.abs((bg.red || 0) - 1.0) < 0.01 && 
+                     Math.abs((bg.green || 0) - 1.0) < 0.01 && 
+                     Math.abs((bg.blue || 0) - 1.0) < 0.01;
+      return !isWhite;
+    }
+    
+    // Handle string format (hex colors like '#ffffff' or 'white')
+    if (typeof bg === 'string') {
+      const bgLower = bg.toLowerCase();
+      return bgLower && bgLower !== '#ffffff' && bgLower !== '#fff' && bgLower !== 'white' && bgLower !== '';
+    }
+    
+    return false;
   });
   
   return hasBackgroundColor;
@@ -57,14 +80,17 @@ export function calculateWaitlistPosition(email, league, options = {}) {
       const rowTimestamp = new Date(sheetData[i][timestampCol]);
       const notesVal = sheetData[i][notesCol] || "";
       
-      if (!userTimestamp && rowEmail === email.toLowerCase() && rowLeague === league) {
-        userTimestamp = rowTimestamp;
-        Logger.log(`✅ Found user at row ${i + 1}, timestamp: ${userTimestamp}`);
-      }
-      
+      // Check if row should be skipped BEFORE capturing user timestamp
+      // This ensures we use the correct (non-skipped) entry for the user
       if (shouldSkipRow(backgrounds[i], notesVal)) {
         Logger.log(`⏭️ Skipping row ${i + 1}`);
         continue;
+      }
+      
+      // Find user's entry (only from non-skipped rows)
+      if (!userTimestamp && rowEmail === email.toLowerCase() && rowLeague === league) {
+        userTimestamp = rowTimestamp;
+        Logger.log(`✅ Found user at row ${i + 1}, timestamp: ${userTimestamp}`);
       }
       
       if (rowLeague === league) {

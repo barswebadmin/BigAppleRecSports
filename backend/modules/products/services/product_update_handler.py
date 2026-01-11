@@ -23,7 +23,7 @@ def evaluate_product_update_webhook(body: bytes) -> Dict[str, Any]:
     
     Args:
         body: Raw webhook body containing product data
-        gas_client: Client for Google Apps Script integration
+        sheets_client: GoogleApiClient for Google Apps Script integration
         
     Returns:
         Dict containing success status, message, and detailed product information

@@ -1,0 +1,19 @@
+{
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/venv": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/.git": true,
+    "**/bars_common_utils": true,
+    "**/clasp_helpers.sh": true,
+    "**/backend_services": true,
+    "**/.pnpm": true
+  },
+  "files.exclude": {
+    "**/bars_common_utils": true,
+    "**/backend_services": true
+  },
+  "search.useIgnoreFiles": true,
+  "search.useGlobalIgnoreFiles": true
+}

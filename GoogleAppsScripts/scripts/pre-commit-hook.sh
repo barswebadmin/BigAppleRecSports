@@ -34,8 +34,8 @@ echo "🔍 Checking for Google Apps Script doGet/doPost changes..."
 cd "$(git rev-parse --show-toplevel)"
 
 # Run the detection script for staged changes
-if [ -f "GoogleAppsScripts/scripts/detect-webapp-changes.sh" ]; then
-    if GoogleAppsScripts/scripts/detect-webapp-changes.sh --staged; then
+if [ -f "GoogleAppsScripts/remote-sync-tools/detect-webapp-changes.sh" ]; then
+    if GoogleAppsScripts/remote-sync-tools/detect-webapp-changes.sh --staged; then
         log_success "No doGet/doPost changes detected in staged files"
         exit 0
     fi
@@ -53,7 +53,7 @@ if [ -f "GoogleAppsScripts/scripts/detect-webapp-changes.sh" ]; then
         echo ""
         echo "🚀 Next steps after committing:"
         echo "  1. Push to master branch (triggers auto-deployment)"
-        echo "  2. Or manually deploy: ./GoogleAppsScripts/scripts/deploy-project.sh [project]"
+        echo "  2. Or manually deploy: ./GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
         echo ""
         echo "💡 This is just a warning - your commit will proceed normally."
         echo ""

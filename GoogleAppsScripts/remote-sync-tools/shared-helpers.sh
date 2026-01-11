@@ -520,13 +520,14 @@ validate_project_structure() {
 }
 
 # Run comparison between local and remote
-# Usage: run_comparison "$local_path" "$remote_path" "$compare_type" HAS_CHANGES_VAR
+# Usage: run_comparison "$local_path" "$remote_path" "$compare_type" HAS_CHANGES_VAR ["$project_name"]
 # Sets: HAS_CHANGES variable (true/false) and displays comparison output
 run_comparison() {
     local local_path="$1"
     local remote_path="$2"
     local compare_type="$3"  # "push" or "pull"
     local has_changes_var="$4"
+    local project_name="${5:-}"  # Optional project name for identifier
     
     local compare_script=""
     local compare_cmd=""
@@ -537,7 +538,11 @@ run_comparison() {
             log_error "Comparison script not found: $compare_script"
             return 1
         fi
-        compare_cmd="python3 \"$compare_script\" --local-path \"$local_path\" --keep-temp 2>&1"
+        if [ -n "$project_name" ]; then
+            compare_cmd="python3 \"$compare_script\" --local-path \"$local_path\" --identifier \"$project_name\" --keep-temp 2>&1"
+        else
+            compare_cmd="python3 \"$compare_script\" --local-path \"$local_path\" --keep-temp 2>&1"
+        fi
     else
         compare_script="$REPO_ROOT/scripts/file_comparison/compare_at_path.py"
         if [ ! -f "$compare_script" ]; then
