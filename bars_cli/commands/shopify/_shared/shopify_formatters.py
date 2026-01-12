@@ -1,5 +1,5 @@
 from typing import TypedDict, Optional, Any, Callable, List
-from backend_services.shopify.models.sgqlc_models import Customer
+from bars_cli.backend_services.shopify.models.sgqlc_models import Customer
 
 class CustomerDisplayField(TypedDict):
     """Type definition for customer display field configuration."""

@@ -13,7 +13,7 @@ from .._shared.slack_formatters import format_group
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SLACK_GROUP_IDENTIFIER, required=False)
 @click.pass_context
-def get_group_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]]):
+def cmd_slack_groups_get(ctx: click.Context, identifier: Optional[Dict[str, Any]]):
     """
     Get Slack usergroup details by handle or ID.
     

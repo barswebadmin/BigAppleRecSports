@@ -12,28 +12,10 @@ from rich.text import Text
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_ORDER_IDENTIFIER
 from bars_cli._core.ui.display import format_datetime, create_text_panel
+from bars_cli.commands.shopify._shared.shopify_formatters import _format_customer_name, format_datetime_display
 
 
-def _format_customer_name(order: Any) -> str:
-    """Format customer name from order."""
-    customer = getattr(order, 'customer', None)  # type: ignore[attr-defined]
-    if not customer:
-        return "N/A"
-    
-    if hasattr(customer, 'displayName') and customer.displayName:  # type: ignore[attr-defined]
-        return customer.displayName  # type: ignore[attr-defined]
-    
-    first = getattr(customer, 'firstName', None)  # type: ignore[attr-defined]
-    last = getattr(customer, 'lastName', None)  # type: ignore[attr-defined]
-    if first or last:
-        return f"{first or ''} {last or ''}".strip()
-    
-    return "N/A"
 
-
-def format_datetime_display(dt_str: Optional[str]) -> str:
-    """Format ISO datetime string to readable format."""
-    return format_datetime(dt_str)
 
 
 @click.command('cancel')

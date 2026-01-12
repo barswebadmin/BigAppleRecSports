@@ -43,8 +43,14 @@ stubPath = "backend/typings"
 typeCheckingMode = "basic"
 
 # Use local stubs for untyped third-party libs without requiring the package at runtime
-reportMissingImports = "none"
 reportMissingModuleSource = "none"
+
+diagnosticSeverityOverrides = {
+    reportMissingImports = "error",
+    reportImportCycles = "error",
+    reportUnusedImport = "warning",
+    reportUndefinedVariable = "error"
+}
 
 [tool.pytest.ini_options]
 pythonpath = [

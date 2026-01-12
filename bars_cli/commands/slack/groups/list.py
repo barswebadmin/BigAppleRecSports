@@ -10,7 +10,7 @@ from slack_sdk.errors import SlackApiError
 @click.option('--bot', default='leadership', help='Which bot to use')
 @click.option('--include-disabled', is_flag=False, help='Include disabled groups')
 @click.pass_context
-def list_groups(ctx: click.Context, bot: str, include_disabled: bool):
+def list_slack_groups(ctx: click.Context, bot: str, include_disabled: bool):
     """List all usergroups."""
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False
     

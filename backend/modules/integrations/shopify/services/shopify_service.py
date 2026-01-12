@@ -14,7 +14,12 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any as AnyType
+else:
+    AnyType = Any
 
 from backend.modules.integrations.shopify.client.shopify_sgqlc_client import ShopifySGQLCClient
 from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_query import Query
@@ -237,6 +242,233 @@ class ShopifyService:
         }
         
         return {"success": True, "data": customer_data}
+    
+    def get_order_line_item_properties(self, order_id: str) -> List[Dict[str, str]]:
+        """
+        Get line item custom attributes for an order.
+        
+        Args:
+            order_id: Order ID (gid://shopify/Order/...)
+            
+        Returns:
+            List of custom attribute dictionaries with 'key' and 'value' keys
+        """
+        orders = self.get_order_by_identifier(
+            {"query": f"id:{order_id}", "first": 1},
+            line_items_first=50
+        )
+        
+        if not orders:
+            return []
+        
+        order = orders[0]
+        properties = []
+        
+        # Get line items
+        line_items_conn = getattr(order, 'lineItems', None)
+        if not line_items_conn:
+            return []
+        
+        nodes = getattr(line_items_conn, 'nodes', None)
+        if not nodes:
+            return []
+        
+        # Extract custom attributes from each line item
+        for line_item in nodes:
+            custom_attrs = getattr(line_item, 'customAttributes', None)
+            if custom_attrs:
+                for attr in custom_attrs:
+                    key = getattr(attr, 'key', '')
+                    value = getattr(attr, 'value', '')
+                    if key and value:
+                        properties.append({"key": key, "value": value})
+        
+        return properties
+    
+    def get_customer_birthdays_from_orders(self, order_ids: List[str]) -> List[Tuple[str, str, str]]:
+        """
+        Fetch birthdays with associated names from multiple orders concurrently.
+        
+        Args:
+            order_ids: List of order IDs (gid://shopify/Order/...)
+            
+        Returns:
+            List of (birthday, first_name, last_name) tuples
+        """
+        import concurrent.futures
+        from backend.shared.customer_property_extractors import extract_birthday_with_name
+        
+        birthday_records = []
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_order = {
+                executor.submit(self.get_order_line_item_properties, order_id): order_id
+                for order_id in order_ids
+            }
+            
+            for future in concurrent.futures.as_completed(future_to_order):
+                try:
+                    properties = future.result()
+                    records = extract_birthday_with_name(properties)
+                    birthday_records.extend(records)
+                except Exception as e:
+                    logger.error(f"Error fetching order: {e}")
+        
+        return birthday_records
+    
+    def get_customer_pronouns_from_orders(self, orders_with_dates: List[Tuple[str, str]]) -> List[Tuple[str, str, str, str]]:
+        """
+        Fetch pronouns with associated names and dates from multiple orders concurrently.
+        
+        Args:
+            orders_with_dates: List of (order_id, created_at) tuples
+            
+        Returns:
+            List of (pronouns, first_name, last_name, created_at) tuples
+        """
+        import concurrent.futures
+        from backend.shared.customer_property_extractors import extract_pronouns_with_name
+        
+        pronouns_records = []
+        
+        # Process orders concurrently while preserving date info
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_order = {
+                executor.submit(self.get_order_line_item_properties, order_id): (order_id, created_at)
+                for order_id, created_at in orders_with_dates
+            }
+            
+            for future in concurrent.futures.as_completed(future_to_order):
+                order_id, created_at = future_to_order[future]
+                try:
+                    properties = future.result()
+                    records = extract_pronouns_with_name(properties)
+                    # Add created_at to each record
+                    for pronouns, first_name, last_name in records:
+                        pronouns_records.append((pronouns, first_name, last_name, created_at))
+                except Exception as e:
+                    logger.error(f"Error fetching order {order_id}: {e}")
+        
+        return pronouns_records
+    
+    def get_customer_birthdays(self, customer_id: str) -> List[Tuple[str, str, str]]:
+        """
+        Get customer birthdays from their orders.
+        
+        High-level convenience method that:
+        1. Gets customer with orders
+        2. Extracts order IDs
+        3. Fetches birthdays from orders concurrently
+        4. Returns sorted results
+        
+        Args:
+            customer_id: Customer ID (gid://shopify/Customer/...)
+            
+        Returns:
+            List of (birthday, first_name, last_name) tuples, sorted by birthday then name
+        """
+        # Get customer with orders
+        customer_id_short = customer_id.split('/')[-1] if '/' in customer_id else customer_id
+        customer = self.get_customer_by_identifier(
+            {"query": f"id:{customer_id_short}", "first": 1},
+            orders_first=5
+        )[0]
+        
+        # Extract order IDs
+        order_ids = self._extract_order_ids_from_customer(customer)
+        
+        if not order_ids:
+            return []
+        
+        # Fetch birthdays
+        birthday_records = self.get_customer_birthdays_from_orders(order_ids)
+        
+        # Sort by birthday, then by name
+        return sorted(birthday_records, key=lambda x: (x[0], x[1], x[2]))
+    
+    def get_customer_pronouns(self, customer_id: str) -> List[Tuple[str, str, str, str]]:
+        """
+        Get customer pronouns from their orders.
+        
+        High-level convenience method that:
+        1. Gets customer with orders
+        2. Extracts order IDs with dates
+        3. Fetches pronouns from orders concurrently
+        4. Returns sorted results (most recent first)
+        
+        Args:
+            customer_id: Customer ID (gid://shopify/Customer/...)
+            
+        Returns:
+            List of (pronouns, first_name, last_name, created_at) tuples, sorted by most recent first
+        """
+        # Get customer with orders
+        customer_id_short = customer_id.split('/')[-1] if '/' in customer_id else customer_id
+        customer = self.get_customer_by_identifier(
+            {"query": f"id:{customer_id_short}", "first": 1},
+            orders_first=5
+        )[0]
+        
+        # Extract order IDs with dates
+        orders_with_dates = self._extract_order_ids_with_dates_from_customer(customer)
+        
+        if not orders_with_dates:
+            return []
+        
+        # Fetch pronouns
+        pronouns_records = self.get_customer_pronouns_from_orders(orders_with_dates)
+        
+        # Sort by created_at (most recent first), then by name
+        # created_at is ISO 8601 format so string sort works correctly
+        return sorted(pronouns_records, key=lambda x: (x[3], x[1], x[2]), reverse=True)
+    
+    def _extract_order_ids_from_customer(self, customer: AnyType) -> List[str]:
+        """
+        Extract order IDs from customer data.
+        
+        Private helper method.
+        
+        Args:
+            customer: Customer object (sgqlc Type instance)
+            
+        Returns:
+            List of order IDs (gid://shopify/Order/...)
+        """
+        orders_conn = getattr(customer, 'orders', None)
+        if not orders_conn:
+            return []
+        
+        nodes = getattr(orders_conn, 'nodes', None)
+        if not nodes:
+            return []
+        
+        return [getattr(order, 'id', '') for order in nodes if getattr(order, 'id', None)]
+    
+    def _extract_order_ids_with_dates_from_customer(self, customer: AnyType) -> List[Tuple[str, str]]:
+        """
+        Extract order IDs with created_at dates from customer data.
+        
+        Private helper method.
+        
+        Args:
+            customer: Customer object (sgqlc Type instance)
+            
+        Returns:
+            List of (order_id, created_at) tuples
+        """
+        orders_conn = getattr(customer, 'orders', None)
+        if not orders_conn:
+            return []
+        
+        nodes = getattr(orders_conn, 'nodes', None)
+        if not nodes:
+            return []
+        
+        return [
+            (getattr(order, 'id', ''), getattr(order, 'createdAt', ''))
+            for order in nodes
+            if getattr(order, 'id', None)
+        ]
     
     # ============================================================================
     # ORDERS

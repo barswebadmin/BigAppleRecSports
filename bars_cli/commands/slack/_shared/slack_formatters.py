@@ -1,5 +1,5 @@
-from backend_services.slack.models.slack_user import SlackUser
-from backend_services.slack.models.slack_group import SlackGroup
+from bars_cli.backend_services.slack.models.slack_user import SlackUser
+from bars_cli.backend_services.slack.models.slack_group import SlackGroup
 
 def format_channels(channels: list) -> str:
     """Format channels list for display."""

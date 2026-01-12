@@ -13,7 +13,7 @@ from bars_cli._core.param_types import SLACK_GROUP_IDENTIFIER, SLACK_USER_IDENTI
 @click.option('--bot', default='leadership', help='Which bot to use')
 @click.option('--dry-run', is_flag=True, help='Preview changes without applying')
 @click.pass_context
-def add_user_to_group(ctx: click.Context, group_identifier: dict, user_identifier: dict, bot: str, dry_run: bool):
+def cmd_slack_groups_add_user(ctx: click.Context, group_identifier: dict, user_identifier: dict, bot: str, dry_run: bool):
     """
     Add a user to a usergroup.
     

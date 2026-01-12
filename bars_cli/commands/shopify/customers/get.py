@@ -8,10 +8,10 @@ import click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_CUSTOMER_IDENTIFIER
-from bars_cli.commands.shopify._shared.slack_formatters import _format_customer_option, format_customer
+from bars_cli.commands.shopify._shared.shopify_formatters import _format_customer_option, format_customer
 from bars_cli.commands.shopify._shared.command_helpers import handle_multiple_shopify_results
 from bars_cli.commands.shopify._shared.command_helpers import handle_shopify_get_command
-from backend_services.shopify.services.shopify_service import ShopifyService
+from bars_cli.backend_services.shopify.services.shopify_service import ShopifyService
 
 
 @click.command('get')

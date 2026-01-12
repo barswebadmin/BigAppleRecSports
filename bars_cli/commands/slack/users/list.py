@@ -6,7 +6,7 @@ from typing import List, Dict, Any, cast, Optional
 import click
 from slack_sdk.errors import SlackApiError
 
-from backend_services.slack.models.slack_user import SlackUser
+from bars_cli.backend_services.slack.models.slack_user import SlackUser
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 
 from ..utils import handle_slack_api_error

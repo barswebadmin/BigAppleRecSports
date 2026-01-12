@@ -8,14 +8,18 @@ Command structure:
 """
 import click
 
-from .customers.get_customer_cmd import get_customer_cmd
+from .customers.get_customer import get_customer_cmd
 from .customers.update import update_customer_cmd
-from .orders.get_order_cmd import get_order_cmd
-from .orders.cancel_order_cmd import cancel_order_cmd
-from .orders.refund_order_cmd import refund_order_cmd
-from .orders.apply_discount_cmd import apply_discount_cmd
-from .products.get_product_cmd import get_product_cmd
-from .products.restock_cmd import restock_cmd
+from .orders.get import get_order_cmd
+from .orders.cancel import cancel_order_cmd
+from .orders.refund import refund_order_cmd
+from .orders.apply_discount import apply_discount_cmd
+from .orders.cancel_and_refund import cancel_and_refund_cmd
+from .orders.analyze_refunds import analyze_refunds_cmd
+from .products.get import get_product_cmd
+from .products.restock import restock_cmd
+from .products.orders import product_orders_cmd
+from .pages import page_group
 
 
 @click.group(
@@ -47,6 +51,8 @@ order_group.add_command(get_order_cmd, 'get')
 order_group.add_command(cancel_order_cmd, 'cancel')
 order_group.add_command(refund_order_cmd, 'refund')
 order_group.add_command(apply_discount_cmd, 'apply-discount')
+order_group.add_command(cancel_and_refund_cmd, 'cancel-and-refund')
+order_group.add_command(analyze_refunds_cmd, 'analyze-refunds')
 
 # Create customer group and add get command to it
 @click.group('customers')
@@ -66,9 +72,11 @@ def product_group(ctx: click.Context):
 
 product_group.add_command(get_product_cmd, 'get')
 product_group.add_command(restock_cmd, 'restock')
+product_group.add_command(product_orders_cmd, 'orders')
 
 # Register groups
 shopify.add_command(customer_group)
 shopify.add_command(order_group)
 shopify.add_command(product_group)
+shopify.add_command(page_group)
 

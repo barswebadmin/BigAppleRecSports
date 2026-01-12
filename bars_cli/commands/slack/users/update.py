@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, cast
 import click
 from slack_sdk.errors import SlackApiError
 
-from backend_services.slack.models.slack_user import SlackUser, SlackUserProfile
+from bars_cli.backend_services.slack.models.slack_user import SlackUser, SlackUserProfile
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.decorators.profile_options import profile_options_from_model
 from bars_cli._core.prompts import prompt_text_input, prompt_confirmation, prompt_select_from_options, EXIT_SENTINEL

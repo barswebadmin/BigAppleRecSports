@@ -226,7 +226,7 @@ def apply_discount_cmd(
     except RuntimeError as e:
         raise click.ClickException(f"[red]API Error: {e}[/red]")
     except Exception as e:
-        console.print(f"[red]Unexpected error: {str(e)}[/red]", err=True)
+        console.print(f"[red]Unexpected error: {str(e)}[/red]", file=sys.stderr)
         traceback.print_exc()
         raise click.ClickException(str(e))
 

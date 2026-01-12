@@ -84,35 +84,22 @@ make compile backend
 make ready backend
 ```
 
-### Smart Git Commit (BARS-Only)
-Automatically handles pre-commit formatting fixes so you only need to run `git commit` once:
-
-**Setup (Recommended):**
-```bash
-# Add to your ~/.zshrc file:
-source ~/Documents/scripts/zshrc_scripts
-
-# Reload shell
-source ~/.zshrc
-```
-
-**Alternative Usage:**
-```bash
-# Use script directly
-./scripts/git-commit-bars -m "your commit message"
-```
+### Smart Git Commit (Pre-Commit Hook)
+The pre-commit hook automatically handles formatting fixes before committing:
 
 **How It Works:**
-- ✅ **First Attempt**: Runs `git commit` normally
-- 🔧 **Auto-Recovery**: If only formatting issues, auto-stages fixes and re-commits
-- 🛡️ **Safety**: Only works in BARS_Github directories
-- 🎯 **Result**: No more running commits twice for whitespace fixes!
+- ✅ **Auto-Formatting**: Pre-commit hook runs Ruff formatter
+- 🔧 **Auto-Staging**: Formatting changes are automatically staged
+- 🛡️ **Safe**: Only formatting changes are auto-staged (code changes require review)
+- 🎯 **Result**: Commits succeed on first try, no manual staging needed!
 
 ```bash
-# These now work seamlessly, even with formatting issues:
+# Just commit normally - formatting is handled automatically:
 git commit -m "feat: add new feature"
 git commit -am "fix: update logic"
 ```
+
+The pre-commit hook is located at `.githooks/pre-commit` and is automatically symlinked to `.git/hooks/pre-commit`.
 
 ## 🔧 Configuration
 

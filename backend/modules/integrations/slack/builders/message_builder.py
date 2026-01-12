@@ -9,7 +9,22 @@ from typing import Dict, Any, Optional, Union
 from datetime import datetime, timezone
 import logging
 from shared.date_utils import format_date_and_time, parse_shopify_datetime
-from modules.integrations.shopify.builders.shopify_url_builders import build_customer_url, build_order_url, build_product_url
+# Add backend to path early
+import sys
+from pathlib import Path
+backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
+if str(backend_path) not in sys.path:
+    sys.path.insert(0, str(backend_path))
+
+# Lazy import Shopify URL builders to avoid circular dependencies
+def _get_shopify_url_builders():
+    """Lazy import of Shopify URL builders to avoid circular dependencies."""
+    from modules.integrations.shopify.builders.shopify_url_builders import (
+        build_customer_url,
+        build_order_url,
+        build_product_url
+    )
+    return build_customer_url, build_order_url, build_product_url
 from config_old_deprecated.slack import SlackGroup
 logger = logging.getLogger(__name__)
 
@@ -93,6 +108,7 @@ class SlackMessageBuilder:
 
                 if full_name and customer_data and customer_data.get("id"):
                     # Create hyperlinked name to customer profile
+                    build_customer_url, _, _ = _get_shopify_url_builders()
                     customer_url = self.build_hyperlink(build_customer_url(customer_data["id"]), full_name)
                     return f"📧 *Requested by:* <{customer_url}|{full_name}> ({requestor_email})\n\n"
                 elif full_name:
@@ -498,6 +514,7 @@ class SlackMessageBuilder:
                 product = order.get("product", {})
                 product_id = product.get("productId") or product.get("id") or ""
                 product_title = product.get("title", "Unknown Product")
+                _, _, build_product_url = _get_shopify_url_builders()
                 product_url = self.build_hyperlink(build_product_url(product_id), product_title) if product_id else "#"
                 product_display = f"<{product_url}|{product_title}>"
                 product_field_name = "Product Title"
@@ -505,6 +522,7 @@ class SlackMessageBuilder:
             if original_data.get("order_number_display"):
                 order_number_display = original_data["order_number_display"]
             else:
+                _, build_order_url, _ = _get_shopify_url_builders()
                 order_url = self.build_hyperlink(build_order_url(order_id), order_number)
                 order_number_display = order_url
 

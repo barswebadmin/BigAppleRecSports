@@ -199,9 +199,50 @@ install:
 	@python3 scripts/install_pipx_environment.py
 	@echo "  Installing GAS dependencies from GoogleAppsScripts/package.json..."
 	@cd GoogleAppsScripts && pnpm install
+	@echo "  Setting up direnv hook in .zshrc..."
+	@if ! grep -q 'eval "$$(direnv hook zsh)"' ~/.zshrc 2>/dev/null; then \
+		echo 'eval "$$(direnv hook zsh)"' >> ~/.zshrc && \
+		echo "    ✅ Added direnv hook to ~/.zshrc"; \
+	else \
+		echo "    ℹ️  direnv hook already exists in ~/.zshrc"; \
+	fi
 	@echo "✅ All dependencies installed!"
 	@echo "✅ bars CLI is now available. Run 'bars --help' to get started."
 	@echo "⚠️  Restart your shell or run 'source ~/.zshrc' to activate direnv hook."
+
+install-prod:
+	@echo "📦 Installing production dependencies only..."
+	@pip3 install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil typing-extensions
+	@echo "  Installing GAS dependencies from GoogleAppsScripts/package.json..."
+	@cd GoogleAppsScripts && pnpm install --prod
+	@echo "✅ Production dependencies installed!"
+
+reinstall:
+	@echo "🔄 Reinstalling all dependencies..."
+	@echo "  Reinstalling bars CLI package..."
+	@pipx reinstall bars --editable || (pipx uninstall bars 2>/dev/null || true; pipx install -e . || pipx install .)
+	@echo "  Injecting requirements.txt dependencies into pipx venv..."
+	@pipx inject bars -r requirements.txt --force || echo "    ⚠️  Some dependencies may already be installed"
+	@echo "  Cleaning up unused dependencies from pipx venv..."
+	@python3 scripts/sync_pipx_dependencies.py || echo "    ⚠️  Could not clean up unused packages"
+	@echo "  Reinstalling GAS dependencies..."
+	@cd GoogleAppsScripts && rm -rf node_modules pnpm-lock.yaml && pnpm install
+	@echo "  Setting up direnv hook in .zshrc..."
+	@if ! grep -q 'eval "$$(direnv hook zsh)"' ~/.zshrc 2>/dev/null; then \
+		echo 'eval "$$(direnv hook zsh)"' >> ~/.zshrc && \
+		echo "    ✅ Added direnv hook to ~/.zshrc"; \
+	else \
+		echo "    ℹ️  direnv hook already exists in ~/.zshrc"; \
+	fi
+	@echo "✅ All dependencies reinstalled!"
+	@echo "✅ bars CLI is now available. Run 'bars --help' to get started."
+	@echo "⚠️  Restart your shell or run 'source ~/.zshrc' to activate direnv hook."
+
+install-backend-legacy:
+	@echo "📦 Installing backend dependencies (legacy method)..."
+	@cd backend && pip3 install -r requirements.txt
+	@echo "📦 Installing test dependencies..."
+	@cd backend && pip3 install pytest pytest-asyncio pytest-mock
 
 clean: stop
 	@echo "🧹 Cleaning up..."

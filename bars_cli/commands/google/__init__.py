@@ -59,12 +59,12 @@ def sheets_group(ctx: click.Context):
 
 
 # Register subcommands
-from .groups.get_group_cmd import get_group_cmd
-from .groups.list_cmd import list_groups_cmd
-from .groups.add_member_cmd import add_member_cmd, add_user_cmd
-from .groups.remove_member_cmd import remove_member_cmd, remove_user_cmd
-from .users.get_user_cmd import get_user_cmd
-from .users.list_cmd import list_users_cmd
+from .groups.get import get_group_cmd
+from .groups.list import list_groups_cmd
+from .groups.add_member import add_member_cmd, add_user_cmd
+from .groups.remove_member import remove_member_cmd, remove_user_cmd
+from .users.get import get_user_cmd
+from .users.list import list_users_cmd
 
 groups_group.add_command(get_group_cmd, 'get')
 groups_group.add_command(list_groups_cmd, 'list')
