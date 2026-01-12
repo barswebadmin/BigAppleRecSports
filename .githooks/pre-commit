@@ -219,37 +219,51 @@ GAS_DETECT_SCRIPT="$REPO_ROOT/GoogleAppsScripts/remote-sync-tools/detect-webapp-
 if [ -f "$GAS_DETECT_SCRIPT" ]; then
     # Only check if there are GAS files in staged changes
     if git diff --cached --name-only | grep -q "^GoogleAppsScripts/"; then
-        echo "🔍 Checking for GAS doGet/doPost changes..."
+        echo "🔍 Checking for Google Apps Script doGet/doPost changes..."
         
-        # Run detection (suppress output, capture exit code)
-        if "$GAS_DETECT_SCRIPT" --staged >/dev/null 2>&1; then
+        # Run detection and capture output
+        set +e  # Temporarily disable exit on error to capture output
+        DETECT_OUTPUT=$("$GAS_DETECT_SCRIPT" --staged 2>&1)
+        EXIT_CODE=$?
+        set -e  # Re-enable exit on error
+        
+        if [ $EXIT_CODE -eq 0 ]; then
             # Exit code 0: No changes detected
-            echo "✅ No doGet/doPost changes detected in GAS projects"
-        else
-            EXIT_CODE=$?
+            echo "✅ No doGet/doPost changes detected in staged files"
+        elif [ $EXIT_CODE -eq 2 ]; then
+            # Exit code 2: Changes detected (warning, non-blocking)
+            echo ""
+            echo "$DETECT_OUTPUT"
+            echo ""
+            echo "🚨 doGet/doPost function changes detected in your commit!"
+            echo ""
+            echo "🤔 What does this mean?"
+            echo "  • You've modified web app endpoint functions"
+            echo "  • These changes won't be active until deployed to Google Apps Script"
+            echo "  • Users will still see the OLD behavior until deployment"
+            echo ""
+            echo "🚀 Next steps after committing:"
+            echo "  1. Push to main branch (triggers auto-deployment)"
+            echo "  2. Or manually deploy: make clasp deploy [project]"
+            echo "  3. Or use script: bash GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
+            echo ""
+            echo "💡 This is just a warning - your commit will proceed normally."
+            echo ""
             
-            if [ $EXIT_CODE -eq 2 ]; then
-                # Exit code 2: Changes detected (warning, non-blocking)
-                echo ""
-                echo "⚠️  GAS doGet/doPost function changes detected in your commit!"
-                echo ""
-                echo "🤔 What does this mean?"
-                echo "  • You've modified web app endpoint functions"
-                echo "  • These changes won't be active until deployed to Google Apps Script"
-                echo "  • Users will still see the OLD behavior until deployment"
-                echo ""
-                echo "🚀 Next steps after committing:"
-                echo "  1. Push to master branch (triggers auto-deployment)"
-                echo "  2. Or manually deploy: make clasp deploy [project]"
-                echo "  3. Or use script: bash GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
-                echo ""
-                echo "💡 This is just a warning - your commit will proceed normally."
-                echo ""
-            else
-                # Other exit codes: Error (blocking)
-                echo "❌ Error running GAS doGet/doPost detection script (exit code: $EXIT_CODE)"
+            # Ask user if they want to continue
+            read -p "Continue with commit? (Y/n): " -n 1 -r
+            echo ""
+            if [[ $REPLY =~ ^[Nn]$ ]]; then
+                echo "ℹ️  Commit cancelled by user"
                 exit 1
             fi
+            
+            echo "✅ Proceeding with commit..."
+        else
+            # Other exit codes: Error (blocking)
+            echo "❌ Error running doGet/doPost detection script"
+            echo "$DETECT_OUTPUT"
+            exit 1
         fi
     fi
 fi
