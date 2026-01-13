@@ -49,7 +49,7 @@ coverage_html/
 *.log
 *.egg-info/
 **/*.egg-info/
-zz_local_dev_plans/
+zz_local_dev_plans
 
 # Google Service Account credentials
 backend/google-service-account.json

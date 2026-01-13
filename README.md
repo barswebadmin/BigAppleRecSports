@@ -302,7 +302,7 @@ Automatic deployment via GitHub Actions on push to `main`:
 ### Manual Deployment
 ```bash
 # Deploy to Render
-./scripts/deploy_to_render.sh
+./scripts/deployment/deploy_backend.py
 
 # Sync secrets
 ./scripts/sync_render_secrets.py

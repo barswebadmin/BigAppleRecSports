@@ -538,11 +538,11 @@ run_comparison() {
             log_error "Comparison script not found: $compare_script"
             return 1
         fi
-        if [ -n "$project_name" ]; then
-            compare_cmd="python3 \"$compare_script\" --local-path \"$local_path\" --identifier \"$project_name\" --keep-temp 2>&1"
-        else
-            compare_cmd="python3 \"$compare_script\" --local-path \"$local_path\" --keep-temp 2>&1"
+        # Extract project name from local_path if not provided
+        if [ -z "$project_name" ]; then
+            project_name=$(basename "$local_path")
         fi
+        compare_cmd="python3 \"$compare_script\" --remote-origin-type google --project-name \"$project_name\" --local-path \"$local_path\" --keep-temp 2>&1"
     else
         compare_script="$REPO_ROOT/scripts/file_comparison/compare_at_path.py"
         if [ ! -f "$compare_script" ]; then

@@ -1,0 +1,31 @@
+name: Test Google Apps Scripts
+
+on:
+  push:
+    branches-ignore: [ main ]
+    paths:
+      - 'GoogleAppsScripts/**'
+      - '.github/workflows/test-google.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test-google:
+    name: Google Apps Scripts Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'dependabot/') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Run GAS tests
+        run: |
+          python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import run_gas_tests; sys.exit(run_gas_tests())"

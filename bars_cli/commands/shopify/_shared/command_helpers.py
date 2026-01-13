@@ -110,8 +110,7 @@ def handle_multiple_shopify_results(
     # Use prompt_select_from_options for selection (it automatically adds "Exit" at the end)
     selected_option = prompt_select_from_options(
         display_text=f"Select {entity_name.capitalize()} ({len(items)} found)",
-        options=options,
-        autocomplete=True
+        options=options
     )
     
     # Handle exit/cancellation

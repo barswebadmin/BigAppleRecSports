@@ -1,0 +1,41 @@
+name: Test Backend
+
+on:
+  push:
+    branches-ignore: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/test-backend.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'dependabot/') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        run: |
+          python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import run_backend_tests; sys.exit(run_backend_tests())"
+        env:
+          SHOPIFY_URL_ADMIN_DOMAIN: test-store.myshopify.com
+          SHOPIFY_TOKEN: test_token
+          ENVIRONMENT: test
+          SLACK_REFUNDS_BOT_TOKEN: test_slack_token

@@ -320,7 +320,7 @@ def test_refund_api_endpoint():
 ### Manual Deployment
 ```bash
 # Backend to Render
-./scripts/deploy_to_render.sh
+./scripts/deployment/deploy_backend.py
 
 # Google Apps Scripts
 cd GoogleAppsScripts && ./deploy.sh project-name

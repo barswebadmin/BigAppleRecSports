@@ -13,6 +13,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Stash any unstaged changes to keep working directory clean
+HAS_UNSTAGED=$(git diff --quiet 2>/dev/null || echo "yes")
+if [ "$HAS_UNSTAGED" = "yes" ]; then
+    echo "📦 Stashing unstaged changes..."
+    git stash push --keep-index -m "pre-commit: stashed unstaged changes" >/dev/null 2>&1 || true
+    STASHED=true
+else
+    STASHED=false
+fi
+
+# Function to restore stashed changes
+restore_stash() {
+    if [ "$STASHED" = "true" ]; then
+        echo "📦 Restoring unstaged changes..."
+        git stash pop >/dev/null 2>&1 || true
+    fi
+}
+
+# Ensure stash is restored on exit (success or failure)
+trap restore_stash EXIT
+
 # 0. Block commits to main branch
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 if [ "$CURRENT_BRANCH" = "main" ]; then
@@ -116,6 +137,49 @@ if command -v ruff &> /dev/null || [ -f ".venv/bin/ruff" ]; then
     echo "✨ Running Ruff formatter..."
     $RUFF_CMD format scripts/ lambda/ backend/ --quiet
     echo "✅ Ruff formatting complete"
+    
+    # Check if formatting created any changes
+    if ! git diff --quiet; then
+        echo "📝 Formatting changes detected..."
+        
+        # Get list of files with changes
+        FORMATTED_FILES=$(git diff --name-only)
+        
+        # Ruff format only makes safe formatting changes (whitespace, indentation, line breaks)
+        # Since we stashed unstaged changes, any changes here are from Ruff formatting
+        # Check if changes are only formatting by verifying they're whitespace-only
+        # Use a simple heuristic: if diff shows only whitespace/indentation changes, it's formatting
+        
+        # Check each file to see if changes are only formatting
+        ONLY_FORMATTING=true
+        for file in $FORMATTED_FILES; do
+            # Get diff and check if it contains actual code changes (not just whitespace)
+            # Remove diff headers and context, check remaining lines
+            FILE_DIFF=$(git diff -- "$file")
+            
+            # Check if any line has non-whitespace content changes
+            # (comparing added vs removed lines after stripping whitespace)
+            ADDED_LINES=$(echo "$FILE_DIFF" | grep "^+" | grep -v "^+++" | sed 's/^+//' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+            REMOVED_LINES=$(echo "$FILE_DIFF" | grep "^-" | grep -v "^---" | sed 's/^-//' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+            
+            # Compare line by line - if content differs beyond whitespace, it's not just formatting
+            if [ "$ADDED_LINES" != "$REMOVED_LINES" ]; then
+                # Might still be formatting (e.g., trailing comma), but be safe and flag it
+                # For now, since Ruff format is safe, we'll stage anyway but note it
+                ONLY_FORMATTING=false
+            fi
+        done
+        
+        if [ "$ONLY_FORMATTING" = "true" ]; then
+            echo "✅ Only formatting changes detected, staging automatically..."
+        else
+            echo "⚠️  Mixed changes detected (formatting + possible code changes)"
+            echo "   Staging formatting changes (Ruff format is safe)..."
+        fi
+        
+        git add $FORMATTED_FILES
+        echo "✅ Formatting changes staged"
+    fi
 else
     echo "⚠️  Ruff not found, skipping linting and formatting"
 fi
@@ -203,67 +267,42 @@ for product in non_bars:
     echo "✅ CI deployment tests passed"
 fi
 
-# 4. Lambda version management
-LAMBDA_VERSION_MANAGER="$REPO_ROOT/scripts/version_manager.py"
-if [ -f "$LAMBDA_VERSION_MANAGER" ]; then
-    echo "📝 Checking lambda function changes..."
-    if python3 "$LAMBDA_VERSION_MANAGER"; then
-        echo "✅ Lambda version management complete"
-    else
-        echo "⚠️  Lambda version management failed"
-    fi
-fi
-
-# 5. GAS doGet/doPost change detection
+# 4. GAS doGet/doPost change detection
 GAS_DETECT_SCRIPT="$REPO_ROOT/GoogleAppsScripts/remote-sync-tools/detect-webapp-changes.sh"
 if [ -f "$GAS_DETECT_SCRIPT" ]; then
     # Only check if there are GAS files in staged changes
     if git diff --cached --name-only | grep -q "^GoogleAppsScripts/"; then
-        echo "🔍 Checking for Google Apps Script doGet/doPost changes..."
+        echo "🔍 Checking for GAS doGet/doPost changes..."
         
-        # Run detection and capture output
-        set +e  # Temporarily disable exit on error to capture output
-        DETECT_OUTPUT=$("$GAS_DETECT_SCRIPT" --staged 2>&1)
-        EXIT_CODE=$?
-        set -e  # Re-enable exit on error
-        
-        if [ $EXIT_CODE -eq 0 ]; then
+        # Run detection (suppress output, capture exit code)
+        if "$GAS_DETECT_SCRIPT" --staged >/dev/null 2>&1; then
             # Exit code 0: No changes detected
-            echo "✅ No doGet/doPost changes detected in staged files"
-        elif [ $EXIT_CODE -eq 2 ]; then
-            # Exit code 2: Changes detected (warning, non-blocking)
-            echo ""
-            echo "$DETECT_OUTPUT"
-            echo ""
-            echo "🚨 doGet/doPost function changes detected in your commit!"
-            echo ""
-            echo "🤔 What does this mean?"
-            echo "  • You've modified web app endpoint functions"
-            echo "  • These changes won't be active until deployed to Google Apps Script"
-            echo "  • Users will still see the OLD behavior until deployment"
-            echo ""
-            echo "🚀 Next steps after committing:"
-            echo "  1. Push to main branch (triggers auto-deployment)"
-            echo "  2. Or manually deploy: make clasp deploy [project]"
-            echo "  3. Or use script: bash GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
-            echo ""
-            echo "💡 This is just a warning - your commit will proceed normally."
-            echo ""
+            echo "✅ No doGet/doPost changes detected in GAS projects"
+        else
+            EXIT_CODE=$?
             
-            # Ask user if they want to continue
-            read -p "Continue with commit? (Y/n): " -n 1 -r
-            echo ""
-            if [[ $REPLY =~ ^[Nn]$ ]]; then
-                echo "ℹ️  Commit cancelled by user"
+            if [ $EXIT_CODE -eq 2 ]; then
+                # Exit code 2: Changes detected (warning, non-blocking)
+                echo ""
+                echo "⚠️  GAS doGet/doPost function changes detected in your commit!"
+                echo ""
+                echo "🤔 What does this mean?"
+                echo "  • You've modified web app endpoint functions"
+                echo "  • These changes won't be active until deployed to Google Apps Script"
+                echo "  • Users will still see the OLD behavior until deployment"
+                echo ""
+                echo "🚀 Next steps after committing:"
+                echo "  1. Push to master branch (triggers auto-deployment)"
+                echo "  2. Or manually deploy: make clasp deploy [project]"
+                echo "  3. Or use script: bash GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
+                echo ""
+                echo "💡 This is just a warning - your commit will proceed normally."
+                echo ""
+            else
+                # Other exit codes: Error (blocking)
+                echo "❌ Error running GAS doGet/doPost detection script (exit code: $EXIT_CODE)"
                 exit 1
             fi
-            
-            echo "✅ Proceeding with commit..."
-        else
-            # Other exit codes: Error (blocking)
-            echo "❌ Error running doGet/doPost detection script"
-            echo "$DETECT_OUTPUT"
-            exit 1
         fi
     fi
 fi

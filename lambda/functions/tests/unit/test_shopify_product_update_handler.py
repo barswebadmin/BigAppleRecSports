@@ -315,10 +315,13 @@ class TestShopifyProductUpdateHandler:
 
     def test_version_info_retrieval(self):
         """Test version information retrieval"""
-        from version import get_version_info  # type: ignore
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "scripts" / "deployment"))
+        from version_manager import get_version_info
 
-        version_info = get_version_info()
+        version_info = get_version_info("lambda/functions/shopifyProductUpdateHandler/version.json")
+        assert version_info is not None
         assert 'version' in version_info
-        assert 'description' in version_info
-        assert 'author' in version_info
-        assert version_info['author'] == 'BARS' 
+        assert 'build' in version_info
+        assert 'full_version' in version_info 
