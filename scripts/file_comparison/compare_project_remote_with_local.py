@@ -1,216 +1,172 @@
 #!/usr/bin/env python3
 """
-Compare local project code with remote code.
-Supports both Lambda functions and GAS projects.
+Main entry point for comparing local project code with remote code.
+Takes remote_origin_type (google/aws) and project_name as parameters.
 """
 
 import argparse
+import shutil
 import sys
 import tempfile
 from pathlib import Path
 from typing import Optional
 
-# Handle both module and standalone execution
-try:
-    from ..remote_sync.aws_lambda_fetcher import AWSLambdaFetcher
-    from ..remote_sync.gas_fetcher import GASFetcher
-    from .unified_comparison import UnifiedComparison
-except ImportError:
-    # Standalone execution - add parent directory to path
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent.parent
-    sys.path.insert(0, str(repo_root))
-    
-    from scripts.remote_sync.aws_lambda_fetcher import AWSLambdaFetcher
-    from scripts.remote_sync.gas_fetcher import GASFetcher
-    from scripts.file_comparison.unified_comparison import UnifiedComparison
+from .fetchers import fetch_from_remote, check_credentials
+from .comparison_logic import compare_directories, ComparisonResult
+from .formatters import display_comparison_result
 
 
-def detect_project_type(local_path: Path) -> str:
+def compare_project_remote_with_local(
+    remote_origin_type: str,
+    project_name: str,
+    local_path: Optional[Path] = None,
+    show_diffs: bool = False,
+    keep_temp: bool = False,
+    max_diff_lines: int = 50,
+    **kwargs
+) -> ComparisonResult:
     """
-    Detect project type from local path.
+    Compare local project code with remote code.
+    
+    Args:
+        remote_origin_type: "google" or "aws"
+        project_name: Name of the project/function
+        local_path: Path to local project directory (auto-detected if None)
+        show_diffs: Whether to include diff content in output
+        keep_temp: Whether to keep temporary directory after comparison
+        max_diff_lines: Maximum diff lines to show per file
+        **kwargs: Additional arguments (region, project_root, etc.)
     
     Returns:
-        "lambda" or "gas"
+        ComparisonResult with all file comparisons
+    
+    Raises:
+        ValueError: If remote_origin_type is unknown or local_path is invalid
+        RuntimeError: If fetch or comparison fails
     """
-    # Check if it's a Lambda function
-    if (local_path / "lambda_function.py").exists():
-        return "lambda"
+    if remote_origin_type not in ("google", "aws"):
+        raise ValueError(f"remote_origin_type must be 'google' or 'aws', got: {remote_origin_type}")
     
-    # Check if it's a GAS project
-    if (local_path / ".clasp.json").exists():
-        return "gas"
+    # Auto-detect local_path if not provided
+    if local_path is None:
+        script_dir = Path(__file__).parent
+        repo_root = script_dir.parent.parent
+        
+        if remote_origin_type == "aws":
+            local_path = repo_root / "lambda" / "functions" / project_name
+        else:  # google
+            local_path = repo_root / "GoogleAppsScripts" / "projects" / project_name
     
-    # Check parent directories
-    parent = local_path.parent
-    if parent.name == "lambda-functions" or "lambda" in str(local_path).lower():
-        return "lambda"
-    if "GoogleAppsScripts" in str(local_path) or "gas" in str(local_path).lower():
-        return "gas"
+    if not local_path.exists():
+        raise ValueError(f"Local path does not exist: {local_path}")
     
-    # Default to lambda for Python projects
-    if any(local_path.glob("*.py")):
-        return "lambda"
+    if not local_path.is_dir():
+        raise ValueError(f"Local path is not a directory: {local_path}")
     
-    # Default to gas for JS projects
-    if any(local_path.glob("*.js")) or any(local_path.glob("*.gs")):
-        return "gas"
+    # Check credentials
+    if not check_credentials(remote_origin_type):
+        if remote_origin_type == "aws":
+            raise RuntimeError("AWS credentials not configured. Run: aws configure (or aws sso login / assume bars)")
+        else:
+            raise RuntimeError("clasp not installed or not authenticated. Run: clasp login")
     
-    return "lambda"  # Default
+    # Create temp directory for remote code
+    temp_dir = Path(tempfile.mkdtemp(prefix=f'{remote_origin_type}_compare_'))
+    
+    try:
+        # Fetch remote code
+        remote_path = fetch_from_remote(
+            remote_origin_type=remote_origin_type,
+            project_name=project_name,
+            temp_dir=temp_dir,
+            **kwargs
+        )
+        
+        # Determine local compare path (handle build/ directories for GAS)
+        local_compare_path = local_path
+        if remote_origin_type == "google":
+            build_dir = local_path / "build"
+            if build_dir.exists():
+                local_compare_path = build_dir
+        
+        # Compare directories
+        result = compare_directories(
+            local_path=local_compare_path,
+            remote_path=remote_path,
+            remote_origin_type=remote_origin_type
+        )
+        
+        # Display results
+        display_comparison_result(
+            result,
+            show_diffs=show_diffs,
+            max_diff_lines=max_diff_lines
+        )
+        
+        return result
+    
+    finally:
+        # Cleanup temp directory
+        if not keep_temp and temp_dir.exists():
+            shutil.rmtree(temp_dir)
 
 
 def main():
+    """CLI entry point."""
     parser = argparse.ArgumentParser(
         description='Compare local project code with remote code',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Lambda function
-  %(prog)s --local-path lambda-functions/MoveInventoryLambda
+  %(prog)s --remote-origin-type aws --project-name MoveInventoryLambda
   
   # GAS project
-  %(prog)s --local-path GoogleAppsScripts/projects/waitlist-script-comprehensive
+  %(prog)s --remote-origin-type google --project-name waitlist-script-comprehensive
   
-  # With options
-  %(prog)s --local-path path/to/project --show-diffs --keep-temp
+  # With explicit local path
+  %(prog)s --remote-origin-type aws --project-name MoveInventoryLambda --local-path lambda/functions/MoveInventoryLambda
         """
     )
     
-    parser.add_argument(
-        '--local-path',
-        type=Path,
-        required=True,
-        help='Path to local project directory'
-    )
-    parser.add_argument(
-        '--project-type',
-        choices=['auto', 'lambda', 'gas'],
-        default='auto',
-        help='Project type (default: auto-detect)'
-    )
-    parser.add_argument(
-        '--identifier',
-        type=str,
-        help='Project/function identifier (default: directory name)'
-    )
-    parser.add_argument(
-        '--show-diffs',
-        action='store_true',
-        help='Show diff content for different files'
-    )
-    parser.add_argument(
-        '--max-diff-lines',
-        type=int,
-        default=50,
-        help='Maximum diff lines to show per file (default: 50)'
-    )
-    parser.add_argument(
-        '--keep-temp',
-        action='store_true',
-        help='Keep temporary directory after comparison'
-    )
-    parser.add_argument(
-        '--language',
-        choices=['auto', 'python', 'javascript'],
-        default='auto',
-        help='Language for comparison (default: auto-detect)'
-    )
+    parser.add_argument('--remote-origin-type', choices=['google', 'aws'], required=True,
+                       help='Remote origin type: google or aws')
+    parser.add_argument('--project-name', type=str, required=True,
+                       help='Name of the project/function')
+    parser.add_argument('--local-path', type=Path,
+                       help='Path to local project directory (auto-detected if not provided)')
+    parser.add_argument('--show-diffs', action='store_true',
+                       help='Show diff content for different files')
+    parser.add_argument('--max-diff-lines', type=int, default=50,
+                       help='Maximum diff lines to show per file (default: 50)')
+    parser.add_argument('--keep-temp', action='store_true',
+                       help='Keep temporary directory after comparison')
+    parser.add_argument('--region', type=str, default='us-east-1',
+                       help='AWS region (default: us-east-1, only for aws)')
+    parser.add_argument('--project-root', type=Path,
+                       help='Root directory of GAS projects (default: auto-detect, only for google)')
     
     args = parser.parse_args()
     
-    # Validate local path
-    if not args.local_path.exists():
-        print(f"❌ Local path does not exist: {args.local_path}", file=sys.stderr)
-        sys.exit(1)
-    
-    if not args.local_path.is_dir():
-        print(f"❌ Local path is not a directory: {args.local_path}", file=sys.stderr)
-        sys.exit(1)
-    
-    # Detect project type
-    project_type = args.project_type
-    if project_type == 'auto':
-        project_type = detect_project_type(args.local_path)
-    
-    # Get identifier
-    identifier = args.identifier or args.local_path.name
-    
-    # Create fetcher
-    if project_type == 'lambda':
-        fetcher = AWSLambdaFetcher()
-        if not fetcher.check_credentials():
-            print("❌ AWS credentials not configured", file=sys.stderr)
-            print("   Run: aws configure or aws sso login", file=sys.stderr)
-            sys.exit(1)
-    elif project_type == 'gas':
-        fetcher = GASFetcher()
-        if not fetcher.check_credentials():
-            print("❌ clasp not installed or not authenticated", file=sys.stderr)
-            print("   Run: npm install -g @google/clasp && clasp login", file=sys.stderr)
-            sys.exit(1)
-    else:
-        print(f"❌ Unknown project type: {project_type}", file=sys.stderr)
-        sys.exit(1)
-    
-    # Create temp directory
-    temp_dir = Path(tempfile.mkdtemp(prefix='compare_remote_'))
-    
     try:
-        # Fetch remote code
-        print(f"📥 Fetching remote code for {identifier}...")
-        remote_path = fetcher.fetch(identifier, temp_dir)
-        print(f"✅ Remote code fetched to: {remote_path}")
+        kwargs = {}
+        if args.remote_origin_type == "aws":
+            kwargs["region"] = args.region
+        else:  # google
+            if args.project_root:
+                kwargs["project_root"] = args.project_root
         
-        # Prepare local path
-        # For GAS projects with esbuild, we need to compare build/ directory
-        # For Lambda, compare the directory as-is
-        local_compare_path = args.local_path
-        if project_type == 'gas':
-            # Check if project uses esbuild
-            build_dir = args.local_path / "build"
-            if build_dir.exists():
-                local_compare_path = build_dir
-                print(f"📦 Using build directory for comparison: {build_dir}")
-        
-        # Create comparison engine
-        comparator = UnifiedComparison(language=args.language)
-        
-        # Compare
-        print(f"\n🔍 Comparing local vs remote...")
-        print(f"   Local:  {local_compare_path}")
-        print(f"   Remote: {remote_path}")
-        print()
-        
-        result = comparator.compare_directories(local_compare_path, remote_path)
-        
-        # Format and print output
-        output = comparator.format_output(
-            result,
+        result = compare_project_remote_with_local(
+            remote_origin_type=args.remote_origin_type,
+            project_name=args.project_name,
+            local_path=args.local_path,
             show_diffs=args.show_diffs,
-            max_diff_lines=args.max_diff_lines
+            keep_temp=args.keep_temp,
+            max_diff_lines=args.max_diff_lines,
+            **kwargs
         )
-        print(output)
         
-        # Print output in format expected by bash scripts
-        if result.different_count > 0:
-            print("\nDifferent files:")
-            for rel_path, file_comp in result.files.items():
-                if file_comp.status.value == "different":
-                    print(f"  - {rel_path}")
-        
-        if result.only_local_count > 0:
-            print("\nFiles only in local:")
-            for rel_path, file_comp in result.files.items():
-                if file_comp.status.value == "only_local":
-                    print(f"  - {rel_path}")
-        
-        if result.only_remote_count > 0:
-            print("\nFiles only in remote:")
-            for rel_path, file_comp in result.files.items():
-                if file_comp.status.value == "only_remote":
-                    print(f"  - {rel_path}")
-        
-        # Exit code
+        # Exit with error code if differences found
         if result.different_count > 0 or result.only_local_count > 0 or result.only_remote_count > 0:
             sys.exit(1)
         else:
@@ -222,14 +178,6 @@ Examples:
         import traceback
         traceback.print_exc()
         sys.exit(1)
-    
-    finally:
-        # Cleanup temp directory
-        if not args.keep_temp and temp_dir.exists():
-            import shutil
-            shutil.rmtree(temp_dir)
-        elif args.keep_temp:
-            print(f"\n📁 Temporary directory kept: {temp_dir}")
 
 
 if __name__ == '__main__':

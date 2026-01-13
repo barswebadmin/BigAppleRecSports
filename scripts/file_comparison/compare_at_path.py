@@ -1,37 +1,18 @@
 #!/usr/bin/env python3
 """
 Compare two directory paths and detect moved code blocks.
-Uses the unified comparison engine with code block move detection.
+Compares two directory paths and detects moved code blocks.
 """
 
 import argparse
 from pathlib import Path
-from typing import Tuple
 
-try:
-    from .unified_comparison import UnifiedComparison, ComparisonResult
-    from .code_block_mover import MovedBlock
-except ImportError:
-    import sys
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent.parent
-    sys.path.insert(0, str(repo_root))
-    
-    from scripts.file_comparison.unified_comparison import UnifiedComparison, ComparisonResult
-    from scripts.file_comparison.code_block_mover import MovedBlock
+from .comparison_logic import UnifiedComparison, ComparisonResult, MovedBlock
+from .formatters import format_comparison_result
 
 
 def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
-    """
-    Format comparison result with code block moves.
-    
-    Args:
-        result: ComparisonResult to format
-        output_format: 'text' or 'json'
-    
-    Returns:
-        Formatted string
-    """
+    """Format comparison result with code block moves."""
     if output_format == 'json':
         import json
         from dataclasses import asdict
@@ -53,7 +34,6 @@ def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
         }
         return json.dumps(output, indent=2)
     
-    # Text output
     lines = []
     lines.append("=" * 80)
     lines.append("📊 File Comparison Summary")
@@ -62,7 +42,6 @@ def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
     lines.append(f"Remote: {result.remote_path}")
     lines.append("")
     
-    # Summary
     lines.append("Summary:")
     lines.append(f"  Total files: {result.total_files}")
     lines.append(f"  ✅ Identical: {result.identical_count}")
@@ -93,7 +72,6 @@ def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
     
     lines.append("")
     
-    # Different files
     if result.different_count > 0:
         lines.append("❌ Different files:")
         for rel_path, file_comp in result.files.items():
@@ -101,7 +79,6 @@ def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
                 lines.append(f"  • {rel_path} (similarity: {file_comp.similarity:.2%})")
         lines.append("")
     
-    # Files only in local
     if result.only_local_count > 0:
         lines.append("⚠️  Files only in local:")
         for rel_path, file_comp in result.files.items():
@@ -109,7 +86,6 @@ def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
                 lines.append(f"  • {rel_path}")
         lines.append("")
     
-    # Files only in remote
     if result.only_remote_count > 0:
         lines.append("⚠️  Files only in remote:")
         for rel_path, file_comp in result.files.items():
@@ -117,7 +93,6 @@ def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
                 lines.append(f"  • {rel_path}")
         lines.append("")
     
-    # Moved files
     if result.moved_count > 0:
         lines.append("📦 Moved files:")
         for rel_path, file_comp in result.files.items():
@@ -125,7 +100,6 @@ def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
                 lines.append(f"  • {rel_path} (moved from {file_comp.moved_from})")
         lines.append("")
     
-    # Moved code blocks
     if result.moved_blocks:
         lines.append("🔍 Moved code blocks:")
         for i, move in enumerate(result.moved_blocks, 1):
@@ -148,90 +122,20 @@ def format_output(result: ComparisonResult, output_format: str = 'text') -> str:
     return "\n".join(lines)
 
 
-def compare_at_path(
-    path1: Path,
-    path2: Path,
-    min_block_size: int = 3,
-    filter_same_file: bool = False,
-    output_format: str = 'text',
-    detect_code_block_moves: bool = True
-) -> Tuple[list[MovedBlock], str]:
-    """
-    Compare two paths and detect moved code blocks.
-    
-    Args:
-        path1: First path to compare
-        path2: Second path to compare
-        min_block_size: Minimum lines in a block to consider
-        filter_same_file: Filter out moves within the same file
-        output_format: Output format ('text' or 'json')
-        detect_code_block_moves: Whether to detect code block moves
-    
-    Returns:
-        Tuple of (moves list, formatted output string)
-    """
-    # Use unified comparison engine
-    comparator = UnifiedComparison(
-        language="auto",
-        ignore_whitespace=True,
-        ignore_comments=True,
-        ignore_blank_lines=False,
-        detect_code_block_moves=detect_code_block_moves,
-        min_block_size=min_block_size
-    )
-    
-    result = comparator.compare_directories(path1, path2)
-    
-    # Filter moves if requested
-    moves = result.moved_blocks
-    if filter_same_file:
-        moves = [
-            move for move in moves
-            if Path(move.source_file).resolve() != Path(move.target_file).resolve()
-        ]
-    
-    output = format_output(result, output_format)
-    
-    return moves, output
-
-
 if __name__ == '__main__':
-    """CLI interface for comparing two paths."""
     parser = argparse.ArgumentParser(
         description='Compare two directory paths and detect moved code blocks'
     )
-    parser.add_argument(
-        'path1',
-        type=Path,
-        help='First path to compare'
-    )
-    parser.add_argument(
-        'path2',
-        type=Path,
-        help='Second path to compare'
-    )
-    parser.add_argument(
-        '--min-block-size',
-        type=int,
-        default=3,
-        help='Minimum lines in a block to consider (default: 3)'
-    )
-    parser.add_argument(
-        '--filter-same-file',
-        action='store_true',
-        help='Filter out moves within the same file'
-    )
-    parser.add_argument(
-        '--output-format',
-        choices=['text', 'json'],
-        default='text',
-        help='Output format (default: text)'
-    )
-    parser.add_argument(
-        '--no-code-block-moves',
-        action='store_true',
-        help='Disable code block move detection'
-    )
+    parser.add_argument('path1', type=Path, help='First path to compare')
+    parser.add_argument('path2', type=Path, help='Second path to compare')
+    parser.add_argument('--min-block-size', type=int, default=3,
+                       help='Minimum lines in a block to consider (default: 3)')
+    parser.add_argument('--filter-same-file', action='store_true',
+                       help='Filter out moves within the same file')
+    parser.add_argument('--output-format', choices=['text', 'json'],
+                       default='text', help='Output format (default: text)')
+    parser.add_argument('--no-code-block-moves', action='store_true',
+                       help='Disable code block move detection')
     
     args = parser.parse_args()
     
@@ -243,13 +147,24 @@ if __name__ == '__main__':
         print(f"❌ Path 2 does not exist: {args.path2}")
         exit(1)
     
-    moves, output = compare_at_path(
-        args.path1,
-        args.path2,
-        min_block_size=args.min_block_size,
-        filter_same_file=args.filter_same_file,
-        output_format=args.output_format,
-        detect_code_block_moves=not args.no_code_block_moves
+    comparator = UnifiedComparison(
+        language="auto",
+        ignore_whitespace=True,
+        ignore_comments=True,
+        ignore_blank_lines=False,
+        detect_code_block_moves=not args.no_code_block_moves,
+        min_block_size=args.min_block_size
     )
     
+    result = comparator.compare_directories(args.path1, args.path2)
+    
+    moves = result.moved_blocks
+    if args.filter_same_file:
+        moves = [
+            move for move in moves
+            if Path(move.source_file).resolve() != Path(move.target_file).resolve()
+        ]
+        result.moved_blocks = moves
+    
+    output = format_output(result, args.output_format)
     print(output)

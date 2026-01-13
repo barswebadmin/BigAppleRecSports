@@ -24,7 +24,7 @@ Deploys automatically when pushing to `main` branch with changes to:
 ### Manual Deployment
 ```bash
 # Deploy to Render
-./scripts/deploy_to_render.sh
+./scripts/deployment/deploy_backend.py
 
 # Sync environment variables
 ./scripts/sync_render_secrets.py
@@ -242,14 +242,14 @@ SHOPIFY_STORE_URL=https://your-store.myshopify.com
 ### GitHub Actions Workflows
 
 #### Backend Deployment
-- **File**: `.github/workflows/deploy-to-render.yml`
+- **File**: `.github/workflows/deploy-backend.yml`
 - **Trigger**: Push to main (backend changes)
-- **Steps**: Install deps → Validate → Deploy to Render
+- **Steps**: Sync secrets → Deploy to Render
 
 #### Lambda Deployment
-- **File**: `.github/workflows/deploy-self-contained-lambdas.yml`
+- **File**: `.github/workflows/deploy-aws.yml`
 - **Trigger**: Push to main (lambda changes)
-- **Steps**: Package → Deploy to AWS
+- **Steps**: Detect changes → Deploy to AWS Lambda
 
 #### Validation Only
 - **File**: `.github/workflows/validate-changes.yml`

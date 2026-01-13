@@ -1,0 +1,39 @@
+name: Test AWS Lambda
+
+on:
+  push:
+    branches-ignore: [ main ]
+    paths:
+      - 'lambda/functions/**'
+      - 'lambda-functions/**'
+      - '.github/workflows/test-aws.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test-aws:
+    name: Lambda Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && !startsWith(github.ref_name, 'dependabot/') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio
+
+      - name: Run Lambda tests
+        run: |
+          python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import run_lambda_tests; sys.exit(run_lambda_tests())"
+        env:
+          AWS_DEFAULT_REGION: us-east-1
