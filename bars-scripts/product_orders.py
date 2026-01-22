@@ -38,101 +38,8 @@ def fetch_orders_by_product(
     """Fetch orders for a product with pagination support."""
     product_gid = wrap_product_id(product_id)
     
-    # Query to fetch orders with the same fields as fetch_order_with_metadata
-    query = """
-    query FetchOrdersByProduct($q: String!, $cursor: String) {
-        orders(first: 250, query: $q, after: $cursor) {
-            pageInfo {
-                hasNextPage
-                endCursor
-            }
-            edges {
-                node {
-                    id
-                    name
-                    email
-                    createdAt
-                    updatedAt
-                    phone
-                    displayFinancialStatus
-                    displayFulfillmentStatus
-                    subtotalLineItemsQuantity
-                    totalPriceSet {
-                        shopMoney {
-                            amount
-                            currencyCode
-                        }
-                    }
-                    discountApplications(first: 10) {
-                        edges {
-                            node {
-                                ... on DiscountCodeApplication {
-                                    code
-                                }
-                                ... on ScriptDiscountApplication {
-                                    title
-                                }
-                                ... on AutomaticDiscountApplication {
-                                    title
-                                }
-                            }
-                        }
-                    }
-                    billingAddress {
-                        firstName
-                        lastName
-                        address1
-                        city
-                        zip
-                        country
-                        phone
-                    }
-                    customer {
-                        id
-                        email
-                        firstName
-                        lastName
-                    }
-                    cancelledAt
-                    cancelReason
-                    refunds {
-                        id
-                        createdAt
-                        totalRefundedSet {
-                            shopMoney {
-                                amount
-                                currencyCode
-                            }
-                        }
-                    }
-                    lineItems(first: 50) {
-                        edges {
-                            node {
-                                id
-                                name
-                                title
-                                quantity
-                                customAttributes {
-                                    key
-                                    value
-                                }
-                                product {
-                                    """ + shared_utils.get_product_fields() + """
-                                }
-                                variant {
-                                    id
-                                    title
-                                    price
-                                    sku
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _FETCH_ORDERS_BY_PRODUCT_QUERY
     
     # Query string: product_id uses numeric ID, not GID
     # Extract numeric ID from GID if needed
@@ -462,4 +369,106 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ============================================================================
+# ALREADY MIGRATED - GraphQL Query Structures
+# ============================================================================
+# These query structures have been migrated to sgqlc models.
+# They are kept here for reference only and should not be used in new code.
+
+_FETCH_ORDERS_BY_PRODUCT_QUERY = """
+    query FetchOrdersByProduct($q: String!, $cursor: String) {
+        orders(first: 250, query: $q, after: $cursor) {
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
+            edges {
+                node {
+                    id
+                    name
+                    email
+                    createdAt
+                    updatedAt
+                    phone
+                    displayFinancialStatus
+                    displayFulfillmentStatus
+                    subtotalLineItemsQuantity
+                    totalPriceSet {
+                        shopMoney {
+                            amount
+                            currencyCode
+                        }
+                    }
+                    discountApplications(first: 10) {
+                        edges {
+                            node {
+                                ... on DiscountCodeApplication {
+                                    code
+                                }
+                                ... on ScriptDiscountApplication {
+                                    title
+                                }
+                                ... on AutomaticDiscountApplication {
+                                    title
+                                }
+                            }
+                        }
+                    }
+                    billingAddress {
+                        firstName
+                        lastName
+                        address1
+                        city
+                        zip
+                        country
+                        phone
+                    }
+                    customer {
+                        id
+                        email
+                        firstName
+                        lastName
+                    }
+                    cancelledAt
+                    cancelReason
+                    refunds {
+                        id
+                        createdAt
+                        totalRefundedSet {
+                            shopMoney {
+                                amount
+                                currencyCode
+                            }
+                        }
+                    }
+                    lineItems(first: 50) {
+                        edges {
+                            node {
+                                id
+                                name
+                                title
+                                quantity
+                                customAttributes {
+                                    key
+                                    value
+                                }
+                                product {
+                                    """ + shared_utils.get_product_fields() + """
+                                }
+                                variant {
+                                    id
+                                    title
+                                    price
+                                    sku
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
 

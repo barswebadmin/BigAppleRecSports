@@ -69,10 +69,10 @@ def update_about_cmd(
       bars shopify page update-about --bulk-update leaders.csv --theme 134424232030
     """
     from bars_cli._core.context import get_display_context
-    from bars_cli.commands.shopify._shared.command_helpers import get_shopify_service
     
     console = Console()
-    shopify_service = get_shopify_service(ctx, "page")
+    # Get service from context (lazily initialized via LazyServiceProxy)
+    shopify_service = ctx.meta["shopify_service"]
     json_output, should_display = get_display_context(ctx)
     
     # Validate arguments

@@ -6,6 +6,7 @@ Uses Click for command-line interface.
 import os
 import sys
 from pathlib import Path
+from typing import Any
 from dotenv import load_dotenv
 
 backend_path = Path(__file__).parent.parent / "backend"
@@ -13,8 +14,11 @@ sys.path.insert(0, str(backend_path))
 
 import click
 
-from . import commands as commands_pkg
 from ._core.decorators.handle_display_options import handle_display_options
+from ._core.context import LazyServiceDict, LazyServiceProxy
+from .commands.slack import slack
+from .commands.shopify import shopify
+from .commands.google import google
 # from ._core.command_registry import discover_commands
 
 
@@ -67,18 +71,14 @@ def cli(ctx: click.Context, json_output: bool, env: str):
     
     load_environment(env)
     
-    # Store global config in context meta for easy access
-    import sys
-    from pathlib import Path
-    backend_path = Path(__file__).parent.parent / "backend"
-    if str(backend_path) not in sys.path:
-        sys.path.insert(0, str(backend_path))
-    from config import config as global_config  # type: ignore[import-untyped]
-    ctx.meta['config'] = global_config
-    
-    # Initialize service creation callbacks
-    from ._core.context import init_service_callbacks
-    init_service_callbacks(ctx)
+    # Initialize lazy service creation
+    # Store LazyServiceProxy objects in ctx.meta that create services on first access
+    if '_lazy_services_initialized' not in ctx.meta:
+        # Store LazyServiceProxy objects for each service
+        # These proxies forward attribute access to the actual service (created on first access)
+        for service_key, create_func in LazyServiceDict._SERVICE_CREATORS.items():
+            ctx.meta[service_key] = LazyServiceProxy(create_func, service_key)
+        ctx.meta['_lazy_services_initialized'] = True
     
     # Initialize admin_bot lazily and store in context (via slack group)
     # This avoids import-time errors and makes it available to all child commands
@@ -89,9 +89,6 @@ def cli(ctx: click.Context, json_output: bool, env: str):
 # discover_commands(cli, commands_pkg)
 
 # Manual command registration
-from .commands.slack import slack
-from .commands.shopify import shopify
-from .commands.google import google
 cli.add_command(slack)
 cli.add_command(shopify)
 cli.add_command(google)

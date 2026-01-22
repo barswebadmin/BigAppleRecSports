@@ -123,11 +123,11 @@ def validate_shopify_transaction_id_format(transaction_id: Optional[str]) -> Val
 
 def validate_shopify_variant_id_format(variant_id: Optional[str]) -> ValidationResult:
     """
-    Validate a Shopify variant ID: allow numeric or full GID (gid://shopify/Variant/{digits}).
+    Validate a Shopify variant ID: allow numeric or full GID (gid://shopify/ProductVariant/{digits}).
     """
     if variant_id is None:
         return ValidationResult.failure("Variant ID was not provided")
-    if re.match(r'^\d{8,20}$', variant_id) is None and re.match(r'^gid://shopify/Variant/\d{8,20}$', variant_id) is None:
+    if re.match(r'^\d{8,20}$', variant_id) is None and re.match(r'^gid://shopify/ProductVariant/\d{8,20}$', variant_id) is None:
         return ValidationResult.failure("Invalid variant ID format")
     return ValidationResult.success()
 

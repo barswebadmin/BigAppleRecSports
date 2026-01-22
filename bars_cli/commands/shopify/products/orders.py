@@ -58,10 +58,10 @@ def product_orders_cmd(
       bars shopify product orders 123456789 --limit 100
     """
     from bars_cli._core.context import get_display_context
-    from bars_cli.commands.shopify._shared.command_helpers import get_shopify_service
     
     console = Console()
-    shopify_service = get_shopify_service(ctx, "product")
+    # Get service from context (lazily initialized via LazyServiceProxy)
+    shopify_service = ctx.meta["shopify_service"]
     json_output, should_display = get_display_context(ctx)
     
     # Validate identifier

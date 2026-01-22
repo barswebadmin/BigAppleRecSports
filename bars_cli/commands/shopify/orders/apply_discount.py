@@ -3,7 +3,7 @@
 import sys
 import time
 import traceback
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
 import click
 from rich.console import Console
@@ -14,7 +14,13 @@ from bars_cli._core.decorators.handle_display_options import handle_display_opti
 from bars_cli._core.param_types import SHOPIFY_ORDER_IDENTIFIER
 from bars_cli._core.ui.display import create_text_panel, create_info_table
 from bars_cli._core.prompts import prompt_select_from_options
-from bars_cli.commands.shopify._shared.command_helpers import get_shopify_service
+
+if TYPE_CHECKING:
+    from bars_cli.backend_services.shopify.models.sgqlc_models import Order, Customer, LineItem
+else:
+    Order = Any
+    Customer = Any
+    LineItem = Any
 
 
 def prompt_discount_type() -> str:
@@ -100,7 +106,8 @@ def apply_discount_cmd(
       bars shopify order apply-discount gid://shopify/Order/123456789 --type percentage --value 10
     """
     console = Console()
-    shopify_service = get_shopify_service(ctx, "order")
+    # Get service from context (lazily initialized via LazyServiceProxy)
+    shopify_service = ctx.meta["shopify_service"]
 
     if not identifier:
         raise click.ClickException("Order identifier is required.")
@@ -115,45 +122,45 @@ def apply_discount_cmd(
 
     try:
         # Fetch order to display info
-        orders = shopify_service.get_order_by_identifier(
+        orders: List[Order] = shopify_service.get_order_by_identifier(
             {"query": f"id:{order_id}", "first": 1, "identifier": order_num or order_id},
             line_items_first=1
         )
         if not orders:
             raise click.ClickException(f"[yellow]No order found with identifier: {order_num or order_id}[/yellow]")
-        order = orders[0]
+        order: Order = orders[0]
 
         customer_name = ""
-        if hasattr(order, 'customer') and getattr(order, 'customer', None):
-            customer = getattr(order, 'customer')
-            if hasattr(customer, 'displayName') and getattr(customer, 'displayName', None):
-                customer_name = getattr(customer, 'displayName')
+        if hasattr(order, 'customer') and order.customer:
+            customer = order.customer
+            if hasattr(customer, 'displayName') and customer.displayName:
+                customer_name = customer.displayName
             else:
-                first = getattr(customer, 'firstName', '')
-                last = getattr(customer, 'lastName', '')
+                first = customer.firstName if hasattr(customer, 'firstName') else ''
+                last = customer.lastName if hasattr(customer, 'lastName') else ''
                 customer_name = f"{first} {last}".strip()
 
         product_title = "Unknown Product"
-        line_items_conn = getattr(order, 'lineItems', None)
-        if line_items_conn and getattr(line_items_conn, 'nodes', None):
+        line_items_conn = order.lineItems if hasattr(order, 'lineItems') else None
+        if line_items_conn and hasattr(line_items_conn, 'nodes') and line_items_conn.nodes:
             first_line_item = line_items_conn.nodes[0]
-            product = getattr(first_line_item, 'product', None)
-            if product and getattr(product, 'title', None):
-                product_title = getattr(product, 'title')
+            product = first_line_item.product if hasattr(first_line_item, 'product') else None
+            if product and hasattr(product, 'title') and product.title:
+                product_title = product.title
 
         # Display order info
         header_parts = [
-            (f"Order #{getattr(order, 'name', 'N/A')}", "bold cyan")
+            (f"Order #{order.name if hasattr(order, 'name') else 'N/A'}", "bold cyan")
         ]
         console.print(create_text_panel(header_parts, title="Order to Apply Discount", border_style="cyan"))
         
         info_rows = [
-            ("Order ID", order_id.split('/')[-1]),
+            ("Order ID", order_id.split('/')[-1] if '/' in order_id else order_id),
         ]
         if customer_name:
             info_rows.append(("Customer", customer_name))
-        info_rows.append(("Email", getattr(order, 'email', 'N/A')))
-        info_rows.append(("Financial Status", getattr(order, 'displayFinancialStatus', 'N/A')))
+        info_rows.append(("Email", order.email if hasattr(order, 'email') else 'N/A'))
+        info_rows.append(("Financial Status", order.displayFinancialStatus if hasattr(order, 'displayFinancialStatus') else 'N/A'))
         info_rows.append(("📦 Product", product_title))
         console.print(create_info_table(info_rows))
         console.print()
@@ -212,7 +219,7 @@ def apply_discount_cmd(
         ))
         
         success_rows = [
-            ("Order", getattr(order, 'name', 'N/A')),
+            ("Order", order.name if hasattr(order, 'name') else 'N/A'),
             ("Discount Type", discount_type.capitalize()),
             ("Discount Value", f"${discount_amount:.2f}" if discount_type == "fixed" else f"{discount_value}%"),
             ("Discount Amount", f"${discount_amount:.2f}"),
@@ -226,7 +233,7 @@ def apply_discount_cmd(
     except RuntimeError as e:
         raise click.ClickException(f"[red]API Error: {e}[/red]")
     except Exception as e:
-        console.print(f"[red]Unexpected error: {str(e)}[/red]", file=sys.stderr)
+        click.echo(f"[red]Unexpected error: {str(e)}[/red]", err=True)
         traceback.print_exc()
         raise click.ClickException(str(e))
 

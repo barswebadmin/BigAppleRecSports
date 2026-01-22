@@ -1,0 +1,60 @@
+#!/bin/sh
+# Optional: enable automatic venv activation and PYTHONPATH when using direnv
+
+# Use pipx venv for bars CLI (if installed)
+if [ -d "$HOME/.local/pipx/venvs/bars" ]; then
+  export VIRTUAL_ENV="$HOME/.local/pipx/venvs/bars"
+  export PATH="$VIRTUAL_ENV/bin:$PATH"
+  # Add visual indicator to prompt
+  export PS1="(pipx-bars) ${PS1}"
+  
+  # Set Python interpreter for Cursor/VS Code
+  PIPX_PYTHON="$HOME/.local/pipx/venvs/bars/bin/python"
+  if [ -f "$PIPX_PYTHON" ]; then
+    mkdir -p .vscode
+    # Update .vscode/settings.json with Python interpreter (using jq if available, else python)
+    if command -v jq >/dev/null 2>&1; then
+      # Use jq to merge the setting
+      if [ -f .vscode/settings.json ]; then
+        jq ". + {\"python.defaultInterpreterPath\": \"$PIPX_PYTHON\"}" .vscode/settings.json > .vscode/settings.json.tmp && mv .vscode/settings.json.tmp .vscode/settings.json 2>/dev/null || true
+      else
+        echo "{\"python.defaultInterpreterPath\": \"$PIPX_PYTHON\"}" > .vscode/settings.json
+      fi
+    else
+      # Fallback to python for JSON manipulation
+      python3 -c "
+import json
+import os
+settings_file = '.vscode/settings.json'
+try:
+    with open(settings_file, 'r') as f:
+        settings = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    settings = {}
+settings['python.defaultInterpreterPath'] = '$PIPX_PYTHON'
+with open(settings_file, 'w') as f:
+    json.dump(settings, f, indent=2)
+" 2>/dev/null || true
+    fi
+  fi
+fi
+
+export PYTHONPATH="$(pwd)/backend:$(pwd)/lambda-layers/bars-common-utils/python:$(pwd)/shared-utilities/src:${PYTHONPATH}"
+
+# Load .env secrets into shell environment (optional - uncomment if you want .env loaded)
+# dotenv .env
+
+# Auto-detect GitHub repo from git remote
+if [ -d ".git" ] || git rev-parse --git-dir >/dev/null 2>&1; then
+  GH_REPO=$(git remote get-url origin 2>/dev/null | sed -E 's/.*github\.com[:/]([^/]+\/[^/]+)(\.git)?$/\1/' | sed 's/\.git$//')
+  if [ -n "$GH_REPO" ]; then
+    export GH_REPO
+    # Extract org from repo (e.g., "barswebadmin" from "barswebadmin/BigAppleRecSports")
+    GH_ORG=$(echo "$GH_REPO" | cut -d'/' -f1)
+    # Load GitHub token from ~/.config/{org}/{org}_gh_token
+    if [ -f "$HOME/.config/$GH_ORG/${GH_ORG}_gh_token" ]; then
+      export GH_TOKEN="$(head -n1 "$HOME/.config/$GH_ORG/${GH_ORG}_gh_token" | tr -d ' \t\r\n')"
+    fi
+  fi
+fi
+alias ghb='gh --repo $GH_REPO'

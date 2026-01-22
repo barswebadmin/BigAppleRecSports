@@ -42,7 +42,8 @@ def get_group_cmd(
         email = BARS_EMAIL_IDENTIFIER.convert(None, None, ctx)
     
     # Client is guaranteed to be available (enforced in google group initialization)
-    client = ctx.meta['google_directory_client']
+    from bars_cli._core.context import get_service
+    client = get_service(ctx, 'google_api_client')
     
     try:
         group_email = email

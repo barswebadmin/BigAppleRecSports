@@ -61,19 +61,33 @@ from backend.modules.integrations.shopify.models.sgqlc_models.product_pydantic i
     Product as ProductPydantic,
 )
 
-# Product models - TODO: Create separate sgqlc types when needed
-# For now, keep using bridge for products
-from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_bridge import get_sgqlc_type, get_connection_type
+# Import direct sgqlc Type definitions for products
+from backend.modules.integrations.shopify.models.sgqlc_models.product_sgqlc import (
+    Image,
+    ImageConnection,
+    ProductOption,
+    Metafield,
+    MetafieldConnection,
+    Collection,
+    CollectionConnection,
+    SEO,
+    Money,
+    PriceRange,
+    CompareAtPriceRange,
+    SellingPlanGroup,
+    SellingPlanGroupConnection,
+    InventoryItem,
+    ProductVariant,
+    ProductVariantConnection,
+    Product,
+    ProductConnection,
+)
 
-Image = get_sgqlc_type(ImagePydantic)
-ImageConnection = get_connection_type(ImagePydantic)  # Used in Product.images
-ProductOptionValue = get_sgqlc_type(ProductOptionValuePydantic)
-Metafield = get_sgqlc_type(MetafieldPydantic)
-MetafieldConnection = get_connection_type(MetafieldPydantic)  # Used in Product.metafields
-Collection = get_sgqlc_type(CollectionPydantic)
-CollectionConnection = get_connection_type(CollectionPydantic)  # Used in Product.collections
-Product = get_sgqlc_type(ProductPydantic)
-ProductConnection = get_connection_type(ProductPydantic)
+# Import direct sgqlc Type definitions for locations
+from backend.modules.integrations.shopify.models.sgqlc_models.location_sgqlc import (
+    Location,
+    LocationConnection,
+)
 
 __all__ = [
     # Customer models
@@ -100,11 +114,23 @@ __all__ = [
     # Product models
     'Image',
     'ImageConnection',
-    'ProductOptionValue',
+    'ProductOption',
     'Metafield',
     'MetafieldConnection',
     'Collection',
     'CollectionConnection',
+    'SEO',
+    'Money',
+    'PriceRange',
+    'CompareAtPriceRange',
+    'SellingPlanGroup',
+    'SellingPlanGroupConnection',
+    'InventoryItem',
+    'ProductVariant',
+    'ProductVariantConnection',
     'Product',
     'ProductConnection',
+    # Location models
+    'Location',
+    'LocationConnection',
 ]

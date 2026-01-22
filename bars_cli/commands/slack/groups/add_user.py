@@ -21,7 +21,8 @@ def cmd_slack_groups_add_user(ctx: click.Context, group_identifier: dict, user_i
     USER_IDENTIFIER: User identifier (ID, email, handle, or display name)
     """
     # Service is guaranteed to be available (initialized in slack group)
-    slack_service = ctx.meta['slack_service']
+    from bars_cli._core.context import get_service
+    slack_service = get_service(ctx, 'slack_service')
     
     try:
         # Resolve group identifier

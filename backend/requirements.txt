@@ -6,15 +6,13 @@
 # ============================================================================
 
 # ============================================================================
-# CORE BACKEND DEPENDENCIES
+# PRODUCTION DEPENDENCIES
 # ============================================================================
-# FastAPI web framework and server
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
+# Dependencies needed for production CLI and backend services
+# These are installed when setting up the CLI via pipx
 
 # HTTP client and utilities
 requests==2.32.3
-rich==13.9.4
 PyYAML==6.0.2
 
 # Slack API client
@@ -37,14 +35,21 @@ python-dotenv==1.0.1
 # Data validation and serialization
 pydantic==2.10.4
 
-# File upload support
-python-multipart==0.0.20
-
 # Date/time utilities
 python-dateutil==2.9.0
 
 # ============================================================================
-# BACKEND TESTING DEPENDENCIES (for CI/CD)
+# SERVER DEPENDENCIES (not needed for CLI)
+# ============================================================================
+# FastAPI web framework and server
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# File upload support
+python-multipart==0.0.20
+
+# ============================================================================
+# TESTING DEPENDENCIES (not needed for CLI)
 # ============================================================================
 # Core testing framework
 pytest==8.4.1
@@ -55,3 +60,12 @@ pytest-clarity==1.0.1
 
 # HTTP testing client
 httpx==0.25.2
+
+# ============================================================================
+# DEPLOYMENT NOTES
+# ============================================================================
+# This file contains backend service dependencies organized by use case:
+# - PRODUCTION: Dependencies needed for CLI and backend services
+# - SERVER: Dependencies only needed for FastAPI server (not CLI)
+# - TESTING: Dependencies only needed for testing (not CLI)
+# ============================================================================

@@ -113,10 +113,10 @@ def list_users_cmd(ctx: click.Context, include_bots: bool, include_deleted: bool
         # Get token from context if available
         token = None
         try:
-            bot = ctx.meta.get('admin_bot')
+            bot = ctx.meta['admin_bot']
             if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
                 token = bot.client.token
-        except Exception:
+        except (KeyError, Exception):
             pass
         
         handle_slack_api_error(e, json_output=json_output, token=token, api_method='users.list')

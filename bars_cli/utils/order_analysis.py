@@ -1,147 +1,17 @@
-"""
-Utility commands for analyzing order data.
+"""Order analysis and refund calculation utilities."""
 
-Moved from bars-scripts/analyze_order_refunds.py
-"""
-import csv
-import re
-import sys
-from datetime import datetime, timezone
-from html import unescape
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import click
 
-from backend.shared.date_utils import extract_season_dates, calculate_refund_amount
-
-
-def extract_price_from_html(description_html: str) -> Optional[float]:
-    """
-    Extract price from descriptionHtml.
-    Looks for "Price" followed by text until ':', then finds first number (possibly after '$').
-    Follows the numerical string until there's something that's not a decimal or digit.
-    
-    Args:
-        description_html: HTML description text
-        
-    Returns:
-        Price as float, or None if not found
-    """
-    if not description_html:
-        return None
-    
-    # Find "Price" followed by any text until ':'
-    # Then find first number (possibly after '$'), following digits and decimals
-    price_pattern = r'Price[^:]*:\s*[^0-9\$]*\$?\s*(\d+\.?\d*)'
-    match = re.search(price_pattern, description_html, re.IGNORECASE)
-    
-    if match:
-        try:
-            price_str = match.group(1)
-            # Extract only digits and decimal point (stop at first non-digit/non-decimal)
-            price_clean = re.match(r'(\d+\.?\d*)', price_str)
-            if price_clean:
-                return float(price_clean.group(1))
-        except (ValueError, IndexError):
-            pass
-    
-    # Fallback: More flexible pattern
-    price_pattern_fallback = r'Price[^:]*:\s*[^0-9]*(\d+(?:\.\d+)?)'
-    match = re.search(price_pattern_fallback, description_html, re.IGNORECASE)
-    
-    if match:
-        try:
-            price_str = match.group(1)
-            return float(price_str)
-        except (ValueError, IndexError):
-            pass
-    
-    return None
-
-
-def parse_order_date(created_at: str) -> Optional[datetime]:
-    """
-    Parse order date from createdAt column.
-    
-    Args:
-        created_at: Date string (various formats supported)
-        
-    Returns:
-        datetime object, or None if parsing fails
-    """
-    if not created_at:
-        return None
-    
-    # Try common date formats
-    date_formats = [
-        '%Y-%m-%dT%H:%M:%S%z',  # ISO format with timezone
-        '%Y-%m-%dT%H:%M:%S.%f%z',  # ISO format with microseconds
-        '%Y-%m-%dT%H:%M:%S',  # ISO format without timezone
-        '%Y-%m-%d %H:%M:%S',  # Standard format
-        '%Y-%m-%d',  # Date only
-        '%m/%d/%Y',  # US format
-        '%m/%d/%y',  # US format with 2-digit year
-    ]
-    
-    for fmt in date_formats:
-        try:
-            dt = datetime.strptime(created_at.strip(), fmt)
-            # Make timezone-aware if not already
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt
-        except ValueError:
-            continue
-    
-    return None
-
-
-def parse_total_paid(total_paid: str) -> Optional[float]:
-    """
-    Parse total paid amount from string.
-    
-    Args:
-        total_paid: Amount string (may include $, commas, etc.)
-        
-    Returns:
-        Float value, or None if parsing fails
-    """
-    if not total_paid:
-        return None
-    
-    # Remove $, commas, and whitespace
-    cleaned = re.sub(r'[\$,\s]', '', str(total_paid))
-    
-    try:
-        return float(cleaned)
-    except ValueError:
-        return None
-
-
-def parse_total_refunded(total_refunded: str) -> Optional[float]:
-    """
-    Parse total refunded amount from string.
-    
-    Args:
-        total_refunded: Amount string (may include $, commas, etc.)
-        
-    Returns:
-        Float value, or None if parsing fails (defaults to 0.0 if empty)
-    """
-    if not total_refunded:
-        return 0.0
-    
-    # Remove $, commas, and whitespace
-    cleaned = re.sub(r'[\$,\s]', '', str(total_refunded))
-    
-    # Handle empty string after cleaning
-    if not cleaned or cleaned == '':
-        return 0.0
-    
-    try:
-        return float(cleaned)
-    except ValueError:
-        return 0.0
+from backend.shared.date_utils import calculate_refund_amount, extract_season_dates
+from bars_cli.utils.csv_utils import read_csv_file, write_results_csv
+from bars_cli.utils.data_parsing import (
+    extract_price_from_html,
+    parse_order_date,
+    parse_total_paid,
+    parse_total_refunded,
+)
 
 
 def analyze_order(row: Dict[str, str], headers: List[str]) -> Dict[str, Any]:
@@ -212,7 +82,7 @@ def analyze_order(row: Dict[str, str], headers: List[str]) -> Dict[str, Any]:
     result['total_refunded'] = total_refunded
     
     # Calculate net paid (total paid minus refunds already issued)
-    net_paid = total_paid - total_refunded
+    net_paid = total_paid - (total_refunded or 0.0)
     result['net_paid'] = net_paid
     
     # Calculate discounted price using shared utility
@@ -251,49 +121,6 @@ def analyze_order(row: Dict[str, str], headers: List[str]) -> Dict[str, Any]:
         result['error'] = f'Error calculating discount: {str(e)}'
     
     return result
-
-
-def read_csv_file(file_path: str) -> Tuple[List[str], List[Dict[str, str]]]:
-    """
-    Read CSV file and return headers and rows.
-    
-    Args:
-        file_path: Path to CSV file
-        
-    Returns:
-        Tuple of (headers, rows)
-    """
-    with open(file_path, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        headers = reader.fieldnames or []
-        rows = list(reader)
-    
-    return headers, rows
-
-
-def write_results_csv(results: List[Dict[str, Any]], output_path: str):
-    """
-    Write analysis results to CSV file.
-    
-    Args:
-        results: List of analysis result dictionaries
-        output_path: Path to output CSV file
-    """
-    if not results:
-        click.echo("No results to write", err=True)
-        return
-    
-    # Get all unique keys from results
-    fieldnames = set()
-    for result in results:
-        fieldnames.update(result.keys())
-    
-    fieldnames = sorted(fieldnames)
-    
-    with open(output_path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(results)
 
 
 def analyze_order_refunds(input_csv: str, output_csv: Optional[str] = None, verbose: bool = False) -> int:
@@ -355,4 +182,3 @@ def analyze_order_refunds(input_csv: str, output_csv: Optional[str] = None, verb
         return 1
     
     return 0
-

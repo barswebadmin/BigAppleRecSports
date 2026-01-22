@@ -16,57 +16,11 @@ from bars_cli._core.utils.json_output import (
     to_json_data,
     output_json_item,
     output_json_list,
-    output_json_error,
 )
+from .shopify_formatters import format_error
 
 
 ALL_SENTINEL = "__ALL__"
-
-
-def get_shopify_service(ctx: click.Context, entity_name: str = "entity"):
-    """Get Shopify service from context or raise error.
-    
-    Args:
-        ctx: Click context object
-        entity_name: Name of entity for error messages (e.g., "customer", "order")
-        
-    Returns:
-        ShopifyService instance
-        
-    Raises:
-        click.ClickException: If service is not available
-    """
-    shopify_service = ctx.meta.get('shopify_service')
-    if not shopify_service:
-        error_msg = ctx.meta.get('shopify_service_error', 'Shopify service not available')
-        raise click.ClickException(error_msg)
-    return shopify_service
-
-
-def format_error(
-    error_msg: str,
-    error_type: Optional[str] = None,
-    json_output: bool = False,
-    should_display: bool = True
-) -> None:
-    """Format and display error message.
-    
-    Args:
-        error_msg: Error message text
-        error_type: Optional error type name
-        json_output: Whether to output JSON format
-        should_display: Whether to display the error
-    """
-    if not should_display:
-        return
-    
-    if json_output:
-        output_json_error(error_msg, error_type=error_type)
-    else:
-        if error_type:
-            click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
-        else:
-            click.echo(f"❌ {error_msg}", err=True)
 
 
 def handle_multiple_shopify_results(
@@ -197,13 +151,8 @@ def handle_shopify_get_command(
             lookup_value = identifier.get("identifier", entity_name)
             click.echo(f"🔍 Looking up: {lookup_value}", err=True)
         
-        # Get Shopify service (guaranteed to be available from shopify group initialization)
-        shopify_service = ctx.meta.get('shopify_service')
-        if not shopify_service:
-            # This should never happen if shopify group initialized correctly
-            error_msg = f"Shopify service not available. This is a bug - service should be initialized in shopify group."
-            format_error(error_msg, json_output=json_output, should_display=should_display)
-            raise click.ClickException(error_msg)
+        # Get Shopify service (lazily initialized on first access via LazyServiceProxy)
+        shopify_service = ctx.meta["shopify_service"]
         
         # Call service method
         try:
@@ -213,7 +162,29 @@ def handle_shopify_get_command(
                 entities = service_method(identifier)
         except (RuntimeError, ValueError) as e:
             error_msg = str(e)
-            format_error(error_msg, json_output=json_output, should_display=should_display)
+            # If error already contains formatted GraphQL errors, display as-is to avoid duplication
+            if "GraphQL query failed" in error_msg:
+                if should_display:
+                    # Remove duplicate "GraphQL query failed" prefixes
+                    lines = error_msg.split('\n')
+                    seen_prefixes = set()
+                    unique_lines = []
+                    for line in lines:
+                        if line.startswith("GraphQL query failed"):
+                            if "GraphQL query failed" not in seen_prefixes:
+                                unique_lines.append(line)
+                                seen_prefixes.add("GraphQL query failed")
+                        else:
+                            unique_lines.append(line)
+                    error_msg = '\n'.join(unique_lines)
+                    
+                    if json_output:
+                        from bars_cli._core.utils.json_output import output_json_error
+                        output_json_error(error_msg)
+                    else:
+                        click.echo(error_msg, err=True)
+            else:
+                format_error(error_msg, json_output=json_output, should_display=should_display)
             raise click.ClickException(error_msg)
         
         # Check for empty results
@@ -223,48 +194,13 @@ def handle_shopify_get_command(
             raise click.ClickException(error_msg)
         
         # Handle single vs multiple results
-        if len(entities) == 1:
-            entity = entities[0]
-            if should_display:
-                if json_output:
-                    output_json_item(entity)
-                else:
-                    click.echo(format_func(entity))
-            return entities
-        else:
-            # Multiple entities - use handler
-            if handle_multiple_func:
-                func, kwargs = handle_multiple_func
-                selected_result = func(entities, json_output, should_display, **kwargs)
-            else:
-                # Default: just return all entities
-                if should_display:
-                    if json_output:
-                        output_json_list(entities)
-                    else:
-                        for item in entities:
-                            click.echo(format_func(item))
-                return entities
-            if selected_result:
-                # Check if "All" was selected (returns list) or single item selected
-                if isinstance(selected_result, list):
-                    # "All" was selected - display all items
-                    if should_display:
-                        if json_output:
-                            output_json_list(selected_result)
-                        else:
-                            for item in selected_result:
-                                click.echo(format_func(item))
-                    return selected_result
-                else:
-                    # Single item selected
-                    if should_display:
-                        if json_output:
-                            output_json_item(selected_result)
-                        else:
-                            click.echo(format_func(selected_result))
-                    return [selected_result]
-            return entities
+        return _handle_shopify_multiple_results(
+            entities=entities,
+            json_output=json_output,
+            should_display=should_display,
+            format_func=format_func,
+            handle_multiple_func=handle_multiple_func
+        )
         
     except click.ClickException:
         # Re-raise Click exceptions - decorator will handle exit
@@ -276,4 +212,77 @@ def handle_shopify_get_command(
         if should_display and not json_output:
             click.echo(traceback.format_exc(), err=True)
         raise click.ClickException(error_msg)
+
+
+def _handle_shopify_multiple_results(
+    entities: List[Any],
+    json_output: bool,
+    should_display: bool,
+    format_func: Callable[[Any], str],
+    handle_multiple_func: Optional[Tuple[Callable[..., Optional[Any]], Dict[str, Any]]] = None
+) -> Optional[List[Any]]:
+    """Handle single vs multiple results for Shopify GET commands.
+    
+    This function handles the display and selection logic when multiple entities
+    are returned from a service method. It supports:
+    - Single result: Display immediately
+    - Multiple results: Use handler function for selection, then display selected items
+    
+    Args:
+        entities: List of entity objects returned from service method
+        json_output: Whether to output JSON format
+        should_display: Whether to display output
+        format_func: Function to format single entity for display
+        handle_multiple_func: Optional tuple of (callable, kwargs_dict) to handle multiple results.
+                            If provided, will be called as: func(items, json_output, should_display, **kwargs)
+                            
+    Returns:
+        List of entity objects (single item wrapped in list, or all items if "All" selected)
+    """
+    # Handle single result
+    if len(entities) == 1:
+        entity = entities[0]
+        if should_display:
+            if json_output:
+                output_json_item(entity)
+            else:
+                click.echo(format_func(entity))
+        return entities
+    
+    # Handle multiple results
+    if handle_multiple_func:
+        func, kwargs = handle_multiple_func
+        selected_result = func(entities, json_output, should_display, **kwargs)
+    else:
+        # Default: just return all entities
+        if should_display:
+            if json_output:
+                output_json_list(entities)
+            else:
+                for item in entities:
+                    click.echo(format_func(item))
+        return entities
+    
+    # Process selected result from handler
+    if selected_result:
+        # Check if "All" was selected (returns list) or single item selected
+        if isinstance(selected_result, list):
+            # "All" was selected - display all items
+            if should_display:
+                if json_output:
+                    output_json_list(selected_result)
+                else:
+                    for item in selected_result:
+                        click.echo(format_func(item))
+            return selected_result
+        else:
+            # Single item selected
+            if should_display:
+                if json_output:
+                    output_json_item(selected_result)
+                else:
+                    click.echo(format_func(selected_result))
+            return [selected_result]
+    
+    return entities
 

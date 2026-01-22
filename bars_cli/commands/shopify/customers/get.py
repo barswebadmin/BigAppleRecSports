@@ -35,7 +35,8 @@ def get_customer_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]], m
       bars --json shopify customer get customer@example.com
     """
     
-    shopify_service: ShopifyService = ctx.meta['shopify_service']
+    from bars_cli._core.context import get_service
+    shopify_service: ShopifyService = get_service(ctx, 'shopify_service')
     
     return handle_shopify_get_command(
         ctx=ctx,

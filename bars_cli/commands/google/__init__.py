@@ -2,38 +2,23 @@
 Google management commands for bars-cli.
 
 Command structure:
-- bars google groups *
-- bars google users *
+- bars google group * / bars google groups *
+- bars google user * / bars google users *
 - bars google sheets *
 """
 import click
+from click_aliases import ClickAliasedGroup
 
 
 @click.group(
+    cls=ClickAliasedGroup,
     context_settings={"ignore_unknown_options": True}
 )
 @click.pass_context
 def google(ctx: click.Context):
     """Google management commands."""
-    # Initialize Google clients once in meta (shared across all contexts)
-    # Clients must be present - callbacks raise exceptions on failure (fail early)
-    if 'google_directory_client' not in ctx.meta:
-        create_client = ctx.meta.get('_create_google_directory_client')
-        if not create_client:
-            raise click.ClickException(
-                "Google Directory client creation callback not found. This is a bug - callbacks should be initialized in context."
-            )
-        # Callback raises exception on failure - fail early
-        ctx.meta['google_directory_client'] = create_client()
-    
-    if 'google_sheets_client' not in ctx.meta:
-        create_client = ctx.meta.get('_create_google_sheets_client')
-        if not create_client:
-            raise click.ClickException(
-                "Google Sheets client creation callback not found. This is a bug - callbacks should be initialized in context."
-            )
-        # Callback raises exception on failure - fail early
-        ctx.meta['google_sheets_client'] = create_client()
+    # Service is lazily initialized on first access via ctx.meta['google_api_client']
+    pass
 
 
 # Create subcommand groups
@@ -75,10 +60,10 @@ groups_group.add_command(remove_user_cmd, 'remove_user')
 users_group.add_command(get_user_cmd, 'get')
 users_group.add_command(list_users_cmd, 'list')
 
-# Register groups
-google.add_command(groups_group)
-google.add_command(users_group)
-google.add_command(sheets_group)
+# Register groups with aliases
+google.add_command(groups_group, 'groups', aliases=['group'])
+google.add_command(users_group, 'users', aliases=['user'])
+google.add_command(sheets_group, 'sheets')
 
 
 __all__ = ["google"]

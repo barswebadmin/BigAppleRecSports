@@ -71,10 +71,10 @@ def get_page_cmd(
       bars shopify page get --extract-positions
     """
     from bars_cli._core.context import get_display_context
-    from bars_cli.commands.shopify._shared.command_helpers import get_shopify_service
     
     console = Console()
-    shopify_service = get_shopify_service(ctx, "page")
+    # Get service from context (lazily initialized via LazyServiceProxy)
+    shopify_service = ctx.meta["shopify_service"]
     json_output, should_display = get_display_context(ctx)
     
     # PSEUDOCODE:

@@ -11,11 +11,9 @@ from typing import Dict, Any, Optional, List, Callable
 import click
 from slack_sdk.errors import SlackApiError
 
-from bars_cli._core.utils.json_output import (
-    output_json_item,
-    output_json_error,
-)
+from bars_cli._core.utils.json_output import output_json_item
 from ..utils import handle_slack_api_error
+from .slack_formatters import format_error
 
 
 def get_admin_bot(ctx: click.Context) -> Any:
@@ -30,11 +28,15 @@ def get_admin_bot(ctx: click.Context) -> Any:
     Raises:
         click.ClickException: If bot is not available
     """
-    bot = ctx.meta.get('admin_bot')
-    if not bot:
+    try:
+        bot = ctx.meta['admin_bot']
+        if not bot:
+            error_msg = ctx.meta.get('admin_bot_error', 'Admin bot not available')
+            raise click.ClickException(error_msg)
+        return bot
+    except KeyError:
         error_msg = ctx.meta.get('admin_bot_error', 'Admin bot not available')
         raise click.ClickException(error_msg)
-    return bot
 
 
 def extract_group_identifier(identifier: Dict[str, Any]) -> str:
@@ -47,32 +49,6 @@ def extract_group_identifier(identifier: Dict[str, Any]) -> str:
         String value of the identifier (group_id, name, handle, or empty string)
     """
     return identifier.get("group_id") or identifier.get("name") or identifier.get("handle") or identifier.get("identifier", "")
-
-
-def format_error(
-    error_msg: str,
-    error_type: Optional[str] = None,
-    json_output: bool = False,
-    should_display: bool = True
-) -> None:
-    """Format and display error message.
-    
-    Args:
-        error_msg: Error message text
-        error_type: Optional error type name
-        json_output: Whether to output JSON format
-        should_display: Whether to display the error
-    """
-    if not should_display:
-        return
-    
-    if json_output:
-        output_json_error(error_msg, error_type=error_type)
-    else:
-        if error_type:
-            click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
-        else:
-            click.echo(f"❌ {error_msg}", err=True)
 
 
 def handle_slack_get_command(
@@ -185,10 +161,10 @@ def handle_slack_get_command(
         # Get token from bot if available
         token = None
         try:
-            bot = ctx.meta.get('admin_bot')
+            bot = ctx.meta['admin_bot']
             if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
                 token = bot.client.token
-        except Exception:
+        except (KeyError, Exception):
             pass
         
         # Determine API method from entity_name

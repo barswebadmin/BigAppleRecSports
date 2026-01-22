@@ -53,6 +53,318 @@ def get_shopify_config(environment: str) -> Dict[str, Any]:
     }
 
 
+# Field fragments moved to bottom - see ALREADY MIGRATED section
+# These are initialized as empty strings here and defined at the bottom
+CUSTOMER_FIELDS = ""
+PRODUCT_FIELDS = ""
+ORDER_FIELDS = ""
+
+
+def get_customer_fields() -> str:
+    """Returns GraphQL customer fields as a string fragment."""
+    return CUSTOMER_FIELDS
+
+
+def get_order_fields() -> str:
+    """Returns GraphQL order fields as a string fragment."""
+    return ORDER_FIELDS
+
+
+def get_product_fields() -> str:
+    """Returns GraphQL product fields as a string fragment."""
+    return PRODUCT_FIELDS
+
+
+def query_with_pydantic_model(
+    model_class: Any,
+    field_name: str,
+    query_args: Optional[Dict[str, Any]] = None,
+    config: Optional[Dict[str, Any]] = None,
+    environment: str = "production"
+) -> Dict[str, Any]:
+    """
+    DEPRECATED: This function is deprecated. Use sgqlc via model.build_query() methods instead.
+    
+    Execute a GraphQL query using a Pydantic model for automatic query generation and response parsing.
+    
+    Args:
+        model_class: Pydantic model class representing the data structure
+        field_name: GraphQL field name to query (e.g., "product", "order")
+        query_args: Optional arguments for the GraphQL query (e.g., {"id": "gid://shopify/Product/123"})
+        config: Optional Shopify config dict. If not provided, will be generated from environment.
+        environment: Environment to use if config is not provided
+        
+    Returns:
+        Dict containing the GraphQL response
+        
+    Note:
+        This function is deprecated. Models now have build_query() methods that use sgqlc.
+        Example: Customer.build_query(query_str="email:test@example.com")
+    """
+    import warnings
+    warnings.warn(
+        "query_with_pydantic_model is deprecated. Use model.build_query() methods with sgqlc instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    
+    if config is None:
+        load_environment(environment)
+        config = get_shopify_config(environment)
+    
+    # Try to use model's build_query method if available
+    if hasattr(model_class, 'build_query'):
+        raise NotImplementedError(
+            f"Use {model_class.__name__}.build_query() directly instead of this deprecated function."
+        )
+    
+    raise NotImplementedError(
+        "query_with_pydantic_model is deprecated. Use sgqlc via model.build_query() methods."
+    )
+
+
+def make_graphql_request(
+    payload: Dict[str, Any],
+    config: Dict[str, Any],
+    model_type: Optional[Any] = None,
+    connection_field: Optional[str] = None
+) -> Any:
+    """
+    Make a GraphQL request to Shopify API.
+    
+    Args:
+        payload: GraphQL query/mutation payload with 'query' and optional 'variables'
+        config: Shopify API configuration from get_shopify_config()
+        model_type: Optional (unused, kept for backward compatibility)
+        connection_field: Optional (unused, kept for backward compatibility)
+        
+    Returns:
+        ShopifyResponse instance with raw response data (no parsing)
+    """
+    from models import ShopifyResponse
+    
+    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
+    verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
+    
+    try:
+        response = requests.post(
+            config["graphql_url"],
+            json=payload,
+            headers=config["headers"],
+            timeout=30,
+            verify=verify_ssl
+        )
+        response.raise_for_status()
+        response_data = response.json()
+        
+        # Check for GraphQL errors
+        if "errors" in response_data:
+            return ShopifyResponse(
+                success=False,
+                message="GraphQL errors",
+                data=[],
+                errors=response_data["errors"]
+            )
+        
+        # Return successful response with raw data
+        return ShopifyResponse(
+            success=True,
+            message="Request successful",
+            data=response_data.get("data", {}),
+            errors=None
+        )
+    except requests.exceptions.RequestException as e:
+        return ShopifyResponse(
+            success=False,
+            message=f"Request failed: {str(e)}",
+            data=[],
+            errors=[{"error": str(e)}]
+        )
+
+
+
+
+def fetch_order(order_number: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Fetch order details from Shopify API."""
+    order_num = order_number.strip().lstrip('#')
+    
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _FETCH_ORDER_QUERY
+    
+    payload = {
+        "query": query,
+        "variables": {"q": f"name:#{order_num}"}
+    }
+    
+    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
+    verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
+    
+    try:
+        response = requests.post(
+            config["graphql_url"],
+            json=payload,
+            headers=config["headers"],
+            timeout=30,
+            verify=verify_ssl
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
+
+
+def cancel_order(order_id: str, config: Dict[str, Any], reason: str = "CUSTOMER") -> Dict[str, Any]:
+    """Cancel an order using Shopify's orderCancel mutation."""
+    # Mutation moved to bottom - see ALREADY MIGRATED section
+    mutation = _CANCEL_ORDER_MUTATION
+    
+    payload = {
+        "query": mutation,
+        "variables": {
+            "notifyCustomer": False,
+            "orderId": order_id,
+            "reason": reason,
+            "refund": False,
+            "restock": False,
+            "staffNote": "Cancelled via cancel_order script"
+        }
+    }
+    
+    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
+    verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
+    
+    try:
+        response = requests.post(
+            config["graphql_url"],
+            json=payload,
+            headers=config["headers"],
+            timeout=30,
+            verify=verify_ssl
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
+
+
+def create_refund(
+    order_id: str,
+    refund_amount: float,
+    refund_type: str,
+    transactions: list,
+    config: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Create a refund using Shopify's refundCreate mutation."""
+    # Mutation moved to bottom - see ALREADY MIGRATED section
+    mutation = _CREATE_REFUND_MUTATION
+    
+    refund_input = {
+        "notify": True,
+        "orderId": order_id,
+    }
+    
+    if refund_type.lower() == "credit":
+        refund_input["note"] = f"Store Credit issued for ${refund_amount:.2f}"
+        refund_input["refundMethods"] = [
+            {
+                "storeCreditRefund": {
+                    "amount": {
+                        "amount": str(refund_amount),
+                        "currencyCode": "USD",
+                    }
+                }
+            }
+        ]
+    else:
+        capture_transaction = next(
+            (t for t in transactions if t.get("kind") in ["CAPTURE", "SALE"] and t.get("status") == "SUCCESS"), 
+            None
+        )
+        
+        if not capture_transaction:
+            return {"success": False, "message": "No successful capture transaction found for refund"}
+        
+        gateway = capture_transaction.get("gateway", "shopify_payments")
+        parent_trans = capture_transaction.get("parentTransaction")
+        if parent_trans and parent_trans.get("id"):
+            parent_transaction_id = parent_trans["id"]
+        else:
+            parent_transaction_id = capture_transaction["id"]
+        
+        refund_input["note"] = f"Refund issued for ${refund_amount:.2f}"
+        refund_input["transactions"] = [
+            {
+                "orderId": order_id,
+                "gateway": gateway,
+                "kind": "REFUND",
+                "amount": str(refund_amount),
+                "parentId": parent_transaction_id
+            }
+        ]
+    
+    payload = {
+        "query": mutation,
+        "variables": {"input": refund_input}
+    }
+    
+    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
+    verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
+    
+    def make_refund_request() -> Dict[str, Any]:
+        try:
+            response = requests.post(
+                config["graphql_url"],
+                json=payload,
+                headers=config["headers"],
+                timeout=30,
+                verify=verify_ssl
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            if "errors" in result:
+                error_messages = [err.get("message", str(err)) for err in result["errors"]]
+                return {"success": False, "message": error_messages}
+            
+            mutation_data = result.get('data', {}).get('refundCreate', {})
+            user_errors = mutation_data.get('userErrors', [])
+            
+            if user_errors:
+                error_messages = [f"{err.get('field', '')}: {err.get('message', 'Unknown error')}" for err in user_errors]
+                return {"success": False, "message": error_messages}
+            
+            refund_data = mutation_data.get('refund', {})
+            if not refund_data:
+                return {"success": False, "message": "Refund creation returned no refund data"}
+            
+            return {"success": True, "data": refund_data}
+        except requests.exceptions.RequestException as e:
+            return {"success": False, "error": str(e)}
+    
+    # Simple retry logic with exponential backoff
+    max_retries = 3
+    base_delay = 1.0
+    backoff_factor = 2.0
+    last_error: Dict[str, Any] = {"success": False, "error": "Unknown error"}
+    
+    for attempt in range(max_retries + 1):
+        result = make_refund_request()
+        if result.get("success") is not False:
+            return result
+        last_error = result
+        if attempt < max_retries:
+            delay = base_delay * (backoff_factor ** attempt)
+            time.sleep(delay)
+    
+    return last_error
+
+
+# ============================================================================
+# ALREADY MIGRATED - GraphQL Query Structures
+# ============================================================================
+# These query structures have been migrated to sgqlc models.
+# They are kept here for reference only and should not be used in new code.
+
 CUSTOMER_FIELDS = """
     id
     firstName
@@ -92,7 +404,6 @@ CUSTOMER_FIELDS = """
         }
     }
 """
-
 
 PRODUCT_FIELDS = """
     id
@@ -243,7 +554,6 @@ PRODUCT_FIELDS = """
         }
     }
 """
-
 
 ORDER_FIELDS = f"""
     id
@@ -430,136 +740,7 @@ ORDER_FIELDS = f"""
     }}
 """
 
-
-def get_customer_fields() -> str:
-    """Returns GraphQL customer fields as a string fragment."""
-    return CUSTOMER_FIELDS
-
-
-def get_order_fields() -> str:
-    """Returns GraphQL order fields as a string fragment."""
-    return ORDER_FIELDS
-
-
-def get_product_fields() -> str:
-    """Returns GraphQL product fields as a string fragment."""
-    return PRODUCT_FIELDS
-
-
-def query_with_pydantic_model(
-    model_class: Any,
-    field_name: str,
-    query_args: Optional[Dict[str, Any]] = None,
-    config: Optional[Dict[str, Any]] = None,
-    environment: str = "production"
-) -> Dict[str, Any]:
-    """
-    DEPRECATED: This function is deprecated. Use sgqlc via model.build_query() methods instead.
-    
-    Execute a GraphQL query using a Pydantic model for automatic query generation and response parsing.
-    
-    Args:
-        model_class: Pydantic model class representing the data structure
-        field_name: GraphQL field name to query (e.g., "product", "order")
-        query_args: Optional arguments for the GraphQL query (e.g., {"id": "gid://shopify/Product/123"})
-        config: Optional Shopify config dict. If not provided, will be generated from environment.
-        environment: Environment to use if config is not provided
-        
-    Returns:
-        Dict containing the GraphQL response
-        
-    Note:
-        This function is deprecated. Models now have build_query() methods that use sgqlc.
-        Example: Customer.build_query(query_str="email:test@example.com")
-    """
-    import warnings
-    warnings.warn(
-        "query_with_pydantic_model is deprecated. Use model.build_query() methods with sgqlc instead.",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    
-    if config is None:
-        load_environment(environment)
-        config = get_shopify_config(environment)
-    
-    # Try to use model's build_query method if available
-    if hasattr(model_class, 'build_query'):
-        raise NotImplementedError(
-            f"Use {model_class.__name__}.build_query() directly instead of this deprecated function."
-        )
-    
-    raise NotImplementedError(
-        "query_with_pydantic_model is deprecated. Use sgqlc via model.build_query() methods."
-    )
-
-
-def make_graphql_request(
-    payload: Dict[str, Any],
-    config: Dict[str, Any],
-    model_type: Optional[Any] = None,
-    connection_field: Optional[str] = None
-) -> Any:
-    """
-    Make a GraphQL request to Shopify API.
-    
-    Args:
-        payload: GraphQL query/mutation payload with 'query' and optional 'variables'
-        config: Shopify API configuration from get_shopify_config()
-        model_type: Optional (unused, kept for backward compatibility)
-        connection_field: Optional (unused, kept for backward compatibility)
-        
-    Returns:
-        ShopifyResponse instance with raw response data (no parsing)
-    """
-    from models import ShopifyResponse
-    
-    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
-    verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
-    
-    try:
-        response = requests.post(
-            config["graphql_url"],
-            json=payload,
-            headers=config["headers"],
-            timeout=30,
-            verify=verify_ssl
-        )
-        response.raise_for_status()
-        response_data = response.json()
-        
-        # Check for GraphQL errors
-        if "errors" in response_data:
-            return ShopifyResponse(
-                success=False,
-                message="GraphQL errors",
-                data=[],
-                errors=response_data["errors"]
-            )
-        
-        # Return successful response with raw data
-        return ShopifyResponse(
-            success=True,
-            message="Request successful",
-            data=response_data.get("data", {}),
-            errors=None
-        )
-    except requests.exceptions.RequestException as e:
-        return ShopifyResponse(
-            success=False,
-            message=f"Request failed: {str(e)}",
-            data=[],
-            errors=[{"error": str(e)}]
-        )
-
-
-
-
-def fetch_order(order_number: str, config: Dict[str, Any]) -> Dict[str, Any]:
-    """Fetch order details from Shopify API."""
-    order_num = order_number.strip().lstrip('#')
-    
-    query = """
+_FETCH_ORDER_QUERY = """
     query FetchOrder($q: String!) {
         orders(first: 1, query: $q) {
             edges {
@@ -656,33 +837,9 @@ def fetch_order(order_number: str, config: Dict[str, Any]) -> Dict[str, Any]:
             }
         }
     }
-    """
-    
-    payload = {
-        "query": query,
-        "variables": {"q": f"name:#{order_num}"}
-    }
-    
-    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
-    verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
-    
-    try:
-        response = requests.post(
-            config["graphql_url"],
-            json=payload,
-            headers=config["headers"],
-            timeout=30,
-            verify=verify_ssl
-        )
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        return {"error": str(e)}
+"""
 
-
-def cancel_order(order_id: str, config: Dict[str, Any], reason: str = "CUSTOMER") -> Dict[str, Any]:
-    """Cancel an order using Shopify's orderCancel mutation."""
-    mutation = """
+_CANCEL_ORDER_MUTATION = """
     mutation orderCancel($notifyCustomer: Boolean, $orderId: ID!, $reason: OrderCancelReason!, $refund: Boolean!, $restock: Boolean!, $staffNote: String) {
         orderCancel(
             notifyCustomer: $notifyCustomer, 
@@ -706,46 +863,9 @@ def cancel_order(order_id: str, config: Dict[str, Any], reason: str = "CUSTOMER"
             }
         }
     }
-    """
-    
-    payload = {
-        "query": mutation,
-        "variables": {
-            "notifyCustomer": False,
-            "orderId": order_id,
-            "reason": reason,
-            "refund": False,
-            "restock": False,
-            "staffNote": "Cancelled via cancel_order script"
-        }
-    }
-    
-    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
-    verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
-    
-    try:
-        response = requests.post(
-            config["graphql_url"],
-            json=payload,
-            headers=config["headers"],
-            timeout=30,
-            verify=verify_ssl
-        )
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        return {"error": str(e)}
+"""
 
-
-def create_refund(
-    order_id: str,
-    refund_amount: float,
-    refund_type: str,
-    transactions: list,
-    config: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Create a refund using Shopify's refundCreate mutation."""
-    mutation = """
+_CREATE_REFUND_MUTATION = """
     mutation CreateRefund($input: RefundInput!) {
         refundCreate(input: $input) {
             refund {
@@ -769,104 +889,4 @@ def create_refund(
             }
         }
     }
-    """
-    
-    refund_input = {
-        "notify": True,
-        "orderId": order_id,
-    }
-    
-    if refund_type.lower() == "credit":
-        refund_input["note"] = f"Store Credit issued for ${refund_amount:.2f}"
-        refund_input["refundMethods"] = [
-            {
-                "storeCreditRefund": {
-                    "amount": {
-                        "amount": str(refund_amount),
-                        "currencyCode": "USD",
-                    }
-                }
-            }
-        ]
-    else:
-        capture_transaction = next(
-            (t for t in transactions if t.get("kind") in ["CAPTURE", "SALE"] and t.get("status") == "SUCCESS"), 
-            None
-        )
-        
-        if not capture_transaction:
-            return {"success": False, "message": "No successful capture transaction found for refund"}
-        
-        gateway = capture_transaction.get("gateway", "shopify_payments")
-        parent_trans = capture_transaction.get("parentTransaction")
-        if parent_trans and parent_trans.get("id"):
-            parent_transaction_id = parent_trans["id"]
-        else:
-            parent_transaction_id = capture_transaction["id"]
-        
-        refund_input["note"] = f"Refund issued for ${refund_amount:.2f}"
-        refund_input["transactions"] = [
-            {
-                "orderId": order_id,
-                "gateway": gateway,
-                "kind": "REFUND",
-                "amount": str(refund_amount),
-                "parentId": parent_transaction_id
-            }
-        ]
-    
-    payload = {
-        "query": mutation,
-        "variables": {"input": refund_input}
-    }
-    
-    ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
-    verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
-    
-    def make_refund_request() -> Dict[str, Any]:
-        try:
-            response = requests.post(
-                config["graphql_url"],
-                json=payload,
-                headers=config["headers"],
-                timeout=30,
-                verify=verify_ssl
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            if "errors" in result:
-                error_messages = [err.get("message", str(err)) for err in result["errors"]]
-                return {"success": False, "message": error_messages}
-            
-            mutation_data = result.get('data', {}).get('refundCreate', {})
-            user_errors = mutation_data.get('userErrors', [])
-            
-            if user_errors:
-                error_messages = [f"{err.get('field', '')}: {err.get('message', 'Unknown error')}" for err in user_errors]
-                return {"success": False, "message": error_messages}
-            
-            refund_data = mutation_data.get('refund', {})
-            if not refund_data:
-                return {"success": False, "message": "Refund creation returned no refund data"}
-            
-            return {"success": True, "data": refund_data}
-        except requests.exceptions.RequestException as e:
-            return {"success": False, "error": str(e)}
-    
-    # Simple retry logic with exponential backoff
-    max_retries = 3
-    base_delay = 1.0
-    backoff_factor = 2.0
-    last_error: Dict[str, Any] = {"success": False, "error": "Unknown error"}
-    
-    for attempt in range(max_retries + 1):
-        result = make_refund_request()
-        if result.get("success") is not False:
-            return result
-        last_error = result
-        if attempt < max_retries:
-            delay = base_delay * (backoff_factor ** attempt)
-            time.sleep(delay)
-    
-    return last_error
+"""

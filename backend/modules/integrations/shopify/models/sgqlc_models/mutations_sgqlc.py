@@ -4,8 +4,8 @@ SGQLC Type definitions for Shopify GraphQL mutations.
 Defines types for orderCancel and refundCreate mutations.
 """
 
-from sgqlc.types import Type, Field, String, Boolean, ID, list_of, Input, Enum
-from typing import TYPE_CHECKING
+from sgqlc.types import Type, Field, String, Boolean, ID, Int, list_of, Input, Enum
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     pass
@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 # Enums
 # ============================================================================
 
+# Type alias for order cancellation reasons (for type hints)
+CancelReasonType = Literal["CUSTOMER", "FRAUD", "INVENTORY", "DECLINED", "OTHER"]
+
 class OrderCancelReason(Enum):
     """Order cancellation reason enum."""
     CUSTOMER = "CUSTOMER"
@@ -23,43 +26,76 @@ class OrderCancelReason(Enum):
     DECLINED = "DECLINED"
     OTHER = "OTHER"
 
+# Register enum choices with sgqlc schema
+OrderCancelReason.__choices__ = ("CUSTOMER", "FRAUD", "INVENTORY", "DECLINED", "OTHER")
+
+
+class CurrencyCode(Enum):
+    """Currency code enum for Shopify."""
+    USD = "USD"
+    CAD = "CAD"
+    EUR = "EUR"
+    GBP = "GBP"
+    # Add other currencies as needed
+
+# Register enum choices with sgqlc schema
+CurrencyCode.__choices__ = ("USD", "CAD", "EUR", "GBP")
+
+
+class OrderTransactionKind(Enum):
+    """Order transaction kind enum for Shopify."""
+    SALE = "SALE"
+    CAPTURE = "CAPTURE"
+    AUTHORIZATION = "AUTHORIZATION"
+    EMV_AUTHORIZATION = "EMV_AUTHORIZATION"
+    REFUND = "REFUND"
+    VOID = "VOID"
+    CHANGE = "CHANGE"
+    ECHECK_SALE = "ECHECK_SALE"
+    ECHECK_CREDIT = "ECHECK_CREDIT"
+    ECHECK_DEBIT = "ECHECK_DEBIT"
+    # Add other transaction kinds as needed
+
+# Register enum choices with sgqlc schema
+OrderTransactionKind.__choices__ = ("SALE", "CAPTURE", "AUTHORIZATION", "EMV_AUTHORIZATION", "REFUND", "VOID", "CHANGE", "ECHECK_SALE", "ECHECK_CREDIT", "ECHECK_DEBIT")
+
 
 # ============================================================================
 # Input Types (using Input base class for mutation inputs)
 # ============================================================================
 
-class MoneyInput(Type):
+class MoneyInput(Input):
     """Money input for refunds."""
-    amount = Field(String)
-    currencyCode = Field(String)
+    amount = String
+    currencyCode = CurrencyCode
 
 
-class StoreCreditRefund(Type):
+class StoreCreditRefund(Input):
     """Store credit refund input."""
-    amount = Field(MoneyInput)
+    amount = MoneyInput
 
 
-class RefundMethod(Type):
+class RefundMethod(Input):
     """Refund method input."""
-    storeCreditRefund = Field(StoreCreditRefund)
+    storeCreditRefund = StoreCreditRefund
 
 
-class TransactionInput(Type):
+class TransactionInput(Input):
     """Transaction input for refunds."""
-    orderId = Field(ID)
-    gateway = Field(String)
-    kind = Field(String)  # "REFUND"
-    amount = Field(String)
-    parentId = Field(ID)
+    orderId = ID
+    gateway = String
+    kind = OrderTransactionKind  # Transaction kind enum
+    amount = String
+    parentId = ID
 
 
-class RefundInput(Type):
+class RefundInput(Input):
     """Input for refundCreate mutation."""
-    notify = Field(Boolean)
-    orderId = Field(ID)
-    note = Field(String)
-    refundMethods = Field(list_of(RefundMethod))
-    transactions = Field(list_of(TransactionInput))
+    notify = Boolean
+    orderId = ID
+    note = String
+    refundMethods = list_of(RefundMethod)
+    transactions = list_of(TransactionInput)
 
 
 # ============================================================================
@@ -152,6 +188,38 @@ class OrderEditAppliedDiscountInput(Type):
 
 
 # ============================================================================
+# Inventory Mutations
+# ============================================================================
+
+class InventoryChange(Input):
+    """Inventory change input."""
+    delta = Int
+    inventoryItemId = ID
+    locationId = ID
+
+
+class InventoryAdjustQuantitiesInput(Input):
+    """Input for inventoryAdjustQuantities mutation."""
+    reason = String
+    name = String
+    referenceDocumentUri = String
+    changes = list_of(InventoryChange)
+
+
+class InventoryAdjustmentGroup(Type):
+    """Inventory adjustment group response."""
+    createdAt = Field(String)
+    reason = Field(String)
+    referenceDocumentUri = Field(String)
+
+
+class InventoryAdjustQuantitiesPayload(Type):
+    """Response payload for inventoryAdjustQuantities mutation."""
+    userErrors = Field(list_of(UserError))
+    inventoryAdjustmentGroup = Field(InventoryAdjustmentGroup)
+
+
+# ============================================================================
 # Customer Update Mutations
 # ============================================================================
 
@@ -217,5 +285,9 @@ class Mutation(Type):
     customerUpdate = Field(
         CustomerUpdatePayload,
         args={'input': 'CustomerUpdateInput'}
+    )
+    inventoryAdjustQuantities = Field(
+        InventoryAdjustQuantitiesPayload,
+        args={'input': InventoryAdjustQuantitiesInput}
     )
 

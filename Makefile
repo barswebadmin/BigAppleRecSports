@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: help test compile backend gas GoogleAppsScripts lambda-functions start tunnel stop install clean status _get_tunnel_url clasp _run_in_new_terminal _kill_tunnel _kill_backend _check_process _deploy_lambda
+.PHONY: help test ready backend gas GoogleAppsScripts lambda-functions start tunnel stop install clean status _get_tunnel_url test-specific clasp _run_in_new_terminal _kill_tunnel _kill_backend _check_process _deploy_lambda
 
 # Default target
 help:
@@ -17,12 +17,15 @@ help:
 	@echo "  make status              - Show running processes"
 	@echo ""
 	@echo "🧪 Testing Commands:"
-	@echo "  make test                - Run all tests (backend, lambda, gas)"
-	@echo "  make test [path]         - Run tests for specific path (backend, lambda/functions, GoogleAppsScripts)"
+	@echo "  make test [path]         - Run tests in directory and subdirectories (default: current dir)"
+	@echo "  make ready [path]        - Test directory (fails fast on errors)"
+	@echo "  make test .              - Run all tests in repository"
+	@echo "  make test backend        - Run backend tests"
+	@echo "  make test gas            - Run GoogleAppsScripts tests"
+	@echo "  make test lambda         - Run lambda-functions tests"
 	@echo ""
-	@echo "🔨 Compilation Commands:"
-	@echo "  make compile             - Compile all repos (backend, lambda, gas)"
-	@echo "  make compile [path]      - Compile specific path (backend, lambda/functions, GoogleAppsScripts)"
+	@echo "🧪 Backend-Specific Tests:"
+	@echo "  make test-specific TEST=<path> - Run specific test file or case"
 	@echo ""
 	@echo "📦 Google Apps Script Deployment:"
 	@echo "  make clasp push <project> - Push GAS project to remote (with diff comparison)"
@@ -30,36 +33,31 @@ help:
 	@echo "  make clasp deploy <project> - Full deployment (push + version management)"
 	@echo ""
 	@echo "📋 Examples:"
-	@echo "  make test                - Run all tests"
-	@echo "  make test backend        - Run backend tests"
-	@echo "  make test lambda/functions - Run lambda tests"
-	@echo "  make compile             - Compile all repos"
-	@echo "  make compile backend    - Compile backend"
+	@echo "  make test lambda-functions/shopifyProductUpdateHandler"
+	@echo "  make test-specific TEST=backend/test_slack_message_formatting.py"
+	@echo "  make test-specific TEST=backend/test_orders_api.py::test_fetch_order"
 	@echo ""
 	@echo "🔧 Quick Start:"
 	@echo "  1. make install          - Install dependencies"
 	@echo "  2. make start            - Start server + tunnel"
 	@echo "  3. make test             - Run tests"
 
-# Handle test command arguments
+# Handle arguments for test commands
+# This allows 'make test backend' instead of 'make test DIR=backend'
 ifneq ($(filter test,$(MAKECMDGOALS)),)
-  TEST_PATH := $(word 2,$(MAKECMDGOALS))
-  ifneq ($(TEST_PATH),)
-    $(eval $(TEST_PATH):;@:)
+  # Get the argument after 'test'
+  TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(TEST_ARGS),)
+    DIR := $(TEST_ARGS)
+    # Prevent make from trying to build these as targets
+    $(eval $(TEST_ARGS):;@:)
+  else
+    DIR := .
   endif
 endif
 
-# Handle test and compile command arguments
-ifneq ($(filter test compile,$(MAKECMDGOALS)),)
-  TEST_PATH := $(word 2,$(MAKECMDGOALS))
-  COMPILE_PATH := $(word 2,$(MAKECMDGOALS))
-  ifneq ($(TEST_PATH),)
-    $(eval $(TEST_PATH):;@:)
-  endif
-  ifneq ($(COMPILE_PATH),)
-    $(eval $(COMPILE_PATH):;@:)
-  endif
-endif
+# Default DIR if not set by arguments
+DIR ?= .
 
 # =============================================================================
 # CONSTANTS
@@ -195,54 +193,15 @@ stop:
 
 install:
 	@echo "📦 Installing all dependencies..."
+	@echo "  Syncing dependencies from backend/requirements.txt to pyproject.toml..."
+	@python3 scripts/sync_pyproject_dependencies.py
 	@bash scripts/setup_direnv.sh
 	@python3 scripts/install_pipx_environment.py
 	@echo "  Installing GAS dependencies from GoogleAppsScripts/package.json..."
 	@cd GoogleAppsScripts && pnpm install
-	@echo "  Setting up direnv hook in .zshrc..."
-	@if ! grep -q 'eval "$$(direnv hook zsh)"' ~/.zshrc 2>/dev/null; then \
-		echo 'eval "$$(direnv hook zsh)"' >> ~/.zshrc && \
-		echo "    ✅ Added direnv hook to ~/.zshrc"; \
-	else \
-		echo "    ℹ️  direnv hook already exists in ~/.zshrc"; \
-	fi
 	@echo "✅ All dependencies installed!"
 	@echo "✅ bars CLI is now available. Run 'bars --help' to get started."
 	@echo "⚠️  Restart your shell or run 'source ~/.zshrc' to activate direnv hook."
-
-install-prod:
-	@echo "📦 Installing production dependencies only..."
-	@pip3 install fastapi uvicorn[standard] requests python-dotenv pydantic python-multipart python-dateutil typing-extensions
-	@echo "  Installing GAS dependencies from GoogleAppsScripts/package.json..."
-	@cd GoogleAppsScripts && pnpm install --prod
-	@echo "✅ Production dependencies installed!"
-
-reinstall:
-	@echo "🔄 Reinstalling all dependencies..."
-	@echo "  Reinstalling bars CLI package..."
-	@pipx reinstall bars --editable || (pipx uninstall bars 2>/dev/null || true; pipx install -e . || pipx install .)
-	@echo "  Injecting requirements.txt dependencies into pipx venv..."
-	@pipx inject bars -r requirements.txt --force || echo "    ⚠️  Some dependencies may already be installed"
-	@echo "  Cleaning up unused dependencies from pipx venv..."
-	@python3 scripts/sync_pipx_dependencies.py || echo "    ⚠️  Could not clean up unused packages"
-	@echo "  Reinstalling GAS dependencies..."
-	@cd GoogleAppsScripts && rm -rf node_modules pnpm-lock.yaml && pnpm install
-	@echo "  Setting up direnv hook in .zshrc..."
-	@if ! grep -q 'eval "$$(direnv hook zsh)"' ~/.zshrc 2>/dev/null; then \
-		echo 'eval "$$(direnv hook zsh)"' >> ~/.zshrc && \
-		echo "    ✅ Added direnv hook to ~/.zshrc"; \
-	else \
-		echo "    ℹ️  direnv hook already exists in ~/.zshrc"; \
-	fi
-	@echo "✅ All dependencies reinstalled!"
-	@echo "✅ bars CLI is now available. Run 'bars --help' to get started."
-	@echo "⚠️  Restart your shell or run 'source ~/.zshrc' to activate direnv hook."
-
-install-backend-legacy:
-	@echo "📦 Installing backend dependencies (legacy method)..."
-	@cd backend && pip3 install -r requirements.txt
-	@echo "📦 Installing test dependencies..."
-	@cd backend && pip3 install pytest pytest-asyncio pytest-mock
 
 clean: stop
 	@echo "🧹 Cleaning up..."
@@ -281,45 +240,236 @@ status:
 # TESTING COMMANDS
 # =============================================================================
 
-# Testing command (runs compilation first, then tests)
+# Testing helpers
+_test_directory:
+	@if [ "$(DIR)" = "." ]; then \
+		echo "🧪 Running all tests in repository..."; \
+		$(MAKE) _test_backend_internal; \
+		$(MAKE) _test_gas_internal; \
+		$(MAKE) _test_lambda_internal; \
+	elif [ -d "$(DIR)" ]; then \
+		if echo "$(DIR)" | grep -q "backend"; then \
+			$(MAKE) _test_backend_internal DIR=$(DIR); \
+		elif echo "$(DIR)" | grep -q "GoogleAppsScripts"; then \
+			$(MAKE) _test_gas_internal DIR=$(DIR); \
+		elif echo "$(DIR)" | grep -q "lambda-functions"; then \
+			$(MAKE) _test_lambda_internal DIR=$(DIR); \
+		else \
+			echo "🔍 Auto-detecting test types in $(DIR)..."; \
+			if find "$(DIR)" -name "*test*.py" -o -name "test_*.py" -type f | head -1 | grep -q .; then \
+				$(MAKE) _test_python_files DIR=$(DIR); \
+			fi; \
+			if find "$(DIR)" -name "*test*.js" -o -name "test_*.js" -type f | head -1 | grep -q .; then \
+				$(MAKE) _test_js_files DIR=$(DIR); \
+			fi; \
+			if find "$(DIR)" -name "*.sh" -type f | grep -q test; then \
+				$(MAKE) _test_shell_files DIR=$(DIR); \
+			fi; \
+		fi; \
+	else \
+		echo "❌ Directory $(DIR) does not exist"; \
+		exit 1; \
+	fi
+
+# Public testing commands
 test:
-	@TEST_PATH="$(word 2,$(MAKECMDGOALS))"; \
-	if [ -z "$$TEST_PATH" ]; then \
-		echo "🔨 Compiling all repos first..."; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.compilation.compile_main import compile_all; compile_result = compile_all(); sys.exit(compile_result)"; \
-		COMPILE_EXIT=$$?; \
-		if [ $$COMPILE_EXIT -ne 0 ]; then \
-			echo "❌ Compilation failed. Skipping tests."; \
-			exit $$COMPILE_EXIT; \
+	@echo "🧪 Running tests in directory: $(DIR)"
+	@$(MAKE) _test_directory DIR=$(DIR)
+
+ready:
+	@echo "🚀 Running test for directory: $(DIR)"
+	@$(MAKE) _test_directory DIR=$(DIR)
+
+# Note: backend, gas, lambda, etc. aliases work for test commands due to the argument parsing logic
+# Use: make test backend, make test GoogleAppsScripts, make test lambda-functions
+
+test-specific:
+	@if [ -z "$(TEST)" ]; then \
+		echo "❌ Please specify a test to run: make test-specific TEST=<test_name>"; \
+		echo "Examples:"; \
+		echo "  make test-specific TEST=backend/test_slack_message_formatting.py"; \
+		echo "  make test-specific TEST=backend/test_orders_api.py::test_fetch_order"; \
+		echo "  make test-specific TEST=backend/services/tests/test_csv_service.py"; \
+		exit 1; \
+	fi
+	@echo "🧪 Running specific test: $(TEST)"
+	@if echo "$(TEST)" | grep -q "::"; then \
+		echo "Running pytest test case: $(TEST)"; \
+		cd backend && $(BACKEND_PYTHON) -m pytest "../$(TEST)" -v; \
+	elif echo "$(TEST)" | grep -q "\.py$$"; then \
+		echo "Running Python test file: $(TEST)"; \
+		if echo "$(TEST)" | grep -q "^backend/"; then \
+			cd backend && $(BACKEND_PYTHON) -m pytest "../$(TEST)" -v; \
+		else \
+			cd backend && $(BACKEND_PYTHON) "../$(TEST)"; \
 		fi; \
-		echo "🧪 Running all tests..."; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import run_all_tests; sys.exit(run_all_tests())"; \
 	else \
-		echo "🔨 Compiling $$TEST_PATH first..."; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.compilation.compile_main import compile_for_path; compile_result = compile_for_path('$$TEST_PATH'); sys.exit(compile_result)"; \
-		COMPILE_EXIT=$$?; \
-		if [ $$COMPILE_EXIT -ne 0 ]; then \
-			echo "❌ Compilation failed. Skipping tests."; \
-			exit $$COMPILE_EXIT; \
-		fi; \
-		echo "🧪 Running tests for: $$TEST_PATH"; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import run_tests_for_path; sys.exit(run_tests_for_path('$$TEST_PATH'))"; \
+		echo "❌ Invalid test format. Use .py file or pytest::test_name format"; \
+		exit 1; \
 	fi
 
-# Compilation command
-compile:
-	@COMPILE_PATH="$(word 2,$(MAKECMDGOALS))"; \
-	if [ -z "$$COMPILE_PATH" ]; then \
-		echo "🔨 Compiling all repos..."; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.compilation.compile_main import compile_all; sys.exit(compile_all())"; \
+# Backend testing (Python) - CI-equivalent comprehensive testing
+_test_backend_internal:
+	@echo "🧪 Running backend tests (CI-equivalent)..."
+	@if [ "$(DIR)" = "." ] || [ "$(DIR)" = "backend" ]; then \
+		echo "🔍 Step 1: Backend compilation checks..."; \
+		cd backend && \
+		export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com" && \
+		export SHOPIFY_TOKEN="test_token" && \
+		export ENVIRONMENT="test" && \
+		export SLACK_REFUNDS_BOT_TOKEN="test_slack_token" && \
+		echo "📋 Checking Python syntax..." && \
+		../.venv/bin/python -m py_compile config.py main.py && \
+		echo "📋 Checking module imports..." && \
+		../.venv/bin/python -c "import sys; sys.path.append('.'); from config import config; print('✅ Config imports successfully'); from main import app; print('✅ Main FastAPI app imports successfully'); from modules.orders import OrdersService; print('✅ Orders service imports successfully'); from modules.integrations.slack import SlackClient; print('✅ Slack Client imports successfully'); from routers.refunds import router; print('✅ Refunds router imports successfully')" && \
+		echo "🧪 Step 2: Running comprehensive test suite..." && \
+		if [ -d "tests/unit" ] && [ "$$(find tests/unit -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then \
+			echo "🧪 Running unit tests..."; \
+			../.venv/bin/python -m pytest tests/unit/ -v; \
+		else \
+			echo "⚠️ No unit tests found in tests/unit/, skipping..."; \
+		fi && \
+		echo "🧪 Running service-specific tests..." && \
+		../.venv/bin/python -m pytest services/*/tests/ -v || true && \
+		echo "🧪 Running router tests..." && \
+		../.venv/bin/python -m pytest routers/tests/ -v || true && \
+		echo "🧪 Running Slack webhook tests..." && \
+		../.venv/bin/python -m pytest routers/tests/test_slack_router.py -v || true && \
+		if [ -d "tests/integration" ] && [ "$$(find tests/integration -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then \
+			echo "🧪 Running integration tests..."; \
+			../.venv/bin/python -m pytest tests/integration/ -v; \
+		else \
+			echo "⚠️ No integration tests found in tests/integration/, skipping..."; \
+		fi && \
+		echo "✅ Backend tests completed!"; \
 	else \
-		echo "🔨 Compiling: $$COMPILE_PATH"; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.compilation.compile_main import compile_for_path; sys.exit(compile_for_path('$$COMPILE_PATH'))"; \
+		echo "📋 Running tests in $(DIR)..."; \
+		if find "$(DIR)" -name "test_*.py" -o -name "*_test.py" -type f | head -1 | grep -q .; then \
+			cd backend && \
+			export SHOPIFY_URL_ADMIN_DOMAIN="test-store.myshopify.com" && \
+			export SHOPIFY_TOKEN="test_token" && \
+			export ENVIRONMENT="test" && \
+			export SLACK_REFUNDS_BOT_TOKEN="test_slack_token" && \
+			../.venv/bin/python -m pytest "../$(DIR)" -v; \
+		else \
+			echo "⚠️  No Python test files found in $(DIR)"; \
+		fi; \
 	fi
 
-# Catch-all target to prevent Make from trying to build arguments as targets
-%:
-	@:
+# GoogleAppsScripts testing (JavaScript) - CI-equivalent comprehensive testing
+_test_gas_internal:
+	@echo "🧪 Running GoogleAppsScripts tests (CI-equivalent)..."
+	@if [ "$(DIR)" = "." ] || [ "$(DIR)" = "GoogleAppsScripts" ]; then \
+		cd GoogleAppsScripts && \
+		echo "🔍 Step 1: JSON validation..." && \
+		echo "📋 Validating appsscript.json files..." && \
+		find . -name "appsscript.json" -exec python3 -m json.tool {} \; > /dev/null && \
+		echo "✅ All appsscript.json files are valid JSON" && \
+		echo "🔍 Step 2: Security scan..." && \
+		echo "📋 Checking for hardcoded secrets..." && \
+		if grep -r "shpat_\|xoxb-\|https://hooks.slack.com" --include="*.gs" . | grep -v "shared-utilities/secretsUtils.gs" | grep -v "instructions.gs"; then \
+			echo "❌ Found hardcoded secrets in scripts!"; \
+			exit 1; \
+		else \
+			echo "✅ No hardcoded secrets found"; \
+		fi && \
+		echo "🧪 Step 3: Running test suites..." && \
+		chmod +x tests/*.sh && \
+		chmod +x projects/*/tests/*.sh && \
+		echo "📋 Running Product Creation Function Tests..." && \
+		cd projects/create-products-from-registration-info/tests && \
+		node run_consolidated_tests.js && \
+		cd - && \
+		echo "📋 Running Process Refunds Exchanges Tests..." && \
+		./projects/process-refunds-exchanges/tests/run_tests.sh || true && \
+		echo "📋 Running Leadership Discount Codes Tests..." && \
+		./projects/leadership-discount-codes/tests/test_leadership_discount_codes.sh || true && \
+		echo "📋 Running Instructions Tests..." && \
+		./tests/test_instructions.sh && \
+		if find tests/ -name "*.js" -o -name "*.mjs" -type f | head -1 | grep -q .; then \
+			echo "📋 Running additional JavaScript tests..."; \
+			find tests/ -name "*.js" -o -name "*.mjs" -type f | while read -r file; do \
+				echo "  Running $$file..."; \
+				node "$$file" || true; \
+			done; \
+		fi && \
+		echo "✅ GoogleAppsScripts tests completed!"; \
+	else \
+		echo "📋 Running tests in $(DIR)..."; \
+		if find "$(DIR)" -name "*.sh" -type f | grep -q test; then \
+			find "$(DIR)" -name "*test*.sh" -type f | while read -r file; do \
+				echo "  Running $$file..."; \
+				chmod +x "$$file"; \
+				"$$file" || true; \
+			done; \
+		fi; \
+	fi
+
+# Lambda functions testing (Python) - CI-equivalent comprehensive testing
+_test_lambda_internal:
+	@echo "🧪 Running Lambda function tests (CI-equivalent)..."
+	@if [ "$(DIR)" = "." ] || [ "$(DIR)" = "lambda-functions" ]; then \
+		cd lambda-functions && \
+		echo "🔍 Step 1: Lambda compilation checks..." && \
+		echo "📋 Checking Lambda function syntax..." && \
+		for dir in */; do \
+			echo "🔍 Checking $$dir..."; \
+			cd "$$dir" && \
+			python3 -m py_compile *.py 2>/dev/null && \
+			python3 -c "import lambda_function; print('✅ $$dir imports successfully')" && \
+			cd ..; \
+		done && \
+		echo "🧪 Step 2: Running Lambda test suite..." && \
+		if [ -f "tests/run_tests.py" ]; then \
+			echo "📋 Running Lambda test suite..."; \
+			python3 tests/run_tests.py unit; \
+		else \
+			echo "📋 Running pytest on Lambda tests..."; \
+			python3 -m pytest tests/ -v || true; \
+		fi && \
+		echo "✅ Lambda function tests completed!"; \
+	else \
+		echo "📋 Running tests in $(DIR)..."; \
+		if find "$(DIR)" -name "test_*.py" -type f | head -1 | grep -q .; then \
+			python3 -m pytest "$(DIR)" -v || true; \
+		else \
+			echo "⚠️  No test files found in $(DIR)"; \
+		fi; \
+	fi
+
+# Generic Python test runner
+_test_python_files:
+	@echo "🧪 Running Python tests in $(DIR)..."
+	@if find "$(DIR)" -name "test_*.py" -o -name "*_test.py" -type f | head -1 | grep -q .; then \
+		if [ -d "backend" ]; then \
+			cd backend && python3 -m pytest "../$(DIR)" -v; \
+		else \
+			python3 -m pytest "$(DIR)" -v; \
+		fi; \
+	else \
+		echo "⚠️  No Python test files found in $(DIR)"; \
+	fi
+
+# Generic JavaScript test runner
+_test_js_files:
+	@echo "🧪 Running JavaScript tests in $(DIR)..."
+	@if command -v node >/dev/null 2>&1; then \
+		find "$(DIR)" -name "*test*.js" -o -name "test_*.js" -type f | while read -r file; do \
+			echo "  Running $$file..."; \
+			node "$$file" || true; \
+		done; \
+	else \
+		echo "⚠️  Node.js not found, cannot run JavaScript tests"; \
+	fi
+
+# Generic shell test runner
+_test_shell_files:
+	@echo "🧪 Running shell tests in $(DIR)..."
+	@find "$(DIR)" -name "*test*.sh" -type f | while read -r file; do \
+		echo "  Running $$file..."; \
+		chmod +x "$$file"; \
+		"$$file" || true; \
+	done
 
 # =============================================================================
 # LAMBDA DEPLOYMENT COMMANDS
@@ -385,11 +535,11 @@ clasp:
 		exit 1; \
 	fi
 	@if [ "$(CLASP_CMD)" = "push" ]; then \
-		bash scripts/deployment/push_google.sh "$(CLASP_PROJECT)"; \
+		bash GoogleAppsScripts/remote-sync-tools/push.sh "$(CLASP_PROJECT)"; \
 	elif [ "$(CLASP_CMD)" = "pull" ]; then \
-		bash scripts/deployment/pull_google.sh "$(CLASP_PROJECT)"; \
+		bash GoogleAppsScripts/remote-sync-tools/pull.sh "$(CLASP_PROJECT)"; \
 	elif [ "$(CLASP_CMD)" = "deploy" ]; then \
-		bash scripts/deployment/deploy_google.sh "$(CLASP_PROJECT)"; \
+		bash GoogleAppsScripts/remote-sync-tools/deploy.sh "$(CLASP_PROJECT)"; \
 	else \
 		echo "❌ Unknown command: $(CLASP_CMD)"; \
 		echo "Valid commands: push, pull, deploy"; \

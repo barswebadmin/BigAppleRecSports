@@ -13,12 +13,15 @@ This service is pure Shopify - no BARS domain logic.
 import json
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any as AnyType
+    from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import CancelReasonType
 else:
+    CancelReasonType = str  # Runtime fallback
     AnyType = Any
 
 from backend.modules.integrations.shopify.client.shopify_sgqlc_client import ShopifySGQLCClient
@@ -107,7 +110,7 @@ class ShopifyService:
         
         # Check for GraphQL errors
         if response.get('errors'):
-            error_msg = f"GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
+            error_msg = f"GraphQL query failed with {len(response.get('errors', []))} errors\n❌ GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
             raise ValueError(error_msg)
         
         # Interpret results into native objects (op + data pattern)
@@ -515,7 +518,7 @@ class ShopifyService:
         
         # Check for GraphQL errors
         if response.get('errors'):
-            error_msg = f"GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
+            error_msg = f"GraphQL query failed with {len(response.get('errors', []))} errors\n❌ GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
             raise ValueError(error_msg)
         
         # Interpret results into native objects (op + data pattern)
@@ -539,7 +542,7 @@ class ShopifyService:
     def cancel_order(
         self,
         order_id: str,
-        reason: str = "CUSTOMER",
+        reason: CancelReasonType = "CUSTOMER",
         notify_customer: bool = False,
         refund: bool = False,
         restock: bool = False,
@@ -550,7 +553,7 @@ class ShopifyService:
         
         Args:
             order_id: Order ID (gid://shopify/Order/...)
-            reason: Cancellation reason (CUSTOMER, FRAUD, INVENTORY, DECLINED, OTHER)
+            reason: Cancellation reason - one of: "CUSTOMER", "FRAUD", "INVENTORY", "DECLINED", "OTHER" (default: "CUSTOMER")
             notify_customer: Whether to notify customer (default: False)
             refund: Whether to refund (default: False)
             restock: Whether to restock inventory (default: False)
@@ -574,14 +577,15 @@ class ShopifyService:
         # Build mutation operation
         op = Operation(Mutation)
         
-        # Map reason string to enum
-        reason_enum = OrderCancelReason[reason] if hasattr(OrderCancelReason, reason) else OrderCancelReason.CUSTOMER
+        # Pass reason string directly (sgqlc accepts strings for enum arguments)
+        # The CancelReasonType Literal ensures type safety
+        reason_value = reason.upper() if isinstance(reason, str) else reason
         
         # Select mutation with arguments
         result = op.orderCancel(
             notifyCustomer=notify_customer,
             orderId=order_id,
-            reason=reason_enum,
+            reason=reason_value,
             refund=refund,
             restock=restock,
             staffNote=staff_note or "Cancelled via CLI"
@@ -639,6 +643,7 @@ class ShopifyService:
         refund_amount: float,
         refund_type: str,
         transactions: List[Any],
+        currency: str = "USD",
         notify: bool = True,
         max_retries: int = 3
     ) -> Dict[str, Any]:
@@ -650,6 +655,7 @@ class ShopifyService:
             refund_amount: Refund amount (float)
             refund_type: "refund" (original payment) or "credit" (store credit)
             transactions: List of transaction objects from order
+            currency: Currency code (default: "USD")
             notify: Whether to notify customer (default: True)
             max_retries: Maximum retry attempts (default: 3)
         
@@ -666,7 +672,9 @@ class ShopifyService:
         from sgqlc.operation import Operation
         from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import (
             Mutation,
-            RefundInput
+            RefundInput,
+            CurrencyCode,
+            OrderTransactionKind
         )
         
         # Build refund input
@@ -674,6 +682,9 @@ class ShopifyService:
             "notify": notify,
             "orderId": order_id,
         }
+        
+        # Map currency string to CurrencyCode enum
+        currency_enum = getattr(CurrencyCode, currency.upper(), CurrencyCode.USD)
         
         if refund_type.lower() == "credit":
             # Store credit refund
@@ -683,7 +694,7 @@ class ShopifyService:
                     "storeCreditRefund": {
                         "amount": {
                             "amount": str(refund_amount),
-                            "currencyCode": "USD"
+                            "currencyCode": currency_enum  # Use enum value from order currency
                         }
                     }
                 }
@@ -720,16 +731,16 @@ class ShopifyService:
                 {
                     "orderId": order_id,
                     "gateway": gateway,
-                    "kind": "REFUND",
+                    "kind": OrderTransactionKind.REFUND,  # Use enum value
                     "amount": str(refund_amount),
                     "parentId": parent_id
                 }
             ]
         
         # Build mutation operation
-        op = Operation(Mutation, variables={'input': RefundInput})
+        op = Operation(Mutation)
         
-        # Select mutation with input
+        # Select mutation with input (pass dict directly, sgqlc will handle conversion)
         result = op.refundCreate(input=refund_input)  # type: ignore[call-arg]
         
         # Select response fields
@@ -797,7 +808,11 @@ class ShopifyService:
                     return last_error
                 
                 refund_data = refund.__json_data__ if hasattr(refund, '__json_data__') else {}
-                return {"success": True, "data": refund_data}
+                return {
+                    "success": True,
+                    "data": refund_data,
+                    "raw_response": response  # Include raw GraphQL response
+                }
                 
             except RuntimeError as e:
                 # HTTP/network errors - retry
@@ -1046,39 +1061,13 @@ class ShopifyService:
             }
         """
         from sgqlc.operation import Operation
-        from sgqlc.types import String, Int, ID, list_of, Input
+        from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import (
+            Mutation,
+            InventoryAdjustQuantitiesInput
+        )
         
-        # Build mutation input
-        class InventoryChange(Input):
-            delta = Int
-            inventoryItemId = ID
-            locationId = ID
-        
-        class InventoryAdjustQuantitiesInput(Input):
-            reason = String
-            name = String
-            referenceDocumentUri = String
-            changes = list_of(InventoryChange)
-        
-        class InventoryAdjustmentGroup(Type):
-            createdAt = Field(String)
-            reason = Field(String)
-            referenceDocumentUri = Field(String)
-        
-        from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import UserError
-        
-        class InventoryAdjustQuantitiesPayload(Type):
-            userErrors = Field(list_of(UserError))
-            inventoryAdjustmentGroup = Field(InventoryAdjustmentGroup)
-        
-        class InventoryMutation(Type):
-            inventoryAdjustQuantities = Field(
-                InventoryAdjustQuantitiesPayload,
-                args={'input': InventoryAdjustQuantitiesInput}
-            )
-        
-        # Build mutation operation
-        op = Operation(InventoryMutation, variables={'input': InventoryAdjustQuantitiesInput})
+        # Build mutation operation (no variables, pass input directly)
+        op = Operation(Mutation)
         
         # Build input dict
         changes = [{
@@ -1096,7 +1085,7 @@ class ShopifyService:
         if request.get("reference_uri"):
             input_data["referenceDocumentUri"] = request["reference_uri"]
         
-        # Select mutation with input
+        # Select mutation with input (pass dict directly, sgqlc will handle conversion)
         result = op.inventoryAdjustQuantities(input=input_data)  # type: ignore[call-arg]
         result.userErrors.__fields__('field', 'message')  # type: ignore[union-attr]
         result.inventoryAdjustmentGroup.__fields__('createdAt', 'reason', 'referenceDocumentUri')  # type: ignore[union-attr]
@@ -1135,7 +1124,236 @@ class ShopifyService:
             "referenceDocumentUri": adjustment_group.referenceDocumentUri if adjustment_group else None  # type: ignore[attr-defined]
         }
         
-        return {"success": True, "data": adjustment_data}
+        return {
+            "success": True,
+            "data": adjustment_data,
+            "raw_response": response  # Include raw GraphQL response
+        }
+    
+    def calculate_payment_summary(self, order: Any) -> Dict[str, Any]:
+        """
+        Calculate payment summary from order including refunds.
+        
+        Args:
+            order: Order object (sgqlc Type instance)
+        
+        Returns:
+            Dict with keys:
+            - total_amount: Total amount paid (from CAPTURE/SALE transactions)
+            - currency: Currency code
+            - total_refunded: Total amount refunded
+            - pending_refunds: Amount of pending refunds
+            - completed_refunds: Amount of completed refunds
+            - remaining_refundable: Remaining refundable amount
+        """
+        total_amount = 0.0
+        currency = 'USD'
+        
+        # Calculate total paid from CAPTURE and SALE transactions
+        # CAPTURE is the actual payment, SALE is included as fallback
+        transactions = getattr(order, 'transactions', None)  # type: ignore[attr-defined]
+        if transactions:
+            transaction_list = list(transactions) if hasattr(transactions, '__iter__') and not isinstance(transactions, str) else []
+            for trans in transaction_list:
+                # Try accessing via sgqlc attributes first
+                trans_kind = getattr(trans, 'kind', None)  # type: ignore[attr-defined]
+                trans_status = getattr(trans, 'status', None)  # type: ignore[attr-defined]
+                trans_amount_str = getattr(trans, 'amount', None)  # type: ignore[attr-defined]
+                
+                # Fallback to __json_data__ if attributes are None (field not selected)
+                if trans_kind is None and hasattr(trans, '__json_data__'):
+                    trans_data = trans.__json_data__
+                    trans_kind = trans_data.get('kind')
+                    trans_status = trans_data.get('status')
+                    trans_amount_str = trans_data.get('amount')
+                
+                # Look for CAPTURE (actual payment) or SALE transactions with SUCCESS status
+                if trans_kind in ['CAPTURE', 'SALE'] and trans_status == 'SUCCESS':
+                    try:
+                        trans_amount = float(trans_amount_str) if trans_amount_str else 0.0
+                        if trans_amount > 0:
+                            total_amount += trans_amount
+                            # Get currency from totalPriceSet if available, otherwise default to USD
+                            if currency == 'USD':
+                                total_price_set = getattr(order, 'totalPriceSet', None)  # type: ignore[attr-defined]
+                                if total_price_set:
+                                    shop_money = getattr(total_price_set, 'shopMoney', None)  # type: ignore[attr-defined]
+                                    if shop_money:
+                                        currency = getattr(shop_money, 'currencyCode', 'USD')  # type: ignore[attr-defined]
+                    except (ValueError, TypeError):
+                        pass
+        
+        # Fallback: Use totalPriceSet if no CAPTURE/SALE transactions found
+        if total_amount == 0.0:
+            total_price_set = getattr(order, 'totalPriceSet', None)  # type: ignore[attr-defined]
+            if total_price_set:
+                shop_money = getattr(total_price_set, 'shopMoney', None)  # type: ignore[attr-defined]
+                if shop_money:
+                    amount_str = getattr(shop_money, 'amount', '0')  # type: ignore[attr-defined]
+                    currency = getattr(shop_money, 'currencyCode', 'USD')  # type: ignore[attr-defined]
+                    try:
+                        total_amount = float(amount_str)
+                    except (ValueError, TypeError):
+                        total_amount = 0.0
+        
+        # Last resort: Calculate from line items if still zero
+        if total_amount == 0.0:
+            line_items_conn = getattr(order, 'lineItems', None)  # type: ignore[attr-defined]
+            if line_items_conn:
+                nodes = getattr(line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
+                if nodes:
+                    for line_item in nodes:
+                        # Try discountedTotalSet first, then originalTotalSet
+                        discounted_total_set = getattr(line_item, 'discountedTotalSet', None)  # type: ignore[attr-defined]
+                        if discounted_total_set:
+                            shop_money = getattr(discounted_total_set, 'shopMoney', None)  # type: ignore[attr-defined]
+                            if shop_money:
+                                amount_str = getattr(shop_money, 'amount', '0')  # type: ignore[attr-defined]
+                                try:
+                                    total_amount += float(amount_str)
+                                    currency = getattr(shop_money, 'currencyCode', currency)  # type: ignore[attr-defined]
+                                except (ValueError, TypeError):
+                                    pass
+                        else:
+                            original_total_set = getattr(line_item, 'originalTotalSet', None)  # type: ignore[attr-defined]
+                            if original_total_set:
+                                shop_money = getattr(original_total_set, 'shopMoney', None)  # type: ignore[attr-defined]
+                                if shop_money:
+                                    amount_str = getattr(shop_money, 'amount', '0')  # type: ignore[attr-defined]
+                                    try:
+                                        total_amount += float(amount_str)
+                                        currency = getattr(shop_money, 'currencyCode', currency)  # type: ignore[attr-defined]
+                                    except (ValueError, TypeError):
+                                        pass
+        
+        # Calculate refunds
+        refunds = getattr(order, 'refunds', None)  # type: ignore[attr-defined]
+        total_refunded = 0.0
+        pending_refunds = 0.0
+        completed_refunds = 0.0
+        
+        if refunds:
+            refund_list = list(refunds) if hasattr(refunds, '__iter__') and not isinstance(refunds, str) else []
+            for refund in refund_list:
+                # Access Refund fields directly via sgqlc attributes
+                total_refunded_set = getattr(refund, 'totalRefundedSet', None)  # type: ignore[attr-defined]
+                refund_total = 0.0
+                
+                if total_refunded_set:
+                    shop_money = getattr(total_refunded_set, 'shopMoney', None)  # type: ignore[attr-defined]
+                    if shop_money:
+                        amount_str = getattr(shop_money, 'amount', '0')  # type: ignore[attr-defined]
+                        try:
+                            refund_total = float(amount_str)
+                        except (ValueError, TypeError):
+                            refund_total = 0.0
+                
+                if refund_total == 0:
+                    # Check transactions for pending refunds
+                    refund_transactions_conn = getattr(refund, 'transactions', None)  # type: ignore[attr-defined]
+                    if refund_transactions_conn:
+                        nodes = getattr(refund_transactions_conn, 'nodes', None)  # type: ignore[attr-defined]
+                        if nodes:
+                            for trans in nodes:
+                                trans_kind = getattr(trans, 'kind', None)  # type: ignore[attr-defined]
+                                trans_status = getattr(trans, 'status', None)  # type: ignore[attr-defined]
+                                trans_amount_str = getattr(trans, 'amount', None)  # type: ignore[attr-defined]
+                                
+                                # Fallback to __json_data__ if needed
+                                if trans_kind is None and hasattr(trans, '__json_data__'):
+                                    trans_data = trans.__json_data__
+                                    trans_kind = trans_data.get('kind')
+                                    trans_status = trans_data.get('status')
+                                    trans_amount_str = trans_data.get('amount')
+                                
+                                if trans_kind == 'REFUND':
+                                    try:
+                                        trans_amount = float(trans_amount_str) if trans_amount_str else 0.0
+                                        if trans_status == 'PENDING':
+                                            pending_refunds += trans_amount
+                                        refund_total += trans_amount
+                                        break
+                                    except (ValueError, TypeError):
+                                        pass
+                else:
+                    completed_refunds += refund_total
+                
+                total_refunded += refund_total
+        
+        remaining_refundable = total_amount - total_refunded
+        
+        return {
+            'total_amount': total_amount,
+            'currency': currency,
+            'total_refunded': total_refunded,
+            'pending_refunds': pending_refunds,
+            'completed_refunds': completed_refunds,
+            'remaining_refundable': remaining_refundable
+        }
+    
+    def calculate_estimated_refund(
+        self,
+        order: Any,
+        total_amount: float,
+        refund_type: str,
+        submitted_at: Optional[datetime] = None
+    ) -> Tuple[Optional[float], Optional[str]]:
+        """
+        Calculate estimated refund amount based on season dates.
+        
+        Args:
+            order: Order object (sgqlc Type instance)
+            total_amount: Total order amount
+            refund_type: "refund" or "credit"
+            submitted_at: Optional datetime for refund calculation (defaults to current time)
+        
+        Returns:
+            Tuple of (estimated_amount, message) or (None, None) if calculation not possible
+        """
+        from backend.shared.date_utils import extract_season_dates, calculate_refund_amount
+        from datetime import datetime, timezone
+        
+        if submitted_at is None:
+            submitted_at = datetime.now(timezone.utc)
+        
+        line_items_conn = getattr(order, 'lineItems', None)  # type: ignore[attr-defined]
+        if not line_items_conn:
+            return None, None
+        
+        nodes = getattr(line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
+        if not nodes or len(nodes) == 0:
+            return None, None
+        
+        first_item = nodes[0]
+        product = getattr(first_item, 'product', None)  # type: ignore[attr-defined]
+        if not product:
+            return None, None
+        
+        # Try to access descriptionHtml as attribute first (if selected in GraphQL)
+        product_description = getattr(product, 'descriptionHtml', None)
+        
+        # Fall back to __json_data__ if not available as attribute
+        if not product_description and hasattr(product, '__json_data__'):
+            product_data = product.__json_data__
+            product_description = product_data.get('descriptionHtml', '')
+        
+        if not product_description:
+            return None, None
+        
+        season_start_date_str, off_dates_str = extract_season_dates(product_description)
+        
+        if not season_start_date_str:
+            return None, None
+        
+        estimated_refund_amount, estimated_refund_message = calculate_refund_amount(
+            season_start_date_str=season_start_date_str,
+            off_dates_str=off_dates_str,
+            total_amount_paid=total_amount,
+            refund_type=refund_type,
+            request_submitted_at=submitted_at
+        )
+        
+        return estimated_refund_amount, estimated_refund_message
     
     # ============================================================================
     # PRODUCTS
@@ -1182,7 +1400,7 @@ class ShopifyService:
         
         # Check for GraphQL errors
         if response.get('errors'):
-            error_msg = f"GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
+            error_msg = f"GraphQL query failed with {len(response.get('errors', []))} errors\n❌ GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
             raise ValueError(error_msg)
         
         # Interpret results into native objects (op + data pattern)
@@ -1211,9 +1429,187 @@ class ShopifyService:
     # INVENTORY
     # ============================================================================
     
-    # TODO: Implement inventory operations
-    # def adjust_inventory(...)
-    # def get_inventory_item(...)
+    def get_product_id_from_variant(self, variant_id: str) -> Optional[str]:
+        """
+        Get product ID from variant ID.
+        
+        Args:
+            variant_id: Variant ID (gid://shopify/ProductVariant/... or numeric ID)
+        
+        Returns:
+            Product ID (gid://shopify/Product/...) or None if not found
+            
+        Raises:
+            ValueError: If GraphQL query fails with errors
+        """
+        # Normalize variant ID to GID format
+        normalized = normalize_variant_id(variant_id)
+        if not normalized:
+            raise ValueError(f"Failed to normalize variant ID: {variant_id}")
+        
+        # Use GID format for GraphQL query
+        variant_gid = normalized.get('gid')
+        if not variant_gid:
+            raise ValueError(f"No GID found in normalized variant ID: {normalized}")
+        
+        op = Query.build_variant_query(variant_gid)
+        
+        try:
+            response = self.client.execute(op)
+            
+            if response.get('errors'):
+                error_msg = f"GraphQL query failed with {len(response.get('errors', []))} errors\n❌ GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
+                logger.error(f"GraphQL query failed for variant {variant_id}: {error_msg}")
+                raise ValueError(error_msg)
+            
+            query_result = op + response
+            variant = getattr(query_result, 'productVariant', None)  # type: ignore[attr-defined]
+            if variant:
+                product = getattr(variant, 'product', None)  # type: ignore[attr-defined]
+                if product:
+                    return getattr(product, 'id', None)  # type: ignore[attr-defined]
+        except ValueError:
+            # Re-raise ValueError (GraphQL errors)
+            raise
+        except Exception as e:
+            logger.error(f"Exception getting product ID from variant {variant_id}: {e}", exc_info=True)
+            raise ValueError(f"Failed to get product ID from variant {variant_id}: {e}") from e
+        
+        raise ValueError(f"Variant {variant_id} not found or has no associated product")
+    
+    def get_product_variants_for_restock(self, variant_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all variants for a product, starting from a variant ID.
+        
+        Fetches the product ID from the variant, then fetches all variants for that product.
+        
+        Args:
+            variant_id: Variant ID (gid://shopify/ProductVariant/... or numeric ID)
+        
+        Returns:
+            List of variant dicts with keys:
+            - id: Variant ID
+            - title: Variant title
+            - inventory_quantity: Current inventory quantity
+            - inventory_item_id: Inventory item ID
+            
+        Raises:
+            ValueError: If variant lookup or product query fails
+        """
+        # Get product ID from variant (raises ValueError on failure)
+        product_id = self.get_product_id_from_variant(variant_id)
+        if not product_id:
+            raise ValueError(f"Failed to get product ID from variant {variant_id}")
+        
+        # Use minimal query builder for restock (only selects needed fields)
+        # This avoids high query cost from selecting all product fields recursively
+        op = Query.build_product_variants_query(product_id, variants_first=10)
+        
+        try:
+            response = self.client.execute(op)
+            
+            if response.get('errors'):
+                error_msg = f"GraphQL query failed with {len(response.get('errors', []))} errors\n❌ GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
+                logger.error(f"GraphQL query failed for product {product_id}: {error_msg}")
+                raise ValueError(error_msg)
+            
+            query_result = op + response
+            products_conn = getattr(query_result, 'products', None)  # type: ignore[attr-defined]
+            if not products_conn or not products_conn.nodes:
+                return []
+            
+            product = products_conn.nodes[0]
+            variants_conn = getattr(product, 'variants', None)  # type: ignore[attr-defined]
+            if not variants_conn:
+                return []
+            
+            variants = []
+            nodes = getattr(variants_conn, 'nodes', None)  # type: ignore[attr-defined]
+            if nodes:
+                for variant in nodes:
+                    inventory_item = getattr(variant, 'inventoryItem', None)  # type: ignore[attr-defined]
+                    inventory_item_id = None
+                    if inventory_item:
+                        inventory_item_id = getattr(inventory_item, 'id', None)  # type: ignore[attr-defined]
+                    
+                    variants.append({
+                        'id': getattr(variant, 'id', None),  # type: ignore[attr-defined]
+                        'title': getattr(variant, 'title', 'Unknown'),  # type: ignore[attr-defined]
+                        'inventory_quantity': getattr(variant, 'inventoryQuantity', None),  # type: ignore[attr-defined]
+                        'inventory_item_id': inventory_item_id
+                    })
+            
+            return variants
+        except Exception:
+            return []
+    
+    def get_first_location_id(self) -> Optional[str]:
+        """
+        Get the first available location ID.
+        
+        Returns:
+            Location ID (gid://shopify/Location/...) or None if not found
+        """
+        op = Query.build_location_query(first=1)
+        
+        try:
+            response = self.client.execute(op)
+            
+            if response.get('errors'):
+                return None
+            
+            query_result = op + response
+            locations_conn = getattr(query_result, 'locations', None)  # type: ignore[attr-defined]
+            if locations_conn:
+                nodes = getattr(locations_conn, 'nodes', None)  # type: ignore[attr-defined]
+                if nodes and len(nodes) > 0:
+                    location = nodes[0]
+                    return getattr(location, 'id', None)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        
+        return None
+    
+    def update_inventory(
+        self,
+        inventory_item_id: str,
+        location_id: str,
+        delta: int,
+        reference_uri: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Update inventory for a single variant (can increase or decrease).
+        
+        Args:
+            inventory_item_id: Inventory item ID (gid://shopify/InventoryItem/...)
+            location_id: Location ID (gid://shopify/Location/...)
+            delta: Quantity change (positive to increase, negative to decrease)
+            reference_uri: Optional reference URI for the adjustment
+        
+        Returns:
+            Dict with structure:
+            {
+                "success": bool,
+                "data": {...},  # Adjustment data if successful
+                "errors": [...],  # User errors if failed
+                "message": str  # Error message if failed
+            }
+        """
+        from datetime import datetime
+        
+        if not reference_uri:
+            reference_uri = f"logistics://cli-inventory-update/{datetime.utcnow().isoformat()}"
+        
+        request = {
+            "inventory_item_id": inventory_item_id,
+            "location_id": location_id,
+            "delta": delta,
+            "reason": "correction",
+            "name": "available",
+            "reference_uri": reference_uri
+        }
+        
+        return self.adjust_inventory(request)
     
     # ============================================================================
     # UI / PAGES

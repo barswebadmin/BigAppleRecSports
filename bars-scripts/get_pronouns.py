@@ -47,24 +47,8 @@ def get_customer_orders_with_dates(customer: Dict[str, Any]) -> List[Tuple[str, 
 
 def get_order_line_item_properties(order_id: str, config: Dict[str, Any]) -> List[Dict[str, str]]:
     """Fetch line item properties for a specific order."""
-    query = """
-    query getOrder($id: ID!) {
-        order(id: $id) {
-            id
-            createdAt
-            lineItems(first: 50) {
-                edges {
-                    node {
-                        customAttributes {
-                            key
-                            value
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _GET_ORDER_QUERY
     
     payload = {
         "query": query,
@@ -300,4 +284,30 @@ Output shows pronouns (lowercased) with name and order date (most recent first).
 
 if __name__ == "__main__":
     main()
+
+
+# ============================================================================
+# ALREADY MIGRATED - GraphQL Query Structures
+# ============================================================================
+# These query structures have been migrated to sgqlc models.
+# They are kept here for reference only and should not be used in new code.
+
+_GET_ORDER_QUERY = """
+    query getOrder($id: ID!) {
+        order(id: $id) {
+            id
+            createdAt
+            lineItems(first: 50) {
+                edges {
+                    node {
+                        customAttributes {
+                            key
+                            value
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
 

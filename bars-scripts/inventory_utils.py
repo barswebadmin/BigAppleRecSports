@@ -13,33 +13,8 @@ def fetch_order_line_items(order_number: str, config: Dict[str, Any]) -> Dict[st
     """Fetch order line items with variant details."""
     order_num = order_number.strip().lstrip('#')
     
-    query = """
-    query FetchOrderLineItems($q: String!) {
-        orders(first: 1, query: $q) {
-            edges {
-                node {
-                    id
-                    name
-                    lineItems(first: 50) {
-                        edges {
-                            node {
-                                id
-                                name
-                                title
-                                quantity
-                                variant {
-                                    id
-                                    title
-                                    displayName
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _FETCH_ORDER_LINE_ITEMS_QUERY
     
     payload = {
         "query": query,
@@ -65,27 +40,8 @@ def fetch_order_line_items(order_number: str, config: Dict[str, Any]) -> Dict[st
 
 def fetch_all_product_variants(product_id: str, config: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Fetch all variants for a product."""
-    query = """
-    query GetProductVariants($productId: ID!) {
-        product(id: $productId) {
-            id
-            title
-            variants(first: 100) {
-                edges {
-                    node {
-                        id
-                        title
-                        displayName
-                        inventoryQuantity
-                        inventoryItem {
-                            id
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _GET_PRODUCT_VARIANTS_QUERY
     
     payload = {
         "query": query,
@@ -130,15 +86,8 @@ def fetch_all_product_variants(product_id: str, config: Dict[str, Any]) -> List[
 
 def get_inventory_item_id(variant_id: str, config: Dict[str, Any]) -> Optional[str]:
     """Get inventory item ID for a variant."""
-    query = """
-    query GetInventoryItemId($variantId: ID!) {
-        productVariant(id: $variantId) {
-            inventoryItem {
-                id
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _GET_INVENTORY_ITEM_ID_QUERY
     
     payload = {
         "query": query,
@@ -178,17 +127,8 @@ def update_variant_inventory(
 ) -> Dict[str, Any]:
     """Update inventory for a variant."""
     # Get location ID (using first available location)
-    location_query = """
-    query {
-        locations(first: 1) {
-            edges {
-                node {
-                    id
-                }
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    location_query = _LOCATION_QUERY
     
     ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
     verify_ssl = ssl_cert_file if os.path.exists(ssl_cert_file) else True
@@ -211,16 +151,8 @@ def update_variant_inventory(
         location_id = locations[0]['node']['id']
         
         # Update inventory
-        mutation = """
-        mutation InventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
-            inventoryAdjustQuantities(input: $input) {
-                userErrors {
-                    field
-                    message
-                }
-            }
-        }
-        """
+        # Mutation moved to bottom - see ALREADY MIGRATED section
+        mutation = _INVENTORY_ADJUST_QUANTITIES_MUTATION
         
         payload = {
             "query": mutation,
@@ -290,15 +222,8 @@ def prompt_restock_selection(
     variant_id = variant['id']
     
     # Get product ID from variant
-    product_query = """
-    query GetProductFromVariant($variantId: ID!) {
-        productVariant(id: $variantId) {
-            product {
-                id
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    product_query = _GET_PRODUCT_FROM_VARIANT_QUERY
     
     payload = {"query": product_query, "variables": {"variantId": variant_id}}
     ssl_cert_file = os.getenv('SSL_CERT_FILE', '/opt/homebrew/etc/openssl@3/cert.pem')
@@ -399,3 +324,102 @@ def prompt_restock_selection(
         console.print(f"[red]Error: {str(e)}[/red]")
         return []
 
+
+# ============================================================================
+# ALREADY MIGRATED - GraphQL Query Structures
+# ============================================================================
+# These query structures have been migrated to sgqlc models.
+# They are kept here for reference only and should not be used in new code.
+
+_FETCH_ORDER_LINE_ITEMS_QUERY = """
+    query FetchOrderLineItems($q: String!) {
+        orders(first: 1, query: $q) {
+            edges {
+                node {
+                    id
+                    name
+                    lineItems(first: 50) {
+                        edges {
+                            node {
+                                id
+                                name
+                                title
+                                quantity
+                                variant {
+                                    id
+                                    title
+                                    displayName
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
+_GET_PRODUCT_VARIANTS_QUERY = """
+    query GetProductVariants($productId: ID!) {
+        product(id: $productId) {
+            id
+            title
+            variants(first: 100) {
+                edges {
+                    node {
+                        id
+                        title
+                        displayName
+                        inventoryQuantity
+                        inventoryItem {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
+_GET_INVENTORY_ITEM_ID_QUERY = """
+    query GetInventoryItemId($variantId: ID!) {
+        productVariant(id: $variantId) {
+            inventoryItem {
+                id
+            }
+        }
+    }
+"""
+
+_LOCATION_QUERY = """
+    query {
+        locations(first: 1) {
+            edges {
+                node {
+                    id
+                }
+            }
+        }
+    }
+"""
+
+_INVENTORY_ADJUST_QUANTITIES_MUTATION = """
+    mutation InventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
+        inventoryAdjustQuantities(input: $input) {
+            userErrors {
+                field
+                message
+            }
+        }
+    }
+"""
+
+_GET_PRODUCT_FROM_VARIANT_QUERY = """
+    query GetProductFromVariant($variantId: ID!) {
+        productVariant(id: $variantId) {
+            product {
+                id
+            }
+        }
+    }
+"""

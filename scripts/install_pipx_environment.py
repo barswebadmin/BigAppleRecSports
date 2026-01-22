@@ -4,8 +4,7 @@ Install and manage pipx environment for bars CLI.
 
 Handles:
 - Installing the bars CLI package with smart failure handling
-- Injecting dependencies from pyproject.toml
-- Cleaning up unused packages (optional)
+- Dependencies are automatically installed from pyproject.toml during package installation
 """
 import argparse
 import re
@@ -35,7 +34,11 @@ def get_installed_packages(package_name: str) -> set[str]:
 
 
 def get_pyproject_deps() -> set[str]:
-    """Extract dependencies from pyproject.toml."""
+    """Extract dependencies from pyproject.toml.
+    
+    Note: pyproject.toml dependencies are synced from backend/requirements.txt
+    via scripts/sync_pyproject_dependencies.py, so this reads the synced version.
+    """
     pyproject_path = Path('pyproject.toml')
     if not pyproject_path.exists():
         return set()
@@ -60,56 +63,39 @@ def get_pyproject_deps() -> set[str]:
     return deps
 
 
-def parse_requirements(filepath: str) -> set[str]:
-    """Parse requirements.txt, handling -r includes."""
+def parse_production_dependencies() -> set[str]:
+    """Parse PRODUCTION section from backend/requirements.txt."""
     deps = set()
-    req_path = Path(filepath)
+    req_path = Path('backend/requirements.txt')
     
     if not req_path.exists():
         return deps
     
+    in_production_section = False
     for line in req_path.read_text().splitlines():
         line = line.strip()
-        if not line or line.startswith('#'):
+        
+        # Check if we've hit the PRODUCTION section
+        if re.search(r'^#+\s*PRODUCTION\s+DEPENDENCIES', line, re.IGNORECASE):
+            in_production_section = True
             continue
         
-        if line.startswith('-r'):
-            include_path = line.split()[1]
-            deps.update(parse_requirements(include_path))
-        else:
-            pkg = re.split(r'[>=<!=]', line)[0].strip().lower()
-            if pkg:
-                deps.add(pkg)
-    
-    return deps
-
-
-def _get_pyproject_deps_with_versions() -> list[str]:
-    """Extract dependencies from pyproject.toml with version specifiers preserved."""
-    pyproject_path = Path('pyproject.toml')
-    if not pyproject_path.exists():
-        return []
-    
-    content = pyproject_path.read_text()
-    deps_match = re.search(
-        r'\[project\]\s+dependencies\s*=\s*\[(.*?)\]',
-        content,
-        re.DOTALL
-    )
-    
-    if not deps_match:
-        return []
-    
-    deps = []
-    for line in deps_match.group(1).split('\n'):
-        line = line.strip().rstrip(',').strip()
-        if line.startswith('"') and line.endswith('"'):
-            line = line[1:-1]
-        elif line.startswith("'") and line.endswith("'"):
-            line = line[1:-1]
+        # Stop when we hit SERVER or TESTING section
+        if re.search(r'^#+\s*(SERVER|TESTING)\s+DEPENDENCIES', line, re.IGNORECASE):
+            break
         
-        if line and not line.startswith('#'):
-            deps.append(line)
+        # Only parse lines in PRODUCTION section
+        if in_production_section:
+            if not line or line.startswith('#'):
+                continue
+            
+            if line.startswith('-r'):
+                include_path = line.split()[1]
+                deps.update(parse_production_dependencies())
+            else:
+                pkg = re.split(r'[>=<!=]', line)[0].strip().lower()
+                if pkg:
+                    deps.add(pkg)
     
     return deps
 
@@ -120,29 +106,38 @@ def install_package() -> bool:
     
     while True:
         print("  Installing bars CLI package...")
+        print("    📦 Running: pipx install -e . --force")
+        print("    ⏳ This may take a moment (installing package and dependencies from pyproject.toml)...")
         result = subprocess.run(
             ['pipx', 'install', '-e', '.', '--force'],
-            capture_output=True,
+            capture_output=False,  # Show output in real-time
             text=True
         )
         
         if result.returncode == 0:
-            print("    ✅ Installed bars CLI package")
+            print("    ✅ Installed bars CLI package and dependencies")
             return True
         
-        print("    ❌ Failed to install bars CLI package")
+        # Installation failed - re-run with capture to show error details
+        print("    ❌ Installation failed, capturing error details...")
+        error_result = subprocess.run(
+            ['pipx', 'install', '-e', '.', '--force'],
+            capture_output=True,
+            text=True
+        )
         print("")
         print("    Error details:")
-        if result.stdout:
-            for line in result.stdout.strip().split('\n'):
+        if error_result.stdout:
+            for line in error_result.stdout.strip().split('\n'):
                 if line.strip():
                     print(f"      {line}")
-        if result.stderr:
-            for line in result.stderr.strip().split('\n'):
+        if error_result.stderr:
+            for line in error_result.stderr.strip().split('\n'):
                 if line.strip():
                     print(f"      {line}")
         print("")
         
+        # Prompt user for action
         while True:
             print("    What would you like to do?")
             print("      (c) Continue with reinstall (uninstall + fresh install)")
@@ -153,25 +148,30 @@ def install_package() -> bool:
             
             if choice in ('c', 'continue'):
                 print("    🔄 Reinstalling bars CLI package (clean install)...")
+                print("    ⏳ Running: pipx reinstall bars --editable")
                 reinstall_result = subprocess.run(
                     ['pipx', 'reinstall', package_name, '--editable'],
-                    capture_output=True,
+                    capture_output=False,  # Show output in real-time
                     text=True
                 )
                 if reinstall_result.returncode == 0:
-                    print("    ✅ Reinstalled bars CLI package")
+                    print("    ✅ Reinstalled bars CLI package and dependencies")
                     return True
                 
+                # Reinstall failed, try uninstall + install
                 print("    ⚠️  pipx reinstall failed, trying uninstall + install...")
+                print("    🗑️  Uninstalling existing package...")
                 subprocess.run(
                     ['pipx', 'uninstall', package_name],
-                    capture_output=True,
+                    capture_output=False,
                     text=True
                 )
+                # Fall through to retry install in outer loop
                 break
             
             elif choice in ('r', 'retry'):
                 print("    🔄 Retrying install...")
+                # Break inner loop to retry install in outer loop
                 break
             
             elif choice in ('e', 'exit'):
@@ -181,17 +181,25 @@ def install_package() -> bool:
             else:
                 print("    ⚠️  Invalid choice. Please enter 'c', 'r', or 'e'")
                 continue
+        
+        # Continue outer loop to retry install
 
 
 def inject_requirements() -> bool:
-    """Inject dependencies from pyproject.toml into pipx venv."""
+    """Inject dependencies from pyproject.toml into pipx venv.
+    
+    Note: pyproject.toml dependencies are synced from backend/requirements.txt
+    via scripts/sync_pyproject_dependencies.py, so this reads the synced version.
+    """
     print("  Installing dependencies from pyproject.toml...")
     
+    # Get dependencies from pyproject.toml (already synced from requirements.txt)
     pyproject_deps = _get_pyproject_deps_with_versions()
     if not pyproject_deps:
         print("    ⚠️  No dependencies found in pyproject.toml")
         return True
     
+    # Create temporary requirements file for pipx inject
     import tempfile
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tmp:
         req_path = Path(tmp.name)
@@ -216,6 +224,45 @@ def inject_requirements() -> bool:
         req_path.unlink()
 
 
+def _get_pyproject_deps_with_versions() -> list[str]:
+    """Extract dependencies from pyproject.toml with version specifiers preserved.
+    
+    Note: pyproject.toml dependencies are synced from backend/requirements.txt
+    via scripts/sync_pyproject_dependencies.py, so this reads the synced version.
+    """
+    pyproject_path = Path('pyproject.toml')
+    if not pyproject_path.exists():
+        return []
+    
+    content = pyproject_path.read_text()
+    # Match dependencies array - handle multi-line with proper TOML format
+    deps_match = re.search(
+        r'dependencies\s*=\s*\[(.*?)\]',
+        content,
+        re.DOTALL
+    )
+    
+    if not deps_match:
+        return []
+    
+    deps = []
+    for line in deps_match.group(1).split('\n'):
+        # Remove leading/trailing whitespace, commas, and quotes
+        line = line.strip().rstrip(',').strip()
+        # Remove surrounding quotes if present
+        if line.startswith('"') and line.endswith('"'):
+            line = line[1:-1]
+        elif line.startswith("'") and line.endswith("'"):
+            line = line[1:-1]
+        
+        if line and not line.startswith('#'):
+            deps.append(line)
+    
+    return deps
+
+
+
+
 def remove_unused_packages(package_name: str, to_remove: set[str]) -> None:
     """Remove packages from pipx venv using pipx uninject."""
     for pkg in sorted(to_remove):
@@ -223,7 +270,6 @@ def remove_unused_packages(package_name: str, to_remove: set[str]) -> None:
             subprocess.run(
                 ['pipx', 'uninject', package_name, pkg],
                 capture_output=True,
-                text=True,
                 check=False
             )
             print(f"    ✅ Removed {pkg}")
@@ -231,67 +277,34 @@ def remove_unused_packages(package_name: str, to_remove: set[str]) -> None:
             print(f"    ⚠️  Could not remove {pkg}: {e}")
 
 
-def cleanup_unused_packages(cleanup: bool) -> bool:
-    """Remove unused packages from pipx venv."""
-    if not cleanup:
-        return True
+def sync_dependencies() -> bool:
+    """Remove unused packages from pipx venv.
     
-    package_name = 'bars'
-    print("  Cleaning up unused packages...")
-    
-    installed = get_installed_packages(package_name)
-    if not installed:
-        print("    ⚠️  Could not get installed packages list")
-        return True
-    
-    pyproject_deps = get_pyproject_deps()
-    req_deps = parse_requirements('requirements.txt')
-    
-    required = pyproject_deps | req_deps | {
-        'bars', 'pip', 'setuptools', 'wheel', 'python-dotenv'
-    }
-    
-    to_remove = installed - required
-    
-    if to_remove:
-        print(f"    🗑️  Removing {len(to_remove)} unused packages...")
-        remove_unused_packages(package_name, to_remove)
-        print("    ✅ Cleanup complete")
-    else:
-        print("    ✅ No unused packages to remove")
-    
+    NOTE: This function is currently disabled because it was too aggressive
+    and removed transitive dependencies. pipx already manages dependencies
+    correctly, so manual cleanup is not needed.
+    """
+    # NOTE: sync_dependencies() removed - it was too aggressive and removed
+    # transitive dependencies that are actually needed (e.g., click, rich, sgqlc).
+    # pipx already manages dependencies correctly, so manual cleanup is not needed.
     return True
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Install and manage pipx environment for bars CLI'
-    )
-    parser.add_argument(
-        '--cleanup',
-        action='store_true',
-        help='Remove unused packages after installation'
-    )
-    parser.add_argument(
-        '--cleanup-only',
-        action='store_true',
-        help='Only cleanup unused packages, do not install'
-    )
+    parser = argparse.ArgumentParser(description='Install and manage pipx environment for bars CLI')
     args = parser.parse_args()
-    
-    if args.cleanup_only:
-        if not cleanup_unused_packages(cleanup=True):
-            sys.exit(1)
-        return
     
     if not install_package():
         sys.exit(1)
     
-    if not inject_requirements():
-        sys.exit(1)
+    # NOTE: inject_requirements() removed - pipx install -e . already installs
+    # all dependencies from pyproject.toml automatically, so explicit injection
+    # is redundant. The install_package() step handles everything.
     
-    if not cleanup_unused_packages(cleanup=args.cleanup):
-        sys.exit(1)
+    # NOTE: sync_dependencies() removed - it was too aggressive and removed
+    # transitive dependencies that are actually needed (e.g., click, rich, sgqlc).
+    # pipx already manages dependencies correctly, so manual cleanup is not needed.
+    # sync_dependencies()
 
 
 if __name__ == '__main__':

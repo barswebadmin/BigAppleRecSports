@@ -28,27 +28,8 @@ def fetch_product_by_id(product_id: str, config: Dict[str, Any]) -> Dict[str, An
     """Fetch product by ID."""
     product_gid = f"gid://shopify/Product/{product_id}"
     
-    query = """
-    query GetProductById($id: ID!) {
-        product(id: $id) {
-            """ + shared_utils.get_product_fields() + """
-            variants(first: 100) {
-                edges {
-                    node {
-                        id
-                        title
-                        displayName
-                        price
-                        inventoryQuantity
-                        inventoryItem {
-                            id
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _GET_PRODUCT_BY_ID_QUERY
     
     payload = {
         "query": query,
@@ -189,4 +170,33 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ============================================================================
+# ALREADY MIGRATED - GraphQL Query Structures
+# ============================================================================
+# These query structures have been migrated to sgqlc models.
+# They are kept here for reference only and should not be used in new code.
+
+_GET_PRODUCT_BY_ID_QUERY = """
+    query GetProductById($id: ID!) {
+        product(id: $id) {
+            """ + shared_utils.get_product_fields() + """
+            variants(first: 100) {
+                edges {
+                    node {
+                        id
+                        title
+                        displayName
+                        price
+                        inventoryQuantity
+                        inventoryItem {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
 

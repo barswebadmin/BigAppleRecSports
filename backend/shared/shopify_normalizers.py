@@ -66,6 +66,6 @@ def normalize_variant_id(variant_id_input: Optional[str]) -> Optional[Dict[str,s
     if not variant_id_input or not validate_shopify_variant_id_format(variant_id_input).get("success"):
         return None
     digits_only = variant_id_input.split("/")[-1] if variant_id_input.startswith("gid://") else variant_id_input
-    return {"digits_only": digits_only, "gid": f"gid://shopify/Variant/{digits_only}"}
+    return {"digits_only": digits_only, "gid": f"gid://shopify/ProductVariant/{digits_only}"}
 
 

@@ -12,7 +12,6 @@ from rich.text import Text
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_CUSTOMER_IDENTIFIER
 from bars_cli._core.ui.display import create_text_panel, create_info_table
-from bars_cli.commands.shopify._shared.command_helpers import get_shopify_service
 
 
 @click.command('update')
@@ -38,7 +37,8 @@ def update_customer_cmd(
       bars shopify customer update 123456789 --email new@example.com --phone "+1234567890"
     """
     console = Console()
-    shopify_service = get_shopify_service(ctx, "customer")
+    # Get service from context (lazily initialized via LazyServiceProxy)
+    shopify_service = ctx.meta["shopify_service"]
 
     if not identifier:
         raise click.ClickException("Customer identifier is required.")

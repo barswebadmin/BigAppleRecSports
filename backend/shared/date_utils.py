@@ -156,16 +156,31 @@ def extract_season_dates(description_html: str) -> Tuple[Optional[str], Optional
     """
     Extract season start date and off dates from product description HTML
     Based on extractSeasonDates from Utils.gs
+    
+    Matches the JavaScript implementation exactly:
+    - Strips HTML tags
+    - Replaces &nbsp; with space
+    - Normalizes whitespace
+    - Matches pattern: Season Dates... (date) – (date) (weeks, off dates)
     """
     try:
-        # Strip HTML tags and decode entities
+        if not description_html:
+            return None, None
+        
+        # Strip HTML tags and decode entities (exact match to JavaScript)
         text = re.sub(r"<[^>]+>", "", description_html)
         text = text.replace("&nbsp;", " ").replace("&amp;", "&")
+        # Normalize whitespace (replace all whitespace sequences with single space)
         text = re.sub(r"\s+", " ", text).strip()
 
         logger.info(f"Stripped description HTML: {text}")
 
-        # Pattern to match season dates
+        # Pattern to match season dates (exact match to JavaScript regex)
+        # Matches: "Season Dates" followed by optional text, then:
+        # - First date: (\d{1,2}\/\d{1,2}\/\d{2,4})
+        # - Separator: [–—-] (em dash, en dash, or hyphen)
+        # - Second date: (\d{1,2}\/\d{1,2}\/\d{2,4})
+        # - Optional: (N weeks, off dates)
         season_dates_pattern = r"Season Dates[^:\d]*[:\s]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s*[–—-]\s*(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s*\(\d+\s+weeks(?:,\s*off\s+([^)]+))?\))?"
 
         match = re.search(season_dates_pattern, text, re.IGNORECASE)
@@ -177,7 +192,7 @@ def extract_season_dates(description_html: str) -> Tuple[Optional[str], Optional
         season_start_date = match.group(1)
         off_dates_str = match.group(3) if match.group(3) else None
 
-        # Validate date formats
+        # Validate date formats (exact match to JavaScript validation)
         if not season_start_date or "/" not in season_start_date:
             return None, None
 

@@ -28,7 +28,8 @@ def list_users_cmd(ctx: click.Context) -> List[UserResource]:
     should_display = ctx.obj.get('should_display', True)
     
     # Client is guaranteed to be available (enforced in google group initialization)
-    client = ctx.meta['google_directory_client']
+    from bars_cli._core.context import get_service
+    client = get_service(ctx, 'google_api_client')
     
     try:
         # Display lookup message

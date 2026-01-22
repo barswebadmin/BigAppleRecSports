@@ -65,6 +65,7 @@ class LineItem(Type):
     originalTotalSet = Field(MoneySetWrapper)
     discountedTotalSet = Field(MoneySetWrapper)
     customAttributes = Field(list_of(CustomAttribute))
+    product = Field('Product')  # Forward reference to Product type
     variant = Field(LineItemVariant)
 
 
@@ -128,8 +129,8 @@ class Refund(Type):
     createdAt = Field(String)
     note = Field(String)
     totalRefundedSet = Field(MoneySetWrapper)
-    refundLineItems = Field('RefundLineItemConnection')  # Forward reference
-    transactions = Field('RefundTransactionConnection')  # Connection, not a list
+    refundLineItems = Field('RefundLineItemConnection', args=connection_args())  # Forward reference with connection args
+    transactions = Field('RefundTransactionConnection', args=connection_args())  # Connection with connection args
 
 
 class Order(Type):

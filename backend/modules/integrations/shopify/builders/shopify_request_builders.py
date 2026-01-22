@@ -1,3 +1,7 @@
+# DEPRECATED: This file is deprecated and replaced by sgqlc_query.py
+# The build_order_fetch_request_payload function is no longer used.
+# This file is kept for reference but should be deleted in a future cleanup.
+
 from typing import Dict, Any, List, Union, Optional, Set, Tuple
 from ..models.graphql_allowlist import (
     derive_allowed_paths,
@@ -5,7 +9,8 @@ from ..models.graphql_allowlist import (
     derive_leaf_paths,
     derive_scalar_leaf_paths,
 )
-from ..models.orders import Order as OrderModel
+# DEPRECATED: OrderModel removed - use sgqlc models instead
+# from ..models.orders import Order as OrderModel
 from ..models.requests import FetchOrderRequest
 
 # ---------------------------------------------------------------------------
@@ -89,9 +94,9 @@ def _build_search_variable(req: FetchOrderRequest) -> Dict[str, Any]:
 
 
 def _derive_allowlist_and_leaves() -> Tuple[Set[str], List[str]]:
-    allowed = derive_allowed_paths(OrderModel)
-    scalar_leaves = derive_scalar_leaf_paths(OrderModel)
-    return allowed, scalar_leaves
+    # DEPRECATED: This function is no longer functional without OrderModel
+    # Use sgqlc_query.py for query building instead
+    raise NotImplementedError("This function is deprecated. Use sgqlc_query.py instead.")
 
 
 def _gather_requested_python_paths(
@@ -108,13 +113,9 @@ def _gather_requested_python_paths(
 def _convert_and_validate_paths(
     requested_py: List[str], allowed: Set[str]
 ) -> List[str]:
-    if not requested_py:
-        return []
-    requested_gql = convert_paths_python_to_graphql(OrderModel, requested_py)
-    invalid = [p for p in requested_gql if p not in allowed]
-    if invalid:
-        raise ValueError(f"Invalid selection paths: {invalid}")
-    return requested_gql
+    # DEPRECATED: This function is no longer functional without OrderModel
+    # Use sgqlc_query.py for query building instead
+    raise NotImplementedError("This function is deprecated. Use sgqlc_query.py instead.")
 
 
 def _expand_to_scalar_leaves(

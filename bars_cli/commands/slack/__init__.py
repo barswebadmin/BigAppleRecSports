@@ -2,11 +2,12 @@
 Slack management commands for bars-cli.
 
 Command structure:
-- bars slack group *
-- bars slack user *
-- bars slack channel *
+- bars slack group * / bars slack groups *
+- bars slack user * / bars slack users *
+- bars slack channel * / bars slack channels *
 """
 import click
+from click_aliases import ClickAliasedGroup
 
 from .groups import slack_group
 from .users import slack_user
@@ -14,21 +15,13 @@ from .channels import slack_channel
 
 
 @click.group(
+    cls=ClickAliasedGroup,
     context_settings={"ignore_unknown_options": True}
 )
 @click.pass_context
 def slack(ctx: click.Context):
     """Slack management commands."""
-    # Initialize SlackService once in meta (shared across all contexts)
-    if 'slack_service' not in ctx.meta:
-        create_service = ctx.meta.get('_create_slack_service')
-        if not create_service:
-            raise click.ClickException(
-                "Slack service creation callback not found. This is a bug - callbacks should be initialized in context."
-            )
-        # Callback raises exception on failure - fail early
-        ctx.meta['slack_service'] = create_service()
-    
+    # Service is lazily initialized on first access via ctx.meta['slack_service']
     # Initialize admin_bot once in meta (shared across all contexts)
     if 'admin_bot' not in ctx.meta:
         try:
@@ -42,10 +35,10 @@ def slack(ctx: click.Context):
             ctx.meta['admin_bot'] = None
 
 
-# Register subcommands
-slack.add_command(slack_group)
-slack.add_command(slack_user)
-slack.add_command(slack_channel)
+# Register subcommands with aliases
+slack.add_command(slack_group, 'groups', aliases=['group'])
+slack.add_command(slack_user, 'users', aliases=['user'])
+slack.add_command(slack_channel, 'channels', aliases=['channel'])
 
 
 

@@ -44,162 +44,8 @@ def fetch_order_with_metadata(order_number: str, config: Dict[str, Any]) -> Dict
     """Fetch order details including metadata fields."""
     order_num = order_number.strip().lstrip('#')
     
-    query = """
-    query FetchOrderWithMetadata($q: String!) {
-        orders(first: 1, query: $q) {
-            edges {
-                node {
-                    id
-                    name
-                    email
-                    createdAt
-                    updatedAt
-                    phone
-                    displayFinancialStatus
-                    displayFulfillmentStatus
-                    subtotalLineItemsQuantity
-                    totalPriceSet {
-                        shopMoney {
-                            amount
-                            currencyCode
-                        }
-                    }
-                    discountApplications(first: 10) {
-                        edges {
-                            node {
-                                ... on DiscountCodeApplication {
-                                    code
-                                }
-                                ... on ScriptDiscountApplication {
-                                    title
-                                }
-                                ... on AutomaticDiscountApplication {
-                                    title
-                                }
-                            }
-                        }
-                    }
-                    billingAddress {
-                        firstName
-                        lastName
-                        address1
-                        city
-                        zip
-                        country
-                        phone
-                    }
-                    customer {
-                        id
-                        email
-                        firstName
-                        lastName
-                    }
-                    cancelledAt
-                    cancelReason
-                    refunds {
-                        id
-                        createdAt
-                        note
-                        totalRefundedSet {
-                            presentmentMoney {
-                                amount
-                                currencyCode
-                            }
-                            shopMoney {
-                                amount
-                                currencyCode
-                            }
-                        }
-                        refundLineItems(first: 50) {
-                            edges {
-                                node {
-                                    quantity
-                                    restockType
-                                    lineItem {
-                                        id
-                                        name
-                                        title
-                                    }
-                                }
-                            }
-                        }
-                        transactions(first: 10) {
-                            edges {
-                                node {
-                                    id
-                                    kind
-                                    status
-                                    amount
-                                    gateway
-                                    createdAt
-                                }
-                            }
-                        }
-                    }
-                    transactions {
-                        id
-                        kind
-                        gateway
-                        status
-                        amount
-                        parentTransaction {
-                            id
-                        }
-                    }
-                    lineItems(first: 50) {
-                        edges {
-                            node {
-                                id
-                                name
-                                title
-                                quantity
-                                fulfillableQuantity
-                                fulfillmentStatus
-                                originalUnitPriceSet {
-                                    shopMoney {
-                                        amount
-                                        currencyCode
-                                    }
-                                }
-                                discountedUnitPriceSet {
-                                    shopMoney {
-                                        amount
-                                        currencyCode
-                                    }
-                                }
-                                originalTotalSet {
-                                    shopMoney {
-                                        amount
-                                        currencyCode
-                                    }
-                                }
-                                discountedTotalSet {
-                                    shopMoney {
-                                        amount
-                                        currencyCode
-                                    }
-                                }
-                                customAttributes {
-                                    key
-                                    value
-                                }
-                                product {
-                                    """ + shared_utils.get_product_fields() + """
-                                }
-                                variant {
-                                    id
-                                    title
-                                    price
-                                    sku
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _FETCH_ORDER_WITH_METADATA_QUERY
     
     payload = {
         "query": query,
@@ -672,4 +518,168 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ============================================================================
+# ALREADY MIGRATED - GraphQL Query Structures
+# ============================================================================
+# These query structures have been migrated to sgqlc models.
+# They are kept here for reference only and should not be used in new code.
+
+_FETCH_ORDER_WITH_METADATA_QUERY = """
+    query FetchOrderWithMetadata($q: String!) {
+        orders(first: 1, query: $q) {
+            edges {
+                node {
+                    id
+                    name
+                    email
+                    createdAt
+                    updatedAt
+                    phone
+                    displayFinancialStatus
+                    displayFulfillmentStatus
+                    subtotalLineItemsQuantity
+                    totalPriceSet {
+                        shopMoney {
+                            amount
+                            currencyCode
+                        }
+                    }
+                    discountApplications(first: 10) {
+                        edges {
+                            node {
+                                ... on DiscountCodeApplication {
+                                    code
+                                }
+                                ... on ScriptDiscountApplication {
+                                    title
+                                }
+                                ... on AutomaticDiscountApplication {
+                                    title
+                                }
+                            }
+                        }
+                    }
+                    billingAddress {
+                        firstName
+                        lastName
+                        address1
+                        city
+                        zip
+                        country
+                        phone
+                    }
+                    customer {
+                        id
+                        email
+                        firstName
+                        lastName
+                    }
+                    cancelledAt
+                    cancelReason
+                    refunds {
+                        id
+                        createdAt
+                        note
+                        totalRefundedSet {
+                            presentmentMoney {
+                                amount
+                                currencyCode
+                            }
+                            shopMoney {
+                                amount
+                                currencyCode
+                            }
+                        }
+                        refundLineItems(first: 50) {
+                            edges {
+                                node {
+                                    quantity
+                                    restockType
+                                    lineItem {
+                                        id
+                                        name
+                                        title
+                                    }
+                                }
+                            }
+                        }
+                        transactions(first: 10) {
+                            edges {
+                                node {
+                                    id
+                                    kind
+                                    status
+                                    amount
+                                    gateway
+                                    createdAt
+                                }
+                            }
+                        }
+                    }
+                    transactions {
+                        id
+                        kind
+                        gateway
+                        status
+                        amount
+                        parentTransaction {
+                            id
+                        }
+                    }
+                    lineItems(first: 50) {
+                        edges {
+                            node {
+                                id
+                                name
+                                title
+                                quantity
+                                fulfillableQuantity
+                                fulfillmentStatus
+                                originalUnitPriceSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                                discountedUnitPriceSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                                originalTotalSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                                discountedTotalSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                                customAttributes {
+                                    key
+                                    value
+                                }
+                                product {
+                                    """ + shared_utils.get_product_fields() + """
+                                }
+                                variant {
+                                    id
+                                    title
+                                    price
+                                    sku
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
 

@@ -15,7 +15,8 @@ def list_slack_groups(ctx: click.Context, bot: str, include_disabled: bool):
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False
     
     # Service is guaranteed to be available (initialized in slack group)
-    slack_service = ctx.meta['slack_service']
+    from bars_cli._core.context import get_service
+    slack_service = get_service(ctx, 'slack_service')
     
     try:
         service = slack_service.get_usergroup_service(bot)

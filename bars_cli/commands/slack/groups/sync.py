@@ -31,7 +31,8 @@ def sync_groups(ctx: click.Context, hierarchy_json: Optional[TextIO], bot: str, 
         hierarchy_data = json.load(hierarchy_json)
         
         # Service is guaranteed to be available (initialized in slack group)
-        slack_service = ctx.meta['slack_service']
+        from bars_cli._core.context import get_service
+        slack_service = get_service(ctx, 'slack_service')
         
         # Initialize services
         provisioner = slack_service.get_usergroup_provisioner(bot)

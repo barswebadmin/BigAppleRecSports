@@ -26,76 +26,8 @@ def fetch_order(order_number: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """Fetch order with product description for refund calculation."""
     order_num = order_number.strip().lstrip('#')
     
-    query = """
-    query FetchOrderForRefund($q: String!) {
-        orders(first: 1, query: $q) {
-            edges {
-                node {
-                    id
-                    name
-                    email
-                    totalPriceSet {
-                        shopMoney {
-                            amount
-                            currencyCode
-                        }
-                    }
-                    customer {
-                        firstName
-                        lastName
-                        email
-                    }
-                    refunds {
-                        id
-                        createdAt
-                        totalRefundedSet {
-                            shopMoney {
-                                amount
-                            }
-                        }
-                        transactions(first: 10) {
-                            edges {
-                                node {
-                                    id
-                                    kind
-                                    status
-                                    amount
-                                }
-                            }
-                        }
-                    }
-                    transactions {
-                        id
-                        kind
-                        gateway
-                        status
-                        amount
-                        parentTransaction {
-                            id
-                        }
-                    }
-                    lineItems(first: 50) {
-                        edges {
-                            node {
-                                id
-                                title
-                                quantity
-                                product {
-                                    """ + shared_utils.get_product_fields() + """
-                                }
-                                variant {
-                                    id
-                                    title
-                                    price
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
+    # Query moved to bottom - see ALREADY MIGRATED section
+    query = _FETCH_ORDER_FOR_REFUND_QUERY
     
     payload = {
         "query": query,
@@ -744,4 +676,82 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ============================================================================
+# ALREADY MIGRATED - GraphQL Query Structures
+# ============================================================================
+# These query structures have been migrated to sgqlc models.
+# They are kept here for reference only and should not be used in new code.
+
+_FETCH_ORDER_FOR_REFUND_QUERY = """
+    query FetchOrderForRefund($q: String!) {
+        orders(first: 1, query: $q) {
+            edges {
+                node {
+                    id
+                    name
+                    email
+                    totalPriceSet {
+                        shopMoney {
+                            amount
+                            currencyCode
+                        }
+                    }
+                    customer {
+                        firstName
+                        lastName
+                        email
+                    }
+                    refunds {
+                        id
+                        createdAt
+                        totalRefundedSet {
+                            shopMoney {
+                                amount
+                            }
+                        }
+                        transactions(first: 10) {
+                            edges {
+                                node {
+                                    id
+                                    kind
+                                    status
+                                    amount
+                                }
+                            }
+                        }
+                    }
+                    transactions {
+                        id
+                        kind
+                        gateway
+                        status
+                        amount
+                        parentTransaction {
+                            id
+                        }
+                    }
+                    lineItems(first: 50) {
+                        edges {
+                            node {
+                                id
+                                title
+                                quantity
+                                product {
+                                    """ + shared_utils.get_product_fields() + """
+                                }
+                                variant {
+                                    id
+                                    title
+                                    price
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
 

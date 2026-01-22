@@ -2,41 +2,36 @@
 Shopify management commands for bars-cli.
 
 Command structure:
-- bars shopify customer *
-- bars shopify order *
-- bars shopify product *
+- bars shopify customer * / bars shopify customers *
+- bars shopify order * / bars shopify orders *
+- bars shopify product * / bars shopify products *
+- bars shopify page * / bars shopify pages *
 """
 import click
+from click_aliases import ClickAliasedGroup
 
-from .customers.get_customer import get_customer_cmd
+from .customers.get import get_customer_cmd
 from .customers.update import update_customer_cmd
 from .orders.get import get_order_cmd
 from .orders.cancel import cancel_order_cmd
 from .orders.refund import refund_order_cmd
 from .orders.apply_discount import apply_discount_cmd
-from .orders.cancel_and_refund import cancel_and_refund_cmd
-from .orders.analyze_refunds import analyze_refunds_cmd
+from .orders.restock import restock_cmd
 from .products.get import get_product_cmd
-from .products.restock import restock_cmd
 from .products.orders import product_orders_cmd
+from .products.update_inventory import update_inventory_cmd
 from .pages import page_group
 
 
 @click.group(
+    cls=ClickAliasedGroup,
     context_settings={"ignore_unknown_options": True}
 )
 @click.pass_context
 def shopify(ctx: click.Context):
     """Shopify management commands."""
-    # Initialize ShopifyService once in meta (shared across all contexts)
-    if 'shopify_service' not in ctx.meta:
-        create_service = ctx.meta.get('_create_shopify_service')
-        if not create_service:
-            raise click.ClickException(
-                "Shopify service creation callback not found. This is a bug - callbacks should be initialized in context."
-            )
-        # Callback raises exception on failure - fail early
-        ctx.meta['shopify_service'] = create_service()
+    # Service is lazily initialized on first access via ctx.meta['shopify_service']
+    pass
 
 
 # Register subcommands
@@ -51,8 +46,7 @@ order_group.add_command(get_order_cmd, 'get')
 order_group.add_command(cancel_order_cmd, 'cancel')
 order_group.add_command(refund_order_cmd, 'refund')
 order_group.add_command(apply_discount_cmd, 'apply-discount')
-order_group.add_command(cancel_and_refund_cmd, 'cancel-and-refund')
-order_group.add_command(analyze_refunds_cmd, 'analyze-refunds')
+order_group.add_command(restock_cmd, 'restock')
 
 # Create customer group and add get command to it
 @click.group('customers')
@@ -71,12 +65,12 @@ def product_group(ctx: click.Context):
     pass
 
 product_group.add_command(get_product_cmd, 'get')
-product_group.add_command(restock_cmd, 'restock')
 product_group.add_command(product_orders_cmd, 'orders')
+product_group.add_command(update_inventory_cmd, 'update-inventory')
 
-# Register groups
-shopify.add_command(customer_group)
-shopify.add_command(order_group)
-shopify.add_command(product_group)
-shopify.add_command(page_group)
+# Register groups with aliases using click-aliases
+shopify.add_command(customer_group, 'customers', aliases=['customer'])
+shopify.add_command(order_group, 'orders', aliases=['order'])
+shopify.add_command(product_group, 'products', aliases=['product'])
+shopify.add_command(page_group, 'pages', aliases=['page'])
 

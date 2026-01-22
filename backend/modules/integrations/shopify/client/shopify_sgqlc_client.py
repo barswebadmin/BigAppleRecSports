@@ -137,7 +137,8 @@ class ShopifySGQLCClient:
         
         Raises:
             RuntimeError: If the HTTP request fails (non-200 status, network errors, timeouts)
-                This does NOT raise for GraphQL errors - those are returned in the response.
+                OR if GraphQL query cost limit is exceeded (MAX_COST_EXCEEDED).
+                Other GraphQL errors are returned in the response, not raised.
         """
         try:
             response_data = self.endpoint(operation)
@@ -159,6 +160,25 @@ class ShopifySGQLCClient:
             for key, value in response_data.items() 
             if key in ('data', 'errors', 'extensions')
         }
+        
+        # Check for GraphQL errors and raise exceptions for critical errors
+        errors = graphql_response.get('errors', [])
+        if errors:
+            # Check for query cost limit errors (MAX_COST_EXCEEDED)
+            for error in errors:
+                extensions = error.get('extensions', {})
+                error_code = extensions.get('code')
+                
+                if error_code == 'MAX_COST_EXCEEDED':
+                    cost = extensions.get('cost', 'unknown')
+                    max_cost = extensions.get('maxCost', 'unknown')
+                    message = error.get('message', 'Query cost exceeded limit')
+                    raise RuntimeError(
+                        f"Shopify GraphQL query cost limit exceeded: {message}\n"
+                        f"Query cost: {cost} (limit: {max_cost})\n"
+                        f"See https://shopify.dev/docs/api/usage/rate-limits for more information.\n"
+                        f"Consider reducing the number of fields or using bulk operations."
+                    )
         
         return graphql_response
 
