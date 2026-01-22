@@ -9,14 +9,7 @@ import json
 from typing import Dict, List, Tuple, Any, Optional
 from collections import defaultdict
 
-
-def read_csv_file(filepath: str) -> Tuple[List[str], List[List[str]]]:
-    """Read CSV file and return headers and rows."""
-    with open(filepath, 'r', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        headers = next(reader, [])
-        rows = list(reader)
-    return headers, rows
+from .csv_io import read_csv_file
 
 
 def extract_order_id(order_number: str) -> str:
@@ -83,12 +76,12 @@ def normalize_value(value: str, column_name: str) -> str:
     return value.strip() if value else ''
 
 
-def build_keyed_dict(headers: List[str], rows: List[List[str]], key_column: str = 'Order Number', header_normalization_map: Optional[Dict[str, str]] = None) -> Tuple[Dict[str, Dict[str, str]], List[str]]:
+def build_keyed_dict(headers: List[str], rows: List[Dict[str, str]], key_column: str = 'Order Number', header_normalization_map: Optional[Dict[str, str]] = None) -> Tuple[Dict[str, Dict[str, str]], List[str]]:
     """Build a dictionary keyed by order ID from CSV data.
     
     Args:
-        headers: List of header strings
-        rows: List of row data
+        headers: List of header strings (original, for reference)
+        rows: List of row dictionaries (keyed by original header names)
         key_column: Name of the column to use as key (will be normalized for lookup)
         header_normalization_map: Optional mapping from normalized header to original header
     """
@@ -99,39 +92,41 @@ def build_keyed_dict(headers: List[str], rows: List[List[str]], key_column: str 
     normalized_headers = [normalize_header(h) for h in headers]
     normalized_key_column = normalize_header(key_column)
     
-    # Find key column index using normalized headers
-    try:
-        key_col_idx = normalized_headers.index(normalized_key_column)
-    except ValueError:
-        # Try case-insensitive search
-        key_col_idx = None
-        for i, h in enumerate(normalized_headers):
-            if h.lower() == normalized_key_column.lower():
-                key_col_idx = i
-                break
-        
-        if key_col_idx is None:
-            raise ValueError(f"Key column '{key_column}' (normalized: '{normalized_key_column}') not found in headers: {headers}")
+    # Create mapping from original header to normalized header
+    orig_to_norm = {orig: norm for orig, norm in zip(headers, normalized_headers)}
     
-    for row_idx, row in enumerate(rows):
-        # Pad row to match headers length
-        while len(row) < len(headers):
-            row.append('')
-        
-        # Extract order ID
-        order_number = row[key_col_idx].strip() if key_col_idx < len(row) else ''
+    # Find key column by normalized name (try original header names first, then normalized)
+    key_header_orig = None
+    for orig_header in headers:
+        if normalize_header(orig_header) == normalized_key_column:
+            key_header_orig = orig_header
+            break
+    
+    if key_header_orig is None:
+        # Try case-insensitive search
+        for orig_header in headers:
+            if normalize_header(orig_header).lower() == normalized_key_column.lower():
+                key_header_orig = orig_header
+                break
+    
+    if key_header_orig is None:
+        raise ValueError(f"Key column '{key_column}' (normalized: '{normalized_key_column}') not found in headers: {headers}")
+    
+    for row_idx, row in enumerate(rows, start=2):  # start=2 because row 0 is header, and we're 1-indexed
+        # Extract order ID from the key column
+        order_number = row.get(key_header_orig, '').strip()
         order_id = extract_order_id(order_number)
         
         if not order_id:
-            missing_key_rows.append(f"Row {row_idx + 2}")  # +2 because row 0 is header, and we're 1-indexed
+            missing_key_rows.append(f"Row {row_idx}")
             continue
         
         # Build row object (dict keyed by normalized header names for consistent comparison)
         row_obj = {}
-        for col_idx, header in enumerate(headers):
-            value = row[col_idx].strip() if col_idx < len(row) else ''
+        for orig_header in headers:
+            value = row.get(orig_header, '').strip()
             # Use normalized header as key for consistent comparison across files
-            normalized_header = normalized_headers[col_idx]
+            normalized_header = orig_to_norm.get(orig_header, normalize_header(orig_header))
             row_obj[normalized_header] = value
         
         keyed_dict[order_id] = row_obj
@@ -141,12 +136,18 @@ def build_keyed_dict(headers: List[str], rows: List[List[str]], key_column: str 
 
 def compare_csvs(file1: str, file2: str) -> Dict[str, Any]:
     """Compare two CSV files by order ID and return detailed differences."""
-    headers1, rows1 = read_csv_file(file1)
-    headers2, rows2 = read_csv_file(file2)
+    headers1_raw, rows1 = read_csv_file(file1)
+    headers2_raw, rows2 = read_csv_file(file2)
     
-    # Normalize headers (strip whitespace)
-    headers1 = [h.strip() for h in headers1]
-    headers2 = [h.strip() for h in headers2]
+    # Preserve original headers (as they appear in CSV, for Dict key access)
+    # Also create stripped versions for normalization
+    headers1 = [h.strip() for h in headers1_raw]
+    headers2 = [h.strip() for h in headers2_raw]
+    
+    # Create mapping from stripped header to original header (for Dict access)
+    # DictReader keys use original header names, so we need to map back
+    stripped_to_orig1 = {stripped: orig for stripped, orig in zip(headers1, headers1_raw)}
+    stripped_to_orig2 = {stripped: orig for stripped, orig in zip(headers2, headers2_raw)}
     
     # Create normalized header mappings for comparison
     normalized_headers1 = [normalize_header(h) for h in headers1]
@@ -185,9 +186,10 @@ def compare_csvs(file1: str, file2: str) -> Dict[str, Any]:
         })
     
     # Build keyed dictionaries (will use normalized headers internally)
+    # Pass original headers for Dict key access, stripped headers for normalization
     try:
-        dict1, missing_keys1 = build_keyed_dict(headers1, rows1)
-        dict2, missing_keys2 = build_keyed_dict(headers2, rows2)
+        dict1, missing_keys1 = build_keyed_dict(headers1_raw, rows1, key_column='Order Number', header_normalization_map=stripped_to_orig1)
+        dict2, missing_keys2 = build_keyed_dict(headers2_raw, rows2, key_column='Order Number', header_normalization_map=stripped_to_orig2)
     except ValueError as e:
         return {
             'error': str(e),

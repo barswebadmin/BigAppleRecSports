@@ -19,6 +19,7 @@ from ._core.context import LazyServiceDict, LazyServiceProxy
 from .commands.slack import slack
 from .commands.shopify import shopify
 from .commands.google import google
+from .commands.utils import utils_group
 # from ._core.command_registry import discover_commands
 
 
@@ -92,6 +93,7 @@ def cli(ctx: click.Context, json_output: bool, env: str):
 cli.add_command(slack)
 cli.add_command(shopify)
 cli.add_command(google)
+cli.add_command(utils_group)
 
 
 if __name__ == '__main__':

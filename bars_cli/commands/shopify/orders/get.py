@@ -12,11 +12,11 @@ from bars_cli.commands.shopify._shared.command_helpers import (
     handle_multiple_shopify_results,
     handle_shopify_get_command,
 )
+from bars_cli.backend_services.shared.csv.csv_io import write_csv_file
 from bars_cli.commands.shopify._shared.shopify_formatters import (
     _format_order_option,
     format_order_rich,
 )
-from bars_cli.utils.csv_utils import output_order_csv
 
 if TYPE_CHECKING:
     from sgqlc.types import Type as SGQLCType
@@ -63,13 +63,31 @@ def get_order_cmd(
     json_output, should_display = get_display_context(ctx)
     console = Console()
     
+    def write_csv_dict_to_stdout(data: List[Dict[str, str]]) -> None:
+        """Write CSV dictionary data to stdout."""
+        import csv
+        import sys
+        
+        if not data:
+            return
+        
+        fieldnames = sorted(set().union(*(d.keys() for d in data)))
+        writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+    
     def display_order(order: Any) -> str:
         """Display order using formatters directly.
         
         Returns empty string since Rich prints directly.
         """
         if csv or csv_file:
-            output_order_csv(order, csv_file)
+            order_dict = shopify_service.order_to_csv_dict(order)
+            if csv_file:
+                write_csv_file([order_dict], file_path=csv_file)
+                click.echo(f"CSV written to {csv_file}", err=True)
+            else:
+                write_csv_dict_to_stdout([order_dict])
         else:
             # Calculate total paid and format it
             payment_summary = shopify_service.calculate_payment_summary(order)

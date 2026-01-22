@@ -4,8 +4,7 @@ This is a general utility command, not Shopify-specific.
 Compares two CSV files and shows differences.
 
 BACKEND SERVICE STATUS:
-- ❌ MISSING: CSV comparison logic - Needs to be created (or use existing library)
-- ✅ EXISTS: bars-scripts/compare_csv.py - Has reference implementation
+- ✅ EXISTS: backend/shared/csv/compare.py - Has comparison logic
 - ✅ EXISTS: Python csv module - Standard library for CSV parsing
 
 CLI RESPONSIBILITIES:
@@ -56,33 +55,25 @@ def compare_csv_cmd(
       bars --json utils compare-csv file1.csv file2.csv
     """
     from bars_cli._core.context import get_display_context
+    from bars_cli.backend_services.shared.csv.compare import compare_csvs, format_differences
     
     console = Console()
     json_output, should_display = get_display_context(ctx)
     
-    # PSEUDOCODE:
-    # 1. Read both CSV files
-    # 2. Parse CSV data (handle headers, rows)
-    # 3. Compare files:
-    #    - If --key-column: Match rows by key column value
-    #    - Otherwise: Compare row-by-row
-    #    - Ignore columns specified in --ignore-columns
-    # 4. Identify differences:
-    #    - Rows only in file1 (removed)
-    #    - Rows only in file2 (added)
-    #    - Rows in both but with different values (modified)
-    #    - Rows in both with same values (unchanged)
-    # 5. Display results:
-    #    - Summary statistics
-    #    - Table showing differences
-    #    - Highlight changed cells
-    
-    console.print(f"[yellow]⚠️  TODO: Implement CSV comparison logic[/yellow]")
-    console.print(f"  Would read: {file1} and {file2}")
-    if key_column:
-        console.print(f"  Would use key column: {key_column}")
-    if ignore_columns:
-        console.print(f"  Would ignore columns: {', '.join(ignore_columns)}")
-    console.print(f"  Would compare rows and show differences")
-    
-    console.print("\n[green]✅ CSV comparison complete (skeleton implementation)[/green]\n")
+    try:
+        # Call backend comparison logic
+        result = compare_csvs(file1, file2)
+        
+        # Format and display results
+        if json_output:
+            # Return JSON output
+            import json
+            console.print(json.dumps(result, indent=2, default=str))
+        else:
+            # Use format_differences for formatted output
+            formatted_output = format_differences(result, json_output=False)
+            console.print(formatted_output)
+        
+    except Exception as e:
+        console.print(f"[red]Error comparing CSV files: {e}[/red]")
+        raise click.Abort()

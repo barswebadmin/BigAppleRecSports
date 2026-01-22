@@ -3,7 +3,7 @@ Generate Excel-style cell references for error reporting and validation.
 
 Combines column letters and row numbers to create references like "A5", "AA10", "ZZ100".
 """
-from shared.csv.column_index_to_letter import column_index_to_letter
+from .column_index_to_letter import column_index_to_letter
 
 
 def cell_reference(row: int, col_idx: int) -> str:

@@ -5,9 +5,43 @@ Dictionary utility functions for flattening, comparing, and navigating nested st
 
 import json
 import sys
-from typing import Any, List
+from typing import Any, Dict, List, Optional
 
 
+
+
+def flatten_dict_data(
+    obj: Dict[str, Any], result: Optional[Dict[str, Any]] = None, prefix: str = ""
+) -> Dict[str, Any]:
+    """
+    Recursively flatten a nested dictionary structure with dot notation keys.
+
+    Args:
+        obj: The dictionary to flatten
+        result: The result dictionary to accumulate flattened key-value pairs (optional)
+        prefix: The current key prefix for nested structures (optional, defaults to "")
+
+    Returns:
+        Dict with all nested keys flattened using dot notation
+
+    Example:
+        Input: {"a": {"b": 1}, "c": 2}
+        Output: {"a.b": 1, "c": 2}
+    """
+    if result is None:
+        result = {}
+
+    for key, value in obj.items():
+        new_key = f"{prefix}.{key}" if prefix else key
+
+        if isinstance(value, dict) and value is not None:
+            # Recursively flatten nested dictionaries
+            flatten_dict_data(value, result, new_key)
+        else:
+            # Add non-dict values with the constructed key
+            result[new_key] = value
+
+    return result
 
 
 def check_dict_equivalence(obj1: Any, obj2: Any, path: str = "") -> List[str]:
