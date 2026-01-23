@@ -7,7 +7,7 @@ set -e
 
 # Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/shared-helpers.sh"
+source "$SCRIPT_DIR/shared_helpers.sh"
 
 # Check if we're in a git repository
 if ! command -v git >/dev/null 2>&1; then
@@ -132,7 +132,7 @@ done
 
 echo "🔧 Deployment Options:"
 echo "  1. Manual: cd GoogleAppsScripts/projects/[project] && clasp deploy"
-echo "  2. Script: bash GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
+echo "  2. Script: bash scripts/deployment/deploy_google.sh [project]"
 echo "  3. Makefile: make clasp deploy [project]"
 echo "  4. Auto: Merge to master branch (triggers auto-deployment)"
 echo ""

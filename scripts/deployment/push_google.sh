@@ -8,7 +8,7 @@ set -e
 
 # Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/shared-helpers.sh"
+source "$SCRIPT_DIR/google/shared_helpers.sh"
 
 # Parse arguments
 parse_clasp_args "$@"
@@ -40,7 +40,9 @@ if ! copy_build_artifacts "$PROJECT_DIR" "$TEMP_BUILD_DIR"; then
 fi
 
 # Compare local build vs remote
-if ! run_comparison "$TEMP_BUILD_DIR" "" "push" "HAS_CHANGES" "$PROJECT_NAME"; then
+REMOTE_AHEAD=false
+LOCAL_AHEAD=false
+if ! run_comparison "$TEMP_BUILD_DIR" "" "push" "HAS_CHANGES" "$PROJECT_NAME" "REMOTE_AHEAD" "LOCAL_AHEAD"; then
     cleanup_temp_dir "$TEMP_BUILD_DIR"
     exit 1
 fi
@@ -51,13 +53,16 @@ if [ "$IS_COMPARE_ONLY" = true ]; then
         log_success "✅ No differences detected between local build and remote"
     else
         log_info "📊 Differences shown above"
+        if [ "$REMOTE_AHEAD" = true ]; then
+            log_warning "⚠️  Remote is ahead of local"
+        fi
     fi
     cleanup_temp_dir "$TEMP_BUILD_DIR"
     exit 0
 fi
 
-# Prompt user for confirmation
-if ! prompt_user_confirmation "$HAS_CHANGES" "$IS_DRY_RUN" "push"; then
+# Prompt user for confirmation (handles remote-ahead detection)
+if ! prompt_user_confirmation "$HAS_CHANGES" "$IS_DRY_RUN" "push" "$REMOTE_AHEAD" "$PROJECT_NAME"; then
     cleanup_temp_dir "$TEMP_BUILD_DIR"
     exit 0
 fi

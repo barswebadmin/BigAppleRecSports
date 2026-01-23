@@ -268,7 +268,7 @@ for product in non_bars:
 fi
 
 # 4. GAS doGet/doPost change detection
-GAS_DETECT_SCRIPT="$REPO_ROOT/GoogleAppsScripts/remote-sync-tools/detect-webapp-changes.sh"
+GAS_DETECT_SCRIPT="$REPO_ROOT/scripts/deployment/google/detect_webapp_changes.sh"
 if [ -f "$GAS_DETECT_SCRIPT" ]; then
     # Only check if there are GAS files in staged changes
     if git diff --cached --name-only | grep -q "^GoogleAppsScripts/"; then
@@ -294,7 +294,7 @@ if [ -f "$GAS_DETECT_SCRIPT" ]; then
                 echo "🚀 Next steps after committing:"
                 echo "  1. Push to master branch (triggers auto-deployment)"
                 echo "  2. Or manually deploy: make clasp deploy [project]"
-                echo "  3. Or use script: bash GoogleAppsScripts/remote-sync-tools/deploy.sh [project]"
+                echo "  3. Or use script: bash scripts/deployment/deploy_google.sh [project]"
                 echo ""
                 echo "💡 This is just a warning - your commit will proceed normally."
                 echo ""

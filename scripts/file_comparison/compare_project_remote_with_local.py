@@ -23,6 +23,7 @@ def compare_project_remote_with_local(
     show_diffs: bool = False,
     keep_temp: bool = False,
     max_diff_lines: int = 50,
+    output_format: str = "text",
     **kwargs
 ) -> ComparisonResult:
     """
@@ -35,6 +36,7 @@ def compare_project_remote_with_local(
         show_diffs: Whether to include diff content in output
         keep_temp: Whether to keep temporary directory after comparison
         max_diff_lines: Maximum diff lines to show per file
+        output_format: Output format ("text" or "json")
         **kwargs: Additional arguments (region, project_root, etc.)
     
     Returns:
@@ -96,12 +98,13 @@ def compare_project_remote_with_local(
             remote_origin_type=remote_origin_type
         )
         
-        # Display results
-        display_comparison_result(
-            result,
-            show_diffs=show_diffs,
-            max_diff_lines=max_diff_lines
-        )
+        # Display results (unless JSON output requested)
+        if output_format != 'json':
+            display_comparison_result(
+                result,
+                show_diffs=show_diffs,
+                max_diff_lines=max_diff_lines
+            )
         
         return result
     
@@ -145,6 +148,8 @@ Examples:
                        help='AWS region (default: us-east-1, only for aws)')
     parser.add_argument('--project-root', type=Path,
                        help='Root directory of GAS projects (default: auto-detect, only for google)')
+    parser.add_argument('--output-format', choices=['text', 'json'], default='text',
+                       help='Output format: text (human-readable) or json (structured data)')
     
     args = parser.parse_args()
     
@@ -163,10 +168,32 @@ Examples:
             show_diffs=args.show_diffs,
             keep_temp=args.keep_temp,
             max_diff_lines=args.max_diff_lines,
+            output_format=args.output_format,
             **kwargs
         )
         
-        # Exit with error code if differences found
+        # Output JSON if requested
+        if args.output_format == 'json':
+            import json
+            from dataclasses import asdict
+            json_output = {
+                'different_count': result.different_count,
+                'only_local_count': result.only_local_count,
+                'only_remote_count': result.only_remote_count,
+                'identical_count': result.identical_count,
+                'total_files': result.total_files,
+                'remote_ahead': result.only_remote_count > 0,
+                'local_ahead': result.only_local_count > 0,
+                'has_changes': (
+                    result.different_count > 0 or
+                    result.only_local_count > 0 or
+                    result.only_remote_count > 0
+                )
+            }
+            print(json.dumps(json_output, indent=2))
+            sys.exit(0)
+        
+        # Exit with error code if differences found (text mode)
         if result.different_count > 0 or result.only_local_count > 0 or result.only_remote_count > 0:
             sys.exit(1)
         else:

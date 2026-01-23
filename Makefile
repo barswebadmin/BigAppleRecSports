@@ -245,7 +245,7 @@ test:
 	@TEST_PATH="$(word 2,$(MAKECMDGOALS))"; \
 	if [ -z "$$TEST_PATH" ]; then \
 		echo "🔨 Compiling all repos first..."; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import compile_all; compile_result = compile_all(); sys.exit(compile_result)"; \
+		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.compilation.compile_main import compile_all; compile_result = compile_all(); sys.exit(compile_result)"; \
 		COMPILE_EXIT=$$?; \
 		if [ $$COMPILE_EXIT -ne 0 ]; then \
 			echo "❌ Compilation failed. Skipping tests."; \
@@ -255,7 +255,7 @@ test:
 		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import run_all_tests; sys.exit(run_all_tests())"; \
 	else \
 		echo "🔨 Compiling $$TEST_PATH first..."; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import compile_for_path; compile_result = compile_for_path('$$TEST_PATH'); sys.exit(compile_result)"; \
+		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.compilation.compile_main import compile_for_path; compile_result = compile_for_path('$$TEST_PATH'); sys.exit(compile_result)"; \
 		COMPILE_EXIT=$$?; \
 		if [ $$COMPILE_EXIT -ne 0 ]; then \
 			echo "❌ Compilation failed. Skipping tests."; \
@@ -270,10 +270,10 @@ compile:
 	@COMPILE_PATH="$(word 2,$(MAKECMDGOALS))"; \
 	if [ -z "$$COMPILE_PATH" ]; then \
 		echo "🔨 Compiling all repos..."; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import compile_all; sys.exit(compile_all())"; \
+		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.compilation.compile_main import compile_all; sys.exit(compile_all())"; \
 	else \
 		echo "🔨 Compiling: $$COMPILE_PATH"; \
-		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.testing.run_tests import compile_for_path; sys.exit(compile_for_path('$$COMPILE_PATH'))"; \
+		python3 -c "import sys; sys.path.insert(0, '.'); from scripts.compilation.compile_main import compile_for_path; sys.exit(compile_for_path('$$COMPILE_PATH'))"; \
 	fi
 
 # Catch-all target to prevent Make from trying to build arguments as targets
@@ -344,11 +344,11 @@ clasp:
 		exit 1; \
 	fi
 	@if [ "$(CLASP_CMD)" = "push" ]; then \
-		bash GoogleAppsScripts/remote-sync-tools/push.sh "$(CLASP_PROJECT)"; \
+		bash scripts/deployment/push_google.sh "$(CLASP_PROJECT)"; \
 	elif [ "$(CLASP_CMD)" = "pull" ]; then \
-		bash GoogleAppsScripts/remote-sync-tools/pull.sh "$(CLASP_PROJECT)"; \
+		bash scripts/deployment/pull_google.sh "$(CLASP_PROJECT)"; \
 	elif [ "$(CLASP_CMD)" = "deploy" ]; then \
-		bash GoogleAppsScripts/remote-sync-tools/deploy.sh "$(CLASP_PROJECT)"; \
+		bash scripts/deployment/deploy_google.sh "$(CLASP_PROJECT)"; \
 	else \
 		echo "❌ Unknown command: $(CLASP_CMD)"; \
 		echo "Valid commands: push, pull, deploy"; \

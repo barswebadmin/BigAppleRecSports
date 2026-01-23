@@ -46,6 +46,10 @@ from typing import Optional
 
 project_root = Path(__file__).parent.parent.parent
 
+# Add project root to path for imports
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 try:
     import requests
 except ImportError:
@@ -170,6 +174,106 @@ def wait_for_deployment(api_key: str, service_id: str, deploy_id: str, timeout: 
     return False
 
 
+def increment_backend_version() -> bool:
+    """Increment backend version and commit changes.
+    
+    Returns:
+        True if version was incremented and committed successfully, False otherwise
+    """
+    version_file = project_root / "backend" / "version.json"
+    is_ci = os.getenv("CI") == "true" or os.getenv("GITHUB_ACTIONS") == "true"
+    
+    if not is_ci or not version_file.exists():
+        return False
+    
+    print("\n📈 Incrementing backend version after successful deployment...")
+    
+    # Determine bump type from commit messages
+    bump_type = "patch"  # Default
+    try:
+        result = subprocess.run(
+            ["git", "log", "-1", "--pretty=%B"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            commit_msg = result.stdout.lower()
+            if any(kw in commit_msg for kw in ["breaking", "major"]):
+                bump_type = "major"
+            elif any(kw in commit_msg for kw in ["feat:", "feature:", "add:", "new:"]):
+                bump_type = "minor"
+            elif any(kw in commit_msg for kw in ["fix:", "bugfix:", "patch:", "hotfix:"]):
+                bump_type = "patch"
+    except Exception:
+        pass  # Default to patch if we can't determine
+    
+    # Get commit messages for changelog
+    try:
+        result = subprocess.run(
+            ["git", "log", "-5", "--pretty=%B"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        commit_messages = result.stdout.strip() if result.returncode == 0 else "Deployment"
+    except Exception:
+        commit_messages = "Deployment"
+    
+    # Increment version using version_manager
+    try:
+        from scripts.deployment.version_manager import process_component
+        
+        if not process_component(
+            str(version_file),
+            bump_type,
+            commit_messages.split('\n') if commit_messages else ["Deployment"],
+            None
+        ):
+            print("⚠️  Version increment failed")
+            return False
+        
+        print(f"✅ Version incremented ({bump_type} bump)")
+    except Exception as e:
+        print(f"⚠️  Version increment error: {e}")
+        return False
+    
+    # Commit version increment to merge commit (amend to include in same commit)
+    try:
+        # Check if version.json was modified
+        result = subprocess.run(
+            ["git", "diff", "--quiet", str(version_file)],
+            cwd=project_root
+        )
+        if result.returncode != 0:  # File was modified
+            print("📝 Including version increment in merge commit...")
+            # Stage the version file
+            subprocess.run(
+                ["git", "add", str(version_file)],
+                cwd=project_root,
+                check=True
+            )
+            # Amend to the current HEAD (merge commit) to include it in the same commit
+            subprocess.run(
+                ["git", "commit", "--amend", "--no-edit"],
+                cwd=project_root,
+                check=True
+            )
+            # Force push with lease to update the merge commit (safe in CI)
+            subprocess.run(
+                ["git", "push", "origin", "main", "--force-with-lease"],
+                cwd=project_root,
+                check=True
+            )
+            print("✅ Version increment included in merge commit")
+            return True
+    except Exception as e:
+        print(f"⚠️  Failed to include version increment in commit: {e}")
+        return False
+    
+    return False
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Deploy to Render with unified secret syncing and deployment"
@@ -260,14 +364,22 @@ def main():
         sys.exit(1)
     
     # Wait for deployment if requested (local only)
+    deployment_success = False
     if args.wait:
-        success = wait_for_deployment(api_key, service_id, deploy_id)
-        if not success:
+        deployment_success = wait_for_deployment(api_key, service_id, deploy_id)
+        if not deployment_success:
+            print("\n❌ Deployment failed - version will not be incremented")
             sys.exit(1)
         print("\n🎉 Deployment completed successfully!")
     else:
         print("\n✅ Deployment triggered successfully!")
         print("   (Use --wait to wait for completion, or check Render dashboard)")
+        # If not waiting, assume success (deployment was triggered)
+        deployment_success = True
+    
+    # Increment version only after successful deployment (CI/GH workflows only)
+    if deployment_success and not args.dry_run and not args.secrets_only:
+        increment_backend_version()
 
 
 if __name__ == "__main__":

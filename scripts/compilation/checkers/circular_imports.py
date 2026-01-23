@@ -8,8 +8,8 @@ import traceback
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from scripts.compilation_helpers.repo_path_resolvers import get_relative_path, path_to_module
-from scripts.compilation_helpers.checkers._checkers_common import create_error, ensure_src_in_path
+from ..repo_path_resolvers import get_relative_path, path_to_module
+from ._checkers_common import create_error, ensure_src_in_path
 
 
 _cycle_index_cache: Optional[Dict[str, List[List[str]]]] = None
@@ -256,7 +256,17 @@ def check_circular_imports(file_path: Path, src_root: Path, debug_messages: Opti
             
             # Not circular, but still an import error
             return False, [create_error(rel_path, "IMPORT", error_msg, import_path=module_name)]
+        except SystemExit as e:
+            # Module called sys.exit() during import (e.g., CLI scripts without __main__ guard)
+            exit_code = e.code if hasattr(e, 'code') and e.code is not None else 1
+            error_msg = f"Module calls sys.exit({exit_code}) during import (likely missing __main__ guard)"
+            return False, [create_error(rel_path, "IMPORT", error_msg, import_path=module_name)]
         except Exception:
             return True, []
+    except SystemExit as e:
+        # sys.exit() called during module name resolution or path setup
+        exit_code = e.code if hasattr(e, 'code') and e.code is not None else 1
+        error_msg = f"sys.exit({exit_code}) called during import setup"
+        return False, [create_error(rel_path, "IMPORT", error_msg, import_path="")]
     except Exception:
         return True, []

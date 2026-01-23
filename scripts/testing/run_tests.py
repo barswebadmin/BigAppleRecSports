@@ -8,33 +8,21 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from scripts._shared.path_utils import PROJECT_ROOT
 
-def get_repo_for_path(path: str) -> str:
-    """Determine which repo a path belongs to.
-    
-    Args:
-        path: Path to check
-        
-    Returns:
-        'backend', 'lambda', 'gas', or 'unknown'
-    """
-    path_obj = Path(path).resolve()
-    path_str = str(path_obj)
-    
-    if "backend" in path_str:
-        return "backend"
-    elif "lambda" in path_str or "lambda-functions" in path_str:
-        return "lambda"
-    elif "GoogleAppsScripts" in path_str or "gas" in path_str.lower():
-        return "gas"
-    else:
-        return "unknown"
 
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
 
 def find_python() -> str:
-    """Find Python interpreter matching pyproject.toml requirements."""
-    project_root = Path(__file__).parent.parent.parent
-    pyproject_path = project_root / "pyproject.toml"
+    """Find Python interpreter matching pyproject.toml requirements.
+    
+    Raises:
+        RuntimeError: If pyproject.toml is missing, doesn't contain requires-python,
+                      or the required Python interpreter is not found.
+    """
+    pyproject_path = PROJECT_ROOT / "pyproject.toml"
     
     if not pyproject_path.exists():
         raise RuntimeError(f"pyproject.toml not found at {pyproject_path}")
@@ -46,66 +34,85 @@ def find_python() -> str:
     
     required_version = match.group(1)
     
-    candidates = [
-        project_root / ".venv" / "bin" / "python",
-        Path("python3"),
-    ]
+    # Extract minimum version from requires-python spec (e.g., ">=3.11,<3.12" -> "3.11")
+    min_version_match = re.search(r'>=(\d+\.\d+)', required_version)
+    if not min_version_match:
+        raise RuntimeError(f"Could not parse minimum version from requires-python: {required_version}")
     
-    for candidate in candidates:
-        python_cmd = str(candidate) if candidate != Path("python3") else "python3"
-        
-        try:
-            if candidate == Path("python3"):
-                result = subprocess.run(
-                    ["python3", "--version"],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                    timeout=5
-                )
-            elif candidate.exists():
-                result = subprocess.run(
-                    [str(candidate), "--version"],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                    timeout=5
-                )
-            else:
-                continue
-            
-            version_str = result.stdout.strip()
-            version_match = re.search(r"(\d+)\.(\d+)", version_str)
-            if not version_match:
-                continue
-            
-            major, minor = int(version_match.group(1)), int(version_match.group(2))
-            
-            if ">=" in required_version:
-                min_version = required_version.split(">=")[1].split(",")[0].strip()
-                min_match = re.search(r"(\d+)\.(\d+)", min_version)
-                if min_match:
-                    min_major, min_minor = int(min_match.group(1)), int(min_match.group(2))
-                    if major < min_major or (major == min_major and minor < min_minor):
-                        continue
-            
-            if "," in required_version and "<" in required_version:
-                max_version = required_version.split("<")[1].strip()
-                max_match = re.search(r"(\d+)\.(\d+)", max_version)
-                if max_match:
-                    max_major, max_minor = int(max_match.group(1)), int(max_match.group(2))
-                    if major > max_major or (major == max_major and minor >= max_minor):
-                        continue
-            
-            return python_cmd
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
-            continue
+    target_version = min_version_match.group(1)
+    python_cmd = f"python{target_version}"
     
-    raise RuntimeError(
-        f"No Python interpreter found matching requires-python={required_version} from pyproject.toml. "
-        f"Checked: {[str(c) for c in candidates]}"
-    )
+    try:
+        subprocess.run([python_cmd, "--version"], capture_output=True, check=True, timeout=5)
+        return python_cmd
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"Python {target_version} not found. Install it with: make install "
+            f"(requires-python={required_version})"
+        )
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+        raise RuntimeError(f"Failed to verify Python {target_version}: {e}")
 
+
+# ============================================================================
+# INTERNAL HELPERS
+# ============================================================================
+
+def _discover_test_paths(test_dir: Path, test_type: Optional[str] = None, additional_paths: Optional[list[str]] = None) -> list[str]:
+    """Discover test paths in a directory based on test type.
+    
+    Args:
+        test_dir: Base directory to search for tests
+        test_type: 'unit', 'integration', or None for both
+        additional_paths: Optional list of additional relative paths to check (already discovered)
+        
+    Returns:
+        List of relative test paths
+    """
+    test_paths = []
+    
+    if not test_type or test_type == "unit":
+        unit_path = test_dir / "tests" / "unit"
+        if unit_path.exists():
+            test_paths.append("tests/unit")
+        
+        if additional_paths:
+            test_paths.extend(additional_paths)
+    
+    if not test_type or test_type == "integration":
+        integration_path = test_dir / "tests" / "integration"
+        if integration_path.exists():
+            test_paths.append("tests/integration")
+    
+    return test_paths
+
+
+def _run_pytest_tests(python: str, test_dir: Path, test_paths: list[str], repo_name: str, test_type: Optional[str] = None) -> int:
+    """Run pytest tests with common pattern.
+    
+    Args:
+        python: Python interpreter path
+        test_dir: Working directory for pytest
+        test_paths: List of test paths to run
+        repo_name: Name of repo (for logging)
+        test_type: Test type (for logging)
+        
+    Returns:
+        Exit code from pytest
+    """
+    if not test_paths:
+        print("⚠️  No test files found")
+        return 0
+    
+    print(f"🧪 Running {repo_name} tests ({test_type or 'all'})...")
+    cmd = [python, "-m", "pytest", "-v"] + test_paths
+    result = subprocess.run(cmd, cwd=test_dir, check=False)
+    return result.returncode
+
+
+# ============================================================================
+# PUBLIC TEST FUNCTIONS
+# ============================================================================
 
 def run_backend_tests(test_type: Optional[str] = None) -> int:
     """Run backend tests."""
@@ -119,27 +126,17 @@ def run_backend_tests(test_type: Optional[str] = None) -> int:
         "SLACK_REFUNDS_BOT_TOKEN": "test_slack_token",
     })
     
-    test_paths = []
+    # Discover additional test paths in services and routers (only for unit tests)
+    additional_paths = []
     if not test_type or test_type == "unit":
-        if (backend_dir / "tests" / "unit").exists():
-            test_paths.append("tests/unit")
         if (backend_dir / "services").exists():
-            test_paths.extend([str(p) for p in (backend_dir / "services").rglob("tests") if p.is_dir()])
+            services_tests = [str(p.relative_to(backend_dir)) for p in (backend_dir / "services").rglob("tests") if p.is_dir()]
+            additional_paths.extend(services_tests)
         if (backend_dir / "routers" / "tests").exists():
-            test_paths.append("routers/tests")
+            additional_paths.append("routers/tests")
     
-    if not test_type or test_type == "integration":
-        if (backend_dir / "tests" / "integration").exists():
-            test_paths.append("tests/integration")
-    
-    if not test_paths:
-        print("⚠️  No test files found")
-        return 0
-    
-    print(f"🧪 Running backend tests ({test_type or 'all'})...")
-    cmd = [python, "-m", "pytest", "-v"] + test_paths
-    result = subprocess.run(cmd, cwd=backend_dir, check=False)
-    return result.returncode
+    test_paths = _discover_test_paths(backend_dir, test_type, additional_paths)
+    return _run_pytest_tests(python, backend_dir, test_paths, "backend", test_type)
 
 
 def run_lambda_tests(test_type: Optional[str] = None) -> int:
@@ -170,80 +167,91 @@ def run_lambda_tests(test_type: Optional[str] = None) -> int:
         print("📦 Installing pytest...")
         subprocess.check_call([python, "-m", "pip", "install", "--quiet", "pytest", "pytest-asyncio"])
     
-    test_paths = []
-    if not test_type or test_type == "unit":
-        if (lambda_dir / "tests" / "unit").exists():
-            test_paths.append("tests/unit")
-    if not test_type or test_type == "integration":
-        if (lambda_dir / "tests" / "integration").exists():
-            test_paths.append("tests/integration")
-    
-    if not test_paths:
-        print("⚠️  No test files found")
-        return 0
-    
-    print(f"🧪 Running lambda tests ({test_type or 'all'})...")
-    cmd = [python, "-m", "pytest", "-v"] + test_paths
-    result = subprocess.run(cmd, cwd=lambda_dir, check=False)
-    return result.returncode
+    test_paths = _discover_test_paths(lambda_dir, test_type)
+    return _run_pytest_tests(python, lambda_dir, test_paths, "lambda", test_type)
 
 
 def run_gas_tests() -> int:
-    """Run GAS tests."""
-    gas_dir = Path("GoogleAppsScripts").resolve()
+    """Run GAS tests - verify projects build successfully."""
+    gas_root = PROJECT_ROOT / "GoogleAppsScripts"
+    projects_dir = gas_root / "projects"
+    build_script = PROJECT_ROOT / "scripts" / "deployment" / "google" / "build.js"
     
+    if not projects_dir.exists():
+        print(f"❌ GAS projects directory not found: {projects_dir}")
+        return 1
+    
+    if not build_script.exists():
+        print(f"❌ Build script not found: {build_script}")
+        return 1
+    
+    # Check Node.js
     try:
         result = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=5)
         if result.returncode != 0:
             print("❌ Node.js not found")
-            return 0
-        print(f"✅ Node.js found: {result.stdout.strip()}")
+            return 1
     except (FileNotFoundError, subprocess.TimeoutExpired):
         print("❌ Node.js not found")
-        return 0
+        return 1
+    
+    # Discover all GAS projects
+    projects = sorted([d for d in projects_dir.iterdir() if d.is_dir() and not d.name.startswith('.')])
+    
+    if not projects:
+        print("⚠️  No GAS projects found")
+        return 1
+    
+    print(f"🧪 Testing {len(projects)} GAS projects (verifying builds)...")
     
     exit_code = 0
     
-    test_scripts = []
-    if (gas_dir / "tests").exists():
-        test_scripts.extend((gas_dir / "tests").glob("*.sh"))
-    if (gas_dir / "projects").exists():
-        for project_dir in (gas_dir / "projects").iterdir():
-            if project_dir.is_dir() and (project_dir / "tests").exists():
-                test_scripts.extend((project_dir / "tests").glob("*.sh"))
-                test_scripts.extend((project_dir / "tests").glob("*.js"))
-    
-    print(f"🧪 Running {len(test_scripts)} GAS test scripts...")
-    
-    for test_file in sorted(test_scripts):
-        test_dir = test_file.parent
+    for project_dir in projects:
+        project_name = project_dir.name
         
-        if test_file.suffix == ".sh":
-            os.chmod(test_file, 0o755)
-            cmd = ["bash", str(test_file)]
-            cwd = gas_dir
-        else:
-            if (test_dir / "package.json").exists():
-                try:
-                    subprocess.run(["npm", "--version"], capture_output=True, check=True, timeout=5)
-                    print(f"📦 Installing dependencies in {test_dir.name}...")
-                    subprocess.check_call(["npm", "install", "--silent"], cwd=test_dir, timeout=300)
-                except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                    pass
-            cmd = ["node", str(test_file)]
-            cwd = test_dir
+        # Skip projects without esbuild.config.js (they don't use build system)
+        if not (project_dir / "esbuild.config.js").exists():
+            print(f"  ⏭️  {project_name}: No esbuild.config.js (skipping)")
+            continue
         
-        print(f"   Running: {test_file.relative_to(gas_dir)}")
+        print(f"  🔨 {project_name}: Building...")
+        
+        # Build local project
         try:
-            result = subprocess.run(cmd, cwd=cwd, check=False)
+            result = subprocess.run(
+                ['node', str(build_script), str(project_dir)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=str(gas_root)
+            )
+            
             if result.returncode != 0:
-                exit_code = result.returncode
-        except Exception as e:
-            print(f"❌ Error: {e}")
+                print(f"    ❌ Build failed")
+                if result.stderr:
+                    print(f"    {result.stderr}")
+                exit_code = 1
+            else:
+                print(f"    ✅ Build successful")
+                
+        except subprocess.TimeoutExpired:
+            print(f"    ❌ Build timed out")
             exit_code = 1
+        except Exception as e:
+            print(f"    ❌ Build error: {e}")
+            exit_code = 1
+    
+    if exit_code == 0:
+        print("✅ All GAS projects built successfully")
+    else:
+        print("❌ Some GAS project builds failed")
     
     return exit_code
 
+
+# ============================================================================
+# PUBLIC CONVENIENCE FUNCTIONS
+# ============================================================================
 
 def run_all_tests() -> int:
     """Run all test suites."""
@@ -255,96 +263,6 @@ def run_all_tests() -> int:
     return exit_code
 
 
-def compile_backend() -> int:
-    """Compile backend using compilation helpers."""
-    import sys
-    from pathlib import Path
-    
-    project_root = Path(__file__).parent.parent.parent
-    sys.path.insert(0, str(project_root))
-    
-    from scripts.compilation_helpers.compilation_check_main import run_all_checks, ensure_cli_paths_setup
-    
-    ensure_cli_paths_setup()
-    try:
-        results = run_all_checks(check_types=False, target_path="backend")
-        has_errors = (
-            len(results.syntax_errors) > 0 or
-            len(results.import_errors) > 0 or
-            len(results.unused_imports) > 0 or
-            len(results.type_errors) > 0 or
-            len(results.required_defaults) > 0
-        )
-        return 0 if results.total_files > 0 and not has_errors else 1
-    except Exception as e:
-        print(f"❌ Compilation error: {e}")
-        return 1
-
-
-def compile_lambda() -> int:
-    """Compile Lambda functions using compilation helpers."""
-    import sys
-    from pathlib import Path
-    
-    project_root = Path(__file__).parent.parent.parent
-    sys.path.insert(0, str(project_root))
-    
-    from scripts.compilation_helpers.compilation_check_main import run_all_checks, ensure_cli_paths_setup
-    
-    ensure_cli_paths_setup()
-    try:
-        results = run_all_checks(check_types=False, target_path="lambda")
-        has_errors = (
-            len(results.syntax_errors) > 0 or
-            len(results.import_errors) > 0 or
-            len(results.unused_imports) > 0 or
-            len(results.type_errors) > 0 or
-            len(results.required_defaults) > 0
-        )
-        return 0 if results.total_files > 0 and not has_errors else 1
-    except Exception as e:
-        print(f"❌ Compilation error: {e}")
-        return 1
-
-
-def compile_gas() -> int:
-    """Compile Google Apps Scripts."""
-    return 0
-
-
-def compile_all() -> int:
-    """Compile all repos."""
-    exit_code = 0
-    for compile_func in [compile_backend, compile_lambda, compile_gas]:
-        result = compile_func()
-        if result != 0:
-            exit_code = result
-    return exit_code
-
-
-def compile_for_path(path: str) -> int:
-    """Compile for a specific path.
-    
-    Args:
-        path: Path to compile (e.g., "backend", "lambda/functions", "GoogleAppsScripts")
-        
-    Returns:
-        Exit code (0 for success, non-zero for failure)
-    """
-    repo = get_repo_for_path(path)
-    
-    if repo == "backend":
-        return compile_backend()
-    elif repo == "lambda":
-        return compile_lambda()
-    elif repo == "gas":
-        return compile_gas()
-    else:
-        print(f"⚠️  Unknown path: {path}")
-        print("   Supported paths: backend, lambda/functions, GoogleAppsScripts")
-        return 1
-
-
 def run_tests_for_path(path: str) -> int:
     """Run tests for a specific path.
     
@@ -354,15 +272,69 @@ def run_tests_for_path(path: str) -> int:
     Returns:
         Exit code (0 for success, non-zero for failure)
     """
-    repo = get_repo_for_path(path)
+    path_obj = Path(path).resolve()
+    path_str = str(path_obj)
     
-    if repo == "backend":
+    if "backend" in path_str:
         return run_backend_tests()
-    elif repo == "lambda":
+    elif "lambda" in path_str or "lambda-functions" in path_str:
         return run_lambda_tests()
-    elif repo == "gas":
+    elif "GoogleAppsScripts" in path_str or "gas" in path_str.lower():
         return run_gas_tests()
     else:
         print(f"⚠️  Unknown path: {path}")
         print("   Supported paths: backend, lambda/functions, GoogleAppsScripts")
         return 1
+
+
+# ============================================================================
+# CLI ENTRY POINT
+# ============================================================================
+
+def main() -> int:
+    """CLI entry point for testing module.
+    
+    Only runs when invoked directly (python -m scripts.testing or python scripts/testing/run_tests.py).
+    Does NOT run when imported by other modules (e.g., CI workflows via run_script.py).
+    """
+    import sys
+    
+    # Import compilation functions only when CLI is invoked (lazy import to avoid dependency issues)
+    from scripts.compilation.compile_main import (
+        compile_backend,
+        compile_gas,
+        compile_lambda,
+    )
+    
+    if len(sys.argv) < 2:
+        print("Usage: python -m scripts.testing <command>")
+        print("Commands:")
+        print("  compile-backend  - Compile backend code")
+        print("  compile-lambda   - Compile Lambda functions")
+        print("  compile-gas      - Compile Google Apps Scripts")
+        print("  test-backend     - Run backend tests")
+        print("  test-lambda      - Run Lambda tests")
+        print("  test-gas         - Run GAS tests")
+        return 1
+    
+    command = sys.argv[1]
+    
+    if command == "compile-backend":
+        return compile_backend()
+    elif command == "compile-lambda":
+        return compile_lambda()
+    elif command == "compile-gas":
+        return compile_gas()
+    elif command == "test-backend":
+        return run_backend_tests()
+    elif command == "test-lambda":
+        return run_lambda_tests()
+    elif command == "test-gas":
+        return run_gas_tests()
+    else:
+        print(f"❌ Unknown command: {command}")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

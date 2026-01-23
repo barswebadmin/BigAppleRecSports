@@ -7,7 +7,7 @@ set -e
 
 # Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/shared-helpers.sh"
+source "$SCRIPT_DIR/shared_helpers.sh"
 
 function show_help() {
     echo "Google Apps Script CI/CD Authentication Setup"

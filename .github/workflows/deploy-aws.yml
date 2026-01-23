@@ -4,9 +4,25 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'lambda/functions/**/*.py'
-      - 'lambda/functions/**/requirements.txt'
+      - 'lambda/functions/**'
+      - '.github/workflows/deploy-aws.yml'
   workflow_dispatch:
+
+# TODO: Future enhancement - Add pull_request trigger for preview/staging deployments
+# This would allow testing Lambda deployments before merging PRs.
+# Requirements:
+#   - Staging AWS environment (separate account or staging prefix for resources)
+#   - Staging-specific AWS credentials (AWS_STAGING_ACCESS_KEY_ID, AWS_STAGING_SECRET_ACCESS_KEY)
+#   - Staging Lambda function naming convention (e.g., {function}-staging)
+#   - Update deploy_aws.sh to support staging environment flag
+#   - Consider auto-cleanup of staging functions after PR merge/close
+#   - Staging-specific environment variables and secrets
+# Example trigger:
+#   pull_request:
+#     branches: [main]
+#     paths:
+#       - 'lambda/functions/**'
+#     types: [opened, synchronize, reopened]
     inputs:
       function:
         description: 'Function name to deploy (or "all" for all functions)'
@@ -25,12 +41,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Get Python version
+        id: python-version
+        run: echo "version=$(python scripts/ci/get_python_version.py)" >> $GITHUB_OUTPUT
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: ${{ steps.python-version.outputs.version }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -77,8 +103,11 @@ jobs:
 
       - name: Deploy functions
         if: steps.changes.outputs.has_changes == 'true'
+        env:
+          CI: 'true'
         run: |
           echo "Functions to deploy: $CHANGED_FUNCTIONS"
           
           # Deploy using unified script (handles space-separated list)
+          # Version increment and commit happens inside deploy_aws.sh
           bash scripts/deployment/deploy_aws.sh --batch $CHANGED_FUNCTIONS

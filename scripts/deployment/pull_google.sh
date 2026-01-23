@@ -8,7 +8,7 @@ set -e
 
 # Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/shared-helpers.sh"
+source "$SCRIPT_DIR/google/shared_helpers.sh"
 
 # Parse arguments
 parse_clasp_args "$@"

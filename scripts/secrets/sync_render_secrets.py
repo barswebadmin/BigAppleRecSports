@@ -27,14 +27,13 @@ Environment variables required:
     AWS_ACCESS_KEY_ID   - AWS credentials
     AWS_SECRET_ACCESS_KEY - AWS credentials
     AWS_DEFAULT_REGION   - AWS region (defaults to us-east-1)
-    PARAMETER_PREFIX     - SSM parameter prefix (defaults to /bars/)
 """
 
 import os
 import sys
 import argparse
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 # Add project root to path for imports
 project_root = Path(__file__).parent.parent.parent
@@ -50,7 +49,7 @@ except ImportError:
     sys.exit(1)
 
 
-def load_env_file(env_path: Path = None) -> Dict[str, str]:
+def load_env_file(env_path: Optional[Path] = None) -> Dict[str, str]:
     """Load environment variables from .env file."""
     if env_path is None:
         env_path = project_root / ".env"
@@ -78,47 +77,78 @@ def load_env_file(env_path: Path = None) -> Dict[str, str]:
     return env_vars
 
 
-def _parameter_name_to_env_var(param_name: str, prefix: str) -> str:
-    """Convert SSM parameter name to environment variable name."""
-    if param_name.startswith(prefix):
-        name = param_name[len(prefix):]
-    else:
-        name = param_name
+def _ssm_param_to_env_var(param_name: str) -> str:
+    """
+    Convert SSM parameter name to environment variable name using dot notation.
     
-    name = name.lstrip("/")
-    env_key = name.replace("/", "_").replace("-", "_").upper()
-    return env_key
+    SSM parameters are organized by service: /service/key or /service/nested.key
+    Converts to uppercase dot notation: SERVICE.KEY or SERVICE.NESTED.KEY
+    
+    The dot notation is required for the config parser to properly structure and set secrets.
+    
+    Examples:
+        /shopify/token.admin -> SHOPIFY.TOKEN.ADMIN
+        /shopify/store_id -> SHOPIFY.STORE_ID
+        /slack/bot.dev.token -> SLACK.BOT.DEV.TOKEN
+        /lambda/url.schedule_product_changes -> LAMBDA.URL.SCHEDULE_PRODUCT_CHANGES
+        /google/url.web_app.refunds -> GOOGLE.URL.WEB_APP.REFUNDS
+    """
+    name = param_name.lstrip("/")
+    parts = name.split("/", 1)
+    
+    if len(parts) != 2:
+        return name.replace("/", ".").replace("-", "_").upper()
+    
+    service, key = parts
+    
+    service_upper = service.upper()
+    key_normalized = key.replace("-", "_").upper()
+    
+    return f"{service_upper}.{key_normalized}"
 
 
-def get_ssm_parameters(prefix: str = "/bars/", region: str = "us-east-1") -> Dict[str, str]:
-    """Fetch all parameters from AWS SSM Parameter Store with the given prefix."""
+def get_ssm_parameters(services: Optional[list] = None, region: str = "us-east-1") -> Dict[str, str]:
+    """
+    Fetch all parameters from AWS SSM Parameter Store for specified services.
+    
+    Services are organized by prefix: /service/key
+    Default services: shopify, slack, gas, lambda, square
+    """
+    if services is None:
+        services = ["shopify", "slack", "google", "lambda", "square"]
+    
     try:
         ssm = boto3.client("ssm", region_name=region)
         
-        paginator = ssm.get_paginator("describe_parameters")
-        parameters = []
+        all_parameters = []
         
-        for page in paginator.paginate(
-            ParameterFilters=[
-                {"Key": "Name", "Option": "BeginsWith", "Values": [prefix]}
-            ]
-        ):
-            parameters.extend(page["Parameters"])
+        for service in services:
+            prefix = f"/{service}/"
+            print(f"📡 Fetching parameters for service: {service}")
+            
+            paginator = ssm.get_paginator("describe_parameters")
+            for page in paginator.paginate(
+                ParameterFilters=[
+                    {"Key": "Name", "Option": "BeginsWith", "Values": [prefix]}
+                ]
+            ):
+                all_parameters.extend(page["Parameters"])
         
-        if not parameters:
-            print(f"⚠️  No parameters found with prefix: {prefix}")
+        if not all_parameters:
+            print(f"⚠️  No parameters found for services: {', '.join(services)}")
             return {}
         
-        print(f"📡 Found {len(parameters)} parameters in SSM with prefix: {prefix}")
+        print(f"📡 Found {len(all_parameters)} total parameters across {len(services)} service(s)")
         
         env_vars = {}
-        for param in parameters:
+        for param in all_parameters:
             param_name = param["Name"]
             try:
                 response = ssm.get_parameter(Name=param_name, WithDecryption=True)
                 value = response["Parameter"]["Value"]
-                env_key = _parameter_name_to_env_var(param_name, prefix)
+                env_key = _ssm_param_to_env_var(param_name)
                 env_vars[env_key] = value
+                print(f"   ✅ {param_name} -> {env_key}")
             except ClientError as e:
                 print(f"   ❌ Failed to fetch {param_name}: {e}")
         
@@ -286,15 +316,20 @@ def main():
     
     # Load secrets from source
     if args.from_ssm:
-        param_prefix = os.getenv("PARAMETER_PREFIX", "/bars/")
+        services_env = os.getenv("SSM_SERVICES")
+        if services_env:
+            services = [s.strip() for s in services_env.split(",")]
+        else:
+            services = ["shopify", "slack", "google", "lambda", "square"]
+        
         aws_region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
         
         print(f"📡 Fetching secrets from AWS SSM Parameter Store...")
-        print(f"   Prefix: {param_prefix}")
+        print(f"   Services: {', '.join(services)}")
         print(f"   Region: {aws_region}")
         print()
         
-        source_vars = get_ssm_parameters(prefix=param_prefix, region=aws_region)
+        source_vars = get_ssm_parameters(services=services, region=aws_region)
         
         if not source_vars:
             print("❌ No parameters found to sync")
