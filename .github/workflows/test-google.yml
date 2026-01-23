@@ -2,10 +2,12 @@ name: Test Google Apps Scripts
 
 on:
   push:
+    branches: [main]
     paths:
       - 'GoogleAppsScripts/**'
       - '.github/workflows/test-google.yml'
   pull_request:
+    branches: [main]
     paths:
       - 'GoogleAppsScripts/**'
       - '.github/workflows/test-google.yml'

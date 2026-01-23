@@ -2,10 +2,12 @@ name: Test AWS Lambda
 
 on:
   push:
+    branches: [main]
     paths:
       - 'lambda/functions/**'
       - '.github/workflows/test-aws.yml'
   pull_request:
+    branches: [main]
     paths:
       - 'lambda/functions/**'
       - '.github/workflows/test-aws.yml'
