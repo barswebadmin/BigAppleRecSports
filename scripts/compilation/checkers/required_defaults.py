@@ -4,8 +4,8 @@ import ast
 from pathlib import Path
 from typing import List, Optional
 
-from scripts.compilation_helpers.repo_path_resolvers import get_relative_path
-from scripts.compilation_helpers.checkers._checkers_common import create_error, parse_file_ast
+from ..repo_path_resolvers import get_relative_path
+from ._checkers_common import create_error, parse_file_ast
 
 
 def _has_none_in_union(annotation: ast.BinOp) -> bool:

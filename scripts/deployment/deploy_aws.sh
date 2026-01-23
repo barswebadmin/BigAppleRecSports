@@ -73,7 +73,7 @@ if [ "$BATCH_MODE" = "true" ] && [ ${#FUNCTIONS[@]} -eq 0 ]; then
     exit 1
 fi
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
 # Check AWS credentials
@@ -138,13 +138,11 @@ deploy_function() {
     
     echo "📁 Directory: $FUNCTION_DIR"
     
-    # Extract version (optional, for description)
-    VERSION=""
-    if [ "$UPDATE_DESCRIPTION" = "true" ]; then
-        VERSION=$(grep "__version__" "$FUNCTION_DIR/lambda_function.py" 2>/dev/null | cut -d'"' -f2 || echo "")
-        if [ -n "$VERSION" ]; then
-            echo "📦 Version: $VERSION"
-        fi
+    # Store version file path and read current version for description
+    VERSION_FILE="$FUNCTION_DIR/version.json"
+    CURRENT_VERSION=""
+    if [ -f "$VERSION_FILE" ]; then
+        CURRENT_VERSION=$(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['version'])" 2>/dev/null || echo "")
     fi
     
     # Create temporary directory for packaging
@@ -155,6 +153,12 @@ deploy_function() {
     
     # Copy all Python files
     cp "$FUNCTION_DIR"/*.py "$TEMP_DIR/" 2>/dev/null || true
+    
+    # Copy version.json if it exists
+    if [ -f "$VERSION_FILE" ]; then
+        echo "  📋 Copying version.json..."
+        cp "$VERSION_FILE" "$TEMP_DIR/"
+    fi
     
     # Copy bars_common_utils if it exists
     if [ -d "$FUNCTION_DIR/bars_common_utils" ]; then
@@ -179,8 +183,8 @@ deploy_function() {
     # Update function configuration with description (if requested)
     if [ "$UPDATE_DESCRIPTION" = "true" ]; then
         echo "☁️  Updating function configuration..."
-        if [ -n "$VERSION" ]; then
-            DESCRIPTION="Version ${VERSION} - Updated $(date '+%Y-%m-%d %H:%M:%S')"
+        if [ -n "$CURRENT_VERSION" ]; then
+            DESCRIPTION="Version ${CURRENT_VERSION} - Updated $(date '+%Y-%m-%d %H:%M:%S')"
         else
             DESCRIPTION="Updated $(date '+%Y-%m-%d %H:%M:%S')"
         fi
@@ -198,24 +202,90 @@ deploy_function() {
     
     # Deploy function code
     echo "☁️  Deploying to AWS Lambda..."
-    aws lambda update-function-code \
+    if ! aws lambda update-function-code \
         --function-name "$FUNCTION_NAME" \
         --zip-file "fileb://$ZIP_FILE" \
         --region "$AWS_REGION" \
-        --publish
+        --publish; then
+        echo "❌ Failed to update function code"
+        rm -f "$ZIP_FILE"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
     
     # Wait for code update to complete
     echo "  ⏳ Waiting for function update to complete..."
-    aws lambda wait function-updated \
+    if ! aws lambda wait function-updated \
         --function-name "$FUNCTION_NAME" \
-        --region "$AWS_REGION"
+        --region "$AWS_REGION"; then
+        echo "⚠️  Function update wait timed out or failed, but deployment may have succeeded"
+    fi
     
     # Clean up
     rm -f "$ZIP_FILE"
     rm -rf "$TEMP_DIR"
     
-    if [ -n "$VERSION" ]; then
-        echo "✅ Successfully deployed $FUNCTION_NAME version $VERSION!"
+    # Increment version.json only after successful deployment
+    NEW_VERSION=""
+    if [ -f "$VERSION_FILE" ]; then
+        echo "📈 Incrementing version after successful deployment..."
+        
+        # Determine bump type (default to patch for manual deployments)
+        BUMP_TYPE="patch"
+        if [ "$IS_CI" = "true" ]; then
+            # In CI, try to determine from commit messages
+            if git log -1 --pretty=%B | grep -qiE "BREAKING|breaking change|major"; then
+                BUMP_TYPE="major"
+            elif git log -1 --pretty=%B | grep -qiE "feat:|feature:|add:|new:"; then
+                BUMP_TYPE="minor"
+            elif git log -1 --pretty=%B | grep -qiE "fix:|bugfix:|patch:|hotfix:"; then
+                BUMP_TYPE="patch"
+            fi
+        fi
+        
+        # Get recent commit messages for changelog (newline-separated)
+        COMMIT_MESSAGES=$(git log -5 --pretty=%B 2>/dev/null | head -20 || echo "Deployment")
+        if [ -z "$COMMIT_MESSAGES" ] || [ "$COMMIT_MESSAGES" = "" ]; then
+            COMMIT_MESSAGES="Deployment"
+        fi
+        
+        # Create temp file for commit messages (version_manager expects newline-separated)
+        COMMIT_MSG_FILE=$(mktemp)
+        echo "$COMMIT_MESSAGES" > "$COMMIT_MSG_FILE"
+        
+        # Increment version using version_manager.py
+        if python3 "$REPO_ROOT/scripts/deployment/version_manager.py" \
+            --lambda-update "$FUNCTION_NAME:$VERSION_FILE:$BUMP_TYPE" \
+            --commit-messages "$(cat "$COMMIT_MSG_FILE")" 2>&1; then
+            # Read new version from version.json
+            NEW_VERSION=$(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['version'])" 2>/dev/null || echo "")
+            if [ -n "$NEW_VERSION" ]; then
+                echo "✅ Version incremented to: $NEW_VERSION"
+            else
+                # Fallback: try to read version directly
+                NEW_VERSION=$(python3 -c "import json; f=open('$VERSION_FILE'); d=json.load(f); print(d.get('version', ''))" 2>/dev/null || echo "")
+            fi
+        else
+            echo "⚠️  Version increment failed, trying to read current version..."
+            # Try to read current version even if increment failed
+            NEW_VERSION=$(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['version'])" 2>/dev/null || echo "")
+        fi
+        rm -f "$COMMIT_MSG_FILE"
+        
+        # Stage version file for batch commit later (CI only)
+        if [ "$IS_CI" = "true" ]; then
+            # Check if version.json was modified
+            if ! git diff --quiet "$VERSION_FILE" 2>/dev/null; then
+                # Stage the version file for later commit
+                git add "$VERSION_FILE" || true
+            fi
+        fi
+    else
+        echo "⚠️  version.json not found, skipping version increment"
+    fi
+    
+    if [ -n "$NEW_VERSION" ]; then
+        echo "✅ Successfully deployed $FUNCTION_NAME version $NEW_VERSION!"
     else
         echo "✅ Successfully deployed $FUNCTION_NAME!"
     fi
@@ -239,6 +309,26 @@ if [ "$BATCH_MODE" = "true" ]; then
         fi
     done
     
+    # Commit all version increments together after all functions are deployed (CI only)
+    if [ "$IS_CI" = "true" ]; then
+        # Check if any version.json files are staged
+        if ! git diff --cached --quiet --exit-code 2>/dev/null; then
+            echo ""
+            echo "📝 Committing all version increments to merge commit..."
+            # Amend to the current HEAD (merge commit) to include all version increments
+            if git commit --amend --no-edit 2>/dev/null; then
+                # Force push with lease to update the merge commit (safe in CI)
+                if git push origin main --force-with-lease 2>/dev/null; then
+                    echo "✅ All version increments included in merge commit"
+                else
+                    echo "⚠️  Failed to push version increments (may have been pushed already)"
+                fi
+            else
+                echo "⚠️  Failed to amend commit (may have been committed already)"
+            fi
+        fi
+    fi
+    
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📊 Deployment Summary"
@@ -252,6 +342,26 @@ else
     # Single function deployment
     deploy_function "${FUNCTIONS[0]}"
     EXIT_CODE=$?
+    
+    # Commit version increment for single function (CI only)
+    if [ "$IS_CI" = "true" ]; then
+        # Check if version.json is staged
+        if ! git diff --cached --quiet --exit-code 2>/dev/null; then
+            echo ""
+            echo "📝 Committing version increment to merge commit..."
+            # Amend to the current HEAD (merge commit) to include version increment
+            if git commit --amend --no-edit 2>/dev/null; then
+                # Force push with lease to update the merge commit (safe in CI)
+                if git push origin main --force-with-lease 2>/dev/null; then
+                    echo "✅ Version increment included in merge commit"
+                else
+                    echo "⚠️  Failed to push version increment (may have been pushed already)"
+                fi
+            else
+                echo "⚠️  Failed to amend commit (may have been committed already)"
+            fi
+        fi
+    fi
 fi
 
 exit $EXIT_CODE

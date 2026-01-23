@@ -9,19 +9,26 @@ on:
   push:
     branches: [main]
     paths:
-      # Backend code changes
       - 'backend/**'
-      # Configuration and deployment files
-      - '.github/workflows/**'
-      - 'Makefile'
-      # Exclude documentation and non-deployment files
-      - '!**/*.md'
-      - '!**/tests/**'
-      - '!**/*.test.js'
-      - '!**/*.test.py'
+      - '.github/workflows/deploy-backend.yml'
 
   # Allow manual deployment
   workflow_dispatch:
+
+# TODO: Future enhancement - Add pull_request trigger for preview/staging deployments
+# This would allow testing deployments before merging PRs.
+# Requirements:
+#   - Staging/preview environment in Render (separate service or environment)
+#   - Staging-specific secrets (RENDER_STAGING_API_KEY, RENDER_STAGING_SERVICE_ID)
+#   - Environment variable to distinguish staging vs production
+#   - Update sync_render_secrets.py to support staging environment
+#   - Consider auto-cleanup of staging deployments after PR merge/close
+# Example trigger:
+#   pull_request:
+#     branches: [main]
+#     paths:
+#       - 'backend/**'
+#     types: [opened, synchronize, reopened]
     inputs:
       reason:
         description: 'Reason for manual deployment'
@@ -37,18 +44,30 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Get Python version
+        id: python-version
+        run: echo "version=$(python scripts/ci/get_python_version.py)" >> $GITHUB_OUTPUT
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: ${{ steps.python-version.outputs.version }}
 
       - name: Install Python dependencies
-        run: |
-          echo "📦 Installing Python dependencies..."
-          pip install boto3 requests
+        run: python scripts/ci/install_dependencies.py deploy
 
-      - name: Sync secrets to Render
+
+      - name: Deploy to Render (with version increment)
+        id: deploy
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
@@ -56,19 +75,16 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-1
           PARAMETER_PREFIX: /bars/
+          CI: 'true'
+          GITHUB_ACTIONS: 'true'
         run: |
-          python3 scripts/secrets/sync_render_secrets.py --from-ssm
-
-      - name: Deploy to Render
-        uses: johnbeynon/render-deploy-action@v0.0.8
-        with:
-          service-id: ${{ secrets.RENDER_SERVICE_ID }}
-          api-key: ${{ secrets.RENDER_API_KEY }}
+          python3 scripts/deployment/deploy_backend.py --from-ssm
+          echo "success=true" >> $GITHUB_OUTPUT
 
       - name: Deployment notification
         if: always()
         run: |
-          if [ "${{ job.status }}" == "success" ]; then
+          if [ "${{ steps.deploy.outputs.success }}" == "true" ]; then
             echo "✅ Deployment to Render successful!"
           else
             echo "❌ Deployment to Render failed!"

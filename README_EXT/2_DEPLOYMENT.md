@@ -178,22 +178,19 @@ SHOPIFY_WEBHOOK_SECRET=your_webhook_secret
 npm install -g @google/clasp
 
 # Setup authentication
-cd GoogleAppsScripts
-bash remote-sync-tools/setup-auth.sh
+bash scripts/deployment/google/setup_auth.sh
 ```
 
 ### Deploy Individual Project
 ```bash
-cd GoogleAppsScripts
-
-# Deploy specific project
-./deploy.sh process-refunds-exchanges      # Refund and exchange workflows
-./deploy.sh parse-registration-info        # Registration data parsing
-./deploy.sh leadership-discount-codes      # Leadership discount management
-./deploy.sh product-variant-creation       # Shopify product creation
-./deploy.sh add-sold-out-product-to-waitlist  # Waitlist form management
-./deploy.sh payment-assistance-tags        # Payment assistance processing
-./deploy.sh waitlist-script               # Waitlist functionality
+# Deploy specific project (from repo root)
+bash scripts/deployment/deploy_google.sh process-refunds-exchanges      # Refund and exchange workflows
+bash scripts/deployment/deploy_google.sh parse-registration-info        # Registration data parsing
+bash scripts/deployment/deploy_google.sh leadership-discount-codes      # Leadership discount management
+bash scripts/deployment/deploy_google.sh product-variant-creation       # Shopify product creation
+bash scripts/deployment/deploy_google.sh add-sold-out-product-to-waitlist  # Waitlist form management
+bash scripts/deployment/deploy_google.sh payment-assistance-tags        # Payment assistance processing
+bash scripts/deployment/deploy_google.sh waitlist-script               # Waitlist functionality
 ```
 
 ### Script Architecture
@@ -213,12 +210,10 @@ Each of the 7 scripts follows consistent patterns:
 
 ### Deploy All Projects
 ```bash
-cd GoogleAppsScripts
-
-# Deploy all projects
-for project in projects/*/; do
+# Deploy all projects (from repo root)
+for project in GoogleAppsScripts/projects/*/; do
   project_name=$(basename "$project")
-  ./deploy.sh "$project_name"
+  bash scripts/deployment/deploy_google.sh "$project_name"
 done
 ```
 
@@ -321,8 +316,8 @@ All deployments send notifications:
 # 2. Go to "Manage versions"
 # 3. Restore previous version
 
-# Via clasp
-cd GoogleAppsScripts
+# Via clasp (from project directory)
+cd GoogleAppsScripts/projects/[project-name]
 clasp versions  # List versions
 clasp version [version_number]  # Restore version
 ```

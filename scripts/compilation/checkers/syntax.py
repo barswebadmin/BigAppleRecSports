@@ -4,8 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.compilation_helpers.repo_path_resolvers import get_relative_path
-from scripts.compilation_helpers.checkers._checkers_common import create_error, parse_json_output, run_subprocess
+from ..repo_path_resolvers import get_relative_path
+from ._checkers_common import create_error, parse_json_output, run_subprocess
 
 
 def _run_ruff(file_path: Path, repo_root: Path, timeout: int = 30) -> tuple[subprocess.CompletedProcess | None, list[dict]]:

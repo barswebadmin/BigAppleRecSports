@@ -10,7 +10,7 @@ set -e
 
 # Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/shared-helpers.sh"
+source "$SCRIPT_DIR/google/shared_helpers.sh"
 
 # Parse project name
 PROJECT_NAME="${1:-}"
@@ -49,7 +49,7 @@ check_webapp_changes "$GAS_ROOT"
 
 # Step 1: Push code to Google Apps Script
 log_info "📤 Step 1: Pushing code to Google Apps Script..."
-bash "$GAS_ROOT/remote-sync-tools/push.sh" "$PROJECT_NAME"
+bash "$REPO_ROOT/scripts/deployment/push_google.sh" "$PROJECT_NAME"
 
 log_success "Code pushed successfully"
 

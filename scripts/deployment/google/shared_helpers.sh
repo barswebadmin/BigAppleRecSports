@@ -119,14 +119,13 @@ get_gas_root() {
         script_dir=$(get_script_dir)
     fi
     
-    # Navigate up from remote-sync-tools to GoogleAppsScripts
-    local current="$script_dir"
-    while [ "$current" != "/" ]; do
-        if [ -d "$current/projects" ] && [ -d "$current/remote-sync-tools" ]; then
-            echo "$current"
-            return 0
-        fi
-        current=$(dirname "$current")
+    REPO_ROOT="$(cd "$script_dir/../../.." && pwd)"
+    GAS_ROOT="$REPO_ROOT/GoogleAppsScripts"
+    
+    if [ -d "$GAS_ROOT" ]; then
+        echo "$GAS_ROOT"
+        return 0
+    fi
     done
     
     log_error "Could not find GoogleAppsScripts root directory"
@@ -176,9 +175,9 @@ check_script_dependencies() {
     fi
     
     local required_scripts=(
-        "$gas_root/remote-sync-tools/push.sh"
-        "$gas_root/remote-sync-tools/pull.sh"
-        "$gas_root/remote-sync-tools/build.js"
+        "$REPO_ROOT/scripts/deployment/push_google.sh"
+        "$REPO_ROOT/scripts/deployment/pull_google.sh"
+        "$REPO_ROOT/scripts/deployment/google/build.js"
     )
     
     for script in "${required_scripts[@]}"; do
@@ -234,7 +233,7 @@ get_project_paths() {
         script_dir=$(get_script_dir)
     fi
     
-    REPO_ROOT="$(cd "$script_dir/../.." && pwd)"
+    REPO_ROOT="$(cd "$script_dir/../../.." && pwd)"
     GAS_ROOT="$REPO_ROOT/GoogleAppsScripts"
     PROJECT_DIR="$GAS_ROOT/projects/$project_name"
 }
@@ -249,7 +248,8 @@ build_gas_project() {
     
     log_info "📦 Building project..."
     
-    if ! node "$gas_root/remote-sync-tools/build.js" "$project_dir"; then
+    local build_script="$REPO_ROOT/scripts/deployment/google/build.js"
+    if ! node "$build_script" "$project_dir"; then
         log_error "Build failed"
         return 1
     fi
@@ -259,16 +259,64 @@ build_gas_project() {
 }
 
 # Parse comparison output to detect changes
-# Usage: parse_comparison_output "$COMPARE_OUTPUT"
+# Usage: parse_comparison_output "$COMPARE_OUTPUT" REMOTE_AHEAD_VAR LOCAL_AHEAD_VAR
 # Returns: 0 if no changes, 1 if changes detected
+# Sets: REMOTE_AHEAD and LOCAL_AHEAD variables
 parse_comparison_output() {
     local compare_output="$1"
+    local remote_ahead_var="${2:-}"
+    local local_ahead_var="${3:-}"
     
-    if echo "$compare_output" | grep -q "Different files:"; then
-        return 1
-    elif echo "$compare_output" | grep -q "Files only in local:"; then
-        return 1
-    elif echo "$compare_output" | grep -q "Files only in remote:"; then
+    local remote_ahead=false
+    local local_ahead=false
+    local has_changes=false
+    
+    # Try to parse JSON output first (more reliable)
+    if echo "$compare_output" | grep -q '"only_remote_count"'; then
+        local only_remote=$(echo "$compare_output" | grep -o '"only_remote_count": [0-9]*' | grep -o '[0-9]*' || echo "0")
+        local only_local=$(echo "$compare_output" | grep -o '"only_local_count": [0-9]*' | grep -o '[0-9]*' || echo "0")
+        local different=$(echo "$compare_output" | grep -o '"different_count": [0-9]*' | grep -o '[0-9]*' || echo "0")
+        
+        if [ "$only_remote" -gt 0 ]; then
+            remote_ahead=true
+            has_changes=true
+        fi
+        
+        if [ "$only_local" -gt 0 ]; then
+            local_ahead=true
+            has_changes=true
+        fi
+        
+        if [ "$different" -gt 0 ]; then
+            has_changes=true
+        fi
+    else
+        # Fallback to text parsing
+        if echo "$compare_output" | grep -q "Different files:"; then
+            has_changes=true
+        fi
+        
+        if echo "$compare_output" | grep -q "Files only in local:"; then
+            local_ahead=true
+            has_changes=true
+        fi
+        
+        if echo "$compare_output" | grep -q "Files only in remote:"; then
+            remote_ahead=true
+            has_changes=true
+        fi
+    fi
+    
+    # Set output variables if provided
+    if [ -n "$remote_ahead_var" ]; then
+        eval "$remote_ahead_var=$remote_ahead"
+    fi
+    
+    if [ -n "$local_ahead_var" ]; then
+        eval "$local_ahead_var=$local_ahead"
+    fi
+    
+    if [ "$has_changes" = true ]; then
         return 1
     fi
     
@@ -276,13 +324,50 @@ parse_comparison_output() {
 }
 
 # Prompt user for confirmation
-# Usage: prompt_user_confirmation "$has_changes" "$is_dry_run" "$action"
+# Usage: prompt_user_confirmation "$has_changes" "$is_dry_run" "$action" "$remote_ahead" "$project_name"
 # Returns: 0 for yes, 1 for no
 prompt_user_confirmation() {
     local has_changes="$1"
     local is_dry_run="$2"
     local action="${3:-push}"
+    local remote_ahead="${4:-false}"
+    local project_name="${5:-}"
     
+    # Check if running in CI (non-interactive)
+    if [ ! -t 0 ]; then
+        # CI mode - fail if remote is ahead
+        if [ "$remote_ahead" = true ]; then
+            log_error "❌ Remote is ahead of local - cannot deploy"
+            log_error "Remote has changes not in your local code"
+            if [ -n "$project_name" ]; then
+                log_error "Pull remote changes first: bash scripts/deployment/pull_google.sh $project_name"
+            fi
+            return 1
+        fi
+        # CI mode - proceed if no remote-ahead issue
+        return 0
+    fi
+    
+    # Interactive mode
+    if [ "$remote_ahead" = true ]; then
+        log_warning "⚠️  Remote has changes not in your local code"
+        log_warning "Proceeding will overwrite remote changes"
+        if [ -n "$project_name" ]; then
+            log_info "💡 To pull remote changes first, run:"
+            log_info "   bash scripts/deployment/pull_google.sh $project_name"
+        fi
+        echo ""
+        read -p "Continue anyway and overwrite remote? (y/N): " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "${action^} cancelled"
+            return 1
+        fi
+        log_warning "Proceeding with ${action} - remote changes will be overwritten"
+        return 0
+    fi
+    
+    # Standard confirmation prompts
     if [ "$has_changes" = false ]; then
         log_warning "No changes detected between local and remote"
         if [ "$is_dry_run" = true ]; then
@@ -521,13 +606,16 @@ validate_project_structure() {
 
 # Run comparison between local and remote
 # Usage: run_comparison "$local_path" "$remote_path" "$compare_type" HAS_CHANGES_VAR ["$project_name"]
-# Sets: HAS_CHANGES variable (true/false) and displays comparison output
+# Sets: HAS_CHANGES, REMOTE_AHEAD, LOCAL_AHEAD variables and displays comparison output
+# Usage: run_comparison "$local_path" "$remote_path" "$compare_type" HAS_CHANGES_VAR ["$project_name"] [REMOTE_AHEAD_VAR] [LOCAL_AHEAD_VAR]
 run_comparison() {
     local local_path="$1"
     local remote_path="$2"
     local compare_type="$3"  # "push" or "pull"
     local has_changes_var="$4"
     local project_name="${5:-}"  # Optional project name for identifier
+    local remote_ahead_var="${6:-REMOTE_AHEAD}"  # Optional variable name for remote-ahead flag
+    local local_ahead_var="${7:-LOCAL_AHEAD}"  # Optional variable name for local-ahead flag
     
     local compare_script=""
     local compare_cmd=""
@@ -542,7 +630,8 @@ run_comparison() {
         if [ -z "$project_name" ]; then
             project_name=$(basename "$local_path")
         fi
-        compare_cmd="python3 \"$compare_script\" --remote-origin-type google --project-name \"$project_name\" --local-path \"$local_path\" --keep-temp 2>&1"
+        # Use JSON output for structured parsing
+        compare_cmd="python3 \"$compare_script\" --remote-origin-type google --project-name \"$project_name\" --local-path \"$local_path\" --output-format json --keep-temp 2>&1"
     else
         compare_script="$REPO_ROOT/scripts/file_comparison/compare_at_path.py"
         if [ ! -f "$compare_script" ]; then
@@ -558,17 +647,52 @@ run_comparison() {
     compare_output=$(eval "$compare_cmd")
     local compare_exit_code=$?
     
-    # Display comparison results
+    # Try to extract JSON from output (may have error messages mixed in)
+    local json_output=""
+    if echo "$compare_output" | grep -q '{'; then
+        json_output=$(echo "$compare_output" | grep -A 20 '{' | head -20)
+    fi
+    
+    # Display comparison results (show text output if available, otherwise JSON)
     echo ""
-    echo "$compare_output"
+    if [ -n "$json_output" ] && [ "$compare_type" = "push" ]; then
+        # For push type, we have JSON - show human-readable summary
+        local only_remote=$(echo "$json_output" | grep -o '"only_remote_count": [0-9]*' | grep -o '[0-9]*' || echo "0")
+        local only_local=$(echo "$json_output" | grep -o '"only_local_count": [0-9]*' | grep -o '[0-9]*' || echo "0")
+        local different=$(echo "$json_output" | grep -o '"different_count": [0-9]*' | grep -o '[0-9]*' || echo "0")
+        local identical=$(echo "$json_output" | grep -o '"identical_count": [0-9]*' | grep -o '[0-9]*' || echo "0")
+        
+        echo "📊 Comparison Summary:"
+        echo "  Identical: $identical"
+        echo "  Different: $different"
+        echo "  Only in local: $only_local"
+        echo "  Only in remote: $only_remote"
+        echo ""
+        
+        if [ "$only_remote" -gt 0 ]; then
+            log_warning "⚠️  Remote is ahead: $only_remote file(s) only in remote"
+        fi
+        if [ "$only_local" -gt 0 ]; then
+            log_info "ℹ️  Local is ahead: $only_local file(s) only in local"
+        fi
+    else
+        # Fallback: show raw output
+        echo "$compare_output"
+    fi
     echo ""
     
-    # Parse comparison output
-    if parse_comparison_output "$compare_output"; then
+    # Parse comparison output to set variables
+    local remote_ahead_val=false
+    local local_ahead_val=false
+    
+    if parse_comparison_output "$compare_output" "remote_ahead_val" "local_ahead_val"; then
         eval "$has_changes_var=false"
     else
         eval "$has_changes_var=true"
     fi
+    
+    eval "$remote_ahead_var=$remote_ahead_val"
+    eval "$local_ahead_var=$local_ahead_val"
     
     return 0
 }
@@ -578,7 +702,7 @@ run_comparison() {
 # Returns: 0 if no changes or check skipped, 1 if error
 check_webapp_changes() {
     local gas_root="$1"
-    local detect_script="$gas_root/remote-sync-tools/detect-webapp-changes.sh"
+    local detect_script="$REPO_ROOT/scripts/deployment/google/detect_webapp_changes.sh"
     
     if [ -f "$detect_script" ]; then
         "$detect_script" --staged >/dev/null 2>&1 || true

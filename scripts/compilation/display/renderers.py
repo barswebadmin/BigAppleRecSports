@@ -16,7 +16,7 @@ class ErrorProtocol(Protocol):
     """Protocol defining the interface for error objects that renderers can display.
     
     This allows renderers to work with any error object that has these attributes,
-    without importing from compilation_check_main.
+    without importing from compile_main.
     """
     file: str
     line: int

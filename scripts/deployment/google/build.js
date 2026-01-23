@@ -22,8 +22,10 @@ if (!fs.existsSync(projectDir)) {
 process.chdir(projectDir);
 
 // Resolve paths relative to script location
+// Script is in scripts/deployment/google/, need to go up to repo root, then to GoogleAppsScripts
 const scriptDir = __dirname;
-const gasRoot = path.resolve(scriptDir, '..');
+const repoRoot = path.resolve(scriptDir, '../../..');
+const gasRoot = path.join(repoRoot, 'GoogleAppsScripts');
 const rootNodeModules = path.join(gasRoot, 'node_modules', 'esbuild');
 const projectNodeModules = path.join(projectDir, 'node_modules', 'esbuild');
 
@@ -99,7 +101,7 @@ async function build() {
   fs.mkdirSync(BUILD_DIR, { recursive: true });
   
   // Note: For comprehensive cleanup (including temp files), use:
-  // bash GoogleAppsScripts/remote-sync-tools/clean.sh <project-dir>
+  // bash scripts/deployment/google/clean.sh <project-dir>
 
   // Build the unified entry point
   for (const entry of ENTRY_POINTS) {
