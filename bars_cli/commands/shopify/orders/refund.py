@@ -1,14 +1,18 @@
 """Refund Shopify order command."""
 
+import json
 import sys
-from typing import Dict, Any, Optional, Tuple, List, TYPE_CHECKING
+import traceback
 from datetime import datetime, timezone
+from typing import Dict, Any, Optional, Tuple, List, TYPE_CHECKING, cast
 
 import click
 from rich.console import Console
 
+from bars_cli._core.context import get_display_context
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_ORDER_IDENTIFIER
+from bars_cli._core.utils.json_output import output_json_error
 from bars_cli.commands.shopify._shared.shopify_formatters import (
     _format_customer_name_from_order,
     _get_refunds,
@@ -19,6 +23,7 @@ from bars_cli.commands.shopify._shared.shopify_formatters import (
     format_refund_summary,
     format_refund_header,
     format_refund_success,
+    format_season_info,
 )
 
 if TYPE_CHECKING:
@@ -60,35 +65,6 @@ def parse_submitted_at_timestamp(timestamp_input: str, console: Console) -> Opti
 
 
 
-def _extract_season_info_from_order(order: Order) -> Tuple[Optional[str], Optional[str]]:
-    """Extract season dates from order's first product."""
-    from backend.shared.date_utils import extract_season_dates
-    
-    line_items_conn = getattr(order, 'lineItems', None)  # type: ignore[attr-defined]
-    if not line_items_conn:
-        return None, None
-    
-    nodes = getattr(line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
-    if not nodes or len(nodes) == 0:
-        return None, None
-    
-    first_item = nodes[0]
-    product = getattr(first_item, 'product', None)  # type: ignore[attr-defined]
-    if not product:
-        return None, None
-    
-    # Try to access descriptionHtml as attribute first (if selected in GraphQL)
-    product_description = getattr(product, 'descriptionHtml', None)
-    
-    # Fall back to __json_data__ if not available as attribute
-    if not product_description and hasattr(product, '__json_data__'):
-        product_data = product.__json_data__
-        product_description = product_data.get('descriptionHtml', '')
-    
-    if not product_description:
-        return None, None
-    
-    return extract_season_dates(product_description)
 
 
 def prompt_refund_type_selection(
@@ -112,30 +88,19 @@ def prompt_refund_type_selection(
     Returns:
         Tuple of (refund_type, estimated_amount, estimated_message, submitted_at)
     """
-    season_start_date_str, off_dates_str = _extract_season_info_from_order(order)
+    season_start_date_str, off_dates_str = shopify_service.extract_season_info_from_order(order)
     
     if not season_start_date_str:
         return None, None, None, None
     
-    console.print("[cyan]Refund Calculation[/cyan]")
-    console.print(f"Season start date found: {season_start_date_str}")
-    if off_dates_str:
-        console.print(f"Off dates: {off_dates_str}")
-    else:
-        console.print("[yellow]⚠️ No off dates detected in product description[/yellow]")
-    console.print()
+    # Display season info using formatter
+    season_info_lines = format_season_info(season_start_date_str, off_dates_str)
+    for line in season_info_lines:
+        console.print(line)
     
-    # Get submitted_at timestamp if not already provided
+    submitted_at = _prompt_submitted_at_timestamp(console, submitted_at)
     if submitted_at is None:
-        while True:
-            timestamp_input = input(
-                "Enter submitted_at timestamp (format: MM/DD/YYYY HH:MM:SS, or press ENTER to use current time): "
-            ).strip()
-            
-            submitted_at = parse_submitted_at_timestamp(timestamp_input, console)
-            if submitted_at is None:
-                continue
-            break
+        return None, None, None, None
     
     # Calculate for both refund types using service
     refund_amount, refund_message = shopify_service.calculate_estimated_refund(
@@ -174,6 +139,196 @@ def prompt_refund_type_selection(
             continue
     
     return refund_type, estimated_amount, estimated_message, submitted_at
+
+
+
+
+def _validate_refundable_amount(
+    payment_summary: Dict[str, Any],
+    console: Console
+) -> Optional[Dict[str, Any]]:
+    """Validate that order has refundable amount.
+    
+    Returns:
+        Payment summary dict if refundable, None otherwise
+    """
+    total_amount = payment_summary['total_amount']
+    remaining_refundable = payment_summary['remaining_refundable']
+    
+    if remaining_refundable <= 0:
+        if total_amount == 0:
+            console.print("[red]❌ No payment found. Order total is $0.00 - nothing to refund.[/red]\n")
+        else:
+            console.print("[red]❌ No refundable amount remaining. Order is fully refunded.[/red]\n")
+        return None
+    
+    return payment_summary
+
+
+def _display_season_info(
+    season_start_date_str: Optional[str],
+    off_dates_str: Optional[str],
+    console: Console
+) -> None:
+    """Display season information for refund calculation."""
+    console.print("[cyan]Refund Calculation[/cyan]")
+    console.print(f"Season start date found: {season_start_date_str}")
+    if off_dates_str:
+        console.print(f"Off dates: {off_dates_str}")
+    else:
+        console.print("[yellow]⚠️  No off dates detected in product description[/yellow]")
+    console.print()
+
+
+def _prompt_submitted_at_timestamp(
+    console: Console,
+    submitted_at: Optional[datetime] = None
+) -> Optional[datetime]:
+    """Prompt for submitted_at timestamp if not provided.
+    
+    Returns:
+        datetime object or None if user cancels
+    """
+    if submitted_at is not None:
+        return submitted_at
+    
+    while True:
+        timestamp_input = input(
+            "Enter submitted_at timestamp (format: MM/DD/YYYY HH:MM:SS, or press ENTER to use current time): "
+        ).strip()
+        
+        submitted_at = parse_submitted_at_timestamp(timestamp_input, console)
+        if submitted_at is None:
+            continue
+        break
+    
+    return submitted_at
+
+
+def _prompt_refund_type_simple(console: Console) -> str:
+    """Prompt user to select refund type (refund or credit).
+    
+    Returns:
+        "refund" or "credit"
+    """
+    while True:
+        selection = input("Select refund type: (o) Original Payment, (s) Store Credit: ").strip().lower()
+        if selection in ['o', 'original', 'original payment']:
+            return "refund"
+        elif selection in ['s', 'store', 'store credit', 'credit']:
+            return "credit"
+        else:
+            console.print("[red]Invalid selection. Please enter 'o' for Original Payment or 's' for Store Credit.[/red]")
+
+
+def _handle_refund_with_type_provided(
+    order: Order,
+    refund_type: str,
+    total_amount: float,
+    shopify_service: Any,
+    console: Console,
+    submitted_at_datetime: Optional[datetime] = None
+) -> Tuple[Optional[float], Optional[str], Optional[datetime]]:
+    """Handle refund calculation when refund type is provided via CLI option.
+    
+    Returns:
+        Tuple of (estimated_amount, estimated_message, submitted_at_datetime)
+    """
+    season_start_date_str, off_dates_str = shopify_service.extract_season_info_from_order(order)
+    
+    if not season_start_date_str:
+        console.print("[yellow]⚠️  Warning: Could not calculate suggested refund amounts.[/yellow]")
+        console.print("[dim]No season dates found in product description.[/dim]\n")
+        return None, None, submitted_at_datetime
+    
+    # Display season info using formatter
+    season_info_lines = format_season_info(season_start_date_str, off_dates_str)
+    for line in season_info_lines:
+        console.print(line)
+    
+    submitted_at_datetime = _prompt_submitted_at_timestamp(console, submitted_at_datetime)
+    if submitted_at_datetime is None:
+        return None, None, None
+    
+    estimated_refund_amount, estimated_refund_message = shopify_service.calculate_estimated_refund(
+        order=order,
+        total_amount=total_amount,
+        refund_type=refund_type,
+        submitted_at=submitted_at_datetime
+    )
+    
+    return estimated_refund_amount, estimated_refund_message, submitted_at_datetime
+
+
+def _handle_refund_error(
+    refund_result: Dict[str, Any],
+    json_output: bool,
+    console: Console
+) -> None:
+    """Handle refund creation error and display appropriate message."""
+    error_msg = refund_result.get("message", refund_result.get("error", "Unknown error"))
+    
+    if json_output:
+        output_json_error(error_msg if isinstance(error_msg, str) else "; ".join(error_msg))
+    else:
+        console.print("[red]❌ Failed to create refund:[/red]")
+        if isinstance(error_msg, list):
+            for error in error_msg:
+                console.print(f"  • {error}")
+        elif isinstance(error_msg, str):
+            console.print(f"  {error_msg}")
+        else:
+            console.print(f"  {str(error_msg)}")
+        console.print()
+    
+    raise click.ClickException(error_msg if isinstance(error_msg, str) else "; ".join(error_msg))
+
+
+def _handle_refund_success(
+    refund_result: Dict[str, Any],
+    order_name: str,
+    refund_amount: float,
+    refund_type_display: str,
+    currency: str,
+    json_output: bool,
+    console: Console
+) -> Dict[str, Any]:
+    """Handle successful refund creation and return result."""
+    if json_output:
+        raw_response = refund_result.get("raw_response")
+        if raw_response:
+            click.echo(json.dumps(raw_response, indent=2, default=str))
+            return raw_response
+        else:
+            refund_data = refund_result.get("data", {})
+            click.echo(json.dumps(refund_data, indent=2, default=str))
+            return refund_data
+    else:
+        refund_data = refund_result.get("data", {})
+        refund_id = refund_data.get('id', 'N/A')
+        if isinstance(refund_id, str) and '/' in refund_id:
+            refund_id = refund_id.split('/')[-1]
+        refund_created = format_datetime_display(refund_data.get('createdAt'))
+        
+        format_refund_success(
+            order_name=order_name,
+            refund_id=refund_id,
+            refund_amount=refund_amount,
+            refund_type_display=refund_type_display,
+            refund_created=refund_created,
+            currency=currency,
+            console=console
+        )
+        
+        return {
+            "success": True,
+            "order_name": order_name,
+            "refund_id": refund_id,
+            "refund_amount": refund_amount,
+            "refund_type": refund_type_display,
+            "refund_created": refund_created,
+            "currency": currency
+        }
 
 
 def prompt_refund_with_summary(
@@ -273,8 +428,6 @@ def refund_order_cmd(
       bars shopify order refund #1234 --refund-type credit
       bars shopify order refund 1234 --refund-type refund
     """
-    from bars_cli._core.context import get_display_context
-    
     console = Console()
     json_output, should_display = get_display_context(ctx)
     
@@ -291,38 +444,27 @@ def refund_order_cmd(
         order_num = identifier.get("identifier", "").strip().lstrip('#')
         console.print(f"\n[cyan]Fetching order details for #{order_num}...[/cyan]\n")
         
-        orders: List[Order] = shopify_service.get_order_by_identifier(identifier, line_items_first=50)
+        orders = shopify_service.get_order_by_identifier(identifier, line_items_first=5)
         if not orders:
-            click.echo("❌ No order found", err=True)
             raise click.ClickException(f"No order found with identifier: {identifier.get('identifier', 'N/A')}")
-        
-        order: Order = orders[0]
-        order_id: str = order.id if hasattr(order, 'id') else ''
-        order_name: str = order.name if hasattr(order, 'name') else 'N/A'
-        
-        # Get customer name
+        order = orders[0]
+        order_id: str = cast(str, order.id)
+        order_name: str = cast(str, order.name)
         customer_name = _format_customer_name_from_order(order)
-        customer_email = order.email if hasattr(order, 'email') else 'N/A'
+        customer_email: str = cast(str, order.email)
         
-        # Display header using formatter
         format_refund_header(order_name, customer_name, customer_email, console)
         
-        # Calculate payment summary using service method
         payment_summary = shopify_service.calculate_payment_summary(order)
-        total_amount = payment_summary['total_amount']
-        currency = payment_summary['currency']
-        remaining_refundable = payment_summary['remaining_refundable']
-        
-        # Display payment summary using formatter
         format_payment_summary(payment_summary, console)
         
-        # Check if refund is possible
-        if remaining_refundable <= 0:
-            if total_amount == 0:
-                console.print("[red]❌ No payment found. Order total is $0.00 - nothing to refund.[/red]\n")
-            else:
-                console.print("[red]❌ No refundable amount remaining. Order is fully refunded.[/red]\n")
+        validated_summary = _validate_refundable_amount(payment_summary, console)
+        if validated_summary is None:
             return
+        
+        total_amount = validated_summary['total_amount']
+        currency = validated_summary['currency']
+        remaining_refundable = validated_summary['remaining_refundable']
         
         # Show existing refunds using formatter
         refunds = _get_refunds(order)
@@ -339,47 +481,9 @@ def refund_order_cmd(
                 raise click.ClickException("Invalid --submitted-at format. Use MM/DD/YYYY HH:MM:SS")
         
         if refund_type:
-            # Use provided refund type - extract season info and get submitted_at if needed
-            season_start_date_str, off_dates_str = _extract_season_info_from_order(order)
-            
-            if season_start_date_str:
-                console.print("[cyan]Refund Calculation[/cyan]")
-                console.print(f"Season start date found: {season_start_date_str}")
-                if off_dates_str:
-                    console.print(f"Off dates: {off_dates_str}")
-                else:
-                    console.print("[yellow]⚠️  No off dates detected in product description[/yellow]")
-                console.print()
-                
-                # Prompt for submitted_at if not provided via CLI option
-                if submitted_at_datetime is None:
-                    while True:
-                        timestamp_input = input(
-                            "Enter submitted_at timestamp (format: MM/DD/YYYY HH:MM:SS, or press ENTER to use current time): "
-                        ).strip()
-                        
-                        submitted_at_datetime = parse_submitted_at_timestamp(timestamp_input, console)
-                        if submitted_at_datetime is None:
-                            continue
-                        break
-                
-                # Calculate estimated refund using the timestamp
-                estimated_refund_amount, estimated_refund_message = shopify_service.calculate_estimated_refund(
-                    order=order,
-                    total_amount=total_amount,
-                    refund_type=refund_type,
-                    submitted_at=submitted_at_datetime
+            estimated_refund_amount, estimated_refund_message, submitted_at_datetime = _handle_refund_with_type_provided(
+                order, refund_type, total_amount, shopify_service, console, submitted_at_datetime
             )
-            
-            if estimated_refund_amount is None:
-                    console.print("[yellow]⚠️  Warning: Could not calculate suggested refund amount.[/yellow]")
-                    console.print("[dim]No season dates found in product description.[/dim]\n")
-            else:
-                # No season dates found - can't calculate estimated refund
-                estimated_refund_amount = None
-                estimated_refund_message = None
-                console.print("[yellow]⚠️  Warning: Could not calculate suggested refund amounts.[/yellow]")
-                console.print("[dim]No season dates found in product description.[/dim]\n")
         else:
             # Prompt for refund type selection with calculated amounts
             # If submitted_at was provided via CLI, pass it to the prompt function
@@ -415,22 +519,12 @@ def refund_order_cmd(
             return
         
         if refund_type is None:
-            # If no refund type was selected, prompt for it now
-            while True:
-                selection = input("Select refund type: (o) Original Payment, (s) Store Credit: ").strip().lower()
-                if selection in ['o', 'original', 'original payment']:
-                    refund_type = "refund"
-                    break
-                elif selection in ['s', 'store', 'store credit', 'credit']:
-                    refund_type = "credit"
-                    break
-                else:
-                    console.print("[red]Invalid selection. Please enter 'o' for Original Payment or 's' for Store Credit.[/red]")
+            refund_type = _prompt_refund_type_simple(console)
         
         console.print()
         
-        # Process refund
-        transactions = list(order.transactions if hasattr(order, 'transactions') else [])
+        # Cast field access - at runtime, sgqlc returns actual values (str, list), not Field objects
+        transactions = list(cast(list, order.transactions))
         
         console.print(f"[cyan]Processing refund of ${refund_amount:.2f}...[/cyan]\n")
         refund_result = shopify_service.create_refund(
@@ -438,70 +532,16 @@ def refund_order_cmd(
             refund_amount=refund_amount,
             refund_type=refund_type,
             transactions=transactions,
-                   currency=currency,
+            currency=currency,
             notify=True
         )
         
         if not refund_result.get("success"):
-            error_msg = refund_result.get("message", refund_result.get("error", "Unknown error"))
-            if json_output:
-                import json
-                from bars_cli._core.utils.json_output import output_json_error
-                output_json_error(error_msg if isinstance(error_msg, str) else "; ".join(error_msg))
-            else:
-                console.print("[red]❌ Failed to create refund:[/red]")
-                if isinstance(error_msg, list):
-                    for error in error_msg:
-                        console.print(f"  • {error}")
-                elif isinstance(error_msg, str):
-                    console.print(f"  {error_msg}")
-                else:
-                    console.print(f"  {str(error_msg)}")
-                console.print()
-            raise click.ClickException(error_msg if isinstance(error_msg, str) else "; ".join(error_msg))
+            _handle_refund_error(refund_result, json_output, console)
         
-        # Success! Output based on json_output flag
-        if json_output:
-            # Output raw GraphQL response as JSON
-            raw_response = refund_result.get("raw_response")
-            if raw_response:
-                import json
-                click.echo(json.dumps(raw_response, indent=2, default=str))
-                return raw_response
-            else:
-                # Fallback: return the interpreted data if raw_response not available
-                refund_data = refund_result.get("data", {})
-                import json
-                click.echo(json.dumps(refund_data, indent=2, default=str))
-                return refund_data
-        else:
-            # Use formatted output
-            refund_data = refund_result.get("data", {})
-            refund_id = refund_data.get('id', 'N/A')
-            if isinstance(refund_id, str) and '/' in refund_id:
-                refund_id = refund_id.split('/')[-1]
-            refund_created = format_datetime_display(refund_data.get('createdAt'))
-            
-            format_refund_success(
-                order_name=order_name,
-                refund_id=refund_id,
-                refund_amount=refund_amount,
-                refund_type_display=refund_type_display,
-                refund_created=refund_created,
-                currency=currency,
-                console=console
-            )
-            
-            # Return success result
-            return {
-                "success": True,
-                "order_name": order_name,
-                "refund_id": refund_id,
-                "refund_amount": refund_amount,
-                "refund_type": refund_type_display,
-                "refund_created": refund_created,
-                "currency": currency
-            }
+        return _handle_refund_success(
+            refund_result, order_name, refund_amount, refund_type_display, currency, json_output, console
+        )
         
     except (RuntimeError, ValueError) as e:
         error_msg = str(e)
@@ -512,7 +552,6 @@ def refund_order_cmd(
         sys.exit(0)
     except Exception as e:
         console.print(f"[red]Unexpected error: {str(e)}[/red]")
-        import traceback
         traceback.print_exc()
         raise click.ClickException(str(e))
 

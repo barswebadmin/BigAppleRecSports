@@ -1,19 +1,21 @@
 """Apply discount to Shopify order command."""
 
 import sys
-import time
 import traceback
-from typing import Dict, Any, Optional, List, TYPE_CHECKING
+from typing import Dict, Any, Optional, List, Tuple, TYPE_CHECKING, cast
 
 import click
 from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_ORDER_IDENTIFIER
 from bars_cli._core.ui.display import create_text_panel, create_info_table
 from bars_cli._core.prompts import prompt_select_from_options
+from bars_cli.commands.shopify._shared.shopify_formatters import (
+    _format_customer_name_from_order,
+    _get_product_title_from_order,
+    format_order_info_for_discount,
+)
 
 if TYPE_CHECKING:
     from bars_cli.backend_services.shopify.models.sgqlc_models import Order, Customer, LineItem
@@ -21,6 +23,10 @@ else:
     Order = Any
     Customer = Any
     LineItem = Any
+
+
+
+
 
 
 def prompt_discount_type() -> str:
@@ -112,57 +118,31 @@ def apply_discount_cmd(
     if not identifier:
         raise click.ClickException("Order identifier is required.")
 
-    order_num = identifier.get('with_hash') or identifier.get('digits_only')
-    order_id = identifier.get('gid')
-
-    if not order_id:
-        raise click.ClickException("Could not determine order GID from identifier.")
-
-    console.print(f"\n[cyan]Looking up order {order_num or order_id} in {shopify_service.environment}...[/cyan]\n")
-
     try:
         # Fetch order to display info
-        orders: List[Order] = shopify_service.get_order_by_identifier(
-            {"query": f"id:{order_id}", "first": 1, "identifier": order_num or order_id},
-            line_items_first=1
-        )
-        if not orders:
-            raise click.ClickException(f"[yellow]No order found with identifier: {order_num or order_id}[/yellow]")
-        order: Order = orders[0]
-
-        customer_name = ""
-        if hasattr(order, 'customer') and order.customer:
-            customer = order.customer
-            if hasattr(customer, 'displayName') and customer.displayName:
-                customer_name = customer.displayName
-            else:
-                first = customer.firstName if hasattr(customer, 'firstName') else ''
-                last = customer.lastName if hasattr(customer, 'lastName') else ''
-                customer_name = f"{first} {last}".strip()
-
-        product_title = "Unknown Product"
-        line_items_conn = order.lineItems if hasattr(order, 'lineItems') else None
-        if line_items_conn and hasattr(line_items_conn, 'nodes') and line_items_conn.nodes:
-            first_line_item = line_items_conn.nodes[0]
-            product = first_line_item.product if hasattr(first_line_item, 'product') else None
-            if product and hasattr(product, 'title') and product.title:
-                product_title = product.title
-
-        # Display order info
-        header_parts = [
-            (f"Order #{order.name if hasattr(order, 'name') else 'N/A'}", "bold cyan")
-        ]
-        console.print(create_text_panel(header_parts, title="Order to Apply Discount", border_style="cyan"))
+        order_num = identifier.get('with_hash') or identifier.get('digits_only')
+        order_id = identifier.get('gid')
         
-        info_rows = [
-            ("Order ID", order_id.split('/')[-1] if '/' in order_id else order_id),
-        ]
-        if customer_name:
-            info_rows.append(("Customer", customer_name))
-        info_rows.append(("Email", order.email if hasattr(order, 'email') else 'N/A'))
-        info_rows.append(("Financial Status", order.displayFinancialStatus if hasattr(order, 'displayFinancialStatus') else 'N/A'))
-        info_rows.append(("📦 Product", product_title))
-        console.print(create_info_table(info_rows))
+        if not order_id:
+            raise click.ClickException("Could not determine order GID from identifier.")
+        
+        console.print(f"\n[cyan]Looking up order {order_num or order_id} in {shopify_service.environment}...[/cyan]\n")
+        
+        # Handle special GID extraction case for apply_discount
+        if order_id:
+            identifier_for_fetch = {"query": f"id:{order_id}", "first": 1, "identifier": order_num or order_id}
+        else:
+            identifier_for_fetch = identifier
+        
+        orders = shopify_service.get_order_by_identifier(identifier_for_fetch, line_items_first=5)
+        if not orders:
+            raise click.ClickException(f"No order found with identifier: {identifier_for_fetch.get('identifier', 'N/A')}")
+        order = orders[0]
+        
+        # Display order info using formatter
+        order_info = format_order_info_for_discount(order, order_id)
+        console.print(create_text_panel(order_info['header_parts'], title="Order to Apply Discount", border_style="cyan"))
+        console.print(create_info_table(order_info['info_rows']))
         console.print()
 
         # Prompt for discount type if not provided
@@ -218,8 +198,11 @@ def apply_discount_cmd(
             border_style="green"
         ))
         
+        # Cast field access - at runtime, sgqlc returns actual values (str, list), not Field objects
+        order_name: str = cast(str, order.name)
+        
         success_rows = [
-            ("Order", order.name if hasattr(order, 'name') else 'N/A'),
+            ("Order", order_name),
             ("Discount Type", discount_type.capitalize()),
             ("Discount Value", f"${discount_amount:.2f}" if discount_type == "fixed" else f"{discount_value}%"),
             ("Discount Amount", f"${discount_amount:.2f}"),
@@ -233,7 +216,7 @@ def apply_discount_cmd(
     except RuntimeError as e:
         raise click.ClickException(f"[red]API Error: {e}[/red]")
     except Exception as e:
-        click.echo(f"[red]Unexpected error: {str(e)}[/red]", err=True)
+        console.print(f"[red]Unexpected error: {str(e)}[/red]")
         traceback.print_exc()
         raise click.ClickException(str(e))
 

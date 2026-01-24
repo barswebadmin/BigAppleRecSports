@@ -1,18 +1,26 @@
 """Restock inventory for a Shopify order command."""
 
+import json
 import sys
-from typing import Dict, Any, Optional, List, Tuple, TYPE_CHECKING
+import traceback
+from typing import Dict, Any, Optional, List, Tuple, TYPE_CHECKING, cast
 
 import click
 from rich.console import Console
 
+from bars_cli._core.context import get_display_context
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_ORDER_IDENTIFIER
+from bars_cli.commands.shopify._shared.command_helpers import (
+    extract_variant_id_from_line_items,
+)
 from bars_cli.commands.shopify._shared.shopify_formatters import (
+    _get_line_items,
     format_variants_table,
     format_restock_result,
     format_restock_summary,
 )
+from bars_cli.commands.shopify._shared.command_helpers import process_inventory_updates
 
 if TYPE_CHECKING:
     from bars_cli.backend_services.shopify.models.sgqlc_models import Order, LineItem, ProductVariant
@@ -22,17 +30,43 @@ else:
     ProductVariant = Any
 
 
-def _get_variant_id_from_line_items(line_items: List[Any]) -> Optional[str]:
-    """Extract variant ID from first line item."""
-    if not line_items:
-        return None
+
+
+def _prompt_restock_selection(
+    variants: List[Dict[str, Any]],
+    console: Console
+) -> List[Tuple[str, str, int]]:
+    """Prompt user for restock selection.
     
-    first_item = line_items[0]
-    variant = getattr(first_item, 'variant', None)  # type: ignore[attr-defined]
-    if not variant:
-        return None
+    Returns:
+        List of tuples (variant_id, inventory_item_id, delta)
+    """
+    restock_list = []
+    console.print("\n[bold]📦 Product Variants - Inventory Status[/bold]\n")
+    format_variants_table(variants, console)
     
-    return getattr(variant, 'id', None)  # type: ignore[attr-defined]
+    while True:
+        selection = input("Enter variant number to restock (or 'done' to finish): ").strip().lower()
+        
+        if selection == 'done':
+            break
+        
+        try:
+            variant_index = int(selection) - 1
+            if 0 <= variant_index < len(variants):
+                selected_variant = variants[variant_index]
+                inventory_item_id = selected_variant.get('inventory_item_id')
+                if inventory_item_id:
+                    # Default to +1 for restock - don't print success until mutation succeeds
+                    restock_list.append((selected_variant['id'], inventory_item_id, 1))
+                else:
+                    console.print("[red]Error: No inventory item ID found for this variant.[/red]")
+            else:
+                console.print(f"[red]Invalid selection. Enter a number between 1 and {len(variants)}.[/red]")
+        except ValueError:
+            console.print("[red]Invalid input. Enter a number or 'done'.[/red]")
+    
+    return restock_list
 
 
 
@@ -58,8 +92,6 @@ def restock_cmd(
       bars shopify orders restock #1234
       bars shopify orders restock gid://shopify/Order/123456789
     """
-    from bars_cli._core.context import get_display_context
-    
     console = Console()
     json_output, should_display = get_display_context(ctx)
     
@@ -76,29 +108,20 @@ def restock_cmd(
         order_num = identifier.get("identifier", "").strip().lstrip('#')
         console.print(f"\n[cyan]Fetching order details for #{order_num}...[/cyan]\n")
         
-        orders: List[Order] = shopify_service.get_order_by_identifier(identifier, line_items_first=50)
+        orders = shopify_service.get_order_by_identifier(identifier, line_items_first=5)
         if not orders:
-            click.echo("❌ No order found", err=True)
             raise click.ClickException(f"No order found with identifier: {identifier.get('identifier', 'N/A')}")
-        
-        order: Order = orders[0]
-        order_name: str = order.name if hasattr(order, 'name') else 'N/A'
+        order = orders[0]
+        order_name = cast(str, order.name)
         
         # Get line items
-        line_items_conn = order.lineItems if hasattr(order, 'lineItems') else None
-        if not line_items_conn:
+        line_items = _get_line_items(order)
+        if not line_items:
             console.print("[yellow]No line items found.[/yellow]\n")
             return
         
-        nodes = getattr(line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
-        if not nodes:
-            console.print("[yellow]No line items found to restock.[/yellow]\n")
-            return
-        
-        line_items = list(nodes)
-        
         # Get variant ID from first line item
-        variant_id = _get_variant_id_from_line_items(line_items)
+        variant_id = extract_variant_id_from_line_items(line_items)
         if not variant_id:
             console.print("[dim]No variants found to restock.[/dim]\n")
             return
@@ -115,34 +138,8 @@ def restock_cmd(
             console.print(f"[red]{error_msg}[/red]\n")
             raise click.ClickException(error_msg)
         
-        # Import shared function for processing inventory updates
-        from bars_cli.commands.shopify.products.update_inventory import process_inventory_updates
-        
         # Prompt for restock selection (defaults to +1 for restock)
-        restock_list = []
-        console.print("\n[bold]📦 Product Variants - Inventory Status[/bold]\n")
-        format_variants_table(variants, console)
-        
-        while True:
-            selection = input("Enter variant number to restock (or 'done' to finish): ").strip().lower()
-            
-            if selection == 'done':
-                break
-            
-            try:
-                variant_index = int(selection) - 1
-                if 0 <= variant_index < len(variants):
-                    selected_variant = variants[variant_index]
-                    inventory_item_id = selected_variant.get('inventory_item_id')
-                    if inventory_item_id:
-                        # Default to +1 for restock - don't print success until mutation succeeds
-                        restock_list.append((selected_variant['id'], inventory_item_id, 1))
-                    else:
-                        console.print("[red]Error: No inventory item ID found for this variant.[/red]")
-                else:
-                    console.print(f"[red]Invalid selection. Enter a number between 1 and {len(variants)}.[/red]")
-            except ValueError:
-                console.print("[red]Invalid input. Enter a number or 'done'.[/red]")
+        restock_list = _prompt_restock_selection(variants, console)
         
         # If no variants selected, exit successfully
         if not restock_list:
@@ -161,7 +158,6 @@ def restock_cmd(
         if json_output:
             # Collect raw responses from all results
             raw_responses = [r.get("raw_response", r.get("data", {})) for r in results]
-            import json
             click.echo(json.dumps(raw_responses if len(raw_responses) > 1 else (raw_responses[0] if raw_responses else {}), indent=2, default=str))
             return raw_responses[0] if raw_responses else {}
         
@@ -183,7 +179,6 @@ def restock_cmd(
         sys.exit(0)
     except Exception as e:
         console.print(f"[red]Unexpected error: {str(e)}[/red]")
-        import traceback
         traceback.print_exc()
         raise click.ClickException(str(e))
 

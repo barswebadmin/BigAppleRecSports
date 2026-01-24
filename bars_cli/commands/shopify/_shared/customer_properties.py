@@ -25,38 +25,8 @@ def get_order_line_item_properties(shopify_service: ShopifyService, order_id: st
     Returns:
         List of custom attribute dictionaries with 'key' and 'value' keys
     """
-    # Get order with line items and custom attributes
-    orders = shopify_service.get_order_by_identifier(
-        {"query": f"id:{order_id}", "first": 1},
-        line_items_first=50
-    )
-    
-    if not orders:
-        return []
-    
-    order = orders[0]
-    properties = []
-    
-    # Get line items
-    line_items_conn = getattr(order, 'lineItems', None)
-    if not line_items_conn:
-        return []
-    
-    nodes = getattr(line_items_conn, 'nodes', None)
-    if not nodes:
-        return []
-    
-    # Extract custom attributes from each line item
-    for line_item in nodes:
-        custom_attrs = getattr(line_item, 'customAttributes', None)
-        if custom_attrs:
-            for attr in custom_attrs:
-                key = getattr(attr, 'key', '')
-                value = getattr(attr, 'value', '')
-                if key and value:
-                    properties.append({"key": key, "value": value})
-    
-    return properties
+    # Use the service method which handles order ID normalization
+    return shopify_service.get_order_line_item_properties(order_id)
 
 
 def extract_birthday_with_name(properties: List[Dict[str, str]]) -> List[Tuple[str, str, str]]:
@@ -162,7 +132,7 @@ def get_customer_orders_with_dates(customer: Any) -> List[Tuple[str, str]]:
     return [
         (getattr(order, 'id', ''), getattr(order, 'createdAt', ''))
         for order in nodes
-        if getattr(order, 'id', None)
+        if getattr(order, 'id', None) and getattr(order, 'createdAt', None)
     ]
 
 
