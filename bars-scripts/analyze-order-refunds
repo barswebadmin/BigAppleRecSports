@@ -1,8 +1,0 @@
-#!/bin/bash
-# Wrapper script for analyze_order_refunds.py
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-python3 "$SCRIPT_DIR/analyze_order_refunds.py" "$@"
-
-
-
