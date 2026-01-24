@@ -4,6 +4,7 @@ Direct sgqlc Type definitions for Order models.
 These are separate from Pydantic models and defined directly using sgqlc's Type system.
 """
 
+from typing import TYPE_CHECKING, cast, Any, Protocol, runtime_checkable
 from sgqlc.types import Type, Field, String, Int, list_of
 from sgqlc.types.relay import Connection, connection_args
 
@@ -79,11 +80,11 @@ class RefundLineItem(Type):
 class RefundTransaction(Type):
     """Transaction within a refund."""
     id = Field(String)
+    createdAt = Field(String)
     kind = Field(String)
     status = Field(String)
     amount = Field(String)
     gateway = Field(String)
-    createdAt = Field(String)
 
 
 class BillingAddress(Type):
@@ -115,11 +116,11 @@ class ShippingAddress(Type):
 class Transaction(Type):
     """Transaction model for Shopify orders."""
     id = Field(String)
+    createdAt = Field(String)
     kind = Field(String)
     gateway = Field(String)
     status = Field(String)
     amount = Field(String)
-    createdAt = Field(String)
     parentTransaction = Field('Transaction')  # Self-reference
 
 
@@ -134,7 +135,12 @@ class Refund(Type):
 
 
 class Order(Type):
-    """Order sgqlc Type."""
+    """Order sgqlc Type.
+    
+    Note: At runtime, accessing attributes (e.g., order.id, order.name) returns
+    actual values (str, list, etc.), not Field objects. The Field assignments are
+    only used for GraphQL query generation.
+    """
     id = Field(String)
     name = Field(String)
     email = Field(String)
