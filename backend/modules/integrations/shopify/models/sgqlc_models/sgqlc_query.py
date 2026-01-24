@@ -15,6 +15,7 @@ from backend.modules.integrations.shopify.models.sgqlc_models import (
     OrderConnection,
     ProductConnection,
     LocationConnection,
+    FileConnection,
 )
 from backend.modules.integrations.shopify.models import sgqlc_models
 
@@ -167,6 +168,26 @@ class BaseQuery(Type):
             
             # Couldn't resolve Connection type
             return ('connection', None)
+        
+        # Check for list (field.type is [TypeName] string or list_of)
+        # First check if field.type is a list_of instance (from sgqlc.types)
+        if isinstance(field, Field) and hasattr(field, 'type'):
+            field_type = field.type
+            # Check if it's a list_of instance
+            if hasattr(field_type, '__class__') and 'list_of' in str(type(field_type)):
+                # Extract the inner type from list_of
+                if hasattr(field_type, 'type'):
+                    inner_type = field_type.type
+                    # Check if inner type is a string forward reference
+                    if isinstance(inner_type, str):
+                        if hasattr(sgqlc_models, inner_type):
+                            item_class = getattr(sgqlc_models, inner_type)
+                            return ('list', item_class)
+                    # Check if inner type is a Type class
+                    elif isinstance(inner_type, type):
+                        from sgqlc.types import Type as SGQLCType
+                        if issubclass(inner_type, SGQLCType):
+                            return ('list', inner_type)
         
         # Check for list (field.type is [TypeName] string or list_of)
         if isinstance(field, Field) and isinstance(type_repr, str) and type_repr.startswith('['):
@@ -335,6 +356,12 @@ class BaseQuery(Type):
             # Special case: Order.lineItems always uses first=1 (only 1 line item per order)
             if model_class.__name__ == 'Order' and conn_field == 'lineItems':
                 conn_sel = getattr(selector, conn_field)(first=1)  # type: ignore[union-attr]
+            # Special case: Customer.orders - sort by creation date descending (newest first)
+            elif model_class.__name__ == 'Customer' and conn_field == 'orders':
+                # Import OrderSortKeys enum
+                from backend.modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import OrderSortKeys
+                # Sort by CREATED_AT in descending order (newest first)
+                conn_sel = getattr(selector, conn_field)(first=first, sortKey=OrderSortKeys.CREATED_AT, reverse=True)  # type: ignore[union-attr]
             else:
                 conn_sel = getattr(selector, conn_field)(first=first)  # type: ignore[union-attr]
             _, node_type = field_info[conn_field]
@@ -383,6 +410,9 @@ class Query(BaseQuery):
     
     # Node query for fetching any node by ID (used for CalculatedOrder, etc.)
     node = Field('Node', args={'id': ID})
+    
+    # Files field (for file queries)
+    files = Field(FileConnection, args=connection_args(query=String))
     
     # Extract Customer model from CustomerConnection automatically (no import needed)
     @classmethod
@@ -613,6 +643,23 @@ class Query(BaseQuery):
         locations_sel = op.locations(first=first)
         locations_sel.nodes.id()  # type: ignore[union-attr]
         locations_sel.nodes.name()  # type: ignore[union-attr]
+        return op
+    
+    @classmethod
+    def build_files_query(cls, query_str: str, first: int = 10) -> Operation:
+        """Build a query to get files by filename.
+        
+        Args:
+            query_str: GraphQL query string (e.g., "filename:Eliana_Glatt.jpg")
+            first: Number of files to fetch (default: 10)
+        
+        Returns:
+            Configured sgqlc Operation ready for execution
+        """
+        op = Operation(cls)
+        files_sel = op.files(query=query_str, first=first)
+        files_sel.nodes.id()  # type: ignore[union-attr]
+        files_sel.nodes.fileStatus()  # type: ignore[union-attr]
         return op
     
     @classmethod

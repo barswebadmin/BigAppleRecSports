@@ -89,6 +89,12 @@ from backend.modules.integrations.shopify.models.sgqlc_models.location_sgqlc imp
     LocationConnection,
 )
 
+# Import direct sgqlc Type definitions for files
+from backend.modules.integrations.shopify.models.sgqlc_models.file_sgqlc import (
+    File,
+    FileConnection,
+)
+
 __all__ = [
     # Customer models
     'Address',
@@ -133,4 +139,7 @@ __all__ = [
     # Location models
     'Location',
     'LocationConnection',
+    # File models
+    'File',
+    'FileConnection',
 ]

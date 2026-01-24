@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional
-from shared.shopify_normalizers import (
+from backend.shared.shopify_normalizers import (
     normalize_order_id,
     normalize_order_number,
 )
-from shared.validators import validate_email_format
+from backend.shared.validators import validate_email_format
 
 
 class FetchOrderRequest(BaseModel):
