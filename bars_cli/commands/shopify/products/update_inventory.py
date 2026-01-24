@@ -1,83 +1,29 @@
 """Update inventory for Shopify product variants command."""
 
 import sys
-from typing import Dict, Any, Optional, List, Tuple
+import traceback
+from typing import Dict, Any, Optional, List, Tuple, TYPE_CHECKING
 
 import click
 from rich.console import Console
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_PRODUCT_IDENTIFIER
+from bars_cli.commands.shopify._shared.command_helpers import (
+    extract_variants_from_product,
+    process_inventory_updates,
+)
 from bars_cli.commands.shopify._shared.shopify_formatters import (
     format_variants_table,
     format_restock_result,
     format_restock_summary,
 )
 
-
-def process_inventory_updates(
-    shopify_service: Any,
-    variants: List[Dict[str, Any]],
-    update_list: List[Tuple[str, str, int]],
-    console: Console
-) -> List[Dict[str, Any]]:
-    """
-    Process inventory updates for a list of variants.
-    
-    This is the shared logic for updating inventory that can be used by both
-    the update-inventory command and the restock command.
-    
-    Args:
-        shopify_service: ShopifyService instance
-        variants: List of variant dicts (for reference)
-        update_list: List of tuples (variant_id, inventory_item_id, delta)
-        console: Console for output
-    """
-    if not update_list:
-        console.print("[dim]No inventory changes made.[/dim]\n")
-        return []
-    
-    # Get location ID using service method
-    location_id = shopify_service.get_first_location_id()
-    if not location_id:
-        console.print("[red]Error: No locations found. Cannot update inventory.[/red]\n")
-        raise click.ClickException("No locations found")
-    
-    # Process inventory updates using service method
-    console.print("[cyan]Processing inventory adjustments...[/cyan]\n")
-    
-    success_count = 0
-    failure_count = 0
-    results = []  # Collect all results for return
-    
-    for variant_id, inventory_item_id, delta in update_list:
-        result = shopify_service.update_inventory(
-            inventory_item_id=inventory_item_id,
-            location_id=location_id,
-            delta=delta
-        )
-        
-        results.append(result)  # Collect result
-        
-        success = result.get("success", False)
-        error_msg = None if success else (result.get("message") or result.get("error", "Unknown error"))
-        
-        format_restock_result(abs(delta), success, error_msg, console)
-        
-        if success:
-            success_count += 1
-        else:
-            failure_count += 1
-    
-    console.print()
-    
-    # Summary
-    format_restock_summary(success_count, failure_count, console)
-    
-    if failure_count > 0:
-        raise click.ClickException(f"Failed to update {failure_count} variant(s)")
-    
-    return results  # Return all results
+if TYPE_CHECKING:
+    from bars_cli.backend_services.shopify.models.sgqlc_models import Product, ProductVariant
+else:
+    Product = Any
+    ProductVariant = Any
 
 
 def _prompt_inventory_selection(
@@ -145,6 +91,8 @@ def _prompt_inventory_selection(
     return update_list
 
 
+
+
 @click.command('update-inventory')
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SHOPIFY_PRODUCT_IDENTIFIER, required=False)
@@ -193,31 +141,7 @@ def update_inventory_cmd(
         product = products[0]
         
         # Get variants from product
-        variants_conn = getattr(product, 'variants', None)
-        if not variants_conn:
-            console.print("[yellow]No variants found for this product.[/yellow]")
-            return
-        
-        nodes = getattr(variants_conn, 'nodes', None)
-        if not nodes:
-            console.print("[yellow]No variants found for this product.[/yellow]")
-            return
-        
-        # Build variants list
-        variants = []
-        for variant in nodes:
-            inventory_item = getattr(variant, 'inventoryItem', None)
-            inventory_item_id = None
-            if inventory_item:
-                inventory_item_id = getattr(inventory_item, 'id', None)
-            
-            variants.append({
-                'id': getattr(variant, 'id', None),
-                'title': getattr(variant, 'title', 'Unknown'),
-                'inventory_quantity': getattr(variant, 'inventoryQuantity', None),
-                'inventory_item_id': inventory_item_id
-            })
-        
+        variants = extract_variants_from_product(product)
         if not variants:
             console.print("[yellow]No variants found for this product.[/yellow]")
             return
@@ -237,6 +161,5 @@ def update_inventory_cmd(
         sys.exit(0)
     except Exception as e:
         console.print(f"[red]Unexpected error: {str(e)}[/red]")
-        import traceback
         traceback.print_exc()
         raise click.ClickException(str(e))
