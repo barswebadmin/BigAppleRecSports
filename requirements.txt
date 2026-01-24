@@ -1,4 +1,0 @@
--r backend/requirements.txt
-# Add more includes when you create dedicated files:
-# -r lambda-functions/requirements.txt
-# -r lambda-layers/requirements.txt

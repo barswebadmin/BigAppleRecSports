@@ -5,8 +5,8 @@
   "private": true,
   "packageManager": "pnpm@10.16.0",
   "scripts": {
-    "build": "node remote-sync-tools/build.js",
-    "clean": "bash -c 'if [ -z \"$1\" ]; then echo \"❌ Usage: pnpm clean <project-name>\"; exit 1; fi; PROJECT=\"$1\"; if [ ! -d \"projects/$PROJECT\" ]; then echo \"❌ Project not found: $PROJECT\"; exit 1; fi; bash remote-sync-tools/clean.sh \"projects/$PROJECT\"' --"
+    "build": "node ../../scripts/deployment/google/build.js",
+    "clean": "bash -c 'if [ -z \"$1\" ]; then echo \"❌ Usage: pnpm clean <project-name>\"; exit 1; fi; PROJECT=\"$1\"; if [ ! -d \"projects/$PROJECT\" ]; then echo \"❌ Project not found: $PROJECT\"; exit 1; fi; bash ../../scripts/deployment/google/clean.sh \"projects/$PROJECT\"' --"
   },
   "devDependencies": {
     "esbuild": "^0.27.2",

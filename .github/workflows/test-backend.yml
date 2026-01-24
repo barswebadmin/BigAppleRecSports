@@ -1,0 +1,53 @@
+name: Test Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/test-backend.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/test-backend.yml'
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' || github.event_name == 'pull_request') && !startsWith(github.head_ref || github.ref_name, 'dependabot/') }}
+    env:
+      SHOPIFY_URL_ADMIN_DOMAIN: test-store.myshopify.com
+      SHOPIFY_TOKEN: test_token
+      ENVIRONMENT: test
+      SLACK_REFUNDS_BOT_TOKEN: test_slack_token
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get Python version
+        id: python-version
+        run: echo "version=$(python scripts/ci/get_python_version.py)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ steps.python-version.outputs.version }}
+
+      - name: Install dependencies
+        run: python scripts/ci/install_dependencies.py backend
+
+      - name: Compile backend
+        id: compile
+        run: python scripts/ci/run_script.py scripts.compilation.compile_main compile_backend
+
+      - name: Run backend tests
+        if: steps.compile.outcome == 'success'
+        run: python scripts/ci/run_script.py scripts.testing.run_tests run_backend_tests

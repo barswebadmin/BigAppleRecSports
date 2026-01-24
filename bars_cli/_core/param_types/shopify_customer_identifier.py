@@ -119,8 +119,7 @@ def _convert_shopify_customer_identifier(identifier: str) -> Dict[str, Any]:
         name = remaining_parts[0]
         choice = prompt_select_from_options(
             display_text=f"Is '{name}' a first name or last name?",
-            options=["First name", "Last name"],
-            autocomplete=False
+            options=["First name", "Last name"]
         )
         
         if choice == EXIT_SENTINEL:

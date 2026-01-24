@@ -1,0 +1,55 @@
+name: Test Google Apps Scripts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'GoogleAppsScripts/**'
+      - '.github/workflows/test-google.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'GoogleAppsScripts/**'
+      - '.github/workflows/test-google.yml'
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test-google:
+    name: Google Apps Scripts Tests
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' || github.event_name == 'pull_request') && !startsWith(github.head_ref || github.ref_name, 'dependabot/') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get Python version
+        id: python-version
+        run: echo "version=$(python scripts/ci/get_python_version.py)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ steps.python-version.outputs.version }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install npm dependencies
+        run: |
+          cd GoogleAppsScripts
+          npm install
+
+      - name: Compile Google Apps Scripts
+        id: compile
+        run: python scripts/ci/run_script.py scripts.compilation.compile_main compile_gas
+
+      - name: Run GAS tests
+        if: steps.compile.outcome == 'success'
+        run: python scripts/ci/run_script.py scripts.testing.run_tests run_gas_tests

@@ -27,9 +27,15 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routers import webhooks, refunds, orders, slack, products
 from config import config
-from version import get_version_info
 import logging
 import json
+import sys
+from pathlib import Path
+
+# Import version manager functions
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root / "scripts" / "deployment"))
+from version_manager import get_version_info
 
 # Configure logging for all modules
 logging.basicConfig(
@@ -122,7 +128,8 @@ app.include_router(refunds.router)
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
-    version_info = get_version_info()
+    version_file = str(project_root / "backend" / "version.json")
+    version_info = get_version_info(version_file)
     return {
         "message": "Big Apple Rec Sports API",
         "version": version_info["version"],
@@ -141,7 +148,8 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring"""
-    version_info = get_version_info()
+    version_file = str(project_root / "backend" / "version.json")
+    version_info = get_version_info(version_file)
     return {
         "status": "healthy",
         "version": version_info["version"],
@@ -155,7 +163,8 @@ async def health_check():
 @app.get("/version")
 async def get_version():
     """Get detailed version information"""
-    return get_version_info()
+    version_file = str(project_root / "backend" / "version.json")
+    return get_version_info(version_file)
 
 
 if __name__ == "__main__":
