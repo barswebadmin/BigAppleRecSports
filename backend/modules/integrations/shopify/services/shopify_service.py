@@ -19,7 +19,7 @@ from typing import Dict, Any, List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any as AnyType
-    from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import CancelReasonType
+    from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import CancelReasonType
 else:
     CancelReasonType = str  # Runtime fallback
     AnyType = Any
@@ -174,39 +174,10 @@ class ShopifyService:
         except ValueError as e:
             return {"success": False, "message": str(e)}
         
-        # Build mutation operation
-        from sgqlc.operation import Operation
-        from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import (
-            Mutation,
-            CustomerUpdateInput
-        )
+        # Build mutation operation using builder
+        from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import Mutation
         
-        op = Operation(Mutation, variables={'input': CustomerUpdateInput})
-        
-        # Build customer input dict
-        customer_input = {}
-        if email:
-            customer_input["email"] = email
-        if phone:
-            customer_input["phone"] = phone
-        
-        # Build update input dict
-        update_input = {
-            "id": customer_id,
-            "customer": customer_input
-        }
-        
-        # Select mutation with input
-        result = op.customerUpdate(input=update_input)  # type: ignore[call-arg]
-        
-        # Select response fields
-        result.customer.id()  # type: ignore[attr-defined]
-        result.customer.email()  # type: ignore[attr-defined]
-        result.customer.phone()  # type: ignore[attr-defined]
-        result.customer.firstName()  # type: ignore[attr-defined]
-        result.customer.lastName()  # type: ignore[attr-defined]
-        result.userErrors.field()  # type: ignore[attr-defined]
-        result.userErrors.message()  # type: ignore[attr-defined]
+        op = Mutation.build_customer_update_mutation(customer_id, email=email, phone=phone)
         
         # Execute mutation
         response = self.client.execute(op)
@@ -251,14 +222,22 @@ class ShopifyService:
         Get line item custom attributes for an order.
         
         Args:
-            order_id: Order ID (gid://shopify/Order/...)
+            order_id: Order ID (gid://shopify/Order/... or numeric ID)
             
         Returns:
             List of custom attribute dictionaries with 'key' and 'value' keys
         """
+        # Normalize order ID to extract numeric ID for search query
+        normalized = normalize_order_id(order_id)
+        if not normalized:
+            logger.error(f"Invalid order ID format: {order_id}")
+            return []
+        
+        # Use numeric ID for search query (Shopify search doesn't accept full GID format)
+        numeric_id = normalized["digits_only"]
         orders = self.get_order_by_identifier(
-            {"query": f"id:{order_id}", "first": 1},
-            line_items_first=50
+            {"query": f"id:{numeric_id}", "first": 1},
+            line_items_first=5
         )
         
         if not orders:
@@ -539,362 +518,6 @@ class ShopifyService:
         
         return orders_nodes
     
-    # ============================================================================
-    # ORDER DATA PARSING UTILITIES (Static Methods)
-    # ============================================================================
-    
-    @staticmethod
-    def extract_price_from_html(description_html: str) -> Optional[float]:
-        """
-        Extract price from descriptionHtml.
-        Looks for "Price" followed by text until ':', then finds first number (possibly after '$').
-        Follows the numerical string until there's something that's not a decimal or digit.
-        
-        Args:
-            description_html: HTML description text
-            
-        Returns:
-            Price as float, or None if not found
-        """
-        import re
-        
-        if not description_html:
-            return None
-        
-        # Find "Price" followed by any text until ':'
-        # Then find first number (possibly after '$'), following digits and decimals
-        price_pattern = r'Price[^:]*:\s*[^0-9\$]*\$?\s*(\d+\.?\d*)'
-        match = re.search(price_pattern, description_html, re.IGNORECASE)
-        
-        if match:
-            try:
-                price_str = match.group(1)
-                # Extract only digits and decimal point (stop at first non-digit/non-decimal)
-                price_clean = re.match(r'(\d+\.?\d*)', price_str)
-                if price_clean:
-                    return float(price_clean.group(1))
-            except (ValueError, IndexError):
-                pass
-        
-        # Fallback: More flexible pattern
-        price_pattern_fallback = r'Price[^:]*:\s*[^0-9]*(\d+(?:\.\d+)?)'
-        match = re.search(price_pattern_fallback, description_html, re.IGNORECASE)
-        
-        if match:
-            try:
-                price_str = match.group(1)
-                return float(price_str)
-            except (ValueError, IndexError):
-                pass
-        
-        return None
-    
-    @staticmethod
-    def parse_order_date(created_at: str) -> Optional[datetime]:
-        """
-        Parse order date from createdAt column.
-        
-        Args:
-            created_at: Date string (various formats supported)
-            
-        Returns:
-            datetime object, or None if parsing fails
-        """
-        from datetime import timezone
-        
-        if not created_at:
-            return None
-        
-        # Try common date formats
-        date_formats = [
-            '%Y-%m-%dT%H:%M:%S%z',  # ISO format with timezone
-            '%Y-%m-%dT%H:%M:%S.%f%z',  # ISO format with microseconds
-            '%Y-%m-%dT%H:%M:%S',  # ISO format without timezone
-            '%Y-%m-%d %H:%M:%S',  # Standard format
-            '%Y-%m-%d',  # Date only
-            '%m/%d/%Y',  # US format
-            '%m/%d/%y',  # US format with 2-digit year
-        ]
-        
-        for fmt in date_formats:
-            try:
-                dt = datetime.strptime(created_at.strip(), fmt)
-                # Make timezone-aware if not already
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                return dt
-            except ValueError:
-                continue
-        
-        return None
-    
-    @staticmethod
-    def parse_total_paid(total_paid: str) -> Optional[float]:
-        """
-        Parse total paid amount from string.
-        
-        Args:
-            total_paid: Amount string (may include $, commas, etc.)
-            
-        Returns:
-            Float value, or None if parsing fails
-        """
-        import re
-        
-        if not total_paid:
-            return None
-        
-        # Remove $, commas, and whitespace
-        cleaned = re.sub(r'[\$,\s]', '', str(total_paid))
-        
-        try:
-            return float(cleaned)
-        except ValueError:
-            return None
-    
-    @staticmethod
-    def parse_total_refunded(total_refunded: str) -> Optional[float]:
-        """
-        Parse total refunded amount from string.
-        
-        Args:
-            total_refunded: Amount string (may include $, commas, etc.)
-            
-        Returns:
-            Float value, or None if parsing fails (defaults to 0.0 if empty)
-        """
-        import re
-        
-        if not total_refunded:
-            return 0.0
-        
-        # Remove $, commas, and whitespace
-        cleaned = re.sub(r'[\$,\s]', '', str(total_refunded))
-        
-        # Handle empty string after cleaning
-        if not cleaned or cleaned == '':
-            return 0.0
-        
-        try:
-            return float(cleaned)
-        except ValueError:
-            return 0.0
-    
-    # ============================================================================
-    # ORDER ANALYSIS METHODS
-    # ============================================================================
-    
-    def analyze_order(self, row: Dict[str, str], headers: List[str]) -> Dict[str, Any]:
-        """
-        Analyze a single order row to determine refund eligibility.
-        
-        Args:
-            row: Dictionary of row data
-            headers: List of column headers
-            
-        Returns:
-            Dictionary with analysis results
-        """
-        from backend.shared.date_utils import calculate_refund_amount, extract_season_dates
-        
-        result = {
-            'order_number': row.get('Order Number', row.get('orderName', '')),
-            'original_price': None,
-            'season_start_date': None,
-            'order_date': None,
-            'total_paid': None,
-            'total_refunded': None,
-            'net_paid': None,
-            'discounted_price': None,
-            'discount_amount': None,
-            'refund_due': None,
-            'refund_amount': None,
-            'error': None,
-        }
-        
-        # Get descriptionHtml
-        description_html = row.get('descriptionHtml', row.get('Description HTML', ''))
-        if not description_html:
-            result['error'] = 'Missing descriptionHtml'
-            return result
-        
-        # Extract price
-        original_price = self.extract_price_from_html(description_html)
-        if original_price is None:
-            result['error'] = 'Could not extract price from descriptionHtml'
-            return result
-        result['original_price'] = original_price
-        
-        # Extract season dates using shared utility
-        season_start_date_str, off_dates_str = extract_season_dates(description_html)
-        if season_start_date_str is None:
-            result['error'] = 'Could not extract season start date from descriptionHtml'
-            return result
-        result['season_start_date'] = season_start_date_str
-        
-        # Parse order date
-        created_at = row.get('createdAt', row.get('Created At', row.get('Order Date', '')))
-        order_date = self.parse_order_date(created_at)
-        if order_date is None:
-            result['error'] = f'Could not parse order date: {created_at}'
-            return result
-        result['order_date'] = order_date.isoformat()
-        
-        # Parse total paid
-        total_paid_str = row.get('Total Paid', row.get('totalPaid', row.get('Total price', '')))
-        total_paid = self.parse_total_paid(total_paid_str)
-        if total_paid is None:
-            result['error'] = f'Could not parse total paid: {total_paid_str}'
-            return result
-        result['total_paid'] = total_paid
-        
-        # Parse total refunded (defaults to 0.0 if not found or empty)
-        total_refunded_str = row.get('totalRefunded', row.get('Total Refunded', ''))
-        total_refunded = self.parse_total_refunded(total_refunded_str)
-        result['total_refunded'] = total_refunded
-        
-        # Calculate net paid (total paid minus refunds already issued)
-        net_paid = total_paid - (total_refunded or 0.0)
-        result['net_paid'] = net_paid
-        
-        # Calculate discounted price using shared utility
-        try:
-            # Calculate what refund would be due if requested now (based on order date)
-            # This tells us what discount tier the order falls into
-            # The refund amount represents how much they overpaid
-            refund_amount_due, refund_message = calculate_refund_amount(
-                season_start_date_str=season_start_date_str,
-                off_dates_str=off_dates_str,
-                total_amount_paid=original_price,
-                refund_type="refund",  # Use "refund" type for analysis
-                request_submitted_at=order_date,
-            )
-            
-            # The discounted price is what they should have paid
-            # If they paid original_price and are due refund_amount_due,
-            # then they should have paid: original_price - refund_amount_due
-            discounted_price = original_price - refund_amount_due if refund_amount_due else original_price
-            discount_amount = refund_amount_due if refund_amount_due else 0.0
-            
-            result['discounted_price'] = discounted_price
-            result['discount_amount'] = discount_amount
-            
-            # Determine if refund is due
-            # Compare net paid (totalPaid - totalRefunded) vs discounted_price
-            # If they paid more than the discounted price, they're due a refund
-            if net_paid > discounted_price:
-                result['refund_due'] = True
-                result['refund_amount'] = net_paid - discounted_price
-            else:
-                result['refund_due'] = False
-                result['refund_amount'] = 0.0
-                
-        except Exception as e:
-            result['error'] = f'Error calculating discount: {str(e)}'
-        
-        return result
-    
-    def analyze_order_refunds(
-        self,
-        input_csv: str,
-        output_csv: Optional[str] = None,
-        verbose: bool = False,
-        output_writer: Optional[Any] = None
-    ) -> Tuple[List[Dict[str, Any]], int]:
-        """
-        Analyze CSV orders to determine refund eligibility.
-        
-        Args:
-            input_csv: Path to input CSV file
-            output_csv: Optional path to output CSV file (defaults to input_filename_refunds.csv)
-            verbose: If True, print detailed analysis for each order
-            output_writer: Optional callable for writing output messages.
-                          Signature: output_writer(message: str, err: bool = False) -> None
-                          If None, uses click.echo for CLI output.
-        
-        Returns:
-            Tuple of (results list, exit_code)
-            - results: List of analysis result dictionaries
-            - exit_code: 0 for success, 1 for error
-        """
-        from bars_cli.backend_services.shared.csv.csv_io import read_csv_file, write_csv_file
-        
-        def write_output(message: str, err: bool = False) -> None:
-            if output_writer:
-                output_writer(message, err)
-            else:
-                import click
-                click.echo(message, err=err)
-        
-        # Read input CSV
-        try:
-            headers, rows = read_csv_file(input_csv)
-            write_output(f"Read {len(rows)} orders from {input_csv}")
-        except Exception as e:
-            write_output(f"Error reading CSV file: {e}", err=True)
-            return [], 1
-        
-        # Analyze each order
-        results = []
-        errors = 0
-        
-        for i, row in enumerate(rows, 1):
-            result = self.analyze_order(row, headers)
-            results.append(result)
-            
-            if result.get('error'):
-                errors += 1
-                if verbose:
-                    write_output(f"Order {i} ({result.get('order_number', 'unknown')}): {result['error']}", err=True)
-            elif verbose:
-                order_num = result.get('order_number', 'unknown')
-                if result.get('refund_due'):
-                    write_output(f"Order {i} ({order_num}): Refund due: ${result['refund_amount']:.2f}")
-                else:
-                    write_output(f"Order {i} ({order_num}): No refund due")
-        
-        # Summary
-        refunds_due = sum(1 for r in results if r.get('refund_due'))
-        total_refund_amount = sum(r.get('refund_amount', 0) for r in results if r.get('refund_due'))
-        
-        write_output("\nSummary:")
-        write_output(f"  Total orders analyzed: {len(results)}")
-        write_output(f"  Orders with errors: {errors}")
-        write_output(f"  Orders eligible for refund: {refunds_due}")
-        write_output(f"  Total refund amount: ${total_refund_amount:.2f}")
-        
-        # Write output CSV
-        output_path = output_csv or input_csv.replace('.csv', '_refunds.csv')
-        try:
-            write_csv_file(results, file_path=output_path)
-            write_output(f"\nResults written to: {output_path}")
-        except Exception as e:
-            write_output(f"Error writing output CSV: {e}", err=True)
-            return results, 1
-        
-        return results, 0
-    
-    def order_to_csv_dict(self, order: Any) -> Dict[str, str]:
-        """
-        Convert order to CSV dictionary format matching Shopify export.
-        
-        Args:
-            order: Order object (sgqlc Type instance)
-        
-        Returns:
-            Dictionary with CSV column names as keys and string values
-        """
-        from bars_cli.commands.shopify._shared.shopify_formatters import (
-            get_order_csv_headers,
-            order_to_csv_row,
-        )
-        
-        order_dict = order.__json_data__ if hasattr(order, '__json_data__') else {}
-        headers = get_order_csv_headers()
-        row = order_to_csv_row(order_dict)
-        
-        return dict(zip(headers, row))
-    
     def cancel_order(
         self,
         order_id: str,
@@ -924,33 +547,17 @@ class ShopifyService:
                 "message": str  # Error message if failed
             }
         """
-        from sgqlc.operation import Operation
-        from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import (
-            Mutation,
-            OrderCancelReason
-        )
+        # Build mutation operation using builder
+        from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import Mutation
         
-        # Build mutation operation
-        op = Operation(Mutation)
-        
-        # Pass reason string directly (sgqlc accepts strings for enum arguments)
-        # The CancelReasonType Literal ensures type safety
-        reason_value = reason.upper() if isinstance(reason, str) else reason
-        
-        # Select mutation with arguments
-        result = op.orderCancel(
-            notifyCustomer=notify_customer,
-            orderId=order_id,
-            reason=reason_value,
+        op = Mutation.build_order_cancel_mutation(
+            order_id=order_id,
+            reason=reason,
+            notify_customer=notify_customer,
             refund=refund,
             restock=restock,
-            staffNote=staff_note or "Cancelled via CLI"
+            staff_note=staff_note
         )
-        
-        # Select response fields
-        result.job.__fields__('id', 'done')  # type: ignore[union-attr]
-        result.orderCancelUserErrors.__fields__('field', 'message')  # type: ignore[union-attr]
-        result.userErrors.__fields__('field', 'message')  # type: ignore[union-attr]
         
         # Execute mutation
         response = self.client.execute(op)
@@ -1026,7 +633,7 @@ class ShopifyService:
         """
         import time
         from sgqlc.operation import Operation
-        from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import (
+        from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import (
             Mutation,
             RefundInput,
             CurrencyCode,
@@ -1093,17 +700,10 @@ class ShopifyService:
                 }
             ]
         
-        # Build mutation operation
-        op = Operation(Mutation)
+        # Build mutation operation using builder
+        from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import Mutation
         
-        # Select mutation with input (pass dict directly, sgqlc will handle conversion)
-        result = op.refundCreate(input=refund_input)  # type: ignore[call-arg]
-        
-        # Select response fields
-        result.refund.__fields__('id', 'createdAt', 'note', 'totalRefundedSet')  # type: ignore[union-attr]
-        result.refund.totalRefundedSet.shopMoney.__fields__('amount', 'currencyCode')  # type: ignore[union-attr]
-        result.refund.totalRefundedSet.presentmentMoney.__fields__('amount', 'currencyCode')  # type: ignore[union-attr]
-        result.userErrors.__fields__('field', 'message')  # type: ignore[union-attr]
+        op = Mutation.build_refund_create_mutation(refund_input)
         
         # Retry logic with exponential backoff
         base_delay = 1.0
@@ -1224,7 +824,7 @@ class ShopifyService:
         """
         import time
         from sgqlc.operation import Operation
-        from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import (
+        from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import (
             Mutation,
             OrderEditAppliedDiscountInput,
             MoneyInput
@@ -1239,11 +839,9 @@ class ShopifyService:
         
         try:
             # Step 1: Begin order editing
-            op_begin = Operation(Mutation)
-            begin_result = op_begin.orderEditBegin(id=order_id)
-            begin_result.calculatedOrder.id()  # type: ignore[attr-defined]
-            begin_result.userErrors.field()  # type: ignore[attr-defined]
-            begin_result.userErrors.message()  # type: ignore[attr-defined]
+            from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import Mutation
+            
+            op_begin = Mutation.build_order_edit_begin_mutation(order_id)
             
             response = self.client.execute(op_begin)
             if response.get('errors'):
@@ -1313,18 +911,18 @@ class ShopifyService:
                 discount_amount = (discount_value / 100.0) * unit_price
             
             # Step 4: Add discount
-            op_discount = Operation(Mutation)
-            discount_input = OrderEditAppliedDiscountInput(
-                description=code_desc,
-                fixedValue=MoneyInput(amount=f"{discount_amount:.2f}", currencyCode=currency_code)
+            discount_input = {
+                "description": code_desc,
+                "fixedValue": {
+                    "amount": f"{discount_amount:.2f}",
+                    "currencyCode": currency_code
+                }
+            }
+            op_discount = Mutation.build_order_edit_add_line_item_discount_mutation(
+                calculated_order_id,
+                line_item_id,
+                discount_input
             )
-            discount_result = op_discount.orderEditAddLineItemDiscount(
-                id=calculated_order_id,
-                lineItemId=line_item_id,
-                discount=discount_input
-            )
-            discount_result.userErrors.field()  # type: ignore[attr-defined]
-            discount_result.userErrors.message()  # type: ignore[attr-defined]
             
             response = self.client.execute(op_discount)
             if response.get('errors'):
@@ -1349,14 +947,11 @@ class ShopifyService:
             # Step 5: Commit order edit
             staff_note = f"Applied ${discount_amount:.2f} discount via {code_desc}" if discount_type == "fixed" else f"Applied {discount_value}% discount via {code_desc}"
             
-            op_commit = Operation(Mutation)
-            commit_result = op_commit.orderEditCommit(
-                id=calculated_order_id,
-                notifyCustomer=False,
-                staffNote=staff_note
+            op_commit = Mutation.build_order_edit_commit_mutation(
+                calculated_order_id,
+                notify_customer=False,
+                staff_note=staff_note
             )
-            commit_result.userErrors.field()  # type: ignore[attr-defined]
-            commit_result.userErrors.message()  # type: ignore[attr-defined]
             
             response = self.client.execute(op_commit)
             if response.get('errors'):
@@ -1416,14 +1011,8 @@ class ShopifyService:
                 "message": str  # Error message if failed
             }
         """
-        from sgqlc.operation import Operation
-        from backend.modules.integrations.shopify.models.sgqlc_models.mutations_sgqlc import (
-            Mutation,
-            InventoryAdjustQuantitiesInput
-        )
-        
-        # Build mutation operation (no variables, pass input directly)
-        op = Operation(Mutation)
+        # Build mutation operation using builder
+        from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import Mutation
         
         # Build input dict
         changes = [{
@@ -1441,10 +1030,7 @@ class ShopifyService:
         if request.get("reference_uri"):
             input_data["referenceDocumentUri"] = request["reference_uri"]
         
-        # Select mutation with input (pass dict directly, sgqlc will handle conversion)
-        result = op.inventoryAdjustQuantities(input=input_data)  # type: ignore[call-arg]
-        result.userErrors.__fields__('field', 'message')  # type: ignore[union-attr]
-        result.inventoryAdjustmentGroup.__fields__('createdAt', 'reason', 'referenceDocumentUri')  # type: ignore[union-attr]
+        op = Mutation.build_inventory_adjust_quantities_mutation(input_data)
         
         # Execute mutation
         response = self.client.execute(op)
@@ -1646,6 +1232,48 @@ class ShopifyService:
             'completed_refunds': completed_refunds,
             'remaining_refundable': remaining_refundable
         }
+    
+    def extract_season_info_from_order(
+        self,
+        order: Any
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Extract season start date and off dates from order's product description.
+        
+        Args:
+            order: Order object (sgqlc Type instance)
+        
+        Returns:
+            Tuple of (season_start_date_str, off_dates_str) or (None, None) if not found
+        """
+        from backend.shared.date_utils import extract_season_dates
+        
+        line_items_conn = getattr(order, 'lineItems', None)  # type: ignore[attr-defined]
+        if not line_items_conn:
+            return None, None
+        
+        nodes = getattr(line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
+        if not nodes or len(nodes) == 0:
+            return None, None
+        
+        first_item = nodes[0]
+        product = getattr(first_item, 'product', None)  # type: ignore[attr-defined]
+        if not product:
+            return None, None
+        
+        # Try to access descriptionHtml as attribute first (if selected in GraphQL)
+        product_description = getattr(product, 'descriptionHtml', None)
+        
+        # Fall back to __json_data__ if not available as attribute
+        if not product_description and hasattr(product, '__json_data__'):
+            product_data = product.__json_data__
+            product_description = product_data.get('descriptionHtml', '')
+        
+        if not product_description:
+            return None, None
+        
+        season_start_date_str, off_dates_str = extract_season_dates(product_description)
+        return season_start_date_str, off_dates_str
     
     def calculate_estimated_refund(
         self,
@@ -1974,22 +1602,33 @@ class ShopifyService:
     def get_page(
         self,
         page_handle: str,
-        output_format: str = "text"
+        output_format: str = "text",
+        theme_id: Optional[str] = None,
+        auto_fetch_template: bool = True
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch a Shopify page by handle.
         
+        If the page uses a custom template (has template_suffix), automatically fetches
+        the template content from theme assets when auto_fetch_template is True.
+        
         Args:
             page_handle: The page handle (e.g., "contact", "about")
             output_format: Output format ("text", "json", "html")
+            theme_id: Optional theme ID to use for template fetching. If not provided
+                and template needs to be fetched, will attempt to use default theme.
+            auto_fetch_template: If True, automatically fetch template content when
+                page has a template_suffix
         
         Returns:
             Page data dictionary with keys:
             - id: Page ID
             - title: Page title
             - handle: Page handle
-            - body_html: Page HTML content
+            - body_html: Page HTML content (may be empty if using custom template)
             - template_suffix: Template suffix (if any)
+            - template_content: Template content (if custom template and auto_fetch_template=True)
+            - template_asset_key: Template asset key (if custom template)
             Or None if not found
         """
         import os
@@ -2022,10 +1661,46 @@ class ShopifyService:
             if not page:
                 return None
             
+            template_suffix = page.get("template_suffix")
+            
+            # If page uses custom template and auto_fetch_template is enabled
+            if template_suffix and auto_fetch_template:
+                # Build template asset key
+                # Shopify template naming: templates/page.{template_suffix}.json
+                template_asset_key = f"templates/page.{template_suffix}.json"
+                
+                # Get theme ID if not provided
+                if not theme_id:
+                    # Try to get current/active theme
+                    themes_url = f"{store_url}/admin/api/2024-10/themes.json"
+                    themes_response = requests.get(themes_url, headers=headers, timeout=10, verify=verify_ssl)
+                    if themes_response.status_code == 200:
+                        themes_data = themes_response.json()
+                        themes = themes_data.get("themes", [])
+                        # Find main/published theme
+                        main_theme = next((t for t in themes if t.get("role") == "main"), None)
+                        if main_theme:
+                            theme_id = str(main_theme.get("id"))
+                
+                # Fetch template content if we have a theme_id
+                if theme_id:
+                    try:
+                        template_content = self.get_theme_asset(theme_id, template_asset_key, output_format=output_format)
+                        if template_content:
+                            page["template_content"] = template_content
+                            page["template_asset_key"] = template_asset_key
+                            page["theme_id"] = theme_id
+                    except Exception as e:
+                        logger.warning(f"Could not fetch template content: {e}")
+                        # Continue without template content
+            
             # Format output based on output_format
             if output_format == "json":
                 return page
             elif output_format == "html":
+                # For HTML output, prefer template content if available
+                if page.get("template_content"):
+                    return {"body_html": page.get("template_content", "")}
                 return {"body_html": page.get("body_html", "")}
             else:
                 # text format - return full page data
@@ -2264,12 +1939,16 @@ class ShopifyService:
             "Content-Type": "application/json"
         }
         
+        # Template assets require an order field - always include it
         payload = {
             "asset": {
                 "key": asset_key,
-                "value": json.dumps(template_data)
+                "value": json.dumps(template_data),
+                "order": 0  # Use 0 as default for template assets
             }
         }
+        
+        logger.info(f"Updating template asset with order=0")
         
         try:
             response = requests.put(api_url, headers=headers, json=payload, verify=verify_ssl, timeout=30)
@@ -2282,12 +1961,18 @@ class ShopifyService:
                 try:
                     error_details = e.response.json()
                     logger.error(f"API Response: {json.dumps(error_details, indent=2)}")
+                    # Re-raise with more specific error message
+                    if "missing required key 'order'" in str(error_details):
+                        raise RuntimeError(f"Shopify API error: Asset order field is required but missing. Response: {error_details}")
+                    else:
+                        raise RuntimeError(f"Shopify API error: {error_details}")
                 except json.JSONDecodeError:
                     logger.error(f"Response Text: {e.response.text}")
-            return False
+                    raise RuntimeError(f"Shopify API error: {e.response.text}")
+            raise RuntimeError(f"HTTP error updating template: {e}")
         except Exception as e:
             logger.error(f"Unexpected error updating template: {e}")
-            return False
+            raise RuntimeError(f"Unexpected error updating template: {e}")
     
     def upload_image(
         self,
@@ -2365,6 +2050,272 @@ class ShopifyService:
         except Exception as e:
             logger.error(f"Unexpected error uploading image: {e}")
             return None
+    
+    def _get_theme_template_dict(
+        self,
+        theme_id: str,
+        asset_key: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Internal method: Get a theme template asset as parsed JSON dict.
+        
+        Use ThemeTemplateService.get_template_model() for typed models instead.
+        
+        Args:
+            theme_id: The theme ID
+            asset_key: The asset key (e.g., "templates/page.template-about-us-2.json")
+        
+        Returns:
+            Parsed JSON template data as dict, or None if not found or invalid JSON
+        """
+        content = self.get_theme_asset(theme_id, asset_key, output_format="text")
+        
+        if not content:
+            return None
+        
+        try:
+            template_data = json.loads(content)
+            return template_data
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing template JSON: {e}")
+            return None
+    
+    def find_blocks_by_name(
+        self,
+        template_data: Dict[str, Any],
+        name: str
+    ) -> List[Tuple[str, str, Dict[str, Any]]]:
+        """
+        DEPRECATED: Use ThemeTemplateService.find_blocks_by_name() for typed models.
+        
+        Find blocks in template by person name.
+        
+        Searches through all sections and blocks in the template, looking for blocks
+        where the 'text' setting matches the provided name (case-insensitive).
+        
+        Args:
+            template_data: Parsed template JSON data (dict)
+            name: Person name to search for (matched against block settings.text)
+        
+        Returns:
+            List of (section_id, block_id, block_data) tuples for matching blocks
+        """
+        matches = []
+        name_lower = name.lower().strip()
+        
+        if 'sections' not in template_data:
+            return matches
+        
+        for section_id, section_data in template_data['sections'].items():
+            if 'blocks' not in section_data:
+                continue
+            
+            for block_id, block_data in section_data['blocks'].items():
+                settings = block_data.get('settings', {})
+                block_text = settings.get('text', '').strip()
+                
+                if block_text.lower() == name_lower:
+                    matches.append((section_id, block_id, block_data))
+        
+        return matches
+    
+    def update_theme_asset(
+        self,
+        theme_id: str,
+        asset_key: str,
+        template_data: Dict[str, Any],
+        dry_run: bool = False
+    ) -> bool:
+        """
+        Update a theme template asset.
+        
+        Alias for update_page() with same functionality.
+        
+        Args:
+            theme_id: Shopify theme ID
+            asset_key: Template asset key
+            template_data: Updated template data (dict)
+            dry_run: If True, return True without actually updating
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.update_page(theme_id, asset_key, template_data, dry_run=dry_run)
+    
+    def upload_theme_image(
+        self,
+        theme_id: str,
+        image_path: str,
+        shopify_path: str
+    ) -> Optional[str]:
+        """
+        Upload an image file to Shopify theme assets.
+        
+        Alias for upload_image() with same functionality.
+        
+        Args:
+            theme_id: Shopify theme ID
+            image_path: Local path to image file
+            shopify_path: Path in Shopify (e.g., "assets/leadership/john_doe.jpg")
+        
+        Returns:
+            Shopify URL reference (e.g., "shopify://shop_images/john_doe.jpg") or None if failed
+        """
+        return self.upload_image(theme_id, image_path, shopify_path)
+    
+    def get_file_admin_url(self, image_reference: Optional[str]) -> Optional[Dict[str, str]]:
+        """
+        Get Shopify admin URL and original filename for a file from a shopify:// image reference.
+        
+        Args:
+            image_reference: Shopify image reference (e.g., "shopify://shop_images/Eliana_Glatt.jpg")
+        
+        Returns:
+            Dict with keys:
+            - "url": Admin URL (e.g., "https://admin.shopify.com/store/09fe59-3/content/files/25520668311646")
+            - "filename": Original filename from Shopify
+            or None if file not found or reference is invalid
+        """
+        if not image_reference or not image_reference.startswith("shopify://"):
+            return None
+        
+        import re
+        
+        # Extract filename from shopify:// reference
+        # Format: shopify://shop_images/filename.jpg
+        match = re.match(r"shopify://shop_images/(.+)", image_reference)
+        if not match:
+            return None
+        
+        filename = match.group(1)
+        store_id = self.client.config.get('store_id')
+        
+        try:
+            # Use sgqlc to build and execute the files query
+            from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_query import Query
+            
+            query_str = f"filename:{filename}"
+            op = Query.build_files_query(query_str, first=10)
+            
+            # Execute using the client
+            result = self.client.execute(op)
+            
+            if result.get('errors'):
+                logger.warning(f"GraphQL errors querying files: {result.get('errors')}")
+                return None
+            
+            files_data = result.get('data', {}).get('files', {})
+            nodes = files_data.get('nodes', [])
+            
+            if not nodes:
+                logger.warning(f"File not found for reference: {image_reference}")
+                return None
+            
+            # Get the first matching file
+            file_node = nodes[0]
+            file_gid = file_node.get('id')
+            
+            if not file_gid:
+                logger.warning(f"File ID not found in response for: {image_reference}")
+                return None
+            
+            # Extract numeric ID from GID (format: gid://shopify/File/25520668311646 or gid://shopify/MediaImage/25520668311646)
+            gid_match = re.search(r'/(?:File|MediaImage)/(\d+)', file_gid)
+            if not gid_match:
+                logger.warning(f"Could not extract file ID from GID: {file_gid}")
+                return None
+            
+            file_id = gid_match.group(1)
+            
+            # Construct admin URL
+            admin_url = f"https://admin.shopify.com/store/{store_id}/content/files/{file_id}"
+            
+            return {
+                "url": admin_url,
+                "display_text": image_reference  # Use original shopify:// reference as display text
+            }
+            
+        except Exception as e:
+            logger.error(f"Error querying Shopify Files API: {e}")
+            return None
+    
+    def get_file_name_by_id(self, file_id: str) -> Optional[str]:
+        """
+        Get filename for a file by its numeric ID using REST API.
+        
+        Args:
+            file_id: Numeric file ID (e.g., "23046869844062")
+        
+        Returns:
+            Filename (e.g., "Joe_Randazzo.jpg") or None if not found
+        """
+        import requests
+        
+        try:
+            store_id = self.client.config.get('store_id')
+            access_token = self.client.config.get('access_token')
+            
+            if not store_id or not access_token:
+                logger.warning("Missing store_id or access_token for REST API call")
+                return None
+            
+            rest_url = f"https://{store_id}.myshopify.com/admin/api/2024-10/files/{file_id}.json"
+            headers = {
+                'X-Shopify-Access-Token': access_token,
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.get(rest_url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                file_data = response.json().get('file', {})
+                # Extract filename from key or url
+                file_key = file_data.get('key', '')
+                if file_key:
+                    # Extract filename from key (e.g., "assets/leadership/Joe_Randazzo.jpg")
+                    filename = file_key.split('/')[-1]
+                    return filename
+                
+                # Fallback: try to extract from URL
+                file_url = file_data.get('url', '')
+                if file_url:
+                    filename = file_url.split('/')[-1].split('?')[0]
+                    return filename
+            
+            logger.warning(f"File not found for ID: {file_id} (status: {response.status_code})")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting file name by ID: {e}")
+            return None
+    
+    def convert_admin_url_to_shopify_reference(self, admin_url: str) -> Optional[str]:
+        """
+        Convert Shopify admin URL to shopify:// reference.
+        
+        Args:
+            admin_url: Admin URL like 'https://admin.shopify.com/store/09fe59-3/content/files/23046869844062'
+        
+        Returns:
+            shopify:// reference like 'shopify://shop_images/Joe_Randazzo.jpg' or None if error
+        """
+        import re
+        
+        # Extract file ID from URL
+        match = re.search(r'/content/files/(\d+)', admin_url)
+        if not match:
+            logger.warning(f"Could not extract file ID from URL: {admin_url}")
+            return None
+        
+        file_id = match.group(1)
+        
+        # Get filename by ID
+        filename = self.get_file_name_by_id(file_id)
+        if not filename:
+            return None
+        
+        # Construct shopify:// reference
+        return f"shopify://shop_images/{filename}"
     
     # ============================================================================
     # NORMALIZERS
