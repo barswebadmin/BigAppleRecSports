@@ -1,19 +1,31 @@
 """Get Shopify product details command."""
+
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
 import click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_PRODUCT_IDENTIFIER
-from bars_cli.backend_services.shopify.models.sgqlc_models import Product
-from bars_cli.commands.shopify._shared.shopify_formatters import format_product, _format_product_option
-from bars_cli.commands.shopify._shared.command_helpers import handle_multiple_shopify_results
+from bars_cli._core.context import get_display_context
+from bars_cli._core.ui.styling import get_console
+from bars_cli.commands.shopify._shared.command_helpers import (
+    handle_multiple_shopify_results,
+    handle_shopify_response,
+    handle_shopify_error_response,
+    validate_identifier,
+)
+from bars_cli.commands.shopify._shared.shopify_formatters import format_error
+import traceback
+from bars_cli.commands.shopify._shared.shopify_formatters import (
+    _format_product_option,
+    format_product,
+    format_product_rich,
+)
 
 if TYPE_CHECKING:
-    from sgqlc.types import Type as SGQLCType
-    ProductSGQLCType = SGQLCType
+    from bars_cli.backend_services.shopify.models.sgqlc_models import Product
 else:
-    ProductSGQLCType = Any
+    Product = Any
 
 
 @click.command('get')
@@ -33,27 +45,65 @@ def get_product_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]], mu
       bars shopify product get 2025-fall-kickball-sunday-open-division
       bars --json shopify product get 123456789
     """
-    from bars_cli.commands.shopify._shared.command_helpers import handle_shopify_get_command
+    json_output, should_display = get_display_context(ctx)
+    console = get_console("formatted", ctx=ctx) if should_display and not json_output else None
     
-    # Service is lazily initialized on first access via LazyServiceProxy
-    # ctx.meta["shopify_service"] contains a proxy that creates the service on first attribute access
-    shopify_service = ctx.meta["shopify_service"]
+    # Validate identifier
+    validate_identifier(identifier, "product", json_output, should_display, "Product identifier is required")
     
-    return handle_shopify_get_command(
-        ctx=ctx,
-        identifier=identifier,
-        service_method=shopify_service.get_product_by_identifier,  # type: ignore[attr-defined]
-        entity_name="product",
-        format_func=format_product,
-        handle_multiple_func=(
-            handle_multiple_shopify_results,
-            {
-                "entity_name": "product",
-                "format_option_func": _format_product_option,
-                "must_return_one": must_return_one
-            }
-        ),
-        service_method_kwargs={"variants_first": 5},
-        identifier_required_msg="Product identifier is required"
-    )
+    # After validation, identifier is guaranteed to be not None
+    assert identifier is not None
+    
+    try:
+        # Display lookup message
+        if should_display and not json_output:
+            lookup_value = identifier.get("identifier", "product")
+            click.echo(f"🔍 Looking up: {lookup_value}", err=True)
+        
+        # Get Shopify service (lazily initialized on first access via LazyServiceProxy)
+        shopify_service = ctx.meta["shopify_service"]
+        
+        def format_product_wrapper(product: Product) -> str:
+            """Wrapper for format_product_rich to match expected signature."""
+            if console is not None:
+                format_product_rich(product, console=console, ctx=ctx)
+                return ""  # Rich prints directly, return empty string for compatibility
+            else:
+                return format_product(product)  # Fallback to string formatter
+        
+        # Call service method
+        try:
+            entities = shopify_service.get_product_by_identifier(identifier, variants_first=5)  # type: ignore[attr-defined]
+        except (RuntimeError, ValueError) as e:
+            handle_shopify_error_response(e, json_output, should_display)
+        
+        # Route response to appropriate handler
+        return handle_shopify_response(
+            entities=entities,
+            identifier=identifier,
+            entity_name="product",
+            json_output=json_output,
+            should_display=should_display,
+            format_func=format_product_wrapper,
+            handle_multiple_func=(
+                handle_multiple_shopify_results,
+                {
+                    "entity_name": "product",
+                    "format_option_func": _format_product_option,
+                    "format_func": format_product_wrapper,
+                    "must_return_one": must_return_one
+                }
+            )
+        )
+        
+    except click.ClickException:
+        # Re-raise Click exceptions - decorator will handle exit
+        raise
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        format_error(error_msg, error_type=error_type, json_output=json_output, should_display=should_display)
+        if should_display and not json_output:
+            click.echo(traceback.format_exc(), err=True)
+        raise click.ClickException(error_msg)
 

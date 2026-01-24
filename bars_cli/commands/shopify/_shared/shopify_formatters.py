@@ -1,13 +1,14 @@
 """Shopify formatters organized by domain.
 
 All formatting code for Shopify commands is consolidated here for easy refactoring.
-Organized by domain: Customers, Products, Orders (Rich & CSV), and shared utilities.
+Organized by domain: CSV utilities, shared utilities, customers, products, orders (rich display, 
+discount application, season info, cancellation, refund, restock, CSV export).
 """
 
 from __future__ import annotations
 import html
 from datetime import datetime
-from typing import TypedDict, Optional, Any, Callable, List, Dict, Union
+from typing import TypedDict, Optional, Any, Callable, List, Dict, Union, Tuple
 
 import click
 from rich.console import Console
@@ -27,6 +28,7 @@ from bars_cli.backend_services.shopify.models.sgqlc_models import (
     CustomAttribute,
 )
 from bars_cli._core.ui.display import format_datetime, create_info_table, create_text_panel, display_json_syntax
+from bars_cli._core.ui.styling import get_console
 from bars_cli._core.utils.json_output import output_json_error
 
 
@@ -112,23 +114,114 @@ def format_datetime_display(dt_str: Optional[str]) -> str:
     return format_datetime(dt_str)
 
 
-def _format_customer_name_from_order(order: Order) -> str:
-    """Format customer name from order customer.
+def extract_connection_nodes(connection: Any, default: Optional[List[Any]] = None) -> List[Any]:
+    """Extract nodes from a Connection structure.
     
-    Handles both direct Customer objects and Connection structures.
+    Handles both Connection objects with .nodes and direct lists.
+    
+    Args:
+        connection: Connection object or list
+        default: Default value if connection is None/empty
+        
+    Returns:
+        List of nodes or default
     """
-    customer = getattr(order, 'customer', None)  # type: ignore[attr-defined]
-    if not customer:
-        return "N/A"
+    if connection is None:
+        return default or []
     
-    # Customer can be a direct Customer object or a Connection
-    if hasattr(customer, 'nodes') and customer.nodes:  # type: ignore[attr-defined]
-        # It's a Connection
-        customer_node = customer.nodes[0]  # type: ignore[attr-defined]
-    else:
-        # It's a direct Customer object
-        customer_node = customer
+    if hasattr(connection, 'nodes'):
+        nodes = getattr(connection, 'nodes', None)
+        if nodes:
+            return list(nodes)
     
+    if isinstance(connection, (list, tuple)):
+        return list(connection)
+    
+    return default or []
+
+
+def format_money_amount(amount: Union[str, float, int], currency: str = 'USD', default: str = 'N/A') -> str:
+    """Format money amount with currency.
+    
+    Args:
+        amount: Amount as string, float, or int
+        currency: Currency code (default: USD)
+        default: Default value if amount is invalid
+        
+    Returns:
+        Formatted string like "$123.45 USD" or default
+    """
+    try:
+        amount_float = float(amount)
+        return f"${amount_float:.2f} {currency}"
+    except (ValueError, TypeError):
+        return default
+
+
+def extract_json_data(obj: Any, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Extract JSON data from sgqlc object or return dict.
+    
+    Args:
+        obj: Object that may have __json_data__ attribute
+        default: Default dict if obj is None or has no __json_data__
+        
+    Returns:
+        Dict representation of object
+    """
+    if obj is None:
+        return default or {}
+    
+    if hasattr(obj, '__json_data__'):
+        return obj.__json_data__
+    
+    if isinstance(obj, dict):
+        return obj
+    
+    return default or {}
+
+
+def extract_id_short(gid: Union[str, Any], default: str = 'N/A') -> str:
+    """Extract short ID from GID format or return as-is.
+    
+    Handles both GID format (gid://shopify/Order/123) and plain IDs.
+    
+    Args:
+        gid: GID string or object with id attribute
+        default: Default value if extraction fails
+        
+    Returns:
+        Short ID string (numeric part) or default
+    """
+    if gid is None:
+        return default
+    
+    # If it's an object with an id attribute, get that first
+    if not isinstance(gid, str):
+        if hasattr(gid, 'id'):
+            gid = getattr(gid, 'id', None)
+            if gid is None:
+                return default
+        else:
+            return default
+    
+    if not gid:
+        return default
+    
+    if '/' in gid:
+        return gid.split('/')[-1]
+    
+    return gid if gid.isdigit() else default
+
+
+def _format_customer_name_internal(customer_node: Any) -> str:
+    """Internal helper to format customer name from a customer node.
+    
+    Args:
+        customer_node: Customer object (not a Connection)
+        
+    Returns:
+        Formatted customer name
+    """
     display_name = getattr(customer_node, 'displayName', None)  # type: ignore[attr-defined]
     if display_name:
         return display_name
@@ -139,6 +232,26 @@ def _format_customer_name_from_order(order: Order) -> str:
     if name_parts:
         return " ".join(name_parts)
     return "N/A"
+
+
+def _format_customer_name_from_order(order: Order) -> str:
+    """Format customer name from order customer.
+    
+    Handles both direct Customer objects and Connection structures.
+    """
+    customer = getattr(order, 'customer', None)  # type: ignore[attr-defined]
+    if not customer:
+        return "N/A"
+    
+    # Extract customer node from Connection or use directly
+    customer_nodes = extract_connection_nodes(customer)
+    if customer_nodes:
+        customer_node = customer_nodes[0]
+    else:
+        # It's a direct Customer object
+        customer_node = customer
+    
+    return _format_customer_name_internal(customer_node)
 
 
 # ============================================================================
@@ -163,9 +276,7 @@ def _format_customer_option(customer: Customer) -> str:
 
 def _format_customer_name(customer: Customer) -> str:
     """Format customer full name from firstName, lastName, or displayName."""
-    name_parts = [customer.firstName, customer.lastName]  # type: ignore[attr-defined]
-    full_name = " ".join(str(p) for p in name_parts if p) or customer.displayName or "N/A"  # type: ignore[attr-defined]
-    return full_name
+    return _format_customer_name_internal(customer)
 
 
 customer_display_fields: List[CustomerDisplayField] = [
@@ -182,12 +293,200 @@ customer_display_fields: List[CustomerDisplayField] = [
 ]
 
 
-def format_customer(customer: Customer) -> str:
-    """Format customer data for display."""
+def _format_entity_fields_section(
+    entity: Any,
+    display_fields: Union[List[Dict[str, Any]], List[CustomerDisplayField], List[ProductDisplayField]]
+) -> List[str]:
+    """Format entity fields section using field configuration.
+    
+    Args:
+        entity: Entity object to format
+        display_fields: List of field config dicts
+        
+    Returns:
+        List of formatted field lines
+    """
+    output = []
+    for field_config in display_fields:
+        field_name = field_config["field_name"]
+        display_label = field_config["display_label"]
+        default = field_config["default"]
+        formatter = field_config["formatter"]
+        
+        if formatter:
+            value = formatter(entity)
+        else:
+            value = getattr(entity, field_name, None)  # type: ignore[attr-defined]
+            if value is None:
+                value = default
+            else:
+                value = str(value)
+        
+        output.append(f"{display_label:<15} {value}")
+    return output
+
+    
+def _format_customer_tags_section(customer: Customer) -> List[str]:
+    """Format customer tags section."""
+    output = []
+    if customer.tags:  # type: ignore[attr-defined]
+        tags_list = list(customer.tags)  # type: ignore[attr-defined]
+        output.append(f"\nTags ({len(tags_list)}):")
+        for tag in tags_list:
+            output.append(f"  • {tag}")
+    return output
+
+    
+def _format_customer_address_section(customer: Customer) -> List[str]:
+    """Format customer default address section."""
+    output = []
+    if customer.defaultAddress:  # type: ignore[attr-defined]
+        addr = customer.defaultAddress  # type: ignore[attr-defined]
+        output.append("\nDefault Address:")
+        if addr.address1:  # type: ignore[attr-defined]
+            output.append(f"  {addr.address1}")  # type: ignore[attr-defined]
+        if addr.address2:  # type: ignore[attr-defined]
+            output.append(f"  {addr.address2}")  # type: ignore[attr-defined]
+        city_parts = [str(p) for p in [addr.city, addr.province, addr.zip] if p]  # type: ignore[attr-defined]
+        if city_parts:
+            output.append(f"  {', '.join(city_parts)}")
+        if addr.country:  # type: ignore[attr-defined]
+            output.append(f"  {addr.country}")  # type: ignore[attr-defined]
+    return output
+
+    
+def _format_customer_orders_section(customer: Customer) -> List[str]:
+    """Format customer recent orders section."""
+    output = []
+    orders_connection = getattr(customer, 'orders', None)
+    if orders_connection is None:
+        return output
+    
+    recent_orders = extract_connection_nodes(orders_connection, default=[])
+    if recent_orders:
+        output.append(f"\nRecent Orders ({len(recent_orders)}):")
+        for order in recent_orders:
+            output.append(f"  • {order.name or 'N/A'} (created: {order.createdAt or 'N/A'})")  # type: ignore[attr-defined]
+            output.append(f"    ID: {order.id}")  # type: ignore[attr-defined]
+    return output
+
+
+def _format_customer_birthdays_section(birthdays: List[Tuple[str, str, str]]) -> List[str]:
+    """Format customer birthdays section.
+    
+    Args:
+        birthdays: List of (birthday, first_name, last_name) tuples
+        
+    Returns:
+        List of formatted output lines
+    """
+    output = []
+    if not birthdays:
+        return output
+    
+    output.append(f"\n🎂 Date of Birth ({len(birthdays)} found):")
+    for birthday, first_name, last_name in birthdays:
+        full_name = f"{first_name} {last_name}".strip()
+        if full_name:
+            output.append(f"  • {birthday} - {full_name}")
+        else:
+            output.append(f"  • {birthday}")
+    
+    return output
+
+
+def _format_customer_pronouns_section(pronouns: List[Tuple[str, str, str, str]]) -> List[str]:
+    """Format customer pronouns section.
+    
+    Args:
+        pronouns: List of (pronouns, first_name, last_name, created_at) tuples
+        
+    Returns:
+        List of formatted output lines
+    """
+    output = []
+    if not pronouns:
+        return output
+    
+    output.append(f"\n👤 Pronouns ({len(pronouns)} found):")
+    for pronouns_val, first_name, last_name, created_at in pronouns:
+        full_name = f"{first_name} {last_name}".strip()
+        if full_name:
+            output.append(f"  • {pronouns_val} - {full_name} (order: {created_at})")
+        else:
+            output.append(f"  • {pronouns_val} (order: {created_at})")
+    
+    return output
+
+
+def format_customer(
+    customer: Customer,
+    birthdays: Optional[List[Tuple[str, str, str]]] = None,
+    pronouns: Optional[List[Tuple[str, str, str, str]]] = None
+) -> str:
+    """Format customer data for display (legacy string-based formatter).
+    
+    DEPRECATED: Use format_customer_rich() instead.
+    Kept for backward compatibility.
+    
+    Args:
+        customer: Customer object
+        birthdays: Optional list of (birthday, first_name, last_name) tuples
+        pronouns: Optional list of (pronouns, first_name, last_name, created_at) tuples
+    """
     output = []
     output.append("\n✅ Customer Found!")
     output.append("=" * 60)
     
+    output.extend(_format_entity_fields_section(customer, customer_display_fields))
+    output.extend(_format_customer_tags_section(customer))
+    output.extend(_format_customer_address_section(customer))
+    
+    # Add birthday section if available
+    if birthdays:
+        output.extend(_format_customer_birthdays_section(birthdays))
+    
+    # Add pronouns section if available
+    if pronouns:
+        output.extend(_format_customer_pronouns_section(pronouns))
+    
+    output.extend(_format_customer_orders_section(customer))
+    
+    output.append("=" * 60)
+    return '\n'.join(output)
+
+
+def format_customer_rich(
+    customer: Customer,
+    *,
+    console: Optional[Console] = None,
+    ctx: Optional[click.Context] = None,
+    birthdays: Optional[List[Tuple[str, str, str]]] = None,
+    pronouns: Optional[List[Tuple[str, str, str, str]]] = None
+) -> None:
+    """Display customer details in a rich formatted output.
+    
+    Args:
+        customer: Customer object (sgqlc Type instance)
+        console: Optional Rich Console instance (creates new if None)
+        ctx: Optional Click context for console creation
+        birthdays: Optional list of (birthday, first_name, last_name) tuples
+        pronouns: Optional list of (pronouns, first_name, last_name, created_at) tuples
+    """
+    if console is None:
+        console = get_console("formatted", ctx=ctx)
+    
+    # Customer Header
+    customer_name = _format_customer_name(customer)
+    header_parts = [
+        (customer_name, "bold cyan")
+    ]
+    
+    panel = create_text_panel(header_parts, title="Customer Details", border_style="cyan")
+    console.print(panel)
+    
+    # Basic Info Table
+    info_rows = []
     for field_config in customer_display_fields:
         field_name = field_config["field_name"]
         display_label = field_config["display_label"]
@@ -203,38 +502,89 @@ def format_customer(customer: Customer) -> str:
             else:
                 value = str(value)
         
-        output.append(f"{display_label:<15} {value}")
+        if value is not None:
+            info_rows.append((display_label, value))
     
+    if info_rows:
+        info_table = create_info_table(info_rows, show_header=False, field_style="bold cyan")
+        console.print(info_table)
+        console.print()
+    
+    # Tags Section
     if customer.tags:  # type: ignore[attr-defined]
         tags_list = list(customer.tags)  # type: ignore[attr-defined]
-        output.append(f"\nTags ({len(tags_list)}):")
-        for tag in tags_list:
-            output.append(f"  • {tag}")
+        if tags_list:
+            tags_table = Table(title=f"🏷️  Tags ({len(tags_list)})", show_header=False, box=None)
+            tags_table.add_column("Tag", style="cyan")
+            for tag in tags_list:
+                tags_table.add_row(str(tag))
+            console.print(tags_table)
+            console.print()
     
+    # Default Address Section
     if customer.defaultAddress:  # type: ignore[attr-defined]
         addr = customer.defaultAddress  # type: ignore[attr-defined]
-        output.append("\nDefault Address:")
+        address_rows = []
         if addr.address1:  # type: ignore[attr-defined]
-            output.append(f"  {addr.address1}")  # type: ignore[attr-defined]
+            address_rows.append(("Address", addr.address1))  # type: ignore[attr-defined]
         if addr.address2:  # type: ignore[attr-defined]
-            output.append(f"  {addr.address2}")  # type: ignore[attr-defined]
+            address_rows.append(("", addr.address2))  # type: ignore[attr-defined]
         city_parts = [str(p) for p in [addr.city, addr.province, addr.zip] if p]  # type: ignore[attr-defined]
         if city_parts:
-            output.append(f"  {', '.join(city_parts)}")
+            address_rows.append(("City", ', '.join(city_parts)))
         if addr.country:  # type: ignore[attr-defined]
-            output.append(f"  {addr.country}")  # type: ignore[attr-defined]
+            address_rows.append(("Country", addr.country))  # type: ignore[attr-defined]
+        
+        if address_rows:
+            address_table = create_info_table(address_rows, title="📍 Default Address", show_header=False, field_style="bold cyan")
+            console.print(address_table)
+            console.print()
     
-    # Access orders from sgqlc Connection structure
-    orders_connection = customer.orders  # type: ignore[attr-defined]
-    recent_orders = orders_connection.nodes if orders_connection and hasattr(orders_connection, 'nodes') else []  # type: ignore[attr-defined]
-    if recent_orders:
-        output.append(f"\nRecent Orders ({len(recent_orders)}):")
-        for order in recent_orders:
-            output.append(f"  • {order.name or 'N/A'} (created: {order.createdAt or 'N/A'})")  # type: ignore[attr-defined]
-            output.append(f"    ID: {order.id}")  # type: ignore[attr-defined]
+    # Birthday Section
+    if birthdays:
+        birthday_table = Table(title=f"🎂 Date of Birth ({len(birthdays)} found)", show_header=True, header_style="bold cyan")
+        birthday_table.add_column("Birthday", style="cyan")
+        birthday_table.add_column("Name", style="white")
+        
+        for birthday, first_name, last_name in birthdays:
+            full_name = f"{first_name} {last_name}".strip()
+            birthday_table.add_row(birthday, full_name if full_name else "N/A")
+        
+        console.print(birthday_table)
+        console.print()
     
-    output.append("=" * 60)
-    return '\n'.join(output)
+    # Pronouns Section
+    if pronouns:
+        pronouns_table = Table(title=f"👤 Pronouns ({len(pronouns)} found)", show_header=True, header_style="bold cyan")
+        pronouns_table.add_column("Pronouns", style="cyan")
+        pronouns_table.add_column("Name", style="white")
+        pronouns_table.add_column("Order Date", style="yellow")
+        
+        for pronouns_val, first_name, last_name, created_at in pronouns:
+            full_name = f"{first_name} {last_name}".strip()
+            pronouns_table.add_row(pronouns_val, full_name if full_name else "N/A", created_at)
+        
+        console.print(pronouns_table)
+        console.print()
+    
+    # Recent Orders Section
+    orders_connection = getattr(customer, 'orders', None)
+    if orders_connection is not None:
+        recent_orders = extract_connection_nodes(orders_connection, default=[])
+        if recent_orders:
+            orders_table = Table(title=f"📦 Recent Orders ({len(recent_orders)})", show_header=True, header_style="bold cyan")
+            orders_table.add_column("Order #", style="cyan")
+            orders_table.add_column("Created At", style="white")
+            orders_table.add_column("Order ID", style="yellow")
+            
+            for order in recent_orders:
+                order_name = getattr(order, 'name', 'N/A')  # type: ignore[attr-defined]
+                created_at = getattr(order, 'createdAt', 'N/A')  # type: ignore[attr-defined]
+                order_id = getattr(order, 'id', 'N/A')  # type: ignore[attr-defined]
+                orders_table.add_row(str(order_name), str(created_at), str(order_id))
+            
+            console.print(orders_table)
+            console.print()
 
 
 # ============================================================================
@@ -261,12 +611,79 @@ product_display_fields: List[ProductDisplayField] = [
 ]
 
 
+def _format_product_tags_section(product: Product) -> List[str]:
+    """Format product tags section."""
+    output = []
+    if hasattr(product, 'tags') and product.tags:  # type: ignore[attr-defined]
+        tags_list = list(product.tags)  # type: ignore[attr-defined]
+        if tags_list:
+            output.append(f"\nTags ({len(tags_list)}):")
+            for tag in tags_list:
+                output.append(f"  • {tag}")
+    return output
+
+
+def _format_product_variants_section(product: Product) -> List[str]:
+    """Format product variants section."""
+    output = []
+    if hasattr(product, 'variants') and product.variants:  # type: ignore[attr-defined]
+        variants_conn = product.variants  # type: ignore[attr-defined]
+        variants = extract_connection_nodes(variants_conn, default=[])
+        if variants:
+            output.append(f"\nVariants ({len(variants)}):")
+            for variant in variants:
+                title = getattr(variant, 'title', 'N/A')  # type: ignore[attr-defined]
+                price = getattr(variant, 'price', 'N/A')  # type: ignore[attr-defined]
+                inventory = getattr(variant, 'inventoryQuantity', 'N/A')  # type: ignore[attr-defined]
+                output.append(f"  • {title} - ${price} (qty: {inventory})")
+    return output
+
+
 def format_product(product: Product) -> str:
-    """Format product data for display."""
+    """Format product data for display (legacy string-based formatter).
+    
+    DEPRECATED: Use format_product_rich() instead.
+    Kept for backward compatibility.
+    """
     output = []
     output.append("\n✅ Product Found!")
     output.append("=" * 60)
     
+    output.extend(_format_entity_fields_section(product, product_display_fields))
+    output.extend(_format_product_tags_section(product))
+    output.extend(_format_product_variants_section(product))
+    
+    output.append("=" * 60)
+    return '\n'.join(output)
+
+
+def format_product_rich(
+    product: Product,
+    *,
+    console: Optional[Console] = None,
+    ctx: Optional[click.Context] = None
+) -> None:
+    """Display product details in a rich formatted output.
+    
+    Args:
+        product: Product object (sgqlc Type instance)
+        console: Optional Rich Console instance (creates new if None)
+        ctx: Optional Click context for console creation
+    """
+    if console is None:
+        console = get_console("formatted", ctx=ctx)
+    
+    # Product Header
+    product_title = getattr(product, 'title', 'N/A')  # type: ignore[attr-defined]
+    header_parts = [
+        (product_title, "bold cyan")
+    ]
+    
+    panel = create_text_panel(header_parts, title="Product Details", border_style="cyan")
+    console.print(panel)
+    
+    # Basic Info Table
+    info_rows = []
     for field_config in product_display_fields:
         field_name = field_config["field_name"]
         display_label = field_config["display_label"]
@@ -282,30 +699,44 @@ def format_product(product: Product) -> str:
             else:
                 value = str(value)
         
-        output.append(f"{display_label:<15} {value}")
+        if value is not None:
+            info_rows.append((display_label, value))
     
-    # Display tags
+    if info_rows:
+        info_table = create_info_table(info_rows, show_header=False, field_style="bold cyan")
+        console.print(info_table)
+        console.print()
+    
+    # Tags Section
     if hasattr(product, 'tags') and product.tags:  # type: ignore[attr-defined]
         tags_list = list(product.tags)  # type: ignore[attr-defined]
         if tags_list:
-            output.append(f"\nTags ({len(tags_list)}):")
+            tags_table = Table(title=f"🏷️  Tags ({len(tags_list)})", show_header=False, box=None)
+            tags_table.add_column("Tag", style="cyan")
             for tag in tags_list:
-                output.append(f"  • {tag}")
+                tags_table.add_row(str(tag))
+            console.print(tags_table)
+            console.print()
     
-    # Display variants
+    # Variants Section
     if hasattr(product, 'variants') and product.variants:  # type: ignore[attr-defined]
         variants_conn = product.variants  # type: ignore[attr-defined]
-        variants = variants_conn.nodes if hasattr(variants_conn, 'nodes') else []  # type: ignore[attr-defined]
+        variants = extract_connection_nodes(variants_conn, default=[])
         if variants:
-            output.append(f"\nVariants ({len(variants)}):")
+            variants_table = Table(title=f"📦 Variants ({len(variants)})", show_header=True, header_style="bold cyan")
+            variants_table.add_column("Variant", style="cyan")
+            variants_table.add_column("Price", justify="right", style="yellow")
+            variants_table.add_column("Quantity", justify="right", style="green")
+            
             for variant in variants:
                 title = getattr(variant, 'title', 'N/A')  # type: ignore[attr-defined]
                 price = getattr(variant, 'price', 'N/A')  # type: ignore[attr-defined]
                 inventory = getattr(variant, 'inventoryQuantity', 'N/A')  # type: ignore[attr-defined]
-                output.append(f"  • {title} - ${price} (qty: {inventory})")
-    
-    output.append("=" * 60)
-    return '\n'.join(output)
+                price_display = f"${price}" if price != 'N/A' else "N/A"
+                variants_table.add_row(title, price_display, str(inventory))
+            
+            console.print(variants_table)
+            console.print()
 
 
 def _format_product_option(product: Product) -> str:
@@ -351,9 +782,8 @@ def format_order_rich(
     info_rows = []
     
     order_id = getattr(order, 'id', 'N/A')  # type: ignore[attr-defined]
-    if isinstance(order_id, str) and '/' in order_id:
-        order_id = order_id.split('/')[-1]
-    info_rows.append(("Order ID", order_id))
+    order_id_short = extract_id_short(order_id)
+    info_rows.append(("Order ID", order_id_short))
     info_rows.append(("Order Number", getattr(order, 'name', 'N/A')))  # type: ignore[attr-defined]
     info_rows.append(("Email", getattr(order, 'email', 'N/A')))  # type: ignore[attr-defined]
     info_rows.append(("Created At", format_datetime(getattr(order, 'createdAt', None))))  # type: ignore[attr-defined]
@@ -410,7 +840,7 @@ def format_order_rich(
                 str(getattr(item, 'quantity', 0)),  # type: ignore[attr-defined]
                 getattr(item, 'title', 'N/A'),  # type: ignore[attr-defined]
                 variant_title,
-                f"${float(variant_price):.2f}" if variant_price != '0' else "N/A"
+                format_money_amount(variant_price, default="N/A") if variant_price != '0' else "N/A"
             )
         
         console.print(items_table)
@@ -435,22 +865,27 @@ def format_order_rich(
 
 
 
-def _get_line_items(order: Order) -> List[LineItem]:
-    """Extract line items from order."""
+def _get_line_items(order: Order) -> Optional[List[LineItem]]:
+    """Extract line items from order.
+    
+    Returns:
+        List of LineItem objects or None if not found
+    """
+    from typing import cast
+    
     line_items_conn = getattr(order, 'lineItems', None)  # type: ignore[attr-defined]
-    if line_items_conn:
-        nodes = getattr(line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
-        if nodes:
-            return list(nodes)
-    return []
+    nodes = extract_connection_nodes(line_items_conn)
+    if not nodes:
+        return None
+    
+    # Cast to list - at runtime, sgqlc returns actual list, not Field objects
+    return cast(List[LineItem], nodes)
 
 
 def _get_refunds(order: Order) -> List[Refund]:
     """Extract refunds from order."""
     refunds = getattr(order, 'refunds', None)  # type: ignore[attr-defined]
-    if refunds:
-        return list(refunds)
-    return []
+    return extract_connection_nodes(refunds, default=[])
 
 
 def _display_line_item_properties(line_items: List[LineItem], console: Console) -> None:
@@ -463,8 +898,7 @@ def _display_line_item_properties(line_items: List[LineItem], console: Console) 
         if custom_attrs:
             has_any_properties = True
             item_id = getattr(item, 'id', 'N/A')  # type: ignore[attr-defined]
-            if isinstance(item_id, str) and '/' in item_id:
-                item_id = item_id.split('/')[-1]
+            item_id = extract_id_short(item_id)
             
             # Convert customAttributes to dict format
             attrs_list = []
@@ -494,10 +928,9 @@ def _display_refund_details(refund: Refund, idx: int, console: Console) -> None:
     refund_rows = []
     
     refund_id = getattr(refund, 'id', 'N/A')  # type: ignore[attr-defined]
-    if isinstance(refund_id, str) and '/' in refund_id:
-        refund_id = refund_id.split('/')[-1]
+    refund_id_short = extract_id_short(refund_id)
     
-    refund_rows.append(("Refund ID", refund_id))
+    refund_rows.append(("Refund ID", refund_id_short))
     refund_rows.append(("Created At", format_datetime(getattr(refund, 'createdAt', None))))  # type: ignore[attr-defined]
     
     # Total refunded amount
@@ -507,10 +940,7 @@ def _display_refund_details(refund: Refund, idx: int, console: Console) -> None:
         if shop_money:
             amount = getattr(shop_money, 'amount', '0')  # type: ignore[attr-defined]
             currency = getattr(shop_money, 'currencyCode', 'USD')  # type: ignore[attr-defined]
-            try:
-                refund_rows.append(("Amount", f"${float(amount):.2f} {currency}"))
-            except (ValueError, TypeError):
-                refund_rows.append(("Amount", f"{amount} {currency}"))
+            refund_rows.append(("Amount", format_money_amount(amount, currency)))
     
     note = getattr(refund, 'note', None)  # type: ignore[attr-defined]
     if note:
@@ -558,10 +988,7 @@ def _display_refund_details(refund: Refund, idx: int, console: Console) -> None:
         
         for trans in refund_transactions:
             amount = getattr(trans, 'amount', '0')  # type: ignore[attr-defined]
-            try:
-                amount_str = f"${float(amount):.2f}"
-            except (ValueError, TypeError):
-                amount_str = str(amount)
+            amount_str = format_money_amount(amount, default=str(amount))
             
             trans_table.add_row(
                 getattr(trans, 'kind', 'N/A'),  # type: ignore[attr-defined]
@@ -576,21 +1003,13 @@ def _display_refund_details(refund: Refund, idx: int, console: Console) -> None:
 def _get_refund_line_items(refund: Refund) -> List[RefundLineItem]:
     """Extract refund line items from refund."""
     refund_line_items_conn = getattr(refund, 'refundLineItems', None)  # type: ignore[attr-defined]
-    if refund_line_items_conn:
-        nodes = getattr(refund_line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
-        if nodes:
-            return list(nodes)
-    return []
+    return extract_connection_nodes(refund_line_items_conn, default=[])
 
 
 def _get_refund_transactions(refund: Refund) -> List[RefundTransaction]:
     """Extract refund transactions from refund."""
     refund_transactions_conn = getattr(refund, 'transactions', None)  # type: ignore[attr-defined]
-    if refund_transactions_conn:
-        nodes = getattr(refund_transactions_conn, 'nodes', None)  # type: ignore[attr-defined]
-        if nodes:
-            return list(nodes)
-    return []
+    return extract_connection_nodes(refund_transactions_conn, default=[])
 
 
 def _format_order_option(order: Order) -> str:
@@ -604,37 +1023,28 @@ def _get_product_title_from_order(order: Order) -> str:
     """Extract product title from first line item in order."""
     product_title = "Unknown Product"
     line_items_conn = getattr(order, 'lineItems', None)  # type: ignore[attr-defined]
-    if line_items_conn:
-        nodes = getattr(line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
-        if nodes and len(nodes) > 0:
-            first_item = nodes[0]
-            product = getattr(first_item, 'product', None)  # type: ignore[attr-defined]
-            if product:
-                product_title = getattr(product, 'title', 'Unknown Product')  # type: ignore[attr-defined]
+    nodes = extract_connection_nodes(line_items_conn)
+    if nodes:
+        first_item = nodes[0]
+        product = getattr(first_item, 'product', None)  # type: ignore[attr-defined]
+        if product:
+            product_title = getattr(product, 'title', 'Unknown Product')  # type: ignore[attr-defined]
     return product_title
 
 
-def _extract_numeric_id_from_gid(gid: str) -> Optional[str]:
-    """Extract numeric ID from Shopify GID format (e.g., gid://shopify/Order/123456789 -> 123456789)."""
-    if not gid:
-        return None
-    if '/' in gid:
-        return gid.split('/')[-1]
-    return gid if gid.isdigit() else None
 
 
 def _get_product_id_from_order(order: Order) -> Optional[str]:
     """Extract product ID from first line item in order."""
     line_items_conn = getattr(order, 'lineItems', None)  # type: ignore[attr-defined]
-    if line_items_conn:
-        nodes = getattr(line_items_conn, 'nodes', None)  # type: ignore[attr-defined]
-        if nodes and len(nodes) > 0:
-            first_item = nodes[0]
-            product = getattr(first_item, 'product', None)  # type: ignore[attr-defined]
-            if product:
-                product_id = getattr(product, 'id', None)  # type: ignore[attr-defined]
-                if product_id:
-                    return _extract_numeric_id_from_gid(product_id)
+    nodes = extract_connection_nodes(line_items_conn)
+    if nodes:
+        first_item = nodes[0]
+        product = getattr(first_item, 'product', None)  # type: ignore[attr-defined]
+        if product:
+            product_id = getattr(product, 'id', None)  # type: ignore[attr-defined]
+            if product_id:
+                return extract_id_short(product_id) or None
     return None
 
 
@@ -678,10 +1088,10 @@ def format_order_to_cancel(
     console.print(panel)
     
     # Extract numeric IDs for URLs
-    order_id_numeric = _extract_numeric_id_from_gid(order_id)
+    order_id_numeric = extract_id_short(order_id) if order_id != 'N/A' else None
     product_id_numeric = _get_product_id_from_order(order)
     
-    order_id_short = order_id.split('/')[-1] if '/' in order_id else order_id
+    order_id_short = extract_id_short(order_id)
     console.print(f"  [bold]Order ID:[/bold] {order_id_short}")
     
     # Add order URL
@@ -808,13 +1218,13 @@ def format_payment_summary(
     remaining_refundable = payment_summary['remaining_refundable']
     
     payment_rows = [
-        ("Total Paid", f"${total_amount:.2f} {currency}"),
-        ("Total Refunded", f"${total_refunded:.2f} {currency}")
+        ("Total Paid", format_money_amount(total_amount, currency)),
+        ("Total Refunded", format_money_amount(total_refunded, currency))
     ]
     if pending_refunds > 0:
-        payment_rows.append(("  - Pending", f"${pending_refunds:.2f} {currency}"))
-        payment_rows.append(("  - Completed", f"${completed_refunds:.2f} {currency}"))
-    payment_rows.append(("Remaining Refundable", f"${remaining_refundable:.2f} {currency}"))
+        payment_rows.append(("  - Pending", format_money_amount(pending_refunds, currency)))
+        payment_rows.append(("  - Completed", format_money_amount(completed_refunds, currency)))
+    payment_rows.append(("Remaining Refundable", format_money_amount(remaining_refundable, currency)))
     
     payment_table = create_info_table(
         payment_rows,
@@ -838,7 +1248,7 @@ def format_existing_refunds_table(
     refunds_table.add_column("Status")
     
     for refund in refunds:
-        refund_data = refund.__json_data__ if hasattr(refund, '__json_data__') else {}
+        refund_data = extract_json_data(refund, default={})
         refund_amount = float(refund_data.get('totalRefundedSet', {}).get('shopMoney', {}).get('amount', '0'))
         refund_date = format_datetime_display(refund_data.get('createdAt'))
         refund_status = "Completed"
@@ -846,21 +1256,19 @@ def format_existing_refunds_table(
         
         if refund_amount == 0:
             refund_transactions_conn = getattr(refund, 'transactions', None)  # type: ignore[attr-defined]
-            if refund_transactions_conn:
-                nodes = getattr(refund_transactions_conn, 'nodes', None)  # type: ignore[attr-defined]
-                if nodes:
-                    for trans in nodes:
-                        trans_data = trans.__json_data__ if hasattr(trans, '__json_data__') else {}
-                        if trans_data.get('kind') == 'REFUND':
-                            refund_amount = float(trans_data.get('amount', 0))
-                            if trans_data.get('status') == 'PENDING':
-                                refund_status = "Pending"
-                                status_style = "yellow"
-                            break
+            nodes = extract_connection_nodes(refund_transactions_conn)
+            for trans in nodes:
+                trans_data = extract_json_data(trans, default={})
+                if trans_data.get('kind') == 'REFUND':
+                    refund_amount = float(trans_data.get('amount', 0))
+                    if trans_data.get('status') == 'PENDING':
+                        refund_status = "Pending"
+                        status_style = "yellow"
+                    break
         
         refunds_table.add_row(
             refund_date,
-            f"${refund_amount:.2f}",
+            format_money_amount(refund_amount, default=f"${refund_amount:.2f}"),
             f"[{status_style}]{refund_status}[/{status_style}]"
         )
     
@@ -888,7 +1296,7 @@ def format_refund_options_table(
         options_table.add_row(
             "[bold](o)[/bold] Original Payment",
             "Original Payment Method",
-            f"${refund_amount:.2f} {currency}",
+            format_money_amount(refund_amount, currency),
             refund_details
         )
     else:
@@ -904,7 +1312,7 @@ def format_refund_options_table(
         options_table.add_row(
             "[bold](s)[/bold] Store Credit",
             "Store Credit",
-            f"${credit_amount:.2f} {currency}",
+            format_money_amount(credit_amount, currency),
             credit_details
         )
     else:
@@ -932,7 +1340,8 @@ def format_refund_summary(
     console.print("[yellow]⚠️  Refund Summary:[/yellow]")
     
     if estimated_refund_amount is not None:
-        console.print(f"   • Estimated Refund Due: [bold green]${estimated_refund_amount:.2f} {currency}[/bold green]")
+        amount_str = format_money_amount(estimated_refund_amount, currency)
+        console.print(f"   • Estimated Refund Due: [bold green]{amount_str}[/bold green]")
         if estimated_refund_message:
             # Extract just the calculation details from the message
             console.print(f"   • Calculation: [dim]{estimated_refund_message.split('(')[1].rstrip(')') if '(' in estimated_refund_message else ''}[/dim]")
@@ -942,7 +1351,8 @@ def format_refund_summary(
     console.print(f"   • Type: [bold]{refund_type_display}[/bold]")
     console.print(f"   • Customer: [bold]{customer_email}[/bold]")
     console.print("   • Customer notification: [bold]YES - Email will be sent[/bold]")
-    console.print(f"   • Maximum refundable: [bold]${remaining_refundable:.2f} {currency}[/bold]")
+    amount_str = format_money_amount(remaining_refundable, currency)
+    console.print(f"   • Maximum refundable: [bold]{amount_str}[/bold]")
     console.print()
 
 
@@ -980,7 +1390,7 @@ def format_refund_success(
     success_rows = [
         ("Order", order_name),
         ("Refund ID", refund_id),
-        ("Amount Refunded", f"${refund_amount:.2f} {currency}"),
+        ("Amount Refunded", format_money_amount(refund_amount, currency)),
         ("Refund Type", refund_type_display),
         ("Created At", refund_created),
         ("Customer Notified", "✓ YES - Email sent")
@@ -993,8 +1403,376 @@ def format_refund_success(
 
 
 # ============================================================================
+# ORDER FORMATTING - DISCOUNT APPLICATION
+# ============================================================================
+
+def format_order_info_for_discount(
+    order: Order,
+    order_id: str
+) -> Dict[str, Any]:
+    """Format order information for discount application display.
+    
+    Returns formatted data structures (header_parts, info_rows) without displaying.
+    
+    Args:
+        order: Order object
+        order_id: Order ID string
+        
+    Returns:
+        Dict with keys: 'header_parts', 'info_rows'
+    """
+    from typing import cast
+    from bars_cli.backend_services.shopify.models.sgqlc_models import Order as OrderType
+    
+    # Cast field access - at runtime, sgqlc returns actual values (str, list), not Field objects
+    order_name: str = cast(str, order.name)
+    customer_name = _format_customer_name_from_order(order)
+    product_title = _get_product_title_from_order(order)
+    customer_email: str = cast(str, order.email)
+    financial_status: str = cast(str, order.displayFinancialStatus)
+    
+    header_parts = [
+        (f"Order #{order_name}", "bold cyan")
+    ]
+    
+    info_rows = [
+        ("Order ID", extract_id_short(order_id)),
+    ]
+    if customer_name:
+        info_rows.append(("Customer", customer_name))
+    info_rows.append(("Email", customer_email))
+    info_rows.append(("Financial Status", financial_status))
+    info_rows.append(("📦 Product", product_title))
+    
+    return {
+        'header_parts': header_parts,
+        'info_rows': info_rows
+    }
+
+
+# ============================================================================
+# ORDER FORMATTING - SEASON INFO (REFUND CALCULATION)
+# ============================================================================
+
+def format_season_info(
+    season_start_date_str: Optional[str],
+    off_dates_str: Optional[str]
+) -> List[str]:
+    """Format season information for refund calculation.
+    
+    Returns formatted strings without displaying.
+    
+    Args:
+        season_start_date_str: Season start date string
+        off_dates_str: Off dates string
+        
+    Returns:
+        List of formatted strings to display
+    """
+    lines = []
+    lines.append("[cyan]Refund Calculation[/cyan]")
+    lines.append(f"Season start date found: {season_start_date_str}")
+    if off_dates_str:
+        lines.append(f"Off dates: {off_dates_str}")
+    else:
+        lines.append("[yellow]⚠️  No off dates detected in product description[/yellow]")
+    lines.append("")
+    return lines
+
+
+# ============================================================================
+# CUSTOMER FORMATTING - UPDATE DISPLAY
+# ============================================================================
+
+def format_customer_info_for_update(
+    customer: Customer,
+    customer_id: str,
+    email: Optional[str],
+    phone: Optional[str]
+) -> Dict[str, Any]:
+    """Format customer information for update display.
+    
+    Returns formatted data structures (header_parts, info_rows, update_rows) without displaying.
+    
+    Args:
+        customer: Customer object
+        customer_id: Customer ID string
+        email: Optional new email
+        phone: Optional new phone
+        
+    Returns:
+        Dict with keys: 'header_parts', 'info_rows', 'update_rows'
+    """
+    from typing import cast
+    from bars_cli.backend_services.shopify.models.sgqlc_models import Customer as CustomerType
+    
+    customer_name = _format_customer_name(customer)
+    current_email: str = cast(str, customer.email) if hasattr(customer, 'email') else 'N/A'
+    current_phone: str = cast(str, customer.phone) if hasattr(customer, 'phone') else 'N/A'
+    
+    header_parts = [
+        (f"Customer: {customer_name}", "bold cyan")
+    ]
+    
+    info_rows = [
+        ("Customer ID", extract_id_short(customer_id)),
+        ("Current Email", current_email),
+        ("Current Phone", current_phone),
+    ]
+    
+    update_rows = []
+    if email:
+        update_rows.append(("New Email", email))
+    if phone:
+        update_rows.append(("New Phone", phone))
+    
+    return {
+        'header_parts': header_parts,
+        'info_rows': info_rows,
+        'update_rows': update_rows
+    }
+
+
+# ============================================================================
+# ORDER FORMATTING - TABLE DISPLAY
+# ============================================================================
+
+def format_order_table_row(order: Order, shopify_service: Any) -> List[str]:
+    """Format order for table row display.
+    
+    Args:
+        order: Order object (sgqlc Type instance)
+        shopify_service: ShopifyService instance for calculating payment summary
+        
+    Returns:
+        List of [order_number, email, created_at, total_paid, financial_status]
+    """
+    from typing import cast
+    
+    order_name: str = cast(str, order.name)
+    email: str = cast(str, order.email)
+    created_at: str = format_datetime_display(cast(str, order.createdAt))
+    
+    payment_summary = shopify_service.calculate_payment_summary(order)
+    total_amount = payment_summary.get('total_amount', 0.0)
+    currency = payment_summary.get('currency', 'USD')
+    total_paid = f"${total_amount:.2f} {currency}" if total_amount > 0 else "N/A"
+    
+    financial_status: str = cast(str, order.displayFinancialStatus)
+    
+    return [order_name, email, created_at, total_paid, financial_status]
+
+
+def display_orders_table(orders: List[Order], shopify_service: Any, console: Console) -> None:
+    """Display orders in a formatted Rich table.
+    
+    Args:
+        orders: List of order objects (sgqlc Type instances)
+        shopify_service: ShopifyService instance for calculating payment summaries
+        console: Rich Console instance
+    """
+    if not orders:
+        console.print("[dim]No orders found.[/dim]\n")
+        return
+    
+    from rich.table import Table
+    
+    table = Table(title=f"📦 Orders ({len(orders)} found)", show_header=True)
+    table.add_column("Order #", style="cyan")
+    table.add_column("Email", style="blue")
+    table.add_column("Created At", style="dim")
+    table.add_column("Total Paid", justify="right", style="green")
+    table.add_column("Status", style="yellow")
+    
+    for order in orders:
+        row_data = format_order_table_row(order, shopify_service)
+        table.add_row(*row_data)
+    
+    console.print(table)
+    console.print()
+
+
+# ============================================================================
 # ORDER FORMATTING - CSV EXPORT
 # ============================================================================
+
+# ============================================================================
+# PAGE & THEME ASSET FORMATTING
+# ============================================================================
+
+def display_page(page_data: Dict[str, Any], output_format: str, console: Console) -> None:
+    """Display page content in formatted text.
+    
+    Args:
+        page_data: Page data dictionary
+        output_format: Output format ('text' or 'html')
+        console: Rich Console instance
+    """
+    if output_format == 'html':
+        # Prefer template content if available (for custom template pages)
+        content = page_data.get('template_content') or page_data.get('body_html', '')
+        console.print(content)
+        return
+    
+    console.print(f"[cyan]📄 Page: {page_data.get('title')}[/cyan]")
+    console.print(f"[cyan]🔗 Handle: {page_data.get('handle')}[/cyan]")
+    console.print(f"[cyan]🆔 ID: {page_data.get('id')}[/cyan]")
+    template_suffix = page_data.get('template_suffix')
+    if template_suffix:
+        console.print(f"[cyan]📝 Template: {template_suffix}[/cyan]")
+        if page_data.get('template_content'):
+            console.print(f"[green]✅ Template content fetched from theme[/green]")
+            console.print(f"[dim]Asset: {page_data.get('template_asset_key')}[/dim]")
+    
+    console.print(f"\n{'='*80}")
+    
+    # Display template content if available (custom template), otherwise body_html
+    if page_data.get('template_content'):
+        import json
+        try:
+            # Try to parse and pretty-print JSON template
+            template_data = json.loads(page_data['template_content'])
+            console.print(json.dumps(template_data, indent=2))
+        except (json.JSONDecodeError, TypeError):
+            # If not JSON, print as-is
+            console.print(page_data['template_content'])
+    else:
+        body_html = page_data.get('body_html', '')
+        if body_html:
+            console.print(body_html)
+        else:
+            console.print("[dim](No content - page may use a custom template)[/dim]")
+    
+    console.print(f"{'='*80}\n")
+
+
+def display_theme_asset(theme_id: str, asset_key: str, content: str, console: Console) -> None:
+    """Display theme asset content.
+    
+    Args:
+        theme_id: Theme ID
+        asset_key: Asset key path
+        content: Asset content string
+        console: Rich Console instance
+    """
+    console.print(f"[cyan]🎨 Theme: {theme_id}[/cyan]")
+    console.print(f"[cyan]📄 Asset: {asset_key}[/cyan]")
+    console.print(f"\n{'='*80}")
+    console.print(content)
+    console.print(f"{'='*80}\n")
+
+
+def format_block_option(block: Any) -> str:
+    """Format a block for display in selection options.
+    
+    Args:
+        block: Block model instance
+        
+    Returns:
+        Formatted string showing Position | Name | Pronouns
+    """
+    settings = block.settings
+    position = settings.description or "N/A"
+    name = settings.text or "N/A"
+    pronouns = settings.subtitle or "N/A"
+    
+    return f"{position} | {name} | {pronouns}"
+
+
+def format_block_display(block: Any) -> str:
+    """Format a block for detailed display.
+    
+    Args:
+        block: Block model instance
+        
+    Returns:
+        Formatted string with block details
+    """
+    settings = block.settings
+    position = settings.description or "N/A"
+    name = settings.text or "N/A"
+    pronouns = settings.subtitle or "N/A"
+    
+    parts = []
+    if name != "N/A":
+        parts.append(f"Name: {name}")
+    if pronouns != "N/A":
+        parts.append(f"Pronouns: {pronouns}")
+    if position != "N/A":
+        parts.append(f"Position: {position}")
+    
+    return " | ".join(parts) if parts else "N/A"
+
+
+def display_blocks_table(blocks: List[Any], console: Console) -> None:
+    """Display blocks in a formatted Rich table.
+    
+    Args:
+        blocks: List of Block model instances
+        console: Rich Console instance
+    """
+    if not blocks:
+        console.print("[dim]No blocks to display.[/dim]\n")
+        return
+    
+    from rich.table import Table
+    
+    table = Table(
+        title=f"👥 Leadership Entries ({len(blocks)} found)",
+        show_header=True,
+        header_style="bold cyan"
+    )
+    table.add_column("Position", style="yellow")
+    table.add_column("Name", style="cyan")
+    table.add_column("Pronouns", style="blue")
+    table.add_column("Block ID", style="dim")
+    
+    for block in blocks:
+        settings = block.settings
+        position = settings.description or "N/A"
+        name = settings.text or "N/A"
+        pronouns = settings.subtitle or "N/A"
+        
+        table.add_row(position, name, pronouns, block.id)
+    
+    console.print(table)
+    console.print()
+
+
+def display_theme_assets_list(assets: List[Dict[str, Any]], theme_id: str, console: Console) -> None:
+    """Display list of theme assets grouped by type.
+    
+    Args:
+        assets: List of asset dictionaries
+        theme_id: Theme ID
+        console: Rich Console instance
+    """
+    if not assets:
+        console.print(f"[dim]No assets found in theme {theme_id}[/dim]\n")
+        return
+    
+    templates = [a for a in assets if a.get("key", "").startswith("templates/")]
+    sections = [a for a in assets if a.get("key", "").startswith("sections/")]
+    snippets = [a for a in assets if a.get("key", "").startswith("snippets/")]
+    
+    console.print(f"[cyan]📦 Theme {theme_id} Assets ({len(assets)} total):[/cyan]\n")
+    
+    if templates:
+        console.print("[yellow]📝 Templates:[/yellow]")
+        for asset in sorted(templates, key=lambda a: a.get("key", "")):
+            console.print(f"  - {asset.get('key')}")
+    
+    if sections:
+        console.print("\n[yellow]📐 Sections:[/yellow]")
+        for asset in sorted(sections, key=lambda a: a.get("key", "")):
+            console.print(f"  - {asset.get('key')}")
+    
+    if snippets:
+        console.print("\n[yellow]✂️  Snippets:[/yellow]")
+        for asset in sorted(snippets, key=lambda a: a.get("key", "")):
+            console.print(f"  - {asset.get('key')}")
+    
+    console.print()
 
 def get_order_csv_headers() -> List[str]:
     """Get CSV headers matching the Shopify export format."""
@@ -1060,9 +1838,9 @@ def order_to_csv_row(order_data: Dict[str, Any]) -> List[str]:
         line_item = edges[0]['node'] if edges else {}
     else:
         # Handle Connection format with nodes
-        nodes = getattr(line_items, 'nodes', []) if hasattr(line_items, 'nodes') else []
+        nodes = extract_connection_nodes(line_items)
         if nodes:
-            line_item = nodes[0].__json_data__ if hasattr(nodes[0], '__json_data__') else {}
+            line_item = extract_json_data(nodes[0], default={})
         else:
             line_item = {}
     
@@ -1080,9 +1858,9 @@ def order_to_csv_row(order_data: Dict[str, Any]) -> List[str]:
                 discount_code = node.get('title', '')
     else:
         # Handle Connection format
-        nodes = getattr(discount_apps, 'nodes', []) if hasattr(discount_apps, 'nodes') else []
+        nodes = extract_connection_nodes(discount_apps)
         for node in nodes:
-            node_data = node.__json_data__ if hasattr(node, '__json_data__') else {}
+            node_data = extract_json_data(node, default={})
             if 'code' in node_data:
                 discount_code = node_data.get('code', '')
                 break
@@ -1091,8 +1869,7 @@ def order_to_csv_row(order_data: Dict[str, Any]) -> List[str]:
     
     # Get billing address
     billing = order_data.get('billingAddress', {}) or {}
-    if hasattr(billing, '__json_data__'):
-        billing = billing.__json_data__
+    billing = extract_json_data(billing, default={})
     
     # Format updatedAt date (M/D/YYYY format)
     updated_at = format_date_for_csv(order_data.get('updatedAt'))
@@ -1104,18 +1881,10 @@ def order_to_csv_row(order_data: Dict[str, Any]) -> List[str]:
     phone = billing.get('phone') or order_data.get('phone') or ''
     
     # Get line item data (handle both dict and object formats)
-    if isinstance(line_item, dict):
-        line_item_data = line_item
-    else:
-        line_item_data = line_item.__json_data__ if hasattr(line_item, '__json_data__') else {}
+    line_item_data = extract_json_data(line_item, default={})
     
-    variant = line_item_data.get('variant', {})
-    if hasattr(variant, '__json_data__'):
-        variant = variant.__json_data__
-    
-    product = line_item_data.get('product', {})
-    if hasattr(product, '__json_data__'):
-        product = product.__json_data__
+    variant = extract_json_data(line_item_data.get('variant', {}), default={})
+    product = extract_json_data(line_item_data.get('product', {}), default={})
     
     # Build CSV row matching the exact column order
     row = [
@@ -1173,7 +1942,7 @@ def order_to_csv_row(order_data: Dict[str, Any]) -> List[str]:
     if refunds:
         total = 0.0
         for refund in refunds:
-            refund_data = refund.__json_data__ if hasattr(refund, '__json_data__') else refund
+            refund_data = extract_json_data(refund, default={})
             total_refunded_set = refund_data.get('totalRefundedSet', {})
             shop_money = total_refunded_set.get('shopMoney', {})
             amount_str = shop_money.get('amount', '0')
@@ -1181,7 +1950,7 @@ def order_to_csv_row(order_data: Dict[str, Any]) -> List[str]:
                 total += float(amount_str)
             except (ValueError, TypeError):
                 continue
-        total_refunded = f"{total:.2f}"
+        total_refunded = format_money_amount(total, default=f"{total:.2f}").replace(' USD', '')
     
     row.extend([is_canceled, total_refunded])
     
