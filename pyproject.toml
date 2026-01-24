@@ -6,11 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "bars"
 version = "1.0.0"
 description = "Big Apple Rec Sports - Backend & CLI"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.14"
 dependencies = [
     "click>=8.1.7",
     "click-aliases>=1.0.5",
     "click-extra>=0.15.0",
+    "pydantic>=2.12.0",
     "questionary>=2.0.0",
     "rich>=13.7.0",
     "sgqlc>=17.0",
@@ -20,13 +21,13 @@ dependencies = [
     "google-auth-httplib2==0.2.0",
     "google-auth-oauthlib==1.2.1",
     "lxml==5.3.0",
-    "pydantic==2.10.4",
     "python-dateutil==2.9.0",
     "python-dotenv==1.0.1",
     "PyYAML==6.0.2",
     "requests==2.32.3",
     "slack-bolt==1.20.1",
     "slack-sdk==3.30.0",
+    "validators>=0.22.0",
 ]
 
 [project.scripts]
@@ -52,11 +53,3 @@ pythonpath = [
 
 testpaths = ["backend/routers/tests"]
 addopts = "-v --tb=short" 
-
-[tool.ariadne-codegen]
-schema_path = "backend/modules/integrations/shopify/core/fetched_schema.json"
-queries_path = "backend/modules/integrations/shopify/builders"
-target_package_path = "backend/modules/integrations/shopify/generated_client"
-client_name = "ShopifyGeneratedClient"
-python_version = "3.11"
-include_comments = true 

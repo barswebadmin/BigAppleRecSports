@@ -511,7 +511,7 @@ class SlackService:
             )
         
         user_token_env_map = {
-            'leadership': 'SLACK_BOT_USER_TOKEN_LEADERSHIP',
+            'leadership': 'SLACK.LEADERSHIP_BOT.USER_TOKEN',
         }
         
         user_token = None
@@ -705,6 +705,8 @@ class SlackService:
         
         view = payload.get("view", {})
         callback_id = view.get("callback_id")
+
+        return {"text": "✅ Modal submission received"}
 
 
 

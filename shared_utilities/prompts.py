@@ -48,6 +48,9 @@ def prompt_text_input(
         style=_QUESTIONARY_STYLE
     ).ask()
     
+    if result is None:
+        raise KeyboardInterrupt("Cancelled by user")
+    
     if not result:
         return default_value or ""
     
@@ -80,6 +83,9 @@ def prompt_confirmation(
         default=default,
         style=_QUESTIONARY_STYLE
     ).ask()
+    
+    if result is None:
+        raise KeyboardInterrupt("Cancelled by user")
     
     return result if result is not None else default
 
@@ -159,6 +165,9 @@ def prompt_select_from_options(
     
     result = questionary.autocomplete(prompt_text, numbered, default=default_str, style=_QUESTIONARY_STYLE).ask()
     
+    if result is None:
+        raise KeyboardInterrupt("Cancelled by user")
+    
     if not result:
         return default_value or EXIT_SENTINEL
     
@@ -182,39 +191,89 @@ def prompt_select_from_options(
     return result_clean
 
 
-# ============================================================================
-# Legacy/Simple Prompt Choice (Kept for Compatibility)
-# ============================================================================
-
-def prompt_choice(
-    prompt: str,
-    choices: list[str],
-    default: Optional[str] = None
-) -> str:
-    """Simple prompt to select from a list of choices.
+def format_result_option(result: dict, fields: list[str], labels: Optional[dict[str, str]] = None) -> str:
+    """Format a single result as an option string.
     
-    For better UX with autocomplete, use prompt_select_from_options() instead.
+    Uses click_extra.style for colors, similar to search command.
     
     Args:
-        prompt: Prompt text
-        choices: List of valid choices
-        default: Optional default choice
+        result: Dictionary representing a result row
+        fields: List of field keys to display
+        labels: Optional dict mapping field keys to display labels
         
     Returns:
-        Selected choice
-    
-    Example:
-        env = prompt_choice(
-            "Select environment:",
-            ["development", "staging", "production"],
-            default="development"
-        )
+        Formatted option string with blue labels and | separators
     """
-    if not choices:
-        raise ValueError("Choices list cannot be empty")
+    import click_extra
     
-    choice_objects = [Choice(c, value=c) for c in choices]
-    default_choice = next((choice_objects[i] for i, c in enumerate(choices) if c.lower() == default.lower()), None) if default else None
+    parts = []
+    for field in fields:
+        label = (labels.get(field) if labels else None) or field.replace('_', ' ').title() + ":"
+        value = result.get(field, "unknown")
+        
+        # Format dates if they're datetime objects
+        if hasattr(value, 'strftime'):
+            value = value.strftime("%Y-%m-%d %H:%M:%S")
+        elif isinstance(value, str) and len(value) > 19:
+            value = value[:19]
+        
+        styled_label = click_extra.style(label, fg="blue")
+        parts.append(f"{styled_label} {value}")
     
-    result = questionary.select(prompt, choices=choice_objects, default=default_choice, style=_QUESTIONARY_STYLE).ask()
-    return result if result else (default or choices[0])
+    separator = click_extra.style("|", fg="blue")
+    return f" {separator} ".join(parts)
+
+
+def prompt_result_selection(
+    results: list[dict],
+    prompt_text: str,
+    fields: list[str],
+    labels: Optional[dict[str, str]] = None,
+    allow_all: bool = True
+) -> list[dict]:
+    """Prompt user to select one or all results from a list.
+    
+    Formats results using provided fields/labels and prompts for selection.
+    
+    Args:
+        results: List of dictionaries to choose from
+        prompt_text: Text to display in the prompt header
+        fields: List of field keys to display in each option
+        labels: Optional dict mapping field keys to display labels
+        allow_all: If True, includes "All" option. If False, requires single selection.
+        
+    Returns:
+        List of selected result dictionaries (always returns a list, even for single selections)
+    """
+    if not results:
+        raise ValueError("results list cannot be empty")
+    
+    if len(results) == 1:
+        return results
+    
+    options = []
+    result_map = {}
+    
+    for result in results:
+        option_text = format_result_option(result, fields, labels)
+        result_map[option_text] = result
+        options.append(option_text)
+    
+    if allow_all:
+        import click_extra
+        all_option = click_extra.style("All", fg="green", bold=True)
+        options_with_all = options + [all_option]
+    else:
+        options_with_all = options
+        all_option = None
+    
+    selected_option = prompt_select_from_options(prompt_text, options_with_all)
+    
+    if all_option:
+        selected_clean = strip_ansi(selected_option).strip().lower()
+        all_clean = strip_ansi(all_option).strip().lower()
+        
+        if selected_clean == all_clean or selected_clean == "all":
+            return results
+    
+    return [result_map[selected_option]]

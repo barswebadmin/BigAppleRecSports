@@ -1,8 +1,8 @@
 """Consolidated Slack Bolt app initialization for all bots."""
 
-import os
 from typing import Optional, Dict, Any, Union, List
 from slack_bolt import App
+from backend.config import config as global_config
 from modules.integrations.slack.client import SlackClient, SlackUserIdentifier
 from modules.integrations.slack.user_lookup import lookup_user as _lookup_user
 from modules.integrations.slack.slack_service import SlackService
@@ -17,7 +17,7 @@ class BotConfig:
 
     @property
     def token(self) -> str:
-        v = os.getenv(self._token_env_name)
+        v = global_config.get(self._token_env_name)
         if not v:
             raise RuntimeError(f"Missing env: {self._token_env_name}")
         return v
@@ -27,11 +27,11 @@ class BotConfig:
         """Optional User Token for operations requiring User Token Scopes."""
         if not self._user_token_env_name:
             return None
-        return os.getenv(self._user_token_env_name)
+        return global_config.get(self._user_token_env_name)
 
     @property
     def signing_secret(self) -> str:
-        v = os.getenv(self._secret_env_name)
+        v = global_config.get(self._secret_env_name)
         if not v:
             raise RuntimeError(f"Missing env: {self._secret_env_name}")
         return v
@@ -45,13 +45,13 @@ class Bots:
         Bots.Dev.token
         Bots.Leadership.signing_secret
     """
-    Dev               = BotConfig("SLACK_BOT_DEV_TOKEN",               "SLACK_BOT_DEV_SIGNING_SECRET")
-    Exec              = BotConfig("SLACK_BOT_EXEC_TOKEN",              "SLACK_BOT_EXEC_SIGNING_SECRET")
-    Leadership        = BotConfig("SLACK_BOT_LEADERSHIP_TOKEN",        "SLACK_BOT_LEADERSHIP_SIGNING_SECRET", "SLACK_BOT_USER_TOKEN_LEADERSHIP")
-    PaymentAssistance = BotConfig("SLACK_BOT_PAYMENT_ASSISTANCE_TOKEN","SLACK_BOT_PAYMENT_ASSISTANCE_SIGNING_SECRET")
-    Refunds           = BotConfig("SLACK_BOT_REFUNDS_TOKEN",           "SLACK_BOT_REFUNDS_SIGNING_SECRET")
-    Registrations     = BotConfig("SLACK_BOT_REGISTRATIONS_TOKEN",     "SLACK_BOT_REGISTRATIONS_SIGNING_SECRET")
-    Web               = BotConfig("SLACK_BOT_WEB_TOKEN",               "SLACK_BOT_WEB_SIGNING_SECRET")
+    Dev               = BotConfig("SLACK.DEV_BOT.TOKEN",                "SLACK.DEV_BOT.SIGNING_SECRET")
+    Exec              = BotConfig("SLACK.EXEC_BOT.TOKEN",               "SLACK.EXEC_BOT.SIGNING_SECRET")
+    Leadership        = BotConfig("SLACK.LEADERSHIP_BOT.TOKEN",         "SLACK.LEADERSHIP_BOT.SIGNING_SECRET", "SLACK.LEADERSHIP_BOT.USER_TOKEN")
+    PaymentAssistance = BotConfig("SLACK.PAYMENT_ASSISTANCE_BOT.TOKEN", "SLACK.PAYMENT_ASSISTANCE_BOT.SIGNING_SECRET")
+    Refunds           = BotConfig("SLACK.REFUNDS_BOT.TOKEN",            "SLACK.REFUNDS_BOT.SIGNING_SECRET")
+    Registrations     = BotConfig("SLACK.REGISTRATIONS_BOT.TOKEN",      "SLACK.REGISTRATIONS_BOT.SIGNING_SECRET")
+    Web               = BotConfig("SLACK.WEB_BOT.TOKEN",                "SLACK.WEB_BOT.SIGNING_SECRET")
 
 
 class SlackBot(App):

@@ -38,8 +38,8 @@ def test_users_all_mapping_structure():
 
 def test_bot_token_and_signing_secret_env(monkeypatch):
     # Set env vars for a specific bot (Registrations)
-    monkeypatch.setenv("SLACK_BOT_TOKEN_REGISTRATIONS", "xoxb-registrations-token")
-    monkeypatch.setenv("SLACK_SIGNING_SECRET_REGISTRATIONS", "registrations-secret")
+    monkeypatch.setenv("SLACK.REGISTRATIONS_BOT.TOKEN", "xoxb-registrations-token")
+    monkeypatch.setenv("SLACK.REGISTRATIONS_BOT.SIGNING_SECRET", "registrations-secret")
 
     assert SlackBot.Registrations.token == "xoxb-registrations-token"
     assert SlackBot.Registrations.signing_secret == "registrations-secret"

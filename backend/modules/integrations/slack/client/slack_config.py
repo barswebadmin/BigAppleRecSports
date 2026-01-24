@@ -60,12 +60,12 @@ class SlackConfig:
                     raise RuntimeError(f"Missing env: {self._secret_env_name}")
                 return v
 
-        Dev               = _Bot("SLACK_BOT_TOKEN_DEV",               "SLACK_SIGNING_SECRET_DEV")
-        Exec              = _Bot("SLACK_BOT_TOKEN_EXEC",              "SLACK_SIGNING_SECRET_EXEC")
-        PaymentAssistance = _Bot("SLACK_BOT_TOKEN_PAYMENT_ASSISTANCE","SLACK_SIGNING_SECRET_PAYMENT_ASSISTANCE")
-        Refunds           = _Bot("SLACK_BOT_TOKEN_REFUNDS",           "SLACK_SIGNING_SECRET_REFUNDS")
-        Registrations     = _Bot("SLACK_BOT_TOKEN_REGISTRATIONS",     "SLACK_SIGNING_SECRET_REGISTRATIONS")
-        Web               = _Bot("SLACK_BOT_TOKEN_WEB",               "SLACK_SIGNING_SECRET_WEB")
+        Dev               = _Bot("SLACK.DEV_BOT.TOKEN",                "SLACK.DEV_BOT.SIGNING_SECRET")
+        Exec              = _Bot("SLACK.EXEC_BOT.TOKEN",               "SLACK.EXEC_BOT.SIGNING_SECRET")
+        PaymentAssistance = _Bot("SLACK.PAYMENT_ASSISTANCE_BOT.TOKEN", "SLACK.PAYMENT_ASSISTANCE_BOT.SIGNING_SECRET")
+        Refunds           = _Bot("SLACK.REFUNDS_BOT.TOKEN",            "SLACK.REFUNDS_BOT.SIGNING_SECRET")
+        Registrations     = _Bot("SLACK.REGISTRATIONS_BOT.TOKEN",      "SLACK.REGISTRATIONS_BOT.SIGNING_SECRET")
+        Web               = _Bot("SLACK.WEB_BOT.TOKEN",                "SLACK.WEB_BOT.SIGNING_SECRET")
 
     # --------------------
     # Channels

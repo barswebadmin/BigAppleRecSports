@@ -10,10 +10,10 @@ import yaml
 from rich.console import Console
 from rich.syntax import Syntax
 
-from config_old_deprecated.main import Config
-from ..models.requests import FetchOrderRequest
-from ..services.orders_service import OrdersService
-from backend.modules.integrations.shopify import ShopifyClient
+from backend.config.main import Config
+from modules.integrations.shopify.models import FetchOrderRequest
+from modules.orders.services.orders_service import OrdersService
+from modules.integrations.shopify import ShopifyClient
 # from ..builders.shopify_request_builders import build_order_fetch_request_payload  # DEPRECATED: replaced by sgqlc
 
 # Toggle CLI debug logging here

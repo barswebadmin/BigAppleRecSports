@@ -353,7 +353,7 @@ def handle_slack_api_error(
                     click.echo("   4. After reinstall, you'll get a User Token (xoxp-...) - use that instead of the Bot Token", err=True)
                     click.echo("", err=True)
                     click.echo("   Note: User Tokens are tied to the user who installed the app.", err=True)
-                    click.echo("   You may need to set SLACK_USER_TOKEN_LEADERSHIP instead of SLACK_BOT_TOKEN_LEADERSHIP", err=True)
+                    click.echo("   You may need to set SLACK.LEADERSHIP_BOT.USER_TOKEN", err=True)
                 else:
                     scope_type = 'User Token Scopes' if scope_info['token_type'] == 'User Token' else 'Bot Token Scopes'
                     click.echo(f"   1. Go to OAuth & Permissions → {scope_type}", err=True)

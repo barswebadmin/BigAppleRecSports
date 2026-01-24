@@ -7,7 +7,7 @@ import os
 import json
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any
 
 
 logger = logging.getLogger("ConfigLogger")
@@ -23,9 +23,7 @@ class Config:
     
     def __init__(self, data: Optional[Dict[str, Any]] = None):
         if data is None:
-            env_path = find_dotenv('../.env')
-            if env_path:
-                load_dotenv(env_path, override=False)
+            self._load_dotenv()
             self._load_all_env_vars()
         else:
             self._load_from_dict(data)
@@ -34,22 +32,45 @@ class Config:
         """Load configuration from a dictionary."""
         for key, value in data.items():
             setattr(self, key, Config(value) if isinstance(value, dict) else value)
-    
-    def _parse_key(self, key: str) -> Tuple[Optional[str], Optional[str], bool]:
-        """
-        Parse a key into namespace and subkey if it contains a dot.
-        Returns: (namespace, subkey, has_dot)
-        """
-        if '.' not in key:
-            return None, None, False
-        namespace, subkey = key.split('.', 1)
-        return namespace.upper(), subkey.upper(), True
-    
-    def _get_or_create_namespace(self, namespace: str) -> 'Config':
-        """Get existing namespace Config or create a new one."""
-        if not hasattr(self, namespace):
-            setattr(self, namespace, Config({}))
-        return getattr(self, namespace)
+
+    def _load_dotenv(self) -> None:
+        """Load a nearby .env file into os.environ (no override)."""
+        candidates: list[Path] = []
+        here = Path(__file__).resolve()
+        candidates.append(here.parent / ".env")
+        candidates.append(here.parent.parent / ".env")
+        candidates.append(here.parent.parent.parent / ".env")
+
+        for env_path in candidates:
+            if env_path.exists():
+                load_dotenv(env_path, override=False)
+                return
+
+        # Fallback to dotenv's discovery (best-effort)
+        discovered = find_dotenv(".env", usecwd=True)
+        if discovered:
+            load_dotenv(discovered, override=False)
+
+    @staticmethod
+    def _normalize_key_part(part: str) -> str:
+        return part.replace("-", "_").upper()
+
+    @classmethod
+    def _build_nested_dict(cls, flat: Dict[str, str]) -> Dict[str, Any]:
+        root: Dict[str, Any] = {}
+        for key, value in flat.items():
+            parts = [cls._normalize_key_part(p) for p in key.split(".") if p]
+            if len(parts) < 2:
+                continue
+            cur: Dict[str, Any] = root
+            for seg in parts[:-1]:
+                nxt = cur.get(seg)
+                if not isinstance(nxt, dict):
+                    nxt = {}
+                    cur[seg] = nxt
+                cur = nxt
+            cur[parts[-1]] = value
+        return root
     
     def _load_google_service_account(self):
         """Load Google service account JSON file into config.GOOGLE.SERVICE_ACCOUNT."""
@@ -96,19 +117,19 @@ class Config:
     
     def _load_all_env_vars(self):
         """Load all environment variables and organize by dot notation."""
-        nested_data: Dict[str, Dict[str, str]] = {}
+        dotted: Dict[str, str] = {}
         flat_vars: Dict[str, str] = {}
-        
+
         for key, value in os.environ.items():
-            namespace, subkey, has_dot = self._parse_key(key)
-            if has_dot and namespace and subkey:
-                nested_data.setdefault(namespace, {})[subkey] = value
+            if "." in key:
+                dotted[key] = value
             else:
                 flat_vars[key.upper()] = value
-        
-        for namespace, values in nested_data.items():
-            setattr(self, namespace, Config(values))
-        
+
+        nested_data = self._build_nested_dict(dotted)
+        for key, value in nested_data.items():
+            setattr(self, key, Config(value) if isinstance(value, dict) else value)
+
         for key, value in flat_vars.items():
             setattr(self, key, value)
         
@@ -126,13 +147,8 @@ class Config:
         value = os.getenv(name)
         if value is None:
             return None
-        
-        namespace, subkey, has_dot = self._parse_key(name)
-        if has_dot and namespace and subkey:
-            namespace_obj = self._get_or_create_namespace(namespace)
-            setattr(namespace_obj, subkey, value)
-        else:
-            setattr(self, name.upper(), value)
+
+        setattr(self, name.upper(), value)
         return value
     
     def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
@@ -140,14 +156,16 @@ class Config:
         Get environment variable by key with optional default.
         Supports dot notation (e.g., 'GOOGLE.SERVICE_ACCOUNT_FILE').
         """
-        namespace, subkey, has_dot = self._parse_key(key)
-        if has_dot and namespace and subkey:
-            if hasattr(self, namespace):
-                namespace_obj = getattr(self, namespace)
-                if hasattr(namespace_obj, subkey):
-                    return getattr(namespace_obj, subkey)
+        if "." not in key:
             return os.getenv(key, default)
-        return os.getenv(key, default)
+
+        parts = [self._normalize_key_part(p) for p in key.split(".") if p]
+        cur: Any = self
+        for seg in parts:
+            if not hasattr(cur, seg):
+                return os.getenv(key, default)
+            cur = getattr(cur, seg)
+        return cur if isinstance(cur, str) else os.getenv(key, default)
     
     @property
     def environment(self) -> str:

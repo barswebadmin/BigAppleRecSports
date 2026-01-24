@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 
 def get_installed_packages(package_name: str) -> set[str]:
@@ -63,6 +64,53 @@ def get_pyproject_deps() -> set[str]:
     return deps
 
 
+def get_python_version_from_pyproject() -> Optional[str]:
+    """Extract Python version from pyproject.toml requires-python field.
+    
+    Returns:
+        Python version string (e.g., "3.14") or None if not found/parseable
+    """
+    pyproject_path = Path('pyproject.toml')
+    if not pyproject_path.exists():
+        return None
+    
+    content = pyproject_path.read_text()
+    match = re.search(r'requires-python\s*=\s*"([^"]+)"', content)
+    if not match:
+        return None
+    
+    required_version = match.group(1)
+    # Extract minimum version from requires-python spec (e.g., ">=3.14,<3.15" -> "3.14")
+    min_version_match = re.search(r'>=(\d+\.\d+)', required_version)
+    if not min_version_match:
+        return None
+    
+    return min_version_match.group(1)
+
+
+def find_python_interpreter(version: str) -> Optional[str]:
+    """Find Python interpreter for the given version.
+    
+    Args:
+        version: Python version string (e.g., "3.14")
+        
+    Returns:
+        Python command (e.g., "python3.14") or None if not found
+    """
+    python_cmd = f"python{version}"
+    
+    try:
+        result = subprocess.run(
+            [python_cmd, "--version"],
+            capture_output=True,
+            check=True,
+            timeout=5
+        )
+        return python_cmd
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return None
+
+
 def parse_production_dependencies() -> set[str]:
     """Parse PRODUCTION section from backend/requirements.txt."""
     deps = set()
@@ -104,12 +152,27 @@ def install_package() -> bool:
     """Install the bars CLI package with smart failure handling."""
     package_name = 'bars'
     
+    # Detect Python version from pyproject.toml
+    python_version = get_python_version_from_pyproject()
+    python_cmd = None
+    if python_version:
+        python_cmd = find_python_interpreter(python_version)
+        if python_cmd:
+            print(f"  Detected Python requirement: {python_version} (found {python_cmd})")
+        else:
+            print(f"  ⚠️  Python {python_version} not found, pipx will use default Python")
+    
     while True:
         print("  Installing bars CLI package...")
-        print("    📦 Running: pipx install -e . --force")
+        pipx_cmd = ['pipx', 'install', '-e', '.', '--force']
+        if python_cmd:
+            pipx_cmd.extend(['--python', python_cmd])
+            print(f"    📦 Running: pipx install -e . --force --python {python_cmd}")
+        else:
+            print("    📦 Running: pipx install -e . --force")
         print("    ⏳ This may take a moment (installing package and dependencies from pyproject.toml)...")
         result = subprocess.run(
-            ['pipx', 'install', '-e', '.', '--force'],
+            pipx_cmd,
             capture_output=False,  # Show output in real-time
             text=True
         )
@@ -120,8 +183,11 @@ def install_package() -> bool:
         
         # Installation failed - re-run with capture to show error details
         print("    ❌ Installation failed, capturing error details...")
+        error_cmd = ['pipx', 'install', '-e', '.', '--force']
+        if python_cmd:
+            error_cmd.extend(['--python', python_cmd])
         error_result = subprocess.run(
-            ['pipx', 'install', '-e', '.', '--force'],
+            error_cmd,
             capture_output=True,
             text=True
         )
@@ -148,9 +214,12 @@ def install_package() -> bool:
             
             if choice in ('c', 'continue'):
                 print("    🔄 Reinstalling bars CLI package (clean install)...")
-                print("    ⏳ Running: pipx reinstall bars --editable")
+                reinstall_cmd = ['pipx', 'reinstall', package_name, '--editable']
+                if python_cmd:
+                    reinstall_cmd.extend(['--python', python_cmd])
+                print(f"    ⏳ Running: {' '.join(reinstall_cmd)}")
                 reinstall_result = subprocess.run(
-                    ['pipx', 'reinstall', package_name, '--editable'],
+                    reinstall_cmd,
                     capture_output=False,  # Show output in real-time
                     text=True
                 )

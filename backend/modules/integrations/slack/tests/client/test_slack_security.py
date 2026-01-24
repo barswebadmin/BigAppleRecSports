@@ -30,7 +30,7 @@ def test_slack_signature_test_env_common_secret(sample_body: bytes, monkeypatch:
 def test_slack_signature_staging_specific_bot(sample_body: bytes, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENVIRONMENT", "staging")
     # Simulate SlackConfig.Bots.Registrations.signing_secret reading from env via SlackConfig
-    monkeypatch.setenv("SLACK_SIGNING_SECRET_REGISTRATIONS", "reg_secret_456")
+    monkeypatch.setenv("SLACK.REGISTRATIONS_BOT.SIGNING_SECRET", "reg_secret_456")
     ts = "1700000000"
     sig = _slack_signature("reg_secret_456", sample_body, ts)
 
@@ -41,7 +41,7 @@ def test_slack_signature_staging_specific_bot(sample_body: bytes, monkeypatch: p
 def test_slack_signature_staging_try_all_bots(sample_body: bytes, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENVIRONMENT", "staging")
     # Provide only Dev secret; no bot passed, so it should try all and match Dev
-    monkeypatch.setenv("SLACK_SIGNING_SECRET_DEV", "dev_secret_789")
+    monkeypatch.setenv("SLACK.DEV_BOT.SIGNING_SECRET", "dev_secret_789")
     ts = "1700000001"
     sig = _slack_signature("dev_secret_789", sample_body, ts)
 
@@ -51,7 +51,7 @@ def test_slack_signature_staging_try_all_bots(sample_body: bytes, monkeypatch: p
 
 def test_slack_signature_invalid(sample_body: bytes, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENVIRONMENT", "staging")
-    monkeypatch.setenv("SLACK_SIGNING_SECRET_REGISTRATIONS", "reg_secret_456")
+    monkeypatch.setenv("SLACK.REGISTRATIONS_BOT.SIGNING_SECRET", "reg_secret_456")
     ts = "1700000002"
     bad_sig = _slack_signature("wrong_secret", sample_body, ts)
 

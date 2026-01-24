@@ -1,8 +1,7 @@
 from typing import Dict, Any, Optional
 import requests
 
-from backend.config import config
-from backend.config_old_deprecated.main import Config
+from backend.config.main import Config, config
 from ..models.requests import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response

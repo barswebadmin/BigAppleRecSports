@@ -5,7 +5,6 @@ from .prompts import (
     prompt_text_input,
     prompt_confirmation,
     prompt_select_from_options,
-    prompt_output_format,
     format_result_option,
     prompt_result_selection,
 )
@@ -19,7 +18,6 @@ __all__ = [
     "prompt_text_input",
     "prompt_confirmation",
     "prompt_select_from_options",
-    "prompt_output_format",
     "format_result_option",
     "prompt_result_selection",
     "ValidationResult",

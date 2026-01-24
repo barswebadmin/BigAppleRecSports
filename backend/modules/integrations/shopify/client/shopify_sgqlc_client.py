@@ -7,16 +7,10 @@ against the Shopify Admin API using sgqlc operations.
 
 from typing import Dict, Any, Optional
 import urllib.error
-import sys
-from pathlib import Path
 from sgqlc.operation import Operation
 from sgqlc.endpoint.http import HTTPEndpoint
 
-# Import from backend config
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-from config import config as global_config  # type: ignore[import-untyped]
+from backend.config import config as global_config
 
 
 class ShopifySGQLCClient:
