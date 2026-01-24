@@ -60,12 +60,13 @@ class SlackConfig:
                     raise RuntimeError(f"Missing env: {self._secret_env_name}")
                 return v
 
-        Dev               = _Bot("SLACK_BOT_TOKEN_DEV",               "SLACK_SIGNING_SECRET_DEV")
-        Exec              = _Bot("SLACK_BOT_TOKEN_EXEC",              "SLACK_SIGNING_SECRET_EXEC")
-        PaymentAssistance = _Bot("SLACK_BOT_TOKEN_PAYMENT_ASSISTANCE","SLACK_SIGNING_SECRET_PAYMENT_ASSISTANCE")
-        Refunds           = _Bot("SLACK_BOT_TOKEN_REFUNDS",           "SLACK_SIGNING_SECRET_REFUNDS")
-        Registrations     = _Bot("SLACK_BOT_TOKEN_REGISTRATIONS",     "SLACK_SIGNING_SECRET_REGISTRATIONS")
-        Web               = _Bot("SLACK_BOT_TOKEN_WEB",               "SLACK_SIGNING_SECRET_WEB")
+        Dev               = _Bot("SLACK_BOT_DEV_TOKEN",               "SLACK_BOT_DEV_SIGNING_SECRET")
+        Exec              = _Bot("SLACK_BOT_EXEC_TOKEN",              "SLACK_BOT_EXEC_SIGNING_SECRET")
+        Leadership        = _Bot("SLACK_BOT_LEADERSHIP_TOKEN",        "SLACK_BOT_LEADERSHIP_SIGNING_SECRET")
+        PaymentAssistance = _Bot("SLACK_BOT_PAYMENT_ASSISTANCE_TOKEN","SLACK_BOT_PAYMENT_ASSISTANCE_SIGNING_SECRET")
+        Refunds           = _Bot("SLACK_BOT_REFUNDS_TOKEN",           "SLACK_BOT_REFUNDS_SIGNING_SECRET")
+        Registrations     = _Bot("SLACK_BOT_REGISTRATIONS_TOKEN",     "SLACK_BOT_REGISTRATIONS_SIGNING_SECRET")
+        Web               = _Bot("SLACK_BOT_WEB_TOKEN",               "SLACK_BOT_WEB_SIGNING_SECRET")
 
     # --------------------
     # Channels
