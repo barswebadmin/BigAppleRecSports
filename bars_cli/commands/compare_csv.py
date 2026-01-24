@@ -49,10 +49,10 @@ def compare_csv_cmd(
     FILE2: Path to second CSV file
     
     Examples:
-      bars utils compare-csv file1.csv file2.csv
-      bars utils compare-csv file1.csv file2.csv --key-column order_number
-      bars utils compare-csv file1.csv file2.csv --ignore-columns timestamp notes
-      bars --json utils compare-csv file1.csv file2.csv
+      bars compare-csv file1.csv file2.csv
+      bars compare-csv file1.csv file2.csv --key-column order_number
+      bars compare-csv file1.csv file2.csv --ignore-columns timestamp notes
+      bars --json compare-csv file1.csv file2.csv
     """
     from bars_cli._core.context import get_display_context
     from bars_cli.backend_services.shared.csv.compare import compare_csvs, format_differences
