@@ -3,37 +3,6 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 
-def _create_nested_property(model_path: str) -> property:
-    """
-    Internal helper to create a property for a nested attribute.
-    Used by __pydantic_init_subclass__ to process __nested_accessors__ dictionary.
-    
-    Args:
-        model_path: Dot-notation path to nested attribute (e.g., "profile.email")
-    
-    Returns:
-        A property object with getter and setter
-    """
-    def getter(self) -> Any:
-        """Get the nested attribute value."""
-        obj = self
-        for attr in model_path.split('.'):
-            obj = getattr(obj, attr)
-        return obj
-    
-    def setter(self, value: Any) -> None:
-        """Set the nested attribute value."""
-        parts = model_path.split('.')
-        obj = self
-        # Navigate to the parent object
-        for attr in parts[:-1]:
-            obj = getattr(obj, attr)
-        # Set the final attribute
-        setattr(obj, parts[-1], value)
-    
-    return property(getter, setter)
-
-
 class ApiModel(BaseModel):
     """
     Universal base model for all external APIs.
@@ -94,8 +63,24 @@ class ApiModel(BaseModel):
             if isinstance(nested_accessors, dict):
                 for accessor_name, model_path in nested_accessors.items():
                     # Create a property for each nested accessor
-                    prop = _create_nested_property(model_path)
-                    setattr(cls, accessor_name, prop)
+                    def getter(self, path=model_path) -> Any:
+                        """Get the nested attribute value."""
+                        obj = self
+                        for attr in path.split('.'):
+                            obj = getattr(obj, attr)
+                        return obj
+                    
+                    def setter(self, value: Any, path=model_path) -> None:
+                        """Set the nested attribute value."""
+                        parts = path.split('.')
+                        obj = self
+                        # Navigate to the parent object
+                        for attr in parts[:-1]:
+                            obj = getattr(obj, attr)
+                        # Set the final attribute
+                        setattr(obj, parts[-1], value)
+                    
+                    setattr(cls, accessor_name, property(getter, setter))
     
     def to_json_camel(self) -> str:
         """

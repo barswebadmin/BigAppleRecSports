@@ -16,6 +16,11 @@ class ValidationResult:
     input_after_validation: Optional[Any]
     error_message: Optional[str] = None
     
+    @property
+    def is_valid(self) -> bool:
+        """Check if validation passed (compatible with engine_cli API)."""
+        return self.error_message is None
+    
     # Backwards compatibility for dict-like access
     def get(self, key: str, default=None):
         """Dict-like .get() for backwards compatibility."""
@@ -130,6 +135,45 @@ def validate_shopify_variant_id_format(variant_id: Optional[str]) -> ValidationR
     if re.match(r'^\d{8,20}$', variant_id) is None and re.match(r'^gid://shopify/ProductVariant/\d{8,20}$', variant_id) is None:
         return ValidationResult.failure("Invalid variant ID format")
     return ValidationResult.success()
+
+
+def validate(
+    input: Any,
+    validation_config: Dict[str, Any]
+) -> ValidationResult:
+    """Validate input based on validation configuration (compatible with engine_cli API).
+    
+    Args:
+        input: Value to validate
+        validation_config: Dict containing validation_type and other options
+        
+    Returns:
+        ValidationResult indicating success or failure with error message
+        
+    Example:
+        result = validate("leadership", {
+            "validation_type": "enum",
+            "allowed_values": ["Leadership", "Refunds"],
+            "case_sensitive": False
+        })
+        if result.is_valid:
+            print("Valid!")
+    """
+    validation_type = validation_config.get("validation_type")
+    
+    if not validation_type:
+        return ValidationResult.failure("validation_config must contain 'validation_type'")
+    
+    # Handle enum validation (most common case)
+    if validation_type == "enum":
+        allowed_values = validation_config.get("allowed_values", [])
+        case_sensitive = validation_config.get("case_sensitive", False)
+        if not allowed_values:
+            return ValidationResult.failure("validation_config must contain 'allowed_values' list for enum validation")
+        return validate_enum(str(input), allowed_values, case_sensitive)
+    
+    # For other validation types, return failure (not implemented in bars_cli yet)
+    return ValidationResult.failure(f"Validation type '{validation_type}' not yet implemented in bars_cli")
 
 
 def validate_enum(value: str, allowed_values: list[str], case_sensitive: bool = False) -> ValidationResult:
