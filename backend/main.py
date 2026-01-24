@@ -124,6 +124,10 @@ app.include_router(slack.router)
 app.include_router(webhooks.router)
 app.include_router(refunds.router)
 
+# Theme template editing
+from backend.routers import theme_templates
+app.include_router(theme_templates.router)
+
 
 @app.get("/")
 async def root():

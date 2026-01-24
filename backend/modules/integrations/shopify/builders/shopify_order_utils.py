@@ -133,6 +133,8 @@ def get_order_details(order_id: str, request_func: Callable[[Dict[str, Any]], An
         }
     return response["data"]["order"]
 
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
+# This function contains hardcoded "via Slack workflow" in refund notes (lines 168, 208)
 def create_refund(
     order_id: str, refund_amount: float, refund_type: str, request_func: Callable[[Dict[str, Any]], Any]
 ) -> Dict[str, Any]:
