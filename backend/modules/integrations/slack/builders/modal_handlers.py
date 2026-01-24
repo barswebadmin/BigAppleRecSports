@@ -176,20 +176,9 @@ class SlackModalHandlers:
         last_name: str,
         refund_type: str,
     ) -> List[Dict[str, Any]]:
-        """Build the modal blocks for the deny request form - use the one from slack_refunds_utils"""
-        # Import the slack_refunds_utils to use its method
-        from .slack_refunds_utils import SlackRefundsUtils
-
-        # Create a temporary instance to access the method
-        # This is a bit of a workaround but avoids duplicating the logic
-        temp_utils = SlackRefundsUtils(None, None)  # type: ignore
-        return temp_utils._build_deny_request_modal_blocks(
-            raw_order_number=raw_order_number,
-            requestor_email=requestor_email,
-            first_name=first_name,
-            last_name=last_name,
-            refund_type=refund_type,
-        )
+        """Build the modal blocks for the deny request form - refund functionality removed"""
+        logger.warning("build_deny_request_modal_blocks called but refund functionality has been removed")
+        return []
 
     def _show_modal_to_user(
         self,

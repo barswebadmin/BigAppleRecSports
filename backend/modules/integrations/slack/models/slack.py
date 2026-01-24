@@ -11,6 +11,8 @@ import re
 from shared.model_config import ApiModel
 
 
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
+# Check if RefundType is used elsewhere before deleting
 class RefundType(str, Enum):
     """Enum for refund types"""
     REFUND = "refund"
@@ -26,8 +28,11 @@ class SlackActionType(str, Enum):
 
 class SlackMessageType(str, Enum):
     """Enum for Slack message types"""
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     REFUND_REQUEST = "refund_request"
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     REFUND_CONFIRMATION = "refund_confirmation"
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     REFUND_DENIAL = "refund_denial"
     ORDER_UPDATE = "order_update"
     LEADERSHIP_NOTIFICATION = "leadership_notification"
@@ -37,6 +42,7 @@ from .slack_user import SlackUser
 from .slack_channel import SlackChannel
 
 
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
 class RefundSlackNotificationRequest(ApiModel):
     """
     Request model for sending refund notifications to Slack.
@@ -95,6 +101,7 @@ class RefundSlackNotificationRequest(ApiModel):
         return v
 
 
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
 class SlackRefundConfirmation(ApiModel):
     """
     Model for refund confirmation messages sent to Slack.
@@ -126,6 +133,7 @@ class SlackRefundConfirmation(ApiModel):
     shopify_refund_id: Optional[str] = None
 
 
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
 class SlackRefundDenial(ApiModel):
     """
     Model for refund denial messages sent to Slack.
@@ -243,6 +251,7 @@ class SlackLeadershipNotification(ApiModel):
     csv_data: Optional[List[List[str]]] = None
 
 
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
 class RefundButtons:
     """Button definitions for refund-related actions"""
     
@@ -330,11 +339,14 @@ class Slack:
     """
     
     # Request models
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundNotification = RefundSlackNotificationRequest
     ProcessLeadershipCSV = ProcessLeadershipCSVRequest
     
     # Confirmation/Status models
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundConfirmation = SlackRefundConfirmation
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundDenial = SlackRefundDenial
     OrderUpdate = SlackOrderUpdate
     LeadershipNotification = SlackLeadershipNotification
@@ -344,9 +356,11 @@ class Slack:
     Channel = SlackChannel
     
     # Button classes
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundButtons = RefundButtons
     
     # Enums
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundType = RefundType
     ActionType = SlackActionType
     MessageType = SlackMessageType
