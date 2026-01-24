@@ -1,7 +1,20 @@
 """UI utilities for BARS CLI."""
 
-from .styling import success, error, warning, info, style_command
-from .display import display_table, display_json
+from .styling import (
+    get_console,
+    FORMATTED_THEME,
+    SIMPLE_THEME,
+    JSON_THEME,
+)
+from .display import (
+    display_table,
+    display_json,
+    format_datetime,
+    create_info_table,
+    create_panel,
+    create_text_panel,
+    display_json_syntax,
+)
 from .terminal import (
     clear_lines,
     flush_output,
@@ -14,13 +27,17 @@ from .terminal import (
 )
 
 __all__ = [
-    "success",
-    "error",
-    "warning",
-    "info",
-    "style_command",
+    "get_console",
+    "FORMATTED_THEME",
+    "SIMPLE_THEME",
+    "JSON_THEME",
     "display_table",
     "display_json",
+    "format_datetime",
+    "create_info_table",
+    "create_panel",
+    "create_text_panel",
+    "display_json_syntax",
     "clear_lines",
     "flush_output",
     "save_cursor_position",

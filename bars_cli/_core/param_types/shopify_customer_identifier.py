@@ -3,7 +3,7 @@
 from typing import Dict, Any, Optional, Callable
 
 from .base import ValidatedParamType
-from ..prompts import prompt_select_from_options, EXIT_SENTINEL
+from ..prompts import prompt_select_from_options
 
 # Lazy import for ShopifyService to avoid circular dependencies
 _normalize_customer_id: Optional[Callable] = None
@@ -122,7 +122,7 @@ def _convert_shopify_customer_identifier(identifier: str) -> Dict[str, Any]:
             options=["First name", "Last name"]
         )
         
-        if choice == EXIT_SENTINEL:
+        if choice is None:
             raise ValueError("Name type selection cancelled")
         
         if choice == "First name":
