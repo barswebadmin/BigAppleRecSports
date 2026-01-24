@@ -81,8 +81,6 @@ def get_user_cmd(ctx: click.Context, identifier: Dict[str, Any]) -> Optional[Sla
     """
     Get Slack user details by email or ID.
     
-    Uses the leadership bot's SlackClient instance.
-    
     IDENTIFIER: User's email address or Slack user ID (e.g., 'U01ABC123').
     
     Examples:
@@ -90,28 +88,59 @@ def get_user_cmd(ctx: click.Context, identifier: Dict[str, Any]) -> Optional[Sla
       bars slack user get U03LZKQSHEU
       bars --json slack user get stephen@example.com
     """
-    from bars_cli.commands.slack._shared.command_helpers import get_admin_bot
+    from bars_cli._core.context import get_service
     
-    bot = get_admin_bot(ctx)
+    slack_service = get_service(ctx, 'slack_service')
+    json_output = ctx.obj.get('json_output', False) if ctx.obj else False
+    should_display = ctx.obj.get('should_display', True) if ctx.obj else True
     
-    # Convert result to SlackUser model if it's a dict
-    result = handle_slack_get_command(
-        ctx=ctx,
-        identifier=identifier,
-        lookup_method=bot.lookup_user,
-        format_func=_format_user_for_display,
-        entity_name="user",
-        identifier_required_msg="User identifier is required (email or user ID)",
-        extract_identifier_value=_extract_user_identifier
-    )
+    if not identifier:
+        error_msg = "User identifier is required (email or user ID)"
+        if json_output:
+            from bars_cli._core.utils.json_output import output_json_error
+            output_json_error(error_msg)
+        else:
+            click.echo(f"❌ {error_msg}", err=True)
+        raise click.ClickException(error_msg)
     
-    # Convert dict to SlackUser model for type safety
-    if result and isinstance(result, dict):
+    identifier_value = _extract_user_identifier(identifier)
+    
+    if should_display and not json_output:
+        click.echo(f"🔍 Looking up: {identifier_value}", err=True)
+    
+    try:
+        user_data = slack_service.lookup_user(identifier, bot_name='leadership')
+        
+        if not user_data:
+            error_msg = f"User not found: {identifier_value}"
+            if json_output:
+                from bars_cli._core.utils.json_output import output_json_error
+                output_json_error(error_msg)
+            else:
+                click.echo(f"❌ {error_msg}", err=True)
+            raise click.ClickException(error_msg)
+        
+        if should_display:
+            if json_output:
+                from bars_cli._core.utils.json_output import output_json_item
+                output_json_item(user_data)
+            else:
+                click.echo(_format_user_for_display(user_data))
+        
         try:
-            return SlackUser(**result)  # type: ignore[return-value]
+            return SlackUser(**user_data)
         except Exception:
-            # Return dict if model creation fails (shouldn't happen, but handle gracefully)
-            return None  # type: ignore[return-value]
+            return None
     
-    return result  # type: ignore[return-value]
+    except click.ClickException:
+        raise
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        if json_output:
+            from bars_cli._core.utils.json_output import output_json_error
+            output_json_error(error_msg, error_type=error_type)
+        else:
+            click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
+        raise click.ClickException(error_msg) from e
 
