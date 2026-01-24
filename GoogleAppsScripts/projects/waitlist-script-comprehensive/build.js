@@ -3,5 +3,5 @@
  * Delegates to shared GAS esbuild tool
  */
 
-require('../../remote-sync-tools/build.js');
+require('../../../../scripts/deployment/google/build.js');
 

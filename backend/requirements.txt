@@ -55,11 +55,3 @@ pytest-clarity==1.0.1
 
 # HTTP testing client
 httpx==0.25.2
-
-# ============================================================================
-# DEPLOYMENT NOTES
-# ============================================================================
-# This file contains only backend service dependencies
-# For lambda functions: see ../requirements.txt
-# For GAS projects: no Python dependencies needed
-# ============================================================================

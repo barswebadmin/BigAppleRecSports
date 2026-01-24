@@ -1,0 +1,113 @@
+name: Deploy AWS Lambda Functions
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lambda/functions/**'
+      - '.github/workflows/deploy-aws.yml'
+  workflow_dispatch:
+
+# TODO: Future enhancement - Add pull_request trigger for preview/staging deployments
+# This would allow testing Lambda deployments before merging PRs.
+# Requirements:
+#   - Staging AWS environment (separate account or staging prefix for resources)
+#   - Staging-specific AWS credentials (AWS_STAGING_ACCESS_KEY_ID, AWS_STAGING_SECRET_ACCESS_KEY)
+#   - Staging Lambda function naming convention (e.g., {function}-staging)
+#   - Update deploy_aws.sh to support staging environment flag
+#   - Consider auto-cleanup of staging functions after PR merge/close
+#   - Staging-specific environment variables and secrets
+# Example trigger:
+#   pull_request:
+#     branches: [main]
+#     paths:
+#       - 'lambda/functions/**'
+#     types: [opened, synchronize, reopened]
+    inputs:
+      function:
+        description: 'Function name to deploy (or "all" for all functions)'
+        required: true
+        default: 'all'
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Get Python version
+        id: python-version
+        run: echo "version=$(python scripts/ci/get_python_version.py)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ steps.python-version.outputs.version }}
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Determine functions to deploy
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger: use input or deploy all
+            FUNCTION_INPUT="${{ github.event.inputs.function }}"
+            if [ "$FUNCTION_INPUT" == "all" ] || [ -z "$FUNCTION_INPUT" ]; then
+              echo "📦 Manual deployment: all functions"
+              CHANGED=$(find lambda/functions -maxdepth 1 -type d -not -name "functions" -not -name "tests" -not -name "SyncSecretsToLambda" | sed 's|lambda/functions/||' | sort)
+            else
+              echo "📦 Manual deployment: $FUNCTION_INPUT"
+              # Validate function exists
+              if [ ! -d "lambda/functions/$FUNCTION_INPUT" ]; then
+                echo "❌ Function $FUNCTION_INPUT not found"
+                echo "has_changes=false" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              CHANGED="$FUNCTION_INPUT"
+            fi
+          else
+            # Automatic trigger: only deploy changed functions
+            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- lambda/functions/ | grep -E '^lambda/functions/[^/]+/' | cut -d/ -f3 | sort -u)
+          fi
+          
+          if [ -z "$CHANGED" ]; then
+            echo "⏭️ No Lambda functions to deploy, skipping"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "Functions to deploy: $CHANGED"
+          echo "CHANGED_FUNCTIONS<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+
+      - name: Deploy functions
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          CI: 'true'
+        run: |
+          echo "Functions to deploy: $CHANGED_FUNCTIONS"
+          
+          # Deploy using unified script (handles space-separated list)
+          # Version increment and commit happens inside deploy_aws.sh
+          bash scripts/deployment/deploy_aws.sh --batch $CHANGED_FUNCTIONS

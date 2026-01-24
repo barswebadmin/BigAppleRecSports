@@ -1,0 +1,186 @@
+name: Deploy Google Apps Scripts
+
+# Prevent duplicate runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  # Manual deployment with project and action selection
+  workflow_dispatch:
+    inputs:
+      project:
+        description: 'GAS project to deploy'
+        required: true
+        type: choice
+        options:
+          - refund-web-app
+          - create-products-new
+          - veteran-tags
+          - process-refunds-exchanges
+          - waitlist-script-comprehensive
+          - create-products-from-registration-info
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - push
+          - deploy
+        default: 'deploy'
+
+  # Automatic deployment on push to main (COMMENTED OUT - not active)
+  # Uncomment when ready to enable automatic deployments
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'GoogleAppsScripts/projects/**'
+  #     - '.github/workflows/deploy-google.yml'
+
+jobs:
+  deploy:
+    name: Deploy GAS Project
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Get Python version
+        id: python-version
+        run: echo "version=$(python scripts/ci/get_python_version.py)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ steps.python-version.outputs.version }}
+
+      - name: Install npm dependencies
+        run: |
+          cd GoogleAppsScripts
+          npm install
+
+      - name: Install clasp
+        run: |
+          npm install -g @google/clasp
+
+      - name: Set up clasp authentication
+        env:
+          CLASP_CREDENTIALS: ${{ secrets.CLASP_CREDENTIALS }}
+        run: |
+          if [ -z "$CLASP_CREDENTIALS" ]; then
+            echo "❌ CLASP_CREDENTIALS secret not found"
+            exit 1
+          fi
+          
+          mkdir -p ~/.config
+          echo "$CLASP_CREDENTIALS" > ~/.clasprc.json
+          echo "✅ Clasp credentials configured"
+
+      - name: Determine project and action (manual)
+        if: github.event_name == 'workflow_dispatch'
+        id: manual-config
+        run: |
+          PROJECT="${{ github.event.inputs.project }}"
+          ACTION="${{ github.event.inputs.action }}"
+          
+          echo "project=$PROJECT" >> $GITHUB_OUTPUT
+          echo "action=$ACTION" >> $GITHUB_OUTPUT
+          
+          echo "📦 Selected project: $PROJECT"
+          echo "🔧 Selected action: $ACTION"
+
+      # COMMENTED OUT - Automatic deployment detection
+      # Uncomment when ready to enable automatic deployments
+      # - name: Determine changed project (automatic)
+      #   if: github.event_name == 'push'
+      #   id: auto-config
+      #   run: |
+      #     CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- GoogleAppsScripts/projects/ || echo "")
+      #     
+      #     if [ -z "$CHANGED_FILES" ]; then
+      #       echo "⏭️ No GAS project changes detected"
+      #       echo "has_changes=false" >> $GITHUB_OUTPUT
+      #       exit 0
+      #     fi
+      #     
+      #     # Extract unique project names from changed files
+      #     CHANGED_PROJECTS=$(echo "$CHANGED_FILES" | grep -oE 'GoogleAppsScripts/projects/([^/]+)' | cut -d/ -f3 | sort -u)
+      #     
+      #     if [ -z "$CHANGED_PROJECTS" ]; then
+      #       echo "⏭️ No GAS project changes detected"
+      #       echo "has_changes=false" >> $GITHUB_OUTPUT
+      #       exit 0
+      #     fi
+      #     
+      #     # For now, only deploy one project at a time
+      #     # If multiple projects changed, deploy the first one
+      #     PROJECT=$(echo "$CHANGED_PROJECTS" | head -1)
+      #     
+      #     echo "project=$PROJECT" >> $GITHUB_OUTPUT
+      #     echo "action=deploy" >> $GITHUB_OUTPUT
+      #     echo "has_changes=true" >> $GITHUB_OUTPUT
+      #     
+      #     echo "📦 Changed project: $PROJECT"
+      #     echo "🔧 Action: deploy (push + deploy)"
+
+      - name: Deploy GAS project
+        if: github.event_name == 'workflow_dispatch'
+        # When automatic deployment is enabled, change condition to:
+        # if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.auto-config.outputs.has_changes == 'true')
+        run: |
+          PROJECT="${{ steps.manual-config.outputs.project }}"
+          ACTION="${{ steps.manual-config.outputs.action }}"
+          # When automatic deployment is enabled, use:
+          # PROJECT="${{ github.event_name == 'workflow_dispatch' && steps.manual-config.outputs.project || steps.auto-config.outputs.project }}"
+          # ACTION="${{ github.event_name == 'workflow_dispatch' && steps.manual-config.outputs.action || steps.auto-config.outputs.action }}"
+          
+          if [ -z "$PROJECT" ]; then
+            echo "❌ Project not specified"
+            exit 1
+          fi
+          
+          PROJECT_DIR="GoogleAppsScripts/projects/$PROJECT"
+          
+          if [ ! -d "$PROJECT_DIR" ]; then
+            echo "❌ Project directory not found: $PROJECT_DIR"
+            exit 1
+          fi
+          
+          if [ ! -f "$PROJECT_DIR/.clasp.json" ]; then
+            echo "❌ .clasp.json not found in $PROJECT_DIR"
+            exit 1
+          fi
+          
+          echo "🚀 Deploying project: $PROJECT"
+          echo "🔧 Action: $ACTION"
+          
+          if [ "$ACTION" = "push" ]; then
+            echo "📤 Pushing code to Google Apps Script..."
+                  bash scripts/deployment/push_google.sh "$PROJECT"
+          elif [ "$ACTION" = "deploy" ]; then
+            echo "🚀 Pushing and deploying to Google Apps Script..."
+                  bash scripts/deployment/deploy_google.sh "$PROJECT"
+          else
+            echo "❌ Unknown action: $ACTION"
+            exit 1
+          fi
+
+      - name: Deployment summary
+        if: always() && github.event_name == 'workflow_dispatch'
+        run: |
+          echo "📊 === DEPLOYMENT SUMMARY ==="
+          echo "🌐 Project: ${{ github.event.inputs.project }}"
+          echo "🔧 Action: ${{ github.event.inputs.action }}"
+          echo "📱 Branch: ${{ github.ref_name }}"
+          echo "🔗 Commit: ${{ github.sha }}"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "🕐 Time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "🔄 Trigger type: ${{ github.event_name }}"
+          echo "=========================="

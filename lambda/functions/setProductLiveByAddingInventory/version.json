@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "build": 4,
+  "last_updated": "2025-09-03",
+  "codename": "Product Live Status Handler",
+  "version_history": [
+    {
+      "version": "1.0.0",
+      "date": "2025-09-03",
+      "description": "Initial Lambda function for setting products live by adding inventory"
+    }
+  ]
+}

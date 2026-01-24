@@ -302,7 +302,7 @@ Automatic deployment via GitHub Actions on push to `main`:
 ### Manual Deployment
 ```bash
 # Deploy to Render
-./scripts/deploy_to_render.sh
+./scripts/deployment/deploy_backend.py
 
 # Sync secrets
 ./scripts/sync_render_secrets.py
@@ -315,9 +315,8 @@ Deployed via GitHub Actions:
 
 ### Google Apps Scripts
 ```bash
-# Deploy using remote-sync-tools
-cd GoogleAppsScripts
-./remote-sync-tools/deploy.sh project-name
+# Deploy using centralized scripts
+bash scripts/deployment/deploy_google.sh project-name
 ```
 
 ## 🧪 Testing Strategy

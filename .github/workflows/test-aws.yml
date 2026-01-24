@@ -1,0 +1,50 @@
+name: Test AWS Lambda
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lambda/functions/**'
+      - '.github/workflows/test-aws.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lambda/functions/**'
+      - '.github/workflows/test-aws.yml'
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test-aws:
+    name: Lambda Tests
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' || github.event_name == 'pull_request') && !startsWith(github.head_ref || github.ref_name, 'dependabot/') }}
+    env:
+      AWS_DEFAULT_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get Python version
+        id: python-version
+        run: echo "version=$(python scripts/ci/get_python_version.py)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ steps.python-version.outputs.version }}
+
+      - name: Install dependencies
+        run: python scripts/ci/install_dependencies.py lambda
+
+      - name: Compile Lambda functions
+        id: compile
+        run: python scripts/ci/run_script.py scripts.compilation.compile_main compile_lambda
+
+      - name: Run Lambda tests
+        if: steps.compile.outcome == 'success'
+        run: python scripts/ci/run_script.py scripts.testing.run_tests run_lambda_tests

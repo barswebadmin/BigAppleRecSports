@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "build": 6,
+  "last_updated": "2025-09-03",
+  "codename": "Scheduled Product Changes Handler",
+  "version_history": [
+    {
+      "version": "1.0.0",
+      "date": "2025-09-03",
+      "description": "Initial Lambda function for scheduled Shopify product changes"
+    }
+  ]
+}
