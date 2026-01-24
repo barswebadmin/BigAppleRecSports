@@ -17,18 +17,6 @@ class ShopifyConfig:
             self._token = os.getenv("SHOPIFY_DEV_TOKEN", "SHOPIFY_DEV_TOKEN")
             self._location_id = os.getenv("SHOPIFY_DEV_LOCATION_ID", "SHOPIFY_DEV_LOCATION_ID")
 
-        # HTTP behavior
-        self._timeout_seconds = int(os.getenv("SHOPIFY_TIMEOUT_SECONDS", "10"))
-        self._max_retries = int(os.getenv("SHOPIFY_MAX_RETRIES", "3"))
-
-    @property
-    def timeout_seconds(self) -> int:
-        return self._timeout_seconds
-
-    @property
-    def max_retries(self) -> int:
-        return self._max_retries
-
     @property
     def token(self) -> str:
         if not self._token:

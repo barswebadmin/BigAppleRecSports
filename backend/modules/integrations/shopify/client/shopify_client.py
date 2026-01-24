@@ -1,8 +1,8 @@
 from typing import Dict, Any, Optional
 import requests
 
-from config import config
-from config_old_deprecated.main import Config
+from backend.config import config
+from backend.config_old_deprecated.main import Config
 from ..models.requests import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response
@@ -23,12 +23,12 @@ class ShopifyClient:
     # HTTP helper
     # ------------------------------------------------------------------
     def post_graphql_safe(self, body: Dict[str, Any]) -> requests.Response:
-        """POST to Shopify GraphQL with retries and timeout using config settings."""
+        """POST to Shopify GraphQL with retries and timeout."""
         cfg = self._config or config
         url = cfg.Shopify.graphql_url
         headers = cfg.Shopify.headers
-        max_retries = cfg.Shopify.max_retries
-        timeout_seconds = cfg.Shopify.timeout_seconds
+        max_retries = 3
+        timeout_seconds = 10
         
         # Debug: Print the actual URL being used (remove in production)
         # print(f"[SHOPIFY_CLIENT_DEBUG] Making request to: {url}")
