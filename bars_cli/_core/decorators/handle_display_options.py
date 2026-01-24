@@ -142,6 +142,9 @@ def handle_display_options(
                 # We only prevent exit here if explicitly set to False
                 return result
                 
+            except (KeyboardInterrupt, click.Abort):
+                # User cancelled - exit gracefully with code 0
+                sys.exit(0)
             except click.ClickException as e:
                 # Click exceptions already have good error messages
                 if should_exit:

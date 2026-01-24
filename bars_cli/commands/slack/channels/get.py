@@ -65,9 +65,19 @@ def get_channel_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]]):
       bars slack channel get C092RU7R6PL
       bars --json slack channel get general
     """
-    from bars_cli.commands.slack._shared.command_helpers import get_admin_bot
+    def get_leadership_bot(ctx: click.Context) -> Any:
+        """Get leadership bot from context or initialize it."""
+        bot = ctx.meta.get('leadership_bot')
+        if not bot:
+            try:
+                from bars_cli.backend_services.slack.bot_apps.bot_apps import leadership_bot
+                ctx.meta['leadership_bot'] = leadership_bot
+                bot = leadership_bot
+            except Exception as e:
+                raise click.ClickException(f"Failed to initialize leadership bot: {e}")
+        return bot
     
-    bot = get_admin_bot(ctx)
+    bot = get_leadership_bot(ctx)
     
     return handle_slack_get_command(
         ctx=ctx,

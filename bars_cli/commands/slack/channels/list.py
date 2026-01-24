@@ -34,13 +34,30 @@ def list_channels_cmd(ctx: click.Context, include_archived: bool) -> Optional[Li
     should_display = display_override if display_override is not None else True
     
     try:
-        # Get admin_bot from context meta (initialized at slack group level)
-        bot = ctx.meta['admin_bot']
+        # Get leadership_bot from context meta (has channel access)
+        bot = ctx.meta.get('leadership_bot')
+        
+        # If leadership_bot not in meta, try to initialize it
+        if not bot:
+            try:
+                from bars_cli.backend_services.slack.bot_apps.bot_apps import leadership_bot
+                ctx.meta['leadership_bot'] = leadership_bot
+                bot = leadership_bot
+            except Exception as e:
+                error_msg = f"Failed to initialize leadership bot: {e}"
+                if should_display:
+                    if json_output:
+                        click.echo(json.dumps({"error": error_msg}, indent=2), err=True)
+                    else:
+                        click.echo(f"❌ {error_msg}", err=True)
+                if exit_override is None or exit_override:
+                    sys.exit(1)
+                raise
         
         if should_display and not json_output:
             click.echo("🔍 Fetching channels...", err=True)
         
-        # Use admin_bot's list_all_channels method
+        # Use leadership_bot's list_all_channels method
         channels = bot.list_all_channels(include_archived=include_archived)
         
         if not channels:
@@ -66,7 +83,7 @@ def list_channels_cmd(ctx: click.Context, include_archived: bool) -> Optional[Li
         # Get token from bot if available
         token = None
         try:
-            bot = ctx.meta['admin_bot']
+            bot = ctx.meta.get('leadership_bot')
             if bot and hasattr(bot, 'client') and hasattr(bot.client, 'token'):
                 token = bot.client.token
         except (KeyError, Exception):

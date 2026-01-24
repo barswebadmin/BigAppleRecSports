@@ -9,17 +9,21 @@ from pathlib import Path
 from typing import Any
 from dotenv import load_dotenv
 
-backend_path = Path(__file__).parent.parent / "backend"
-sys.path.insert(0, str(backend_path))
+# Add project root to Python path so 'backend' module can be imported
+# This ensures imports work both when installed via pipx and when run directly
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 import click
 
 from ._core.decorators.handle_display_options import handle_display_options
 from ._core.context import LazyServiceDict, LazyServiceProxy
+from ._core.ui.display import display_response
 from .commands.slack import slack
 from .commands.shopify import shopify
 from .commands.google import google
-from .commands.utils import utils_group
+from .commands.compare_csv import compare_csv_cmd
 # from ._core.command_registry import discover_commands
 
 
@@ -68,6 +72,8 @@ def cli(ctx: click.Context, json_output: bool, env: str):
     ctx.ensure_object(dict)
     ctx.obj['json_output'] = json_output
     ctx.obj['environment'] = env
+    # Set display_response function in context for commands to use
+    ctx.obj['display_response'] = display_response
     # should_display will be set by handle_display_options decorator when commands run
     
     load_environment(env)
@@ -93,9 +99,12 @@ def cli(ctx: click.Context, json_output: bool, env: str):
 cli.add_command(slack)
 cli.add_command(shopify)
 cli.add_command(google)
-cli.add_command(utils_group)
+cli.add_command(compare_csv_cmd)
 
 
 if __name__ == '__main__':
-    cli()
+    try:
+        cli()
+    except (KeyboardInterrupt, click.Abort):
+        sys.exit(0)
 

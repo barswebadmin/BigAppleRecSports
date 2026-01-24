@@ -119,7 +119,7 @@ class LazyServiceMeta(dict):
             raise KeyError(key)
         
         value = self._wrapped[key]
-        
+
         # If value is a callable and it's a service creator, invoke it
         if callable(value) and key in LazyServiceDict._SERVICE_CREATORS:
             try:
@@ -194,9 +194,8 @@ def get_service(ctx: click.Context, service_key: str) -> Any:
     """
     if service_key not in ctx.meta:
         raise KeyError(service_key)
-    
     service_value = ctx.meta[service_key]
-    
+
     # If value is a callable (creation function), invoke it to create the service
     if callable(service_value):
         try:
