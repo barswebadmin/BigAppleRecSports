@@ -11,7 +11,9 @@ from bars_cli._core.decorators.handle_display_options import handle_display_opti
 from bars_cli._core.param_types.bars_email_identifier import BARS_EMAIL_IDENTIFIER
 from bars_cli._core.utils.json_output import output_json_item, output_json_error
 
-from bars_cli.backend_services.google.directory_client import MemberResource
+from backend.modules.integrations.google.models.google_directory_resources import MemberResource
+from backend.modules.integrations.google.google_api_client import GoogleApiClient
+from backend.modules.integrations.google.services.google_directory_service import GoogleDirectoryService, AddMemberResult
 from bars_cli.commands.google._shared.google_formatters import _format_member_added
 
 
@@ -34,13 +36,16 @@ def _add_member_impl(
     # Prompt for group_email if not provided
     if not group_email:
         group_email = BARS_EMAIL_IDENTIFIER.convert(None, None, ctx)
+        assert group_email is not None
     
     # Prompt for user_email if not provided
     if not user_email:
         user_email = BARS_EMAIL_IDENTIFIER.convert(None, None, ctx)
+        assert user_email is not None
 
     from bars_cli._core.context import get_service
-    client = get_service(ctx, 'google_api_client')
+    client: GoogleApiClient = get_service(ctx, 'google_api_client')
+    directory_service: GoogleDirectoryService = client.directory_service
     
     try:
         # Display action message
@@ -48,7 +53,7 @@ def _add_member_impl(
             click.echo(f"🔍 Adding {user_email} to group {group_email}...", err=True)
         
         # Add member using Google Directory API
-        member: MemberResource = client.add_member_to_group(
+        result: AddMemberResult = directory_service.add_member_to_group(
             group_email=group_email,
             user_email=user_email
         )
@@ -56,65 +61,41 @@ def _add_member_impl(
         # Display result
         if should_display:
             if json_output:
-                output_json_item(member)
-            else:
-                # group_email and user_email are guaranteed to be str at this point
-                assert group_email is not None and user_email is not None
-                _format_member_added(member, group_email, user_email)
-        
-        return member
-        
-    except click.ClickException:
-        raise
-    except HttpError as e:
-        # Check if this is a 409 Conflict error (member already exists)
-        error_msg = str(e)
-        is_duplicate = False
-        
-        # Check for HttpError with status 409
-        if hasattr(e, 'resp') and hasattr(e.resp, 'status'):
-            if e.resp.status == 409:
-                is_duplicate = True
-        elif '409' in error_msg or 'duplicate' in error_msg.lower() or 'already exists' in error_msg.lower():
-            is_duplicate = True
-        
-        if is_duplicate:
-            # Member already exists - handle gracefully
-            if should_display:
-                if json_output:
+                if result.is_warning:
                     import json
                     click.echo(json.dumps({
                         "group_email": group_email,
                         "user_email": user_email,
-                        "status": "already_member",
-                        "message": f"{user_email} is already a member of {group_email}"
+                        "status": "warning",
+                        "warning": result.warning,
+                        "member": result.member.model_dump()
                     }, indent=2))
                 else:
-                    click.echo(f"\nℹ️  {user_email} is already a member of {group_email}")
-                    click.echo("   (No action needed)")
-            
-            # Try to get the existing member info
-            if group_email and user_email:
-                try:
-                    members = client.list_group_members(group_email)
-                    user_email_lower = user_email.lower()
-                    existing_member = next((m for m in members if m.email.lower() == user_email_lower), None)
-                    if existing_member:
-                        return existing_member
-                except Exception:
-                    pass
-            
-            # Return None to indicate member already exists (not an error)
-            return None
-        else:
-            # Other HttpErrors - display and raise
-            error_type = type(e).__name__
-            if json_output:
-                output_json_error(error_msg, error_type=error_type)
+                    output_json_item(result.member)
             else:
-                click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
-            
-            raise click.ClickException(error_msg) from e
+                # group_email and user_email are guaranteed to be str at this point
+                assert group_email is not None and user_email is not None
+                if result.is_warning:
+                    click.echo(f"\n⚠️  {result.warning}", err=True)
+                    click.echo("   (No action needed)", err=True)
+                else:
+                    _format_member_added(result.member, group_email, user_email)
+        
+        return result.member
+        
+    except click.ClickException:
+        raise
+    except HttpError as e:
+        # Other HttpErrors - display and raise
+        # (409 errors are now handled in the backend service)
+        error_type = type(e).__name__
+        error_msg = str(e)
+        if json_output:
+            output_json_error(error_msg, error_type=error_type)
+        else:
+            click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
+        
+        raise click.ClickException(error_msg) from e
     except Exception as e:
         # Other non-HttpError exceptions
         error_type = type(e).__name__
@@ -128,7 +109,7 @@ def _add_member_impl(
         raise click.ClickException(error_msg) from e
 
 
-@click.command('add_member')
+@click.command('add-member')
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('group_email', type=BARS_EMAIL_IDENTIFIER, required=False)
 @click.argument('user_email', type=BARS_EMAIL_IDENTIFIER, required=False)
@@ -139,20 +120,6 @@ def add_member_cmd(
     user_email: Optional[str] = None
 ) -> Optional[MemberResource]:
     """Add a user to a Google Workspace group."""
-    return _add_member_impl(ctx, group_email, user_email)
-
-
-@click.command('add_user', hidden=True)
-@handle_display_options(display=True, exit_on_error=True)
-@click.argument('group_email', type=BARS_EMAIL_IDENTIFIER, required=False)
-@click.argument('user_email', type=BARS_EMAIL_IDENTIFIER, required=False)
-@click.pass_context
-def add_user_cmd(
-    ctx: click.Context,
-    group_email: Optional[str] = None,
-    user_email: Optional[str] = None
-) -> Optional[MemberResource]:
-    """Add a user to a Google Workspace group (alias for add_member)."""
     return _add_member_impl(ctx, group_email, user_email)
 
 

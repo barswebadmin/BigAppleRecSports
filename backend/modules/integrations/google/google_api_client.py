@@ -13,25 +13,28 @@ All service methods are available through this single client.
 import logging
 from typing import Optional, Any, Dict, List
 
-from google.oauth2 import service_account
+from backend.config import config
+
 from googleapiclient.errors import HttpError
 
 from .base_methods import (
-    GoogleServiceAccountInfo,
-    initialize_credentials,
-    build_service,
     paginate_api_call,
     execute_batch_request,
     raise_for_status,
 )
-from .sheets_service import SheetsServiceMixin
-from .directory_service import DirectoryServiceMixin
-from .gmail_service import GmailServiceMixin
+
+from .services import (
+    GoogleSheetsService,
+    GoogleDriveService,
+    GoogleDirectoryService,
+    GoogleMailService,
+    GoogleScriptsService,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class GoogleApiClient(SheetsServiceMixin, DirectoryServiceMixin, GmailServiceMixin):
+class GoogleApiClient():
     """
     Unified client for all Google API services.
     
@@ -55,17 +58,13 @@ class GoogleApiClient(SheetsServiceMixin, DirectoryServiceMixin, GmailServiceMix
         >>> # All methods available on one client
     """
     
-    def __init__(
-        self,
-        service_account_info: Optional[GoogleServiceAccountInfo] = None,
-        subject: Optional[str] = None
-    ):
+    def __init__(self):
         """
         Initialize unified Google API client with service account credentials.
         
         Args:
             service_account_info: Service account JSON dict.
-                                If None, uses config.GOOGLE.SERVICE_ACCOUNT.
+                                If None, uses config.google.service_account.
             subject: Email address of the user to impersonate (for domain-wide delegation).
                     If None, uses service account directly.
         
@@ -76,103 +75,82 @@ class GoogleApiClient(SheetsServiceMixin, DirectoryServiceMixin, GmailServiceMix
             This client initializes all Google services (Sheets, Drive, Scripts, Directory, Gmail).
             All scopes are requested to enable full functionality.
         """
-        # Collect all required scopes
-        self.scopes = [
-            # Sheets API scopes
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive',  # Full Drive access (was readonly, needed for permission management)
-            'https://www.googleapis.com/auth/script.scriptapp',
-            # Directory API scopes
-            'https://www.googleapis.com/auth/admin.directory.group',
-            'https://www.googleapis.com/auth/admin.directory.group.member',
-            'https://www.googleapis.com/auth/admin.directory.user.readonly',
-            # Gmail API scopes
-            'https://www.googleapis.com/auth/gmail.readonly',
-        ]
         
-        # Initialize credentials
-        self.base_credentials, self.credentials = initialize_credentials(
-            service_account_info=service_account_info,
-            scopes=self.scopes,
-            subject=subject
-        )
-        
-        logger.info(
-            f"✅ GoogleApiClient initialized with service account: "
-            f"{self.base_credentials.service_account_email}"
-        )
+        # logger.info(
+        #     f"✅ GoogleApiClient initialized with service account: "
+        #     f"{self.credentials.service_account_email}"
+        # )
         
         # Build all services
-        self.sheets_service = build_service('sheets', 'v4', self.credentials)
-        self.drive_service = build_service('drive', 'v3', self.credentials)
-        self.scripts_service = build_service('script', 'v1', self.credentials)
-        self.directory_service = build_service('admin', 'directory_v1', self.credentials)
-        self.gmail_service = build_service('gmail', 'v1', self.credentials)
+        self.sheets_service = GoogleSheetsService()
+        self.drive_service = GoogleDriveService()
+        self.directory_service = GoogleDirectoryService()
+        self.gmail_service = GoogleMailService()
+        self.scripts_service = GoogleScriptsService()
         
         logger.info("✅ All Google API services initialized")
     
-    @property
-    def service_account_email(self) -> str:
-        """Get the service account email address."""
-        return self.base_credentials.service_account_email
+    # @property
+    # def service_account_email(self) -> str:
+    #     """Get the service account email address."""
+    #     return self.credentials.service_account_email
     
+
     def _paginate_api_call(
         self,
         api_method: Any,
         result_key: str,
         **params: Any
     ) -> List[Any]:
-        """
-        Generic pagination helper for Google API calls.
-        
-        Delegates to base_methods.paginate_api_call.
-        
-        Args:
-            api_method: The API method to call (e.g., self.service.members().list)
-            result_key: The key in the response containing the list of items (e.g., 'members', 'groups')
-            **params: Additional parameters to pass to the API method
-        
-        Returns:
-            list of all items from all pages
-        """
+
         return paginate_api_call(api_method, result_key, **params)
     
+
     def batch_request(
         self,
         requests: List[Any]
     ) -> List[Dict[str, Any]]:
-        """
-        Execute multiple API requests in a single batch HTTP request.
-        
-        Delegates to base_methods.execute_batch_request.
-        Uses the first service that has new_batch_http_request (all services support it).
-        
-        Args:
-            requests: list of prepared API request objects
-        
-        Returns:
-            list of response dictionaries in the same order as requests
-        
-        Raises:
-            ValueError: If more than 50 requests provided
-            HttpError: If batch request fails
-        """
-        # All Google API services support batch requests, use sheets_service as default
+
         return execute_batch_request(self.sheets_service, requests)
     
+
     def _raise_for_status(
         self,
-        error: HttpError
+        error: HttpError,
+        required_scopes: Optional[list[str]] = None
     ) -> None:
-        """
-        Centralized error handling for Google API HTTP errors.
+        # Collect scopes from all services if not provided
+        if required_scopes is None:
+            all_scopes = set()
+            for service_name in ['directory_service', 'sheets_service', 'drive_service', 'gmail_service', 'scripts_service']:
+                service = getattr(self, service_name, None)
+                if service and hasattr(service, 'required_scopes'):
+                    all_scopes.update(service.required_scopes)
+            required_scopes = list(all_scopes) if all_scopes else None
         
-        Delegates to base_methods.raise_for_status.
-        
-        Args:
-            error: HttpError from Google API
-        
-        Raises:
-            HttpError: Re-raises the original HttpError after logging JSON representation
-        """
-        raise_for_status(error)
+        raise_for_status(error, required_scopes=required_scopes)
+    
+    # Directory service delegation methods
+    def get_user(self, user_email: str):
+        """Get a Google Workspace user by email address. Delegates to directory_service."""
+        return self.directory_service.get_user(user_email)
+    
+    def create_user(self, primary_email: str, given_name: str, family_name: str, recovery_email: Optional[str] = None, password: Optional[str] = None, change_password_at_next_login: bool = True, org_unit_path: Optional[str] = None):
+        """Create a new Google Workspace user. Delegates to directory_service."""
+        return self.directory_service.create_user(primary_email, given_name, family_name, recovery_email, password, change_password_at_next_login, org_unit_path)
+    
+    def list_all_users(self):
+        """List all Google Workspace users. Delegates to directory_service."""
+        return self.directory_service.list_all_users()
+    
+    def get_group(self, group_email: str):
+        """Get a Google Workspace group by email address. Delegates to directory_service."""
+        return self.directory_service.get_group(group_email)
+    
+    def list_all_groups(self):
+        """List all Google Workspace groups. Delegates to directory_service."""
+        return self.directory_service.list_all_groups()
+    
+    def list_group_members(self, group_email: str):
+        """List members of a Google Workspace group. Delegates to directory_service."""
+        return self.directory_service.list_group_members(group_email)

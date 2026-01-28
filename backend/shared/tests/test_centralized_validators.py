@@ -2,9 +2,11 @@
 Tests for centralized multi-field validation functionality.
 """
 
+from validator_collection import is_email
+
 from shared.validators import (
     validate_multiple_fields,
-    validate_email_format,
+    validate_email,
     validate_shopify_order_number_format,
 )
 
@@ -16,7 +18,7 @@ class TestCentralizedValidation:
         """Test that valid data passes validation"""
         data = {"email": "test@example.com", "order_number": "#1234"}
         field_validators = {
-            "email": validate_email_format,
+            "email": validate_email,
             "order_number": validate_shopify_order_number_format,
         }
         
@@ -29,7 +31,7 @@ class TestCentralizedValidation:
         """Test that all invalid fields are reported together"""
         data = {"email": "bad-email", "order_number": "123"}
         field_validators = {
-            "email": validate_email_format,
+            "email": is_email,
             "order_number": validate_shopify_order_number_format,
         }
         
@@ -44,7 +46,7 @@ class TestCentralizedValidation:
         """Test that type errors are collected for all fields"""
         data = {"email": 123, "order_number": 456}
         field_validators = {
-            "email": validate_email_format,
+            "email": is_email,
             "order_number": validate_shopify_order_number_format,
         }
         
@@ -59,7 +61,7 @@ class TestCentralizedValidation:
         """Test that both type and format errors are collected"""
         data = {"email": 123, "order_number": "bad"}
         field_validators = {
-            "email": validate_email_format,
+            "email": is_email,
             "order_number": validate_shopify_order_number_format,
         }
         
@@ -74,7 +76,7 @@ class TestCentralizedValidation:
         """Test validation with only one field"""
         data = {"email": "test@example.com"}
         field_validators = {
-            "email": validate_email_format,
+            "email": is_email,
         }
         
         result = validate_multiple_fields(data, field_validators)
@@ -86,7 +88,7 @@ class TestCentralizedValidation:
         """Test validation when field is missing (None)"""
         data = {}  # No fields provided
         field_validators = {
-            "email": validate_email_format,
+            "email": is_email,
             "order_number": validate_shopify_order_number_format,
         }
         

@@ -22,7 +22,7 @@ def google(ctx: click.Context):
 
 
 # Create subcommand groups
-@click.group('groups')
+@click.group('groups', cls=ClickAliasedGroup)
 @click.pass_context
 def groups_group(ctx: click.Context):
     """Google Groups management commands."""
@@ -46,24 +46,24 @@ def sheets_group(ctx: click.Context):
 # Register subcommands
 from .groups.get import get_group_cmd
 from .groups.list import list_groups_cmd
-from .groups.add_member import add_member_cmd, add_user_cmd
-from .groups.remove_member import remove_member_cmd, remove_user_cmd
+from .groups.add_member import add_member_cmd
+from .groups.remove_member import remove_member_cmd
 from .users.get import get_user_cmd
 from .users.list import list_users_cmd
+from .users.create import create_user_cmd
 
-groups_group.add_command(get_group_cmd, 'get')
-groups_group.add_command(list_groups_cmd, 'list')
-groups_group.add_command(add_member_cmd, 'add_member')
-groups_group.add_command(add_user_cmd, 'add_user')
-groups_group.add_command(remove_member_cmd, 'remove_member')
-groups_group.add_command(remove_user_cmd, 'remove_user')
-users_group.add_command(get_user_cmd, 'get')
-users_group.add_command(list_users_cmd, 'list')
+groups_group.add_command(get_group_cmd)
+groups_group.add_command(list_groups_cmd)
+groups_group.add_command(add_member_cmd, 'add-member', aliases=['add-user', 'add_member', 'add_user'])
+groups_group.add_command(remove_member_cmd, 'remove-member', aliases=['remove-user', 'remove_member', 'remove_user'])
+users_group.add_command(get_user_cmd)
+users_group.add_command(list_users_cmd)
+users_group.add_command(create_user_cmd)
 
 # Register groups with aliases
 google.add_command(groups_group, 'groups', aliases=['group'])
 google.add_command(users_group, 'users', aliases=['user'])
-google.add_command(sheets_group, 'sheets')
+google.add_command(sheets_group, 'sheets', aliases=['sheet'])
 
 
 __all__ = ["google"]

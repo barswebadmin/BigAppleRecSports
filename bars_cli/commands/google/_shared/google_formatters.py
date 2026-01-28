@@ -1,6 +1,6 @@
 import click
 
-from bars_cli.backend_services.google.directory_client import GroupResource, MemberResource, UserResource
+from backend.modules.integrations.google.models.google_directory_resources import GroupResource, MemberResource, UserResource
 
 
 def _format_member_added(member: MemberResource, group_email: str, user_email: str) -> None:

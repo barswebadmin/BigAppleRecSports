@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional
 import requests
 
-from backend.config.main import Config, config
+from backend.config import Config, config
 from ..models.requests import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response
@@ -14,18 +14,26 @@ ShopifyClient - HTTP client using requests to interact with Shopify GraphQL with
 
 
 class ShopifyClient:
-    def __init__(self, config_instance: Optional[Config] = None) -> None:
+    def __init__(self) -> None:
         # Allow injection of config instance for CLI use with proper environment
-        self._config = config_instance
+        self._config = config.shopify
+        self._token = self._config.token.admin
+        self._headers = {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": self._token,
+        }
+        self._admin_url = self._config.url.admin
+        self._graphql_url = self._config.url.api_graph_ql
+        self._store_id = self._config.store_id
+        self._location_id = self._config.location_id
 
     # ------------------------------------------------------------------
     # HTTP helper
     # ------------------------------------------------------------------
     def post_graphql_safe(self, body: Dict[str, Any]) -> requests.Response:
         """POST to Shopify GraphQL with retries and timeout."""
-        cfg = self._config or config
-        url = cfg.Shopify.graphql_url
-        headers = cfg.Shopify.headers
+        url = self._graphql_url
+        headers = self._headers
         max_retries = 3
         timeout_seconds = 10
         

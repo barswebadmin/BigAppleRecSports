@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Optional, TypedDict, Dict, List, Callable, Any
 from pydantic.alias_generators import to_camel as snake_to_camel
 
+from validator_collection import is_email
+
 
 @dataclass(frozen=True)
 class ValidationResult:
@@ -39,7 +41,7 @@ class ValidationResult:
         raise KeyError(f"Key '{key}' not found")
     
     @classmethod
-    def success(cls, input_after_validation: Any = None) -> "ValidationResult":
+    def success(cls, input_after_validation: Any) -> "ValidationResult":
         """Create a successful validation result."""
         return cls(input_after_validation=input_after_validation, error_message=None)
     
@@ -56,7 +58,7 @@ class MultiFieldValidationResult(TypedDict, total=True):
     errors: List[str]
 
 
-def validate_email_format(email: Optional[str]) -> ValidationResult:
+def validate_email(email: Optional[str]) -> ValidationResult:
     """
     Pragmatic email validation:
     - local part allows common RFC 5322 safe chars
@@ -64,77 +66,9 @@ def validate_email_format(email: Optional[str]) -> ValidationResult:
     """
     if email is None:
         return ValidationResult.failure("Email is required")
-    pattern = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$")
-    if pattern.match(email) is None:
+    if not is_email(email.strip()):
         return ValidationResult.failure("Invalid email format")
-    return ValidationResult.success()
-
-
-def validate_shopify_order_number_format(order_number: Optional[str]) -> ValidationResult:
-    """
-    Validate a Shopify order number: optional leading '#', followed by at least 4 digits.
-    """
-    if order_number is None:
-        return ValidationResult.failure("Order number is required")
-    if re.match(r'^#?\d{4,}$', order_number) is None:
-        return ValidationResult.failure("Invalid order number format")
-    return ValidationResult.success()
-
-
-def validate_shopify_order_id_format(order_id: Optional[str]) -> ValidationResult:
-    """
-    Validate a Shopify order ID: optional leading "gid://shopify/Order/" followed by 10-15 digits.
-    """
-    if order_id is None:
-        return ValidationResult.failure("Order ID was not provided")
-    # Accept either numeric id or full gid form
-    if re.match(r'^\d{10,15}$', order_id) is None and re.match(r'^gid://shopify/Order/\d{10,15}$', order_id) is None:
-        return ValidationResult.failure("Invalid order ID format")
-    return ValidationResult.success()
-
-
-def validate_shopify_product_id_format(product_id: Optional[str]) -> ValidationResult:
-    """
-    Validate a Shopify product ID: allow numeric or full GID (gid://shopify/Product/{digits}).
-    """
-    if product_id is None:
-        return ValidationResult.failure("Product ID was not provided")
-    if re.match(r'^\d{8,20}$', product_id) is None and re.match(r'^gid://shopify/Product/\d{8,20}$', product_id) is None:
-        return ValidationResult.failure("Invalid product ID format")
-    return ValidationResult.success()
-
-
-def validate_shopify_customer_id_format(customer_id: Optional[str]) -> ValidationResult:
-    """
-    Validate a Shopify customer ID: allow numeric or full GID (gid://shopify/Customer/{digits}).
-    """
-    if customer_id is None:
-        return ValidationResult.failure("Customer ID was not provided")
-    if re.match(r'^\d{8,20}$', customer_id) is None and re.match(r'^gid://shopify/Customer/\d{8,20}$', customer_id) is None:
-        return ValidationResult.failure("Invalid customer ID format")
-    return ValidationResult.success()
-
-
-def validate_shopify_transaction_id_format(transaction_id: Optional[str]) -> ValidationResult:
-    """
-    Validate a Shopify transaction ID: allow numeric or full GID (gid://shopify/Transaction/{digits}).
-    """
-    if transaction_id is None:
-        return ValidationResult.failure("Transaction ID was not provided")
-    if re.match(r'^\d{8,20}$', transaction_id) is None and re.match(r'^gid://shopify/Transaction/\d{8,20}$', transaction_id) is None:
-        return ValidationResult.failure("Invalid transaction ID format")
-    return ValidationResult.success()
-
-
-def validate_shopify_variant_id_format(variant_id: Optional[str]) -> ValidationResult:
-    """
-    Validate a Shopify variant ID: allow numeric or full GID (gid://shopify/ProductVariant/{digits}).
-    """
-    if variant_id is None:
-        return ValidationResult.failure("Variant ID was not provided")
-    if re.match(r'^\d{8,20}$', variant_id) is None and re.match(r'^gid://shopify/ProductVariant/\d{8,20}$', variant_id) is None:
-        return ValidationResult.failure("Invalid variant ID format")
-    return ValidationResult.success()
+    return ValidationResult.success(input_after_validation=email.strip())
 
 
 def validate(
@@ -228,7 +162,7 @@ def validate_multiple_fields(
         result = validate_multiple_fields(
             {"email": "bad", "order_number": "123"}, 
             {
-                "email": validate_email_format,
+                "email": validate_email,
                 "order_number": validate_shopify_order_number_format
             }
         )

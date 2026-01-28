@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 import csv
 import json
+import re
 
 import click
 from rich.console import Console
@@ -14,6 +15,31 @@ from bars_cli.commands.shopify._shared.command_helpers import handle_shopify_err
 from bars_cli._core.prompts import prompt_confirmation, prompt_select_from_options, prompt_text_input
 
 from backend.modules.integrations.shopify.models.theme_template_models import ThemeTemplate
+
+
+_PRONOUNS_RE = re.compile(r'^[a-zA-Z]+/[a-zA-Z]+')
+
+
+def normalize_pronouns(pronouns: str) -> str:
+    if not pronouns or not pronouns.strip():
+        return pronouns
+
+    pronouns = pronouns.strip()
+
+    validation_pronouns = pronouns
+    if pronouns.startswith('(') and pronouns.endswith(')'):
+        validation_pronouns = pronouns[1:-1].strip()
+
+    if not _PRONOUNS_RE.match(validation_pronouns):
+        raise ValueError(
+            f"Invalid pronouns format: '{pronouns}'. Must be at least 1 letter + '/' + at least 1 letter "
+            f"(e.g., 'he/him', 'she/her', 'they/them')"
+        )
+
+    if pronouns.startswith('(') and pronouns.endswith(')'):
+        return pronouns
+
+    return f"({pronouns})"
 
 
 def validate_and_normalize_image(image_input: str, shopify_service: Any) -> str:
@@ -166,7 +192,7 @@ def update_about_cmd(
     theme: Optional[str] = None,
     asset: Optional[str] = None,
     dry_run: bool = False
-) -> None:
+) -> bool:
     """
     Update leadership images on the Shopify About Us page.
     
@@ -207,7 +233,7 @@ def update_about_cmd(
         template_model = template_service.get_template_model(theme_id, asset_key)
     except (RuntimeError, ValueError) as e:
         handle_shopify_error_response(e, json_output, should_display)
-        return
+        raise click.ClickException(str(e)) from e
     except Exception as e:
         if json_output:
             from bars_cli._core.utils.json_output import output_json_error
@@ -258,7 +284,9 @@ def update_about_cmd(
             click.echo(f"❌ Unexpected error: {e}", err=True)
             raise click.ClickException(str(e)) from e
     
-    return result
+    if result is None:
+        raise click.ClickException("Update failed")
+    return bool(result)
 
 
 def _handle_bulk_update(
@@ -294,7 +322,7 @@ def _handle_bulk_update(
     
     if not updates:
         click.echo("⚠️  No updates found in CSV", err=True)
-        return
+        return False
     
     if should_display and not json_output:
         console.print(f"[green]📊 Found {len(updates)} update(s) in CSV[/green]\n")
@@ -439,7 +467,7 @@ def _handle_upload_and_update(
     
     if not image_files:
         click.echo("⚠️  No image files found in folder", err=True)
-        return
+        return False
     
     if should_display and not json_output:
         console.print(f"[green]📊 Found {len(image_files)} image(s)[/green]\n")
@@ -547,7 +575,7 @@ def _upload_template_changes(
     
     # Prompt for confirmation
     if should_display and not json_output:
-        if not prompt_confirmation("Apply changes to theme asset?", default_value="y"):
+        if not prompt_confirmation("Apply changes to theme asset?", default=True):
             console.print("[yellow]Update cancelled[/yellow]\n")
             return False
         
@@ -583,7 +611,7 @@ def _handle_interactive_update(
     # Actually, we should call the internal logic directly
     from backend.modules.integrations.shopify.models.theme_template_models import Block
     from bars_cli.commands.shopify._shared.shopify_formatters import format_block_option
-    from bars_cli._core.prompts import prompt_select_from_options
+    from bars_cli._core.prompts import prompt_select_from_options, ALL_SENTINEL
     
     # Get all blocks
     all_blocks: List[Block] = []
@@ -593,7 +621,7 @@ def _handle_interactive_update(
     
     if not all_blocks:
         click.echo("⚠️  No blocks found in template", err=True)
-        return
+        return False
     
     # Filter out empty blocks
     empty_blocks = []
@@ -614,7 +642,7 @@ def _handle_interactive_update(
     
     if not filled_blocks:
         click.echo("⚠️  No blocks with content found in template", err=True)
-        return
+        return False
     
     # Prompt for block selection
     block_options = [format_block_option(block) for block in filled_blocks]
@@ -627,10 +655,10 @@ def _handle_interactive_update(
     )
     
     if selected_option is None:
-        return
+        return False
     
     # Determine selected blocks
-    if selected_option == "All":
+    if selected_option == ALL_SENTINEL:
         selected_blocks = filled_blocks
     else:
         selected_block = None
@@ -641,7 +669,7 @@ def _handle_interactive_update(
         
         if selected_block is None:
             click.echo("❌ Invalid selection", err=True)
-            return
+            return False
         
         selected_blocks = [selected_block]
     
@@ -656,7 +684,7 @@ def _handle_interactive_update(
     )
     
     if selected_field is None:
-        return
+        return False
     
     # Map display names to field names
     field_map = {
@@ -668,7 +696,7 @@ def _handle_interactive_update(
     field_name = field_map.get(selected_field)
     if not field_name:
         click.echo("❌ Invalid field selection", err=True)
-        return
+        return False
     
     # Get current value for display
     if selected_blocks:
@@ -680,7 +708,6 @@ def _handle_interactive_update(
     if field_name == "image":
         new_value = prompt_text_input(
             f"Enter new {selected_field} (image name, ID, admin URL, or shopify:// reference)",
-            default_value=current_value if current_value != "N/A" else None
         )
         
         # Validate and normalize image
@@ -692,15 +719,10 @@ def _handle_interactive_update(
                 if should_display and not json_output:
                     console.print(f"[green]Resolved to: {new_value}[/green]")
         except ValueError as e:
-            if should_display and not json_output:
-                console.print(f"[red]❌ {e}[/red]")
-            else:
-                click.echo(f"❌ {e}", err=True)
-            return False
+            raise click.ClickException(str(e)) from e
     else:
         new_value = prompt_text_input(
             f"Enter new {selected_field}",
-            default_value=current_value if current_value != "N/A" else None
         )
         
         # Normalize pronouns by wrapping in parentheses if needed
@@ -712,11 +734,7 @@ def _handle_interactive_update(
                     if should_display and not json_output:
                         console.print(f"[green]Normalized pronouns to: {new_value}[/green]")
             except ValueError as e:
-                if should_display and not json_output:
-                    console.print(f"[red]❌ {e}[/red]")
-                else:
-                    click.echo(f"❌ {e}", err=True)
-                return False
+                raise click.ClickException(str(e)) from e
     
     # Update blocks using backend service
     template_service = ThemeTemplateService(shopify_service)

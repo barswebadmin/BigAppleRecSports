@@ -1,10 +1,11 @@
 from pydantic import BaseModel
 from typing import Optional
-from backend.shared.shopify_normalizers import (
-    normalize_order_id,
+from backend.modules.integrations.shopify.services.shopify_normalizers import (
+    normalize_shopify_resource_identifier,
     normalize_order_number,
+    normalize_order_identifier,
 )
-from backend.shared.validators import validate_email_format
+from backend.shared.validators import validate_email
 
 
 class FetchOrderRequest(BaseModel):
@@ -30,13 +31,13 @@ class FetchOrderRequest(BaseModel):
         order_number_input = data.get("order_number")
         email_input = data.get("email")
 
-        norm_id = normalize_order_id(order_id_input) if order_id_input else None
+        norm_id = normalize_order_identifier(order_id_input) if order_id_input else None
         order_id = norm_id.get("digits_only") if norm_id else None
         
         norm_num = normalize_order_number(order_number_input) if order_number_input else None
         order_number = norm_num.get("digits_only") if norm_num else None
 
-        email = email_input if validate_email_format(email_input).get("success") else None
+        email = email_input if validate_email(email_input).is_valid else None
 
         if not order_id and not order_number and not email:
             raise ValueError("Must provide a valid order_id, order_number, or email")

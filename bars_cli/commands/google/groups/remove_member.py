@@ -86,7 +86,7 @@ def _remove_member_impl(
         raise click.ClickException(error_msg) from e
 
 
-@click.command('remove_member')
+@click.command('remove-member')
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('group_email', type=BARS_EMAIL_IDENTIFIER, required=False)
 @click.argument('user_email', type=BARS_EMAIL_IDENTIFIER, required=False)
@@ -97,19 +97,5 @@ def remove_member_cmd(
     user_email: Optional[str] = None
 ) -> dict[str, str]:
     """Remove a user from a Google Workspace group."""
-    return _remove_member_impl(ctx, group_email, user_email)
-
-
-@click.command('remove_user', hidden=True)
-@handle_display_options(display=True, exit_on_error=True)
-@click.argument('group_email', type=BARS_EMAIL_IDENTIFIER, required=False)
-@click.argument('user_email', type=BARS_EMAIL_IDENTIFIER, required=False)
-@click.pass_context
-def remove_user_cmd(
-    ctx: click.Context,
-    group_email: Optional[str] = None,
-    user_email: Optional[str] = None
-) -> dict[str, str]:
-    """Remove a user from a Google Workspace group (alias for remove_member)."""
     return _remove_member_impl(ctx, group_email, user_email)
 

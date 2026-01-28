@@ -21,6 +21,7 @@ from .products.get import get_product_cmd
 from .products.orders import product_orders_cmd
 from .products.update_inventory import update_inventory_cmd
 from .pages import page_group
+from .webhooks import shopify_webhooks
 
 
 @click.group(
@@ -73,4 +74,5 @@ shopify.add_command(customer_group, 'customers', aliases=['customer'])
 shopify.add_command(order_group, 'orders', aliases=['order'])
 shopify.add_command(product_group, 'products', aliases=['product'])
 shopify.add_command(page_group, 'pages', aliases=['page'])
+shopify.add_command(shopify_webhooks, 'webhooks', aliases=['webhook'])
 

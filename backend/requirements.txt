@@ -18,12 +18,16 @@ PyYAML==6.0.2
 # Slack API client
 slack-sdk==3.30.0
 slack-bolt==1.20.1
+validator-collection>=1.5.0
 
 # Google API client
 google-api-python-client==2.154.0
 google-auth==2.37.0
 google-auth-oauthlib==1.2.1
 google-auth-httplib2==0.2.0
+
+# Shopify GraphQL client
+sgqlc>=17.0
 
 # HTML parsing for scrapers
 beautifulsoup4==4.12.3
@@ -51,23 +55,11 @@ uvicorn[standard]>=0.38.0
 python-multipart==0.0.20
 
 # ============================================================================
-# TESTING DEPENDENCIES (not needed for CLI)
-# ============================================================================
-# Core testing framework
-pytest==8.4.1
-pytest-asyncio==0.25.0
-pytest-mock==3.15.0
-pytest-cov>=4.0.0
-pytest-clarity==1.0.1
-
-# HTTP testing client
-httpx==0.25.2
-
-# ============================================================================
 # DEPLOYMENT NOTES
 # ============================================================================
 # This file contains backend service dependencies organized by use case:
 # - PRODUCTION: Dependencies needed for CLI and backend services
 # - SERVER: Dependencies only needed for FastAPI server (not CLI)
-# - TESTING: Dependencies only needed for testing (not CLI)
+#
+# For development/testing dependencies, see requirements-dev.txt
 # ============================================================================

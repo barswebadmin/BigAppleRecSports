@@ -533,9 +533,25 @@ class Query(BaseQuery):
         Returns:
             Configured sgqlc Operation ready for execution
         """
+        import sys
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        print(f"[DEBUG] Query.build_customer_query: Entry with query_str={query_str}, first={first}, orders_first={orders_first}", file=sys.stderr)
+        logger.debug(f"Query.build_customer_query: Entry with query_str={query_str}, first={first}, orders_first={orders_first}")
+        
         op = Operation(cls)
+        print("[DEBUG] Query.build_customer_query: Operation created", file=sys.stderr)
+        logger.debug("Query.build_customer_query: Operation created")
+        
         customers_connection_selector = op.customers(query=query_str, first=first)
+        print("[DEBUG] Query.build_customer_query: customers() called, getting customer connection", file=sys.stderr)
+        logger.debug("Query.build_customer_query: customers() called, getting customer connection")
+        
         cls.get_customer_connection(customers_connection_selector, orders_first=orders_first)
+        print("[DEBUG] Query.build_customer_query: Customer connection built, returning operation", file=sys.stderr)
+        logger.debug("Query.build_customer_query: Customer connection built, returning operation")
+        
         return op
     
     @classmethod
@@ -626,7 +642,7 @@ class Query(BaseQuery):
     
     @classmethod
     def build_variant_query(cls, variant_id: str) -> Operation:
-        """Build a query to get a single product variant."""
+        """Build a query to get a single product variant with inventory information."""
         from sgqlc.types import ID
         
         op = Operation(cls)
@@ -634,6 +650,9 @@ class Query(BaseQuery):
         variant_sel.id()  # type: ignore[union-attr]
         variant_sel.product.id()  # type: ignore[union-attr]
         variant_sel.product.title()  # type: ignore[union-attr]
+        variant_sel.inventoryQuantity()  # type: ignore[union-attr]
+        inventory_item = variant_sel.inventoryItem()  # type: ignore[union-attr]
+        inventory_item.id()  # type: ignore[union-attr]
         return op
     
     @classmethod

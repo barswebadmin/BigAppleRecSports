@@ -152,20 +152,31 @@ def fetch_birthdays_with_names(
     """
     birthday_records = []
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    # Limit to most recent orders to avoid excessive API calls
+    # Most customers have birthdays in recent orders
+    max_orders = 20
+    limited_order_ids = order_ids[:max_orders] if len(order_ids) > max_orders else order_ids
+    
+    # Increase max_workers for better parallelism
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_order = {
             executor.submit(get_order_line_item_properties, shopify_service, order_id): order_id
-            for order_id in order_ids
+            for order_id in limited_order_ids
         }
         
         for future in concurrent.futures.as_completed(future_to_order):
+            order_id = future_to_order[future]
             try:
-                properties = future.result()
+                # Add timeout to individual requests (25s to be under 30s endpoint timeout)
+                properties = future.result(timeout=25)
                 records = extract_birthday_with_name(properties)
                 birthday_records.extend(records)
+            except concurrent.futures.TimeoutError:
+                import sys
+                print(f"Error fetching order {order_id}: Request timed out after 25s", file=sys.stderr)
             except Exception as e:
                 import sys
-                print(f"Error fetching order: {e}", file=sys.stderr)
+                print(f"Error fetching order {order_id}: {e}", file=sys.stderr)
     
     return birthday_records
 
@@ -186,21 +197,30 @@ def fetch_pronouns_with_names(
     """
     pronouns_records = []
     
-    # Process orders concurrently while preserving date info
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    # Limit to most recent orders to avoid excessive API calls
+    # Most customers have pronouns in recent orders
+    max_orders = 20
+    limited_orders = orders_with_dates[:max_orders] if len(orders_with_dates) > max_orders else orders_with_dates
+    
+    # Increase max_workers for better parallelism
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_order = {
             executor.submit(get_order_line_item_properties, shopify_service, order_id): (order_id, created_at)
-            for order_id, created_at in orders_with_dates
+            for order_id, created_at in limited_orders
         }
         
         for future in concurrent.futures.as_completed(future_to_order):
             order_id, created_at = future_to_order[future]
             try:
-                properties = future.result()
+                # Add timeout to individual requests (25s to be under 30s endpoint timeout)
+                properties = future.result(timeout=25)
                 records = extract_pronouns_with_name(properties)
                 # Add created_at to each record
                 for pronouns, first_name, last_name in records:
                     pronouns_records.append((pronouns, first_name, last_name, created_at))
+            except concurrent.futures.TimeoutError:
+                import sys
+                print(f"Error fetching order {order_id}: Request timed out after 25s", file=sys.stderr)
             except Exception as e:
                 import sys
                 print(f"Error fetching order {order_id}: {e}", file=sys.stderr)

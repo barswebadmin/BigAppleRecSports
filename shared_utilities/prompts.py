@@ -111,14 +111,19 @@ _QUESTIONARY_STYLE = Style([
 
 # Sentinel value returned when user selects Exit
 EXIT_SENTINEL = "__EXIT__"
+ALL_SENTINEL = "__ALL__"
 
 
 def prompt_select_from_options(
     display_text: str,
     options: list[str],
     default_value: Optional[str] = None,
-    show_current: Optional[str] = None
-) -> str:
+    show_current: Optional[str] = None,
+    *,
+    autocomplete: bool = True,
+    display_exit: bool = True,
+    display_all: bool = False,
+) -> Optional[str]:
     """Prompt user to select from numbered options with autocomplete support.
     
     Features:
@@ -126,7 +131,8 @@ def prompt_select_from_options(
     - Number input (1-N)
     - Name input (case-insensitive)
     - Shows current value for context
-    - Styled "Exit" option
+    - Optional "All" option
+    - Optional "Exit" option
     
     Args:
         display_text: Label to display as the header
@@ -135,7 +141,8 @@ def prompt_select_from_options(
         show_current: Optional current value to display for context (shown in prompt text)
         
     Returns:
-        Selected option string from the options list, or EXIT_SENTINEL if Exit was selected
+        Selected option string from the options list, ALL_SENTINEL if "All" was selected,
+        or None if "Exit" was selected (when display_exit=True)
         
     Example:
         env = prompt_select_from_options(
@@ -143,12 +150,15 @@ def prompt_select_from_options(
             ["development", "staging", "production"],
             show_current="production"
         )
-        if env == EXIT_SENTINEL:
+        if env is None:
             return
     """
     if not options:
         raise ValueError("Options list cannot be empty")
     
+    import click
+    import html
+
     prompt_text = f"{display_text} (Current: {show_current})" if show_current else display_text
     
     default_idx = None
@@ -159,33 +169,101 @@ def prompt_select_from_options(
                 default_idx = i
                 break
     
-    numbered = [f"({i}) {strip_ansi(opt)}" for i, opt in enumerate(options, 1)]
-    numbered.append("Exit")
-    default_str = f"({default_idx + 1}) {options[default_idx]}" if default_idx is not None else ""
+    base_options = options.copy()
+    all_label = "All"
+    exit_label = "Exit"
+
+    display_options: list[str] = base_options.copy()
+    if display_all:
+        display_options.append(all_label)
+    if display_exit:
+        display_options.append(exit_label)
+
+    click.echo(f"\n{click.style(display_text, bold=True, underline=True)}")
+    if show_current:
+        click.echo(f"  Current: {click.style(show_current, fg='cyan', italic=True)}")
+    click.echo()
+
+    for i, opt in enumerate(display_options, 1):
+        if display_exit and opt == exit_label:
+            click.echo(f"  ({i}) {click.style(exit_label, fg='red', bold=True)}")
+        elif display_all and opt == all_label:
+            click.echo(f"  ({i}) {click.style(all_label, fg='green', bold=True)}")
+        else:
+            click.echo(f"  ({i}) {opt}")
+    click.echo()
+
+    numbered = []
+    for i, opt in enumerate(display_options, 1):
+        numbered.append(f"({i}) {html.escape(strip_ansi(opt))}")
+
+    default_str = f"({default_idx + 1}) {html.escape(strip_ansi(options[default_idx]))}" if default_idx is not None else ""
     
-    result = questionary.autocomplete(prompt_text, numbered, default=default_str, style=_QUESTIONARY_STYLE).ask()
+    if autocomplete:
+        click.secho(
+            "Type an option number, or start typing the option itself (press TAB to autocomplete), then ENTER to select:",
+            fg="bright_yellow",
+            italic=True,
+        )
+        result = questionary.autocomplete(
+            "- ",
+            numbered,
+            default=default_str,
+            qmark="",
+            style=_QUESTIONARY_STYLE,
+        ).ask()
+    else:
+        default_prompt = ""
+        if default_idx is not None:
+            default_prompt = str(default_idx + 1)
+
+        result = prompt_text_input(
+            "Enter option number or name:",
+            default_value=default_prompt,
+            validate_func=lambda val: (
+                True,
+                None,
+            )
+            if (
+                (val.isdigit() and 1 <= int(val) <= len(display_options))
+                or any(strip_ansi(opt).strip().lower() == val.strip().lower() for opt in display_options)
+            )
+            else (False, f"Must be a number 1-{len(display_options)} or one of the option names"),
+        )
     
     if result is None:
         raise KeyboardInterrupt("Cancelled by user")
     
     if not result:
-        return default_value or EXIT_SENTINEL
+        return default_value or (None if display_exit else "")
     
     result_clean = strip_ansi(str(result)).strip().lower()
-    if "exit" in result_clean:
-        return EXIT_SENTINEL
     
     match = re.match(r"\(?(\d+)\)?", result_clean)
     if match:
         try:
             num = int(match.group(1))
-            if 1 <= num <= len(options):
-                return options[num - 1]
+            if 1 <= num <= len(base_options):
+                return base_options[num - 1]
+
+            all_num = len(base_options) + 1
+            exit_num = len(base_options) + (1 if display_all else 0) + 1
+
+            if display_all and num == all_num:
+                return ALL_SENTINEL
+            if display_exit and num == exit_num:
+                return None
         except ValueError:
             pass
+
+    if display_exit and result_clean.endswith(exit_label.lower()):
+        return None
+    if display_all and result_clean.endswith(all_label.lower()):
+        return ALL_SENTINEL
     
-    for opt in options:
-        if opt.lower() == result_clean or result_clean.endswith(opt.lower()):
+    for opt in base_options:
+        opt_clean = strip_ansi(opt).strip().lower()
+        if opt_clean == result_clean or result_clean.endswith(opt_clean):
             return opt
     
     return result_clean
@@ -268,6 +346,9 @@ def prompt_result_selection(
         all_option = None
     
     selected_option = prompt_select_from_options(prompt_text, options_with_all)
+
+    if selected_option is None:
+        raise KeyboardInterrupt("Cancelled by user")
     
     if all_option:
         selected_clean = strip_ansi(selected_option).strip().lower()

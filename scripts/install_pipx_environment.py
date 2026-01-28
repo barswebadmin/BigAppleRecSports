@@ -7,6 +7,7 @@ Handles:
 - Dependencies are automatically installed from pyproject.toml during package installation
 """
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -111,6 +112,21 @@ def find_python_interpreter(version: str) -> Optional[str]:
         return None
 
 
+def _is_pipx_installed(package_name: str) -> bool:
+    try:
+        res = subprocess.run(
+            ["pipx", "list", "--json"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=15,
+        )
+        data = json.loads(res.stdout or "{}")
+        return package_name in (data.get("venvs", {}) or {})
+    except Exception:
+        return False
+
+
 def parse_production_dependencies() -> set[str]:
     """Parse PRODUCTION section from backend/requirements.txt."""
     deps = set()
@@ -163,17 +179,24 @@ def install_package() -> bool:
             print(f"  ⚠️  Python {python_version} not found, pipx will use default Python")
     
     while True:
+        installed = _is_pipx_installed(package_name)
         print("  Installing bars CLI package...")
-        pipx_cmd = ['pipx', 'install', '-e', '.', '--force']
-        if python_cmd:
-            pipx_cmd.extend(['--python', python_cmd])
-            print(f"    📦 Running: pipx install -e . --force --python {python_cmd}")
-        else:
+        if python_cmd and installed:
+            pipx_cmd = ["pipx", "reinstall", package_name, "--python", python_cmd]
+            print(f"    📦 Running: pipx reinstall {package_name} --python {python_cmd}")
+        elif python_cmd and not installed:
+            pipx_cmd = ["pipx", "install", "-e", ".", "--python", python_cmd]
+            print(f"    📦 Running: pipx install -e . --python {python_cmd}")
+        elif installed:
+            pipx_cmd = ["pipx", "install", "-e", ".", "--force"]
             print("    📦 Running: pipx install -e . --force")
+        else:
+            pipx_cmd = ["pipx", "install", "-e", "."]
+            print("    📦 Running: pipx install -e .")
         print("    ⏳ This may take a moment (installing package and dependencies from pyproject.toml)...")
         result = subprocess.run(
             pipx_cmd,
-            capture_output=False,  # Show output in real-time
+            capture_output=True,
             text=True
         )
         
@@ -181,28 +204,22 @@ def install_package() -> bool:
             print("    ✅ Installed bars CLI package and dependencies")
             return True
         
-        # Installation failed - re-run with capture to show error details
-        print("    ❌ Installation failed, capturing error details...")
-        error_cmd = ['pipx', 'install', '-e', '.', '--force']
-        if python_cmd:
-            error_cmd.extend(['--python', python_cmd])
-        error_result = subprocess.run(
-            error_cmd,
-            capture_output=True,
-            text=True
-        )
         print("")
         print("    Error details:")
-        if error_result.stdout:
-            for line in error_result.stdout.strip().split('\n'):
+        if result.stdout:
+            for line in result.stdout.strip().split('\n'):
                 if line.strip():
                     print(f"      {line}")
-        if error_result.stderr:
-            for line in error_result.stderr.strip().split('\n'):
+        if result.stderr:
+            for line in result.stderr.strip().split('\n'):
                 if line.strip():
                     print(f"      {line}")
         print("")
         
+        if not sys.stdin.isatty():
+            print("    ❌ Non-interactive terminal; aborting.")
+            return False
+
         # Prompt user for action
         while True:
             print("    What would you like to do?")
@@ -214,25 +231,33 @@ def install_package() -> bool:
             
             if choice in ('c', 'continue'):
                 print("    🔄 Reinstalling bars CLI package (clean install)...")
-                reinstall_cmd = ['pipx', 'reinstall', package_name, '--editable']
+                reinstall_cmd = ['pipx', 'reinstall', package_name]
                 if python_cmd:
                     reinstall_cmd.extend(['--python', python_cmd])
                 print(f"    ⏳ Running: {' '.join(reinstall_cmd)}")
                 reinstall_result = subprocess.run(
                     reinstall_cmd,
-                    capture_output=False,  # Show output in real-time
+                    capture_output=True,
                     text=True
                 )
                 if reinstall_result.returncode == 0:
                     print("    ✅ Reinstalled bars CLI package and dependencies")
                     return True
+                if reinstall_result.stdout:
+                    for line in reinstall_result.stdout.strip().split("\n"):
+                        if line.strip():
+                            print(f"      {line}")
+                if reinstall_result.stderr:
+                    for line in reinstall_result.stderr.strip().split("\n"):
+                        if line.strip():
+                            print(f"      {line}")
                 
                 # Reinstall failed, try uninstall + install
                 print("    ⚠️  pipx reinstall failed, trying uninstall + install...")
                 print("    🗑️  Uninstalling existing package...")
                 subprocess.run(
                     ['pipx', 'uninstall', package_name],
-                    capture_output=False,
+                    capture_output=True,
                     text=True
                 )
                 # Fall through to retry install in outer loop

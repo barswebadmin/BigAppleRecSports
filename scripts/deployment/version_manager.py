@@ -125,8 +125,10 @@ def update_version_file(version_file_path: str, new_version: str, bump_type: str
     data["last_updated"] = current_date
     
     # Generate and insert new history entry at the beginning
-    history_entry = generate_version_history_entry(new_version, bump_type, commit_messages, changed_files)
-    data["version_history"].insert(0, history_entry)
+    # Only add history entry if version actually changed (not just build increment)
+    if new_version != current_version:
+        history_entry = generate_version_history_entry(new_version, bump_type, commit_messages, changed_files)
+        data["version_history"].insert(0, history_entry)
     
     # Write updated data
     with open(version_file, 'w') as f:

@@ -9,7 +9,7 @@ import click
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.utils.json_output import output_json_list, output_json_error
 
-from bars_cli.backend_services.google.directory_client import GroupResource
+from bars_cli.backend_services.google.models.google_directory_resources import GroupResource
 from bars_cli.commands.google._shared.google_formatters import _format_groups_list
 
 

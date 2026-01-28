@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from slack_sdk import WebClient
 
 # Our systems
-from backend.config.main import Config
+from backend.config import Config
 config = Config()
 # from models.slack import Slack, RefundType, SlackMessageType
 
@@ -21,13 +21,6 @@ config = Config()
 
 from .client.slack_security import SlackSecurity
 from .parsers.message_parsers import SlackMessageParsers
-from .builders import (
-    SlackMessageBuilder,
-    # ModernMessageBuilder,
-    # SlackCacheManager,
-    # SlackMetadataBuilder,
-    # SlackOrderHandlers,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -61,12 +54,6 @@ class SlackService:
         # self.slack_security = SlackSecurity(self.config.SlackBot.get_signing_secret())
 
         # Initialize helper components
-        self.message_builder = SlackMessageBuilder(sport_groups={})
-        # self.refunds_utils = SlackRefundsUtils(
-        #     self.orders_service, 
-        #     self._get_settings(),
-        #     self.message_builder
-        # )
         self.message_parsers = SlackMessageParsers()
         
         # Initialize modern utility classes
@@ -99,7 +86,7 @@ class SlackService:
         Raises:
             ValueError: If identifier format is invalid
         """
-        import validators
+        from validator_collection import is_email
         import re
         from modules.integrations.slack.models.slack_user import SlackUser
         
@@ -110,7 +97,7 @@ class SlackService:
         params: Dict[str, Any] = {}
         
         # Check if it's a valid email
-        if validators.email(identifier):
+        if is_email(identifier):
             params["email"] = identifier
             return params
         

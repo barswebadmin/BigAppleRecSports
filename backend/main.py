@@ -25,17 +25,15 @@ if os.getenv("ENVIRONMENT") == "production":
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routers import webhooks, refunds, orders, slack, products
-from config import config
+from routers import shopify, refunds, orders, slack, products
+from backend.config import config
 import logging
 import json
-import sys
 from pathlib import Path
 
-# Import version manager functions
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root / "scripts" / "deployment"))
-from version_manager import get_version_info
+version_file = Path(__file__).parent / "version.json"
+with open(version_file, "r") as f:
+    version_data = json.load(f)
 
 # Configure logging for all modules
 logging.basicConfig(
@@ -50,7 +48,7 @@ logging.getLogger("backend.services").setLevel(logging.INFO)
 app = FastAPI(
     title="Big Apple Rec Sports API",
     description="Backend API for Big Apple Rec Sports operations",
-    version=get_version_info()["version"],
+    version=version_data["version"],
     docs_url="/docs"
     if config.environment != "production"
     else None,  # Disable docs in production
@@ -121,7 +119,7 @@ async def log_requests(request: Request, call_next):
 app.include_router(orders.router)
 app.include_router(products.router)
 app.include_router(slack.router)
-app.include_router(webhooks.router)
+app.include_router(shopify.router)
 app.include_router(refunds.router)
 
 # Theme template editing
@@ -132,15 +130,13 @@ app.include_router(theme_templates.router)
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
-    version_file = str(project_root / "backend" / "version.json")
-    version_info = get_version_info(version_file)
     return {
         "message": "Big Apple Rec Sports API",
-        "version": version_info["version"],
-        "build": version_info["build"],
-        "full_version": version_info["full_version"],
-        "codename": version_info["codename"],
-        "last_updated": version_info["last_updated"],
+        "version": version_data["version"],
+        "build": version_data["build"],
+        "full_version": f"{version_data['version']}.{version_data['build']}",
+        "codename": version_data["codename"],
+        "last_updated": version_data["last_updated"],
         "environment": config.environment,
         "docs_url": "/docs"
         if config.environment != "production"
@@ -152,23 +148,20 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring"""
-    version_file = str(project_root / "backend" / "version.json")
-    version_info = get_version_info(version_file)
     return {
         "status": "healthy",
-        "version": version_info["version"],
-        "build": version_info["build"],
-        "full_version": version_info["full_version"],
+        "version": version_data["version"],
+        "build": version_data["build"],
+        "full_version": f"{version_data['version']}.{version_data['build']}",
         "environment": config.environment,
-        "last_updated": version_info["last_updated"],
+        "last_updated": version_data["last_updated"],
     }
 
 
 @app.get("/version")
 async def get_version():
     """Get detailed version information"""
-    version_file = str(project_root / "backend" / "version.json")
-    return get_version_info(version_file)
+    return version_data
 
 
 if __name__ == "__main__":

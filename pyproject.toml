@@ -15,6 +15,7 @@ dependencies = [
     "questionary>=2.0.0",
     "rich>=13.7.0",
     "sgqlc>=17.0",
+    "validator-collection>=1.5.0",
     "beautifulsoup4==4.12.3",
     "google-api-python-client==2.154.0",
     "google-auth==2.37.0",
@@ -27,7 +28,6 @@ dependencies = [
     "requests==2.32.3",
     "slack-bolt==1.20.1",
     "slack-sdk==3.30.0",
-    "validators>=0.22.0",
 ]
 
 [project.scripts]
@@ -39,6 +39,9 @@ packages = ["bars_cli", "bars_cli.commands", "backend", "backend.shared", "backe
 [tool.pyright]
 typeCheckingMode = "basic"
 reportMissingModuleSource = "none"
+# Use backend venv for backend files
+venvPath = "backend"
+venv = ".venv"
 
 [tool.pyright.diagnosticSeverityOverrides]
 reportMissingImports = "error"

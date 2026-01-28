@@ -10,7 +10,7 @@ import yaml
 from rich.console import Console
 from rich.syntax import Syntax
 
-from backend.config.main import Config
+from backend.config import Config
 from modules.integrations.shopify.models import FetchOrderRequest
 from modules.orders.services.orders_service import OrdersService
 from modules.integrations.shopify import ShopifyClient

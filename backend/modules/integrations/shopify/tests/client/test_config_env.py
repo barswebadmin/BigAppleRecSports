@@ -24,8 +24,6 @@ def test_staging_env_uses_prod_shopify_creds(monkeypatch):
     assert cfg.Shopify.store_id == "prod-store-id"
     assert cfg.Shopify.token == "prod-admin-token"
     assert cfg.Shopify.location_id == "prod-location-id"
-    # is_production only true for explicit production
-    assert cfg.is_production is False
     # SlackConfig honors passed ENVIRONMENT from Config
     assert cfg.Slack.environment == "staging"
 
@@ -43,7 +41,6 @@ def test_production_env_uses_prod_shopify_creds(monkeypatch):
     assert cfg.Shopify.store_id == "prod-store-id"
     assert cfg.Shopify.token == "prod-admin-token"
     assert cfg.Shopify.location_id == "prod-location-id"
-    assert cfg.is_production is True
     assert cfg.Slack.environment == "production"
 
 

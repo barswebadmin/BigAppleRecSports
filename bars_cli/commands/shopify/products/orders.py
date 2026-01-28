@@ -108,6 +108,9 @@ def product_orders_cmd(
                 "How would you like to view the results?",
                 output_options
             )
+
+            if selected is None:
+                raise click.Abort()
             
             if selected == output_options[1]:  # Export to CSV file
                 csv_file = click.prompt("Enter CSV file path", type=str)

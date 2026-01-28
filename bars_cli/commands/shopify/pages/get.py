@@ -16,7 +16,7 @@ from bars_cli.commands.shopify._shared.shopify_formatters import (
     display_theme_assets_list,
     format_block_option,
 )
-from bars_cli._core.prompts import prompt_select_from_options
+from bars_cli._core.prompts import prompt_select_from_options, ALL_SENTINEL
 from bars_cli.backend_services.shopify.services import ShopifyService
 from rich.console import Console
 from rich.theme import Theme
@@ -333,7 +333,7 @@ def get_page_cmd(
                         return None
                     
                     # Determine which blocks to display
-                    if selected_option == "All":
+                    if selected_option == ALL_SENTINEL:
                         selected_blocks = filled_blocks
                     else:
                         # Find the selected block

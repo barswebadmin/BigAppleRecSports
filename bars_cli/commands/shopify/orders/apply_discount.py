@@ -43,6 +43,9 @@ def prompt_discount_type() -> str:
         "Select discount type",
         display_options
     )
+
+    if selected_display is None:
+        raise click.Abort()
     
     # Map back to value
     for opt in options_data:

@@ -19,7 +19,7 @@ def _get_normalizers():
     if _normalize_order_id is None or _normalize_order_number is None:
         # Import via symlink - service handles the backend imports correctly
         from bars_cli.backend_services.shopify.services import ShopifyService  # type: ignore
-        _normalize_order_id = ShopifyService.normalize_order_id  # type: ignore
+        _normalize_order_id = ShopifyService.normalize_order_identifier  # type: ignore
         _normalize_order_number = ShopifyService.normalize_order_number  # type: ignore
     
     return _normalize_order_id, _normalize_order_number

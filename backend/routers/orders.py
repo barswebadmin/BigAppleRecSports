@@ -9,7 +9,7 @@ from modules.orders.services.orders_service import OrdersService
 from modules.integrations.slack.slack_service import SlackService
 from shared.order_fetcher import fetch_order_from_shopify
 from modules.integrations.shopify.models.requests import FetchOrderRequest
-from config import config
+from backend.config import config
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -27,8 +27,6 @@ class SlackNotificationRequest(BaseModel):
     order_data: Optional[Dict[str, Any]] = None
     sheet_link: Optional[str] = None  # Google Sheets link to the specific row
     request_submitted_at: Optional[str] = None
-
-SlackChannel = config.SlackChannel
 
 
 @router.get("/{order_number}")

@@ -6,7 +6,7 @@ This module provides reusable CSV processing functionality that can be used acro
 from typing import List, Dict, Any, Optional, Set
 import re
 
-from shared.validators import validate_email_format
+from validator_collection import is_email
 
 
 class CSVProcessor:
@@ -23,11 +23,9 @@ class CSVProcessor:
         Returns:
             Normalized email (lowercase, stripped) if valid, None otherwise
         """
-        if not email or "@" not in email:
-            return None
         
         email_clean = email.strip()
-        if validate_email_format(email_clean)["success"]:
+        if is_email(email_clean):
             return email_clean.lower()
         
         return None

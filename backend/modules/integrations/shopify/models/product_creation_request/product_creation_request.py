@@ -5,11 +5,9 @@ from pydantic import (
     ValidationError,
 )
 from enum import Enum
-from typing import List, Optional
-from ..regular_season_basic_details import RegularSeasonBasicDetails
-from .product_creation_request_validation_error import (
-    ProductCreationRequestValidationError,
-)
+from typing import List, Optional, Union
+
+from .regular_season_basic_details import RegularSeasonBasicDetails
 from .inventory_info import InventoryInfo
 from .important_dates import ImportantDates
 from .optional_league_info import OptionalLeagueInfo
@@ -62,3 +60,50 @@ class ProductCreationRequest(BaseModel):
             raise ProductCreationRequestValidationError(
                 [dict(error) for error in e.errors()]
             )
+
+class ProductCreationRequestValidationError(Exception):
+    """Custom exception for product creation request validation errors
+
+    Uses Pydantic's ValidationError structure while extending Exception for simplicity.
+    Provides field_name attribute and maintains full error details.
+    """
+
+    def __init__(self, errors: list[dict]):
+        """
+        Initialize with standard Pydantic error format
+
+        Args:
+            errors: list of pydantic error dictionaries
+        """
+        self._errors = errors
+
+        # Add field_name attribute for the first error (primary error)
+        if errors:
+            first_error = errors[0]
+            self.field_name = ".".join(str(loc) for loc in first_error.get("loc", []))
+        else:
+            self.field_name = "unknown"
+
+        # Create error message for exception
+        error_messages: list[str] = self.get_errors(formatted=True)  # type: ignore
+        message = f"Product validation failed: {', '.join(error_messages)}"
+        super().__init__(message)
+
+    def get_errors(self, formatted: bool = True) -> Union[list[str], list[dict]]:
+        """
+        Get validation errors - either formatted messages or raw Pydantic error dictionaries
+
+        Args:
+            formatted: If True, return formatted "field_name: message" strings.
+                      If False, return raw Pydantic error dictionaries.
+
+        Returns:
+            list of formatted error messages or raw error dictionaries
+        """
+        if formatted:
+            return [
+                f"{'.'.join(str(loc) for loc in error.get('loc', []))}: {error.get('msg', 'Validation failed')}"
+                for error in self._errors
+            ]
+        else:
+            return self._errors

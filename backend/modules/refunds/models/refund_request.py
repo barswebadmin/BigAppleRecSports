@@ -2,13 +2,15 @@ from pydantic import model_validator, Field
 from typing import Optional
 from datetime import datetime, timezone
 
+from validator_collection import is_email
+
 from shared.model_config import ApiModel
-from shared.validators import (
-    validate_email_format,
+from backend.modules.integrations.shopify.services.shopify_normalizers import (
     validate_shopify_order_number_format,
+)
+from shared.validators import (
     validate_multiple_fields,
 )
-
 
 class RefundRequest(ApiModel):
     """
@@ -35,7 +37,7 @@ class RefundRequest(ApiModel):
         
         # Define field validators for this model
         field_validators = {
-            "email": validate_email_format,
+            "email": is_email,
             "order_number": validate_shopify_order_number_format,
         }
         

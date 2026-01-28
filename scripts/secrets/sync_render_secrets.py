@@ -91,7 +91,7 @@ def _ssm_param_to_env_var(param_name: str) -> str:
         /shopify/store_id -> SHOPIFY.STORE_ID
         /slack/bot.dev.token -> SLACK.BOT.DEV.TOKEN
         /lambda/url.schedule_product_changes -> LAMBDA.URL.SCHEDULE_PRODUCT_CHANGES
-        /google/url.web_app.refunds -> GOOGLE.URL.WEB_APP.REFUNDS
+        /google/url.web_app.refunds -> google.url.web_app.refunds
     """
     name = param_name.lstrip("/")
     parts = name.split("/", 1)

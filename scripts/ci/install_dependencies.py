@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Install dependencies for CI workflows."""
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,17 +13,29 @@ from scripts._shared.path_utils import PROJECT_ROOT
 
 
 def install_backend_deps():
-    """Install backend test dependencies."""
+    """Install backend dependencies including dev dependencies for testing."""
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
+        [sys.executable, "-m", "pip", "install", "-q", "--upgrade", "pip"],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-r", str(PROJECT_ROOT / "backend" / "requirements.txt")],
+        [sys.executable, "-m", "pip", "install", "-q", "-r", str(PROJECT_ROOT / "backend" / "requirements.txt")],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
+    # Install dev dependencies (testing, linting)
+    requirements_dev = PROJECT_ROOT / "backend" / "requirements-dev.txt"
+    if requirements_dev.exists():
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-q", "-r", str(requirements_dev)],
+            env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+            check=True
+        )
+    # Install rich for CI output formatting
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "rich"],
+        [sys.executable, "-m", "pip", "install", "-q", "rich"],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
 
@@ -30,11 +43,13 @@ def install_backend_deps():
 def install_lambda_deps():
     """Install Lambda test dependencies."""
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
+        [sys.executable, "-m", "pip", "install", "-q", "--upgrade", "pip"],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "pytest", "pytest-asyncio", "rich"],
+        [sys.executable, "-m", "pip", "install", "-q", "pytest", "pytest-asyncio", "rich", "ruff==0.14.0"],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
 
@@ -42,11 +57,13 @@ def install_lambda_deps():
 def install_deploy_deps():
     """Install deployment dependencies."""
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
+        [sys.executable, "-m", "pip", "install", "-q", "--upgrade", "pip"],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "boto3", "requests"],
+        [sys.executable, "-m", "pip", "install", "-q", "boto3", "requests"],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
 

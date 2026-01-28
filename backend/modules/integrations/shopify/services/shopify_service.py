@@ -26,19 +26,21 @@ else:
 
 from backend.modules.integrations.shopify.client.shopify_sgqlc_client import ShopifySGQLCClient
 from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_query import Query
+from sgqlc.operation import Operation
+from backend.config import config
 
 # Import shopify normalizers
 # Add backend/shared to path if not already there
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
-from shared.shopify_normalizers import (
-    normalize_order_id,
+from backend.modules.integrations.shopify.services.shopify_normalizers import (
+    normalize_order_identifier,
     normalize_order_number,
-    normalize_product_id,
-    normalize_customer_id,
-    normalize_transaction_id,
-    normalize_variant_id,
+    normalize_product_identifier,
+    normalize_customer_identifier,
+    normalize_transaction_identifier,
+    normalize_variant_identifier,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,8 +64,16 @@ class ShopifyService:
             environment: Environment name ("production", "staging", or "development").
                 Defaults to "production".
         """
+        import sys
+        print(f"[DEBUG] ShopifyService.__init__: Entry with environment={environment}", file=sys.stderr)
+        logger.debug(f"ShopifyService.__init__: Entry with environment={environment}")
+        
+        print("[DEBUG] ShopifyService.__init__: Creating ShopifySGQLCClient", file=sys.stderr)
+        logger.debug("ShopifyService.__init__: Creating ShopifySGQLCClient")
         self.client = ShopifySGQLCClient(environment=environment)
         self.environment = environment
+        print(f"[DEBUG] ShopifyService.__init__: Client created: {type(self.client)}", file=sys.stderr)
+        logger.debug(f"ShopifyService.__init__: Client created: {type(self.client)}")
     
     # ============================================================================
     # CUSTOMERS
@@ -99,14 +109,34 @@ class ShopifyService:
             RuntimeError: If the HTTP request fails (non-200 status or network errors)
             ValueError: If GraphQL errors are present, results can't be interpreted, or no customers found
         """
+        import sys
+        print(f"[DEBUG] ShopifyService.get_customer_by_identifier: Entry with query_params={query_params}, orders_first={orders_first}", file=sys.stderr)
+        logger.debug(f"ShopifyService.get_customer_by_identifier: Entry with query_params={query_params}, orders_first={orders_first}")
+        
         query_str = query_params["query"]
         first = query_params.get("first", 1)
         
+        print(f"[DEBUG] ShopifyService.get_customer_by_identifier: query_str={query_str}, first={first}", file=sys.stderr)
+        logger.debug(f"ShopifyService.get_customer_by_identifier: query_str={query_str}, first={first}")
+        
         # Build query operation (domain-specific logic in models)
+        print("[DEBUG] ShopifyService.get_customer_by_identifier: Building customer query operation", file=sys.stderr)
+        logger.debug("ShopifyService.get_customer_by_identifier: Building customer query operation")
         op = Query.build_customer_query(query_str, first=first, orders_first=orders_first)
+        print(f"[DEBUG] ShopifyService.get_customer_by_identifier: Query operation built: {type(op)}", file=sys.stderr)
+        logger.debug(f"ShopifyService.get_customer_by_identifier: Query operation built: {type(op)}")
         
         # Execute with generic client
-        response = self.client.execute(op)
+        print(f"[DEBUG] ShopifyService.get_customer_by_identifier: Executing query with client={type(self.client)}", file=sys.stderr)
+        logger.debug(f"ShopifyService.get_customer_by_identifier: Executing query with client={type(self.client)}")
+        try:
+            response = self.client.execute(op)
+            print(f"[DEBUG] ShopifyService.get_customer_by_identifier: Query executed successfully, response keys: {list(response.keys()) if isinstance(response, dict) else 'not a dict'}", file=sys.stderr)
+            logger.debug(f"ShopifyService.get_customer_by_identifier: Query executed successfully, response keys: {list(response.keys()) if isinstance(response, dict) else 'not a dict'}")
+        except Exception as e:
+            print(f"[DEBUG] ShopifyService.get_customer_by_identifier: Exception during execute: {type(e).__name__}: {e}", file=sys.stderr)
+            logger.debug(f"ShopifyService.get_customer_by_identifier: Exception during execute: {type(e).__name__}: {e}", exc_info=True)
+            raise
         
         # Check for GraphQL errors
         if response.get('errors'):
@@ -217,6 +247,114 @@ class ShopifyService:
         
         return {"success": True, "data": customer_data}
     
+    def update_customer_tags(
+        self,
+        email: str,
+        new_tags: set[str],
+        should_replace: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Update customer tags by email address.
+        
+        Gets the customer by email, then either replaces all tags or appends new tags
+        to existing tags, and sends a customer update request.
+        
+        Args:
+            email: Customer email address
+            new_tags: Set of tag strings to add or replace
+            should_replace: If True, replaces all tags with new_tags. If False, appends
+                new_tags to existing tags (default: False)
+        
+        Returns:
+            Dict with structure:
+            {
+                "success": bool,
+                "data": {...},  # Customer data if successful
+                "errors": [...],  # User errors if failed
+                "message": str  # Error message if failed
+            }
+        
+        Raises:
+            ValueError: If customer not found
+        """
+        # Get customer by email
+        try:
+            query_params = {
+                "query": f"email:{email}",
+                "not_found_message": f"Customer not found with email: {email}",
+                "first": 1
+            }
+            customers = self.get_customer_by_identifier(query_params, orders_first=1)
+            if not customers:
+                return {"success": False, "message": f"Customer not found with email: {email}"}
+            
+            customer = customers[0]
+            customer_id = customer.id if hasattr(customer, 'id') else None
+            if not customer_id:
+                return {"success": False, "message": "Customer ID not found in response"}
+            
+        except ValueError as e:
+            return {"success": False, "message": str(e)}
+        except Exception as e:
+            logger.error(f"Error fetching customer by email {email}: {str(e)}")
+            return {"success": False, "message": f"Error fetching customer: {str(e)}"}
+        
+        # Get existing tags
+        existing_tags = []
+        if hasattr(customer, 'tags') and customer.tags:
+            existing_tags = list(customer.tags) if isinstance(customer.tags, (list, tuple)) else [customer.tags]
+        
+        # Determine final tags
+        if should_replace:
+            final_tags = new_tags
+        else:
+            # Combine existing and new tags, remove duplicates
+            final_tags = set(existing_tags) | new_tags
+        
+        # Convert to comma-separated string (Shopify API format)
+        tags_string = ", ".join(sorted(final_tags))
+        
+        # Build mutation operation using builder
+        from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import Mutation
+        
+        op = Mutation.build_customer_update_mutation(customer_id, tags=tags_string)
+        
+        # Execute mutation
+        response = self.client.execute(op)
+        
+        # Check for GraphQL errors
+        if response.get('errors'):
+            error_messages = [err.get("message", str(err)) for err in response["errors"]]
+            return {"success": False, "errors": error_messages, "message": "; ".join(error_messages)}
+        
+        # Interpret results
+        try:
+            mutation_result = op + response
+            payload = mutation_result.customerUpdate  # type: ignore[attr-defined]
+        except Exception as e:
+            return {"success": False, "message": f"Error interpreting mutation result: {str(e)}"}
+        
+        # Check for user errors
+        user_errors = []
+        if payload.userErrors:  # type: ignore[attr-defined]
+            for err in payload.userErrors:  # type: ignore[attr-defined]
+                field = ", ".join(err.field) if err.field else "N/A"  # type: ignore[attr-defined]
+                message = err.message  # type: ignore[attr-defined]
+                user_errors.append(f"{field}: {message}")
+        
+        if user_errors:
+            return {"success": False, "errors": user_errors, "message": "; ".join(user_errors)}
+        
+        # Success - extract customer data
+        customer_result = payload.customer  # type: ignore[attr-defined]
+        customer_data = {
+            "id": customer_result.id if customer_result else None,  # type: ignore[attr-defined]
+            "email": customer_result.email if customer_result else None,  # type: ignore[attr-defined]
+            "tags": list(customer_result.tags) if customer_result and hasattr(customer_result, 'tags') and customer_result.tags else [],  # type: ignore[attr-defined]
+        }
+        
+        return {"success": True, "data": customer_data}
+    
     def get_order_line_item_properties(self, order_id: str) -> List[Dict[str, str]]:
         """
         Get line item custom attributes for an order.
@@ -228,7 +366,7 @@ class ShopifyService:
             List of custom attribute dictionaries with 'key' and 'value' keys
         """
         # Normalize order ID to extract numeric ID for search query
-        normalized = normalize_order_id(order_id)
+        normalized = normalize_order_identifier(order_id)
         if not normalized:
             logger.error(f"Invalid order ID format: {order_id}")
             return []
@@ -1405,9 +1543,242 @@ class ShopifyService:
         
         return products_nodes
     
-    # TODO: Implement additional product operations
-    # def create_product(...)
-    # def update_product(...)
+    def update_product(
+        self,
+        product_id: str,
+        handle: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        media: Optional[List[Dict[str, str]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Update a product's handle, tags, and/or media using Shopify's productUpdate mutation.
+        
+        Args:
+            product_id: Product ID (gid://shopify/Product/...)
+            handle: New product handle (optional)
+            tags: List of product tags (optional, replaces all tags)
+            media: List of media input dicts with keys:
+                - originalSource: URL or source of the media (required)
+                - alt: Alt text for the media (optional)
+                - mediaContentType: Type of media, e.g., "IMAGE" or "VIDEO" (required)
+        
+        Returns:
+            Dict with structure:
+            {
+                "success": bool,
+                "data": {...},  # Product data if successful
+                "errors": [...],  # User errors if failed
+                "message": str  # Error message if failed
+            }
+        
+        Raises:
+            ValueError: If neither handle, tags, nor media is provided
+        """
+        if handle is None and tags is None and media is None:
+            raise ValueError("Must provide at least one of: handle, tags, or media")
+        
+        # Build mutation operation using builder
+        from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_mutations import Mutation
+        
+        op = Mutation.build_product_update_mutation(
+            product_id,
+            handle=handle,
+            tags=tags,
+            media=media
+        )
+        
+        # Execute mutation
+        response = self.client.execute(op)
+        
+        # Check for GraphQL errors
+        if response.get('errors'):
+            error_messages = [err.get("message", str(err)) for err in response["errors"]]
+            return {"success": False, "errors": error_messages, "message": "; ".join(error_messages)}
+        
+        # Interpret results
+        try:
+            mutation_result = op + response
+            payload = mutation_result.productUpdate  # type: ignore[attr-defined]
+        except Exception as e:
+            return {"success": False, "message": f"Error interpreting mutation result: {str(e)}"}
+        
+        # Check for user errors
+        user_errors = []
+        if payload.userErrors:  # type: ignore[attr-defined]
+            for err in payload.userErrors:  # type: ignore[attr-defined]
+                field = ", ".join(err.field) if err.field else "N/A"  # type: ignore[attr-defined]
+                message = err.message  # type: ignore[attr-defined]
+                user_errors.append(f"{field}: {message}")
+        
+        if user_errors:
+            return {"success": False, "errors": user_errors, "message": "; ".join(user_errors)}
+        
+        # Success - extract product data
+        product = payload.product  # type: ignore[attr-defined]
+        product_data = {
+            "id": product.id if product else None,  # type: ignore[attr-defined]
+            "handle": product.handle if product else None,  # type: ignore[attr-defined]
+            "tags": list(product.tags) if product and hasattr(product, 'tags') and product.tags else [],  # type: ignore[attr-defined]
+        }
+        
+        # Extract media if it was updated
+        if media is not None and product:
+            images_conn = getattr(product, 'images', None)  # type: ignore[attr-defined]
+            if images_conn:
+                images_nodes = getattr(images_conn, 'nodes', None)  # type: ignore[attr-defined]
+                if images_nodes:
+                    product_data["images"] = [
+                        {
+                            "url": getattr(img, 'url', None),  # type: ignore[attr-defined]
+                            "altText": getattr(img, 'altText', None),  # type: ignore[attr-defined]
+                        }
+                        for img in images_nodes
+                    ]
+        
+        return {"success": True, "data": product_data}
+    
+    def update_product_handle(
+        self,
+        product_id: str,
+        handle: str
+    ) -> Dict[str, Any]:
+        """
+        Update a product's handle using Shopify's productUpdate mutation.
+        
+        Convenience method that calls update_product with handle only.
+        
+        Args:
+            product_id: Product ID (gid://shopify/Product/...)
+            handle: New product handle
+        
+        Returns:
+            Dict with structure:
+            {
+                "success": bool,
+                "data": {...},  # Product data if successful
+                "errors": [...],  # User errors if failed
+                "message": str  # Error message if failed
+            }
+        """
+        return self.update_product(product_id, handle=handle)
+    
+    def get_product_tags(self, product_id: str) -> List[str]:
+        """
+        Get current tags for a product by ID.
+        
+        Args:
+            product_id: Product ID (gid://shopify/Product/... or numeric ID)
+        
+        Returns:
+            List of product tags
+        
+        Raises:
+            ValueError: If product not found or query fails
+        """
+        # Normalize product ID to GID format
+        normalized = normalize_product_identifier(product_id)
+        if not normalized:
+            raise ValueError(f"Failed to normalize product ID: {product_id}")
+        
+        product_gid = normalized.get('gid')
+        if not product_gid:
+            raise ValueError(f"No GID found in normalized product ID: {normalized}")
+        
+        # Use node query to get product by ID
+        op = Operation(Query)
+        node_sel = op.node(id=product_gid)
+        # Cast to Product type
+        product_sel = node_sel.__as__('Product')  # type: ignore[attr-defined]
+        product_sel.id()  # type: ignore[union-attr]
+        product_sel.tags()  # type: ignore[union-attr]
+        
+        try:
+            response = self.client.execute(op)
+            
+            if response.get('errors'):
+                error_msg = f"GraphQL query failed with {len(response.get('errors', []))} errors\n❌ GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
+                logger.error(f"GraphQL query failed for product {product_id}: {error_msg}")
+                raise ValueError(error_msg)
+            
+            query_result = op + response
+            node = getattr(query_result, 'node', None)  # type: ignore[attr-defined]
+            if node:
+                product = getattr(node, '__as__Product', None)  # type: ignore[attr-defined]
+                if product:
+                    tags = getattr(product, 'tags', None)  # type: ignore[attr-defined]
+                    return list(tags) if tags else []
+            
+            raise ValueError(f"Product {product_id} not found")
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(f"Exception getting tags for product {product_id}: {e}", exc_info=True)
+            raise ValueError(f"Failed to get tags for product {product_id}: {e}") from e
+    
+    def set_product_as_closed(
+        self,
+        product_id: str,
+        closed_image_url: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Set a product as closed by adding "reg:closed" tag and updating media image.
+        
+        Args:
+            product_id: Product ID (gid://shopify/Product/... or numeric ID)
+            closed_image_url: URL for the closed image (optional, placeholder if not provided)
+        
+        Returns:
+            Dict with structure:
+            {
+                "success": bool,
+                "data": {...},  # Product data if successful
+                "errors": [...],  # User errors if failed
+                "message": str  # Error message if failed
+            }
+        """
+        try:
+            # Normalize product ID to GID format
+            normalized = normalize_product_identifier(product_id)
+            if not normalized:
+                return {"success": False, "error": "invalid_product_id", "message": f"Failed to normalize product ID: {product_id}"}
+            
+            product_gid = normalized.get('gid')
+            if not product_gid:
+                return {"success": False, "error": "invalid_product_id", "message": f"No GID found in normalized product ID: {normalized}"}
+            
+            # Get current tags
+            try:
+                current_tags = self.get_product_tags(product_gid)
+            except Exception as e:
+                logger.error(f"Failed to get current tags for product {product_id}: {e}")
+                return {"success": False, "error": "get_tags_failed", "message": str(e)}
+            
+            # Add "reg:closed" tag if not already present
+            new_tags = list(current_tags) if current_tags else []
+            if "reg:closed" not in new_tags:
+                new_tags.append("reg:closed")
+            
+            # Prepare media update (placeholder for now)
+            media = None
+            if closed_image_url:
+                media = [{
+                    "originalSource": closed_image_url,
+                    "alt": "Closed image",
+                    "mediaContentType": "IMAGE"
+                }]
+            
+            # Update product with new tags and media
+            result = self.update_product(
+                product_id=product_gid,
+                tags=new_tags,
+                media=media
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error setting product {product_id} as closed: {e}", exc_info=True)
+            return {"success": False, "error": str(e), "message": f"Failed to set product as closed: {e}"}
     
     # ============================================================================
     # INVENTORY
@@ -1427,7 +1798,7 @@ class ShopifyService:
             ValueError: If GraphQL query fails with errors
         """
         # Normalize variant ID to GID format
-        normalized = normalize_variant_id(variant_id)
+        normalized = normalize_variant_identifier(variant_id)
         if not normalized:
             raise ValueError(f"Failed to normalize variant ID: {variant_id}")
         
@@ -1460,6 +1831,82 @@ class ShopifyService:
             raise ValueError(f"Failed to get product ID from variant {variant_id}: {e}") from e
         
         raise ValueError(f"Variant {variant_id} not found or has no associated product")
+    
+    def get_inventory_item_and_quantity(self, variant_gid: str) -> Dict[str, Any]:
+        """
+        Get inventory item ID and available quantity for a given variant GID.
+        
+        Args:
+            variant_gid: Variant ID (gid://shopify/ProductVariant/...)
+        
+        Returns:
+            Dict with structure:
+            {
+                "success": bool,
+                "inventoryItemId": str,  # Inventory item ID if successful
+                "inventoryQuantity": int,  # Current inventory quantity if successful
+                "message": str  # Error message if failed
+            }
+        
+        Raises:
+            ValueError: If variant not found or GraphQL errors occur
+        """
+        # Build query operation using builder
+        op = Query.build_variant_query(variant_gid)
+        
+        # Execute with generic client
+        response = self.client.execute(op)
+        
+        # Check for GraphQL errors
+        if response.get('errors'):
+            error_msg = f"GraphQL query failed with {len(response.get('errors', []))} errors\n❌ GraphQL errors: {json.dumps(response.get('errors'), indent=2)}"
+            return {
+                "success": False,
+                "message": error_msg,
+                "inventoryItemId": None,
+                "inventoryQuantity": None,
+            }
+        
+        # Interpret results into native objects
+        try:
+            query_result = op + response
+        except Exception as e:
+            error_msg = f"Error interpreting results: {type(e).__name__}: {e}\n{json.dumps(response, indent=2, default=str)}"
+            return {
+                "success": False,
+                "message": error_msg,
+                "inventoryItemId": None,
+                "inventoryQuantity": None,
+            }
+        
+        # Extract variant from result
+        variant = getattr(query_result, 'productVariant', None)  # type: ignore[attr-defined]
+        if not variant:
+            return {
+                "success": False,
+                "message": f"Variant {variant_gid} not found",
+                "inventoryItemId": None,
+                "inventoryQuantity": None,
+            }
+        
+        # Extract inventory information
+        inventory_item = getattr(variant, 'inventoryItem', None)  # type: ignore[attr-defined]
+        inventory_item_id = getattr(inventory_item, 'id', None) if inventory_item else None  # type: ignore[attr-defined]
+        inventory_quantity = getattr(variant, 'inventoryQuantity', None)  # type: ignore[attr-defined]
+        
+        if inventory_item_id is None:
+            return {
+                "success": False,
+                "message": f"Inventory item not found for variant {variant_gid}",
+                "inventoryItemId": None,
+                "inventoryQuantity": inventory_quantity,
+            }
+        
+        return {
+            "success": True,
+            "inventoryItemId": inventory_item_id,
+            "inventoryQuantity": inventory_quantity,
+        }
     
     def get_product_variants_for_restock(self, variant_id: str) -> List[Dict[str, Any]]:
         """
@@ -2323,32 +2770,32 @@ class ShopifyService:
     # Expose normalizer functions as methods for convenience
     
     @staticmethod
-    def normalize_order_id(order_id_input: Optional[str]) -> Optional[Dict[str, str]]:
+    def normalize_order_identifier(order_id_input: str) -> Optional[Dict[str, Optional[str]]]:
         """Normalize order id to a dict with digits_only and gid."""
-        return normalize_order_id(order_id_input)
+        return normalize_order_identifier(order_id_input)
     
     @staticmethod
-    def normalize_order_number(order_number_input: Optional[str]) -> Optional[Dict[str, str]]:
+    def normalize_order_number(order_number_input: str) -> Optional[dict[Any, Any]]:
         """Normalize order number to a dict with with_hash and digits_only."""
         return normalize_order_number(order_number_input)
     
     @staticmethod
-    def normalize_product_id(product_id_input: Optional[str]) -> Optional[Dict[str, str]]:
+    def normalize_product_identifier(product_id_input: str) -> Optional[Dict[str, Optional[str]]]:
         """Normalize a product id."""
-        return normalize_product_id(product_id_input)
+        return normalize_product_identifier(product_id_input)
     
     @staticmethod
-    def normalize_customer_id(customer_id_input: Optional[str]) -> Optional[Dict[str, str]]:
+    def normalize_customer_identifier(customer_id_input: str) -> Optional[dict[Any, Any]]:
         """Normalize a customer id."""
-        return normalize_customer_id(customer_id_input)
+        return normalize_customer_identifier(customer_id_input)
     
     @staticmethod
-    def normalize_transaction_id(transaction_id_input: Optional[str]) -> Optional[Dict[str, str]]:
+    def normalize_transaction_identifier(transaction_id_input: str) -> Optional[dict[Any, Any]]:
         """Normalize a transaction id (numeric or GID)."""
-        return normalize_transaction_id(transaction_id_input)
+        return normalize_transaction_identifier(transaction_id_input)
     
     @staticmethod
-    def normalize_variant_id(variant_id_input: Optional[str]) -> Optional[Dict[str, str]]:
+    def normalize_variant_identifier(variant_id_input: str, product_id_input: Optional[str] = None) -> Optional[dict[Any, Any]]:
         """Normalize a variant id (numeric or GID)."""
-        return normalize_variant_id(variant_id_input)
+        return normalize_variant_identifier(variant_id_input, product_id_input)
 

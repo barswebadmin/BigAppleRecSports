@@ -6,7 +6,7 @@ Defines types for orderCancel and refundCreate mutations.
 
 from sgqlc.types import Type, Field, String, Boolean, ID, Int, list_of, Input, Enum
 from sgqlc.operation import Operation
-from typing import TYPE_CHECKING, Literal, Optional, Dict, Any, Tuple
+from typing import TYPE_CHECKING, Literal, Optional, Dict, Any, Tuple, List
 
 if TYPE_CHECKING:
     pass
@@ -228,6 +228,7 @@ class CustomerInput(Input):
     """Input for customerUpdate mutation."""
     email = String
     phone = String
+    tags = String
 
 
 class CustomerUpdateInput(Input):
@@ -239,6 +240,30 @@ class CustomerUpdateInput(Input):
 class CustomerUpdatePayload(Type):
     """Response payload for customerUpdate mutation."""
     customer = Field('Customer')  # Forward reference to existing Customer type
+    userErrors = Field(list_of(UserError))
+
+
+# ============================================================================
+# Product Update Mutations
+# ============================================================================
+
+class ProductInput(Input):
+    """Input for productUpdate mutation."""
+    id = ID
+    handle = String
+    tags = list_of(String)
+
+
+class CreateMediaInput(Input):
+    """Input for creating media in productUpdate mutation."""
+    originalSource = String
+    alt = String
+    mediaContentType = String
+
+
+class ProductUpdatePayload(Type):
+    """Response payload for productUpdate mutation."""
+    product = Field('Product')  # Forward reference to existing Product type
     userErrors = Field(list_of(UserError))
 
 
@@ -291,6 +316,13 @@ class Mutation(Type):
         InventoryAdjustQuantitiesPayload,
         args={'input': InventoryAdjustQuantitiesInput}
     )
+    productUpdate = Field(
+        ProductUpdatePayload,
+        args={
+            'product': ProductInput,
+            'media': list_of(CreateMediaInput)
+        }
+    )
     
     # ============================================================================
     # Mutation Builders
@@ -301,7 +333,8 @@ class Mutation(Type):
         cls,
         customer_id: str,
         email: Optional[str] = None,
-        phone: Optional[str] = None
+        phone: Optional[str] = None,
+        tags: Optional[str] = None
     ) -> Operation:
         """Build customerUpdate mutation operation.
         
@@ -309,6 +342,7 @@ class Mutation(Type):
             customer_id: Customer ID (gid://shopify/Customer/...)
             email: New email address (optional)
             phone: New phone number (optional)
+            tags: Comma-separated string of tags (optional)
         
         Returns:
             Configured sgqlc Operation ready for execution
@@ -320,6 +354,8 @@ class Mutation(Type):
             customer_input["email"] = email
         if phone:
             customer_input["phone"] = phone
+        if tags is not None:
+            customer_input["tags"] = tags
         
         update_input = {
             "id": customer_id,
@@ -332,6 +368,7 @@ class Mutation(Type):
         result.customer.phone()  # type: ignore[attr-defined]
         result.customer.firstName()  # type: ignore[attr-defined]
         result.customer.lastName()  # type: ignore[attr-defined]
+        result.customer.tags()  # type: ignore[attr-defined]
         result.userErrors.field()  # type: ignore[attr-defined]
         result.userErrors.message()  # type: ignore[attr-defined]
         
@@ -514,6 +551,54 @@ class Mutation(Type):
         result = op.inventoryAdjustQuantities(input=input_data)  # type: ignore[call-arg]
         result.userErrors.__fields__('field', 'message')  # type: ignore[union-attr]
         result.inventoryAdjustmentGroup.__fields__('createdAt', 'reason', 'referenceDocumentUri')  # type: ignore[union-attr]
+        
+        return op
+    
+    @classmethod
+    def build_product_update_mutation(
+        cls,
+        product_id: str,
+        handle: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        media: Optional[List[Dict[str, str]]] = None
+    ) -> Operation:
+        """Build productUpdate mutation operation.
+        
+        Args:
+            product_id: Product ID (gid://shopify/Product/...)
+            handle: New product handle (optional)
+            tags: List of product tags (optional, replaces all tags)
+            media: List of media input dicts with keys:
+                - originalSource: URL or source of the media
+                - alt: Alt text for the media
+                - mediaContentType: Type of media (e.g., "IMAGE", "VIDEO")
+        
+        Returns:
+            Configured sgqlc Operation ready for execution
+        """
+        op = Operation(cls)
+        
+        product_input = {
+            "id": product_id,
+        }
+        if handle is not None:
+            product_input["handle"] = handle
+        if tags is not None:
+            product_input["tags"] = tags
+        
+        # Build mutation call - use product and media as separate arguments
+        if media is not None:
+            result = op.productUpdate(product=product_input, media=media)  # type: ignore[call-arg]
+        else:
+            result = op.productUpdate(product=product_input)  # type: ignore[call-arg]
+        
+        result.product.id()  # type: ignore[attr-defined]
+        result.product.handle()  # type: ignore[attr-defined]
+        result.product.tags()  # type: ignore[attr-defined]
+        result.product.images(first=10).nodes.url()  # type: ignore[union-attr]
+        result.product.images(first=10).nodes.altText()  # type: ignore[union-attr]
+        result.userErrors.field()  # type: ignore[attr-defined]
+        result.userErrors.message()  # type: ignore[attr-defined]
         
         return op
 

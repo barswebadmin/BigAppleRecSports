@@ -18,7 +18,7 @@ def _get_normalizer():
     if _normalize_product_id is None:
         # Import via symlink - service handles the backend imports correctly
         from bars_cli.backend_services.shopify.services import ShopifyService  # type: ignore
-        _normalize_product_id = ShopifyService.normalize_product_id  # type: ignore[attr-defined]
+        _normalize_product_id = ShopifyService.normalize_product_identifier  # type: ignore[attr-defined]
     
     return _normalize_product_id
 

@@ -5,20 +5,9 @@ from typing import Dict, Any, Optional, Callable
 from .base import ValidatedParamType
 from ..prompts import prompt_select_from_options
 
-# Lazy import for ShopifyService to avoid circular dependencies
-_normalize_customer_id: Optional[Callable] = None
+from bars_cli.backend_services.shopify.services import ShopifyService
 
 
-def _get_normalizer():
-    """Get normalizer function from ShopifyService."""
-    global _normalize_customer_id
-    
-    if _normalize_customer_id is None:
-        # Import via symlink - service handles the backend imports correctly
-        from bars_cli.backend_services.shopify.services import ShopifyService
-        _normalize_customer_id = ShopifyService.normalize_customer_id  # type: ignore[attr-defined]
-    
-    return _normalize_customer_id
 
 
 def _convert_shopify_customer_identifier(identifier: str) -> Dict[str, Any]:
@@ -47,12 +36,10 @@ def _convert_shopify_customer_identifier(identifier: str) -> Dict[str, Any]:
         raise ValueError("Shopify customer identifier cannot be empty")
     
     # Step 1: Try to normalize as customer ID first
-    normalize_customer_id = _get_normalizer()
-    if normalize_customer_id is None:
-        raise RuntimeError("Failed to load Shopify normalizer from service")
+    normalize_customer_id = ShopifyService.normalize_customer_identifier
     normalized_id = normalize_customer_id(identifier)
     if normalized_id:
-        customer_id = normalized_id["digits_only"]
+        customer_id = normalized_id["gid"]
         return {
             "identifier": identifier,
             "query": f"id:{customer_id}",
