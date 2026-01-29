@@ -1,10 +1,9 @@
 """Apply discount to Shopify order command."""
 
-import sys
 import traceback
 from typing import Dict, Any, Optional, List, Tuple, TYPE_CHECKING, cast
 
-import click
+import click_extra as click
 from rich.console import Console
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options

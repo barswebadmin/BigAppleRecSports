@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_PRODUCT_IDENTIFIER
@@ -28,7 +28,7 @@ else:
     Product = Any
 
 
-@click.command('get')
+@click.command(name='get-product', aliases=['get'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--one', 'must_return_one', is_flag=True, default=False, help='Require selecting exactly one product (no "All" option)')
 @click.argument('identifier', type=SHOPIFY_PRODUCT_IDENTIFIER, required=False)

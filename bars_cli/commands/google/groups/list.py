@@ -2,21 +2,19 @@
 List groups command for Google Directory API.
 """
 
-from typing import List
-
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.utils.json_output import output_json_list, output_json_error
 
-from bars_cli.backend_services.google.models.google_directory_resources import GroupResource
+from backend.modules.integrations.google.models.google_directory_resources import GroupResource
 from bars_cli.commands.google._shared.google_formatters import _format_groups_list
 
 
 @click.command('list')
 @handle_display_options(display=True, exit_on_error=True)
 @click.pass_context
-def list_groups_cmd(ctx: click.Context) -> List[GroupResource]:
+def list_groups_cmd(ctx: click.Context) -> list[GroupResource]:
     """
     List all groups in Google Workspace.
     
@@ -37,7 +35,7 @@ def list_groups_cmd(ctx: click.Context) -> List[GroupResource]:
             click.echo("🔍 Fetching all groups...", err=True)
         
         # List all groups using Google Directory API
-        groups: List[GroupResource] = client.list_all_groups()
+        groups: list[GroupResource] = client.list_all_groups()
         
         if not groups:
             if should_display and not json_output:

@@ -1,7 +1,7 @@
 """Get Slack channel details command."""
 from typing import Optional, Dict, Any
 
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SLACK_CHANNEL_IDENTIFIER
@@ -48,7 +48,7 @@ def _extract_channel_identifier(identifier: Dict[str, Any]) -> str:
     return identifier.get("channel_id") or identifier.get("name") or identifier.get("identifier", "")
 
 
-@click.command('get')
+@click.command('get', aliases=['get-channel'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SLACK_CHANNEL_IDENTIFIER, required=False)
 @click.pass_context
@@ -83,7 +83,7 @@ def get_channel_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]]):
         ctx=ctx,
         identifier=identifier,
         lookup_method=bot.lookup_channel,
-        format_func=format_channel,
+        format_func=lambda channel: format_channel(channel.to_dict_snake()),
         entity_name="channel",
         identifier_required_msg="Channel identifier is required (name or channel ID)",
         extract_identifier_value=_extract_channel_identifier

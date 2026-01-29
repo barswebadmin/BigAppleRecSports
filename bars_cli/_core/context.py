@@ -3,7 +3,7 @@
 import os
 from typing import Any, Dict, Optional, Callable
 
-import click
+import click_extra as click
 
 # Service imports
 from bars_cli.backend_services.shopify.services import ShopifyService

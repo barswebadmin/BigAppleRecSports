@@ -2,7 +2,7 @@
 
 from typing import Any, Callable, Optional
 
-import click
+import click_extra as click
 
 from bars_cli._core.decorators import retry_until_valid
 from bars_cli._core.prompts import prompt_text_input

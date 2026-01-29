@@ -5,7 +5,7 @@ import sys
 from functools import wraps
 from typing import Callable, Any, Optional
 
-import click
+import click_extra as click
 
 
 def handle_display_options(

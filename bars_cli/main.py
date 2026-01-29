@@ -15,16 +15,15 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-import click
+import click_extra as click
 
 from ._core.decorators.handle_display_options import handle_display_options
 from ._core.context import LazyServiceDict, LazyServiceProxy
 from ._core.ui.display import display_response
-from .commands.slack import slack
-from .commands.shopify import shopify
-from .commands.google import google
+from .commands.slack import slack_grp as slack
+from .commands.google import google_grp as google
+from .commands.shopify import shopify_group as shopify
 from .commands.compare_csv import compare_csv_cmd
-# from ._core.command_registry import discover_commands
 
 
 def load_environment(env: str = "production"):
@@ -91,9 +90,6 @@ def cli(ctx: click.Context, json_output: bool, env: str):
     # This avoids import-time errors and makes it available to all child commands
     # Don't initialize here - let commands initialize on first use via helper function
     # This prevents import errors when CLI is just being imported/registered
-    
-# Auto-discover and register all commands recursively
-# discover_commands(cli, commands_pkg)
 
 # Manual command registration
 cli.add_command(slack)

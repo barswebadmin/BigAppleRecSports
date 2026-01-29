@@ -127,7 +127,11 @@ class Config(ApiModel):
         nested: Dict[str, Any] = {}
         flat: Dict[str, str] = {}
         
-        for key, value in os.environ.items():
+        # Sort all environment variables alphabetically to ensure consistent processing order
+        # This ensures GOOGLE.SERVICE_ACCOUNT is processed before GOOGLE.SERVICE_ACCOUNT.SUBJECT
+        sorted_env_items = sorted(os.environ.items())
+        
+        for key, value in sorted_env_items:
             if "." in key:
                 # Build nested structure
                 parts = [cls._normalize_key(p) for p in key.split(".") if p]
@@ -138,12 +142,34 @@ class Config(ApiModel):
                         if seg not in cur:
                             cur[seg] = {}
                         elif not isinstance(cur[seg], dict):
-                            # Conflict: key already exists as non-dict, skip this nested path
-                            break
+                            # If we encounter a string that looks like JSON, try to parse it
+                            if isinstance(cur[seg], str):
+                                try:
+                                    parsed_json = json.loads(cur[seg])
+                                    if isinstance(parsed_json, dict):
+                                        cur[seg] = parsed_json
+                                    else:
+                                        # Not a dict, can't navigate further, skip this nested path
+                                        break
+                                except (json.JSONDecodeError, TypeError):
+                                    # Not valid JSON, can't navigate further, skip this nested path
+                                    break
+                            else:
+                                # Not a dict or string, can't navigate further, skip this nested path
+                                break
                         cur = cur[seg]
                     else:
                         # Only set if we successfully navigated the path
-                        cur[parts[-1]] = value
+                        final_key = parts[-1]
+                        # Try to parse as JSON if it looks like JSON
+                        try:
+                            parsed_json = json.loads(value)
+                            if isinstance(parsed_json, dict):
+                                cur[final_key] = parsed_json
+                            else:
+                                cur[final_key] = value
+                        except (json.JSONDecodeError, TypeError):
+                            cur[final_key] = value
             else:
                 # Store flat variables
                 flat[cls._normalize_key(key)] = value

@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: backend clasp clean help install ready start status stop test test-specific tunnel _backend_ports _backend_wait_for_healthy_port _check_process _deploy_lambda _get_backend_port _get_tunnel_port _get_tunnel_subdomain _get_tunnel_url _is_port_open _kill_backend _kill_tunnel _run_in_new_terminal
+.PHONY: backend clasp clean help install install-backend install-cli install-google install-lambda ready start status stop test test-specific tunnel _backend_ports _backend_wait_for_healthy_port _check_process _deploy_lambda _get_backend_port _get_tunnel_port _get_tunnel_subdomain _get_tunnel_url _is_port_open _kill_backend _kill_tunnel _run_in_new_terminal
 
 # Default target
 help:
@@ -13,6 +13,10 @@ help:
 	@echo "  make tunnel              - Start localtunnel (tries multiple strategies with fallback)"
 	@echo "  make stop                - Stop all processes"
 	@echo "  make install             - Install all dependencies (Python + GAS)"
+	@echo "  make install-backend     - Install backend dependencies only"
+	@echo "  make install-cli         - Install CLI tool only"
+	@echo "  make install-google      - Install Google Apps Scripts dependencies only"
+	@echo "  make install-lambda      - Install Lambda function dependencies only"
 	@echo "  make clean               - Clean up processes and cache files"
 	@echo "  make status              - Show running processes"
 	@echo ""
@@ -329,7 +333,19 @@ stop:
 # =============================================================================
 
 install:
-	@python3 scripts/install.py
+	@python3 scripts/installation_setup/install.py
+
+install-backend:
+	@python3 scripts/installation_setup/install.py backend
+
+install-cli:
+	@python3 scripts/installation_setup/install.py cli
+
+install-google:
+	@python3 scripts/installation_setup/install.py google
+
+install-lambda:
+	@python3 scripts/installation_setup/install.py lambda
 
 clean: stop
 	@echo "🧹 Cleaning up..."

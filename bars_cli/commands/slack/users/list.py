@@ -2,7 +2,7 @@
 import json
 from typing import List, Optional
 
-import click
+import click_extra as click
 from slack_sdk.errors import SlackApiError
 
 from bars_cli.backend_services.slack.models.slack_user import SlackUser
@@ -13,7 +13,7 @@ from bars_cli._core.utils.json_output import output_json_list, output_json_error
 from .._shared.slack_formatters import format_users
 
 
-@click.command('list')
+@click.command('list', aliases=['list-users'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--include-bots', is_flag=False, help='Include bot accounts')
 @click.option('--include-deleted', is_flag=False, help='Include deleted users')

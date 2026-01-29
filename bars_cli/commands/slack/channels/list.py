@@ -3,7 +3,7 @@ import sys
 import json
 from typing import Optional, List, Dict, Any
 
-import click
+import click_extra as click
 from slack_sdk.errors import SlackApiError
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
@@ -13,7 +13,7 @@ from .._shared.slack_formatters import format_channels
 
 
 
-@click.command('list')
+@click.command('list', aliases=['list-channels'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--include-archived', is_flag=True, help='Include archived channels')
 @click.pass_context

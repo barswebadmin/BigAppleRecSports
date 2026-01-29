@@ -1,7 +1,7 @@
 """Add user to Slack usergroup command."""
 import sys
 
-import click
+import click_extra as click
 from slack_sdk.errors import SlackApiError
 
 from bars_cli._core.param_types import SLACK_GROUP_IDENTIFIER, SLACK_USER_IDENTIFIER
@@ -9,7 +9,7 @@ from bars_cli.backend_services.slack.services import UsergroupService
 from bars_cli.backend_services.slack.slack_service import SlackService
 
 
-@click.command('add-member')
+@click.command('add-member', aliases=['add-user-to-group'])
 @click.argument('group_identifier', type=SLACK_GROUP_IDENTIFIER)
 @click.argument('user_identifier', type=SLACK_USER_IDENTIFIER)
 @click.option('--bot', default='leadership', help='Which bot to use')

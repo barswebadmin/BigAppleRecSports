@@ -13,7 +13,7 @@ from datetime import datetime, date
 from typing import Callable, List, Optional, Dict, Any, Sequence
 import textwrap
 
-import click
+import click_extra as click
 from rich.console import Console
 from rich.table import Table
 from rich.theme import Theme

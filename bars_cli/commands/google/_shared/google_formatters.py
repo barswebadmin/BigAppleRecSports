@@ -1,4 +1,4 @@
-import click
+import click_extra as click
 
 from backend.modules.integrations.google.models.google_directory_resources import GroupResource, MemberResource, UserResource
 

@@ -10,7 +10,7 @@ import html
 from datetime import datetime
 from typing import TypedDict, Optional, Any, Callable, List, Dict, Union, Tuple
 
-import click
+import click_extra as click
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel

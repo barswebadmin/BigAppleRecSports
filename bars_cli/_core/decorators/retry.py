@@ -2,7 +2,7 @@
 
 from typing import Any, Callable, Optional
 
-import click
+import click_extra as click
 
 from bars_cli._core.validators import ValidationResult
 from .decorator_wrappers import create_decorator_wrapper, is_decorator_usage

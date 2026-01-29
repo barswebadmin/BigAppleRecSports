@@ -6,7 +6,7 @@ import csv
 import json
 import re
 
-import click
+import click_extra as click
 from rich.console import Console
 
 from bars_cli._core.context import get_display_context, get_service
@@ -169,7 +169,7 @@ def _find_image_by_name_or_id(identifier: str, shopify_service: Any) -> Optional
     return f"({pronouns})"
 
 
-@click.command('update-about')
+@click.command(name='update-about', aliases=['update-about'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--bulk-update', type=click.Path(exists=True), help='CSV file with name,image_url columns')
 @click.option('--single-update', is_flag=True, default=False, help='Update single block by ID')

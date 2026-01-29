@@ -143,9 +143,9 @@ class GoogleApiClient():
         """List all Google Workspace users. Delegates to directory_service."""
         return self.directory_service.list_all_users()
     
-    def get_group(self, group_email: str):
+    def get_group(self, group_email: str, include_members: bool = True):
         """Get a Google Workspace group by email address. Delegates to directory_service."""
-        return self.directory_service.get_group(group_email)
+        return self.directory_service.get_group(group_email, include_members=include_members)
     
     def list_all_groups(self):
         """List all Google Workspace groups. Delegates to directory_service."""
@@ -154,3 +154,7 @@ class GoogleApiClient():
     def list_group_members(self, group_email: str):
         """List members of a Google Workspace group. Delegates to directory_service."""
         return self.directory_service.list_group_members(group_email)
+    
+    def create_group(self, email: str, name: str, description: str = None):
+        """Create a new Google Workspace group. Delegates to directory_service."""
+        return self.directory_service.create_group(email, name, description)

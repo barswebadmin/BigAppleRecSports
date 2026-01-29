@@ -3,6 +3,7 @@
 import re
 from typing import Any, Callable, Optional
 
+import click_extra as click
 import questionary
 from questionary import Choice, Style
 
@@ -156,7 +157,6 @@ def prompt_select_from_options(
     if not options:
         raise ValueError("Options list cannot be empty")
     
-    import click
     import html
 
     prompt_text = f"{display_text} (Current: {show_current})" if show_current else display_text
@@ -272,7 +272,7 @@ def prompt_select_from_options(
 def format_result_option(result: dict, fields: list[str], labels: Optional[dict[str, str]] = None) -> str:
     """Format a single result as an option string.
     
-    Uses click_extra.style for colors, similar to search command.
+    Uses click.style for colors, similar to search command.
     
     Args:
         result: Dictionary representing a result row
@@ -282,7 +282,6 @@ def format_result_option(result: dict, fields: list[str], labels: Optional[dict[
     Returns:
         Formatted option string with blue labels and | separators
     """
-    import click_extra
     
     parts = []
     for field in fields:
@@ -295,10 +294,10 @@ def format_result_option(result: dict, fields: list[str], labels: Optional[dict[
         elif isinstance(value, str) and len(value) > 19:
             value = value[:19]
         
-        styled_label = click_extra.style(label, fg="blue")
+        styled_label = click.style(label, fg="blue")
         parts.append(f"{styled_label} {value}")
     
-    separator = click_extra.style("|", fg="blue")
+    separator = click.style("|", fg="blue")
     return f" {separator} ".join(parts)
 
 
@@ -338,8 +337,7 @@ def prompt_result_selection(
         options.append(option_text)
     
     if allow_all:
-        import click_extra
-        all_option = click_extra.style("All", fg="green", bold=True)
+        all_option = click.style("All", fg="green", bold=True)
         options_with_all = options + [all_option]
     else:
         options_with_all = options

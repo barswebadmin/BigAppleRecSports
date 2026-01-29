@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
-import click
+import click_extra as click
 
 from bars_cli._core.context import get_service
 from bars_cli._core.decorators.handle_display_options import handle_display_options
@@ -31,7 +31,7 @@ else:
     Customer = Any
 
 
-@click.command('get')
+@click.command(name='get-customer', aliases=['get'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--one', 'must_return_one', is_flag=True, default=False, help='Require selecting exactly one customer (no "All" option)')
 @click.argument('identifier', type=SHOPIFY_CUSTOMER_IDENTIFIER, required=False)

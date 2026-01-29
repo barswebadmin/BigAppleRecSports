@@ -3,7 +3,7 @@
 from typing import Callable, Any, List, Dict, Optional
 import inspect
 
-import click
+import click_extra as click
 
 
 def profile_options_from_model(model_class, include_optional: bool = True, help_texts: Optional[Dict[str, str]] = None):

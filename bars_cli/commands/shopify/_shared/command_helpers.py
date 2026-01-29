@@ -5,17 +5,14 @@ Provides generic command handlers to reduce duplication across customer, order, 
 """
 
 import csv
-import json
 import sys
-import traceback
 from typing import Dict, Any, Optional, List, Callable, Tuple, TYPE_CHECKING
 
-import click
+import click_extra as click
 
 from bars_cli._core.prompts import prompt_select_from_options
 from bars_cli._core.utils import strip_ansi
 from bars_cli._core.utils.json_output import (
-    to_json_data,
     output_json_item,
     output_json_list,
 )

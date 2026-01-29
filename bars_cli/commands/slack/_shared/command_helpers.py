@@ -4,11 +4,12 @@ Shared helpers for Slack CLI commands.
 Provides generic command handlers to reduce duplication across user, group, and channel commands.
 """
 
-import json
 import traceback
 from typing import Dict, Any, Optional, List, Callable
 
-import click
+from bars_cli.backend_services.slack.bot_apps.bot_apps import SlackBot
+from bars_cli.backend_services.slack.models.slack_user import SlackUser
+import click_extra as click
 from slack_sdk.errors import SlackApiError
 
 from bars_cli._core.utils.json_output import output_json_item
@@ -16,7 +17,7 @@ from ..utils import handle_slack_api_error
 from .slack_formatters import format_error
 
 
-def get_admin_bot(ctx: click.Context) -> Any:
+def get_admin_bot(ctx: click.Context) -> SlackBot:
     """Get admin bot from context or raise error.
     
     Args:
@@ -54,8 +55,8 @@ def extract_group_identifier(identifier: Dict[str, Any]) -> str:
 def handle_slack_get_command(
     ctx: click.Context,
     identifier: Optional[Dict[str, Any]],
-    lookup_method: Callable[[str], Optional[Dict[str, Any]]],
-    format_func: Callable[[Any], str],
+    lookup_method: Callable[[str], Optional[SlackUser]],
+    format_func: Callable[[SlackUser], str],
     entity_name: str,
     identifier_required_msg: Optional[str] = None,
     extract_identifier_value: Optional[Callable[[Dict[str, Any]], str]] = None
@@ -147,11 +148,9 @@ def handle_slack_get_command(
             if json_output:
                 # Handle both dict and model objects
                 if hasattr(entity_data, 'model_dump'):
-                    output_json_item(entity_data.model_dump(exclude_none=True))
-                elif hasattr(entity_data, 'dict'):
-                    output_json_item(entity_data.dict(exclude_none=True))
+                    output_json_item(entity_data.to_json_snake())
                 else:
-                    output_json_item(entity_data)
+                    output_json_item(entity_data.to_dict_snake())
             else:
                 click.echo(format_func(entity_data))
         

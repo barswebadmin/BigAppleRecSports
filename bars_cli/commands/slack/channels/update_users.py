@@ -3,7 +3,8 @@ import json
 import sys
 from typing import Optional, List, Dict, Any, Tuple
 
-import click
+from bars_cli._core.param_types import SLACK_CHANNEL_IDENTIFIER, SLACK_USER_IDENTIFIER
+import click_extra as click
 import questionary
 from slack_sdk.errors import SlackApiError
 
@@ -100,16 +101,12 @@ def _lookup_users_by_identifiers(bot, identifiers: List[str]) -> Tuple[Dict[str,
     return users, not_found
 
 
-@click.command('update_users')
+@click.command('update-users', aliases=['update-channel-users'])
 @handle_display_options(display=True, exit_on_error=True)
-@click.argument('channel_arg', required=False)
-@click.argument('users_arg', required=False)
+@click.argument('channel_identifier', type=SLACK_CHANNEL_IDENTIFIER, required=False)
+@click.argument('user_list_identifier', type=click.STRING, required=False)
 @click.pass_context
-def update_users_cmd(
-    ctx: click.Context,
-    channel_arg: Optional[str],
-    users_arg: Optional[str]
-) -> Optional[Dict[str, Any]]:
+def update_users_cmd(ctx: click.Context, channel_identifier: Optional[str], user_list_identifier: Optional[str]) -> Optional[Dict[str, Any]]:
     """
     Update Slack channel members.
     
@@ -126,10 +123,6 @@ def update_users_cmd(
     exit_override = ctx.obj.get('exit_override') if ctx.obj else None
     should_display = display_override if display_override is not None else True
     
-    # Parse arguments
-    channel_identifier = _parse_channel_identifier(channel_arg) if channel_arg else None
-    user_list = _parse_user_list(users_arg) if users_arg else None
-    
     # Prompt for missing arguments
     if not channel_identifier:
         if json_output:
@@ -141,20 +134,20 @@ def update_users_cmd(
         if channel_input:
             channel_identifier = _parse_channel_identifier(channel_input)
     
-    if not user_list:
+    if not user_list_identifier:
         if json_output:
             raise click.ClickException("User list required in JSON mode")
-        users_input = questionary.text(
+        users_input: Optional[list[str]] = questionary.text(
             "Enter user list (u:user1,user2,user3):",
             validate=lambda x: bool(x.strip())
-        ).ask()
+        ).ask().split(',')
         if users_input:
-            user_list = _parse_user_list(users_input)
+            user_list = [user.strip() for user in users_input if user.strip()]
     
     if not channel_identifier:
         raise click.ClickException("Channel identifier is required")
     
-    if not user_list:
+    if not user_list_identifier:
         raise click.ClickException("User list is required")
     
     try:
@@ -272,7 +265,7 @@ def update_users_cmd(
                     sys.exit(0)
                 elif choice == "r":
                     # Retry by re-running the command
-                    return update_users_cmd(ctx, channel_arg, users_arg)
+                    return update_users_cmd(ctx, channel_identifier, user_list_identifier)
         
         # Apply changes
         added_results = []

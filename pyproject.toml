@@ -6,11 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "bars"
 version = "1.0.0"
 description = "Big Apple Rec Sports - Backend & CLI"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
+    "boto3>=1.42.0",
     "click>=8.1.7",
     "click-aliases>=1.0.5",
     "click-extra>=0.15.0",
+    "click-shell>=2.1",
+    "httpx>=0.27.0",
     "pydantic>=2.12.0",
     "questionary>=2.0.0",
     "rich>=13.7.0",
@@ -34,14 +37,29 @@ dependencies = [
 bars = "bars_cli.main:cli"
 
 [tool.setuptools]
-packages = ["bars_cli", "bars_cli.commands", "backend", "backend.shared", "backend.config", "backend.modules"]
+packages = ["bars_cli", "bars_cli.commands", "bars_cli._core"]
 
 [tool.pyright]
 typeCheckingMode = "basic"
+reportMissingImports = true
 reportMissingModuleSource = "none"
+pythonVersion = "3.11"
+pythonPlatform = "All"
 # Use backend venv for backend files
 venvPath = "backend"
 venv = ".venv"
+# Include pipx venv for scripts and bars_cli (where boto3 is installed)
+extraPaths = ["/Users/jrandazzo/.local/pipx/venvs/bars-cli/lib/python3.11/site-packages"]
+include = ["**/*.py"]
+exclude = ["**/__pycache__", "**/.venv", "**/node_modules", "**/lambda/**"]
+
+executionEnvironments = [
+    # Backend uses its own .venv
+    { root = "backend", pythonVersion = "3.11", pythonPlatform = "All", extraPaths = [] },
+    # Scripts and bars_cli use pipx venv (where boto3 is installed)
+    { root = "scripts", pythonVersion = "3.11", pythonPlatform = "All", extraPaths = ["/Users/jrandazzo/.local/pipx/venvs/bars-cli/lib/python3.11/site-packages"] },
+    { root = "bars_cli", pythonVersion = "3.11", pythonPlatform = "All", extraPaths = ["/Users/jrandazzo/.local/pipx/venvs/bars-cli/lib/python3.11/site-packages"] }
+]
 
 [tool.pyright.diagnosticSeverityOverrides]
 reportMissingImports = "error"

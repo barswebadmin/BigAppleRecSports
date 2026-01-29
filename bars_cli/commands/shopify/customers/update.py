@@ -3,7 +3,7 @@
 import traceback
 from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING, cast
 
-import click
+import click_extra as click
 from rich.console import Console
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
@@ -60,7 +60,7 @@ def _display_customer_info(
         console.print()
 
 
-@click.command('update')
+@click.command(name='update-customer', aliases=['update'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--email', type=str, help='New email address')
 @click.option('--phone', type=str, help='New phone number')

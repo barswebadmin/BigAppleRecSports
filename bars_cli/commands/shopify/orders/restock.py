@@ -5,7 +5,7 @@ import sys
 import traceback
 from typing import Dict, Any, Optional, List, Tuple, TYPE_CHECKING, cast
 
-import click
+import click_extra as click
 from rich.console import Console
 
 from bars_cli._core.context import get_display_context
@@ -71,7 +71,7 @@ def _prompt_restock_selection(
 
 
 
-@click.command('restock')
+@click.command(name='restock', aliases=['restock'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SHOPIFY_ORDER_IDENTIFIER, required=False)
 @click.pass_context

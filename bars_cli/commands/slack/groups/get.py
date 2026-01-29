@@ -1,7 +1,7 @@
 """Get Slack usergroup details command."""
 from typing import Optional, Dict, Any
 
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SLACK_GROUP_IDENTIFIER
@@ -10,11 +10,11 @@ from bars_cli.commands.slack._shared.command_helpers import extract_group_identi
 from .._shared.slack_formatters import format_group
 
 
-@click.command('get')
+@click.command('get', aliases=['get-group'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SLACK_GROUP_IDENTIFIER, required=False)
 @click.pass_context
-def cmd_slack_groups_get(ctx: click.Context, identifier: Optional[Dict[str, Any]]):
+def get_group_cmd(ctx: click.Context, identifier: Optional[Dict[str, Any]]):
     """
     Get Slack usergroup details by handle or ID.
     

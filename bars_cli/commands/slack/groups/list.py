@@ -2,15 +2,15 @@
 import sys
 import json
 
-import click
+import click_extra as click
 from slack_sdk.errors import SlackApiError
 
 
-@click.command('list')
+@click.command('list', aliases=['list-groups'])
 @click.option('--bot', default='leadership', help='Which bot to use')
 @click.option('--include-disabled', is_flag=False, help='Include disabled groups')
 @click.pass_context
-def list_slack_groups(ctx: click.Context, bot: str, include_disabled: bool):
+def list_groups_cmd(ctx: click.Context, bot: str, include_disabled: bool):
     """List all usergroups."""
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False
     

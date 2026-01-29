@@ -438,6 +438,51 @@ class GoogleDirectoryService():
         )
     
     @handle_http_errors
+    def create_group(
+        self,
+        email: str,
+        name: str,
+        description: Optional[str] = None
+    ) -> GroupResource:
+        """
+        Create a new Google Group.
+        
+        Args:
+            email: Email address for the group (e.g., "team@example.com")
+            name: Display name for the group
+            description: Optional description for the group
+        
+        Returns:
+            GroupResource Pydantic model with created group information
+        
+        Raises:
+            HttpError: For Google API errors (including 409 if group already exists)
+        
+        Example:
+            >>> client = GoogleApiClient(subject="admin@example.com")
+            >>> group = client.create_group(
+            ...     email="newteam@example.com",
+            ...     name="New Team",
+            ...     description="A new team group"
+            ... )
+            >>> print(f"Created group: {group.email}")
+        """
+        group_body = {
+            'email': email,
+            'name': name
+        }
+        
+        if description:
+            group_body['description'] = description
+        
+        group_dict = self.groups().insert(body=group_body).execute()  # type: ignore[attr-defined]
+        group = GroupResource(**group_dict)
+        
+        logger.info(f"✅ Created group: {group.email}")
+        
+        return group
+
+    @handle_http_errors
     def is_member_of_group(
         self,
         group_email: str,

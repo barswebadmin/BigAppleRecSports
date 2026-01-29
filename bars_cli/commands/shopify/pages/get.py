@@ -1,11 +1,10 @@
 """Get Shopify page or theme asset command."""
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any, List
 import json
 
-import click
+import click_extra as click
 from rich.console import Console
-from rich.table import Table
 
 from bars_cli._core.context import get_service
 from bars_cli._core.decorators.handle_display_options import handle_display_options
@@ -95,7 +94,7 @@ def _format_blocks_for_display(
         console.print()
 
 
-@click.command('get')
+@click.command(name='get-page', aliases=['get'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--page', type=str, help='Page handle (e.g., "contact", "about")')
 @click.option('--theme', type=str, help='Theme ID (optional, will auto-detect for template pages)')

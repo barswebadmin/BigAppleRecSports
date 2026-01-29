@@ -56,9 +56,6 @@ make install
 # Setup pre-commit hooks
 pip install pre-commit
 pre-commit install
-
-# Setup lambda development
-python3 scripts/setup_local_development.py
 ```
 
 ## 🔄 Development Workflow
@@ -360,11 +357,8 @@ ENVIRONMENT=development
 
 ### Lambda Development
 ```bash
-# Setup imports (run once)
-python3 scripts/setup_local_development.py
-
 # Test lambda locally
-cd lambda-functions/shopifyProductUpdateHandler
+cd lambda/functions/shopifyProductUpdateHandler
 python3 lambda_function.py
 ```
 

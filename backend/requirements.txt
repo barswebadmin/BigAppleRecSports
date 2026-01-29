@@ -13,6 +13,7 @@
 
 # HTTP client and utilities
 requests==2.32.3
+httpx>=0.27.0
 PyYAML==6.0.2
 
 # Slack API client

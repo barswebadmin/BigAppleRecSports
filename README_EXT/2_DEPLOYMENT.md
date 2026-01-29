@@ -150,15 +150,12 @@ For safety, lambda layers require manual deployment:
 
 ### Local Testing
 ```bash
-# Setup lambda development
-python3 scripts/setup_local_development.py
-
 # Test specific function
-cd lambda-functions/shopifyProductUpdateHandler
+cd lambda/functions/shopifyProductUpdateHandler
 python3 lambda_function.py
 
 # Run lambda test suite
-cd lambda-functions
+cd lambda/functions
 python3 tests/run_tests.py unit
 ```
 

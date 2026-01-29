@@ -2,10 +2,10 @@
 Create user command for Google Directory API.
 """
 
-import time
 from typing import Optional
+import time
 
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types.bars_email_identifier import BARS_EMAIL_IDENTIFIER
@@ -15,7 +15,7 @@ from bars_cli.backend_services.google.models.google_directory_resources import U
 from bars_cli.commands.google._shared.google_formatters import _format_user
 
 
-@click.command('create')
+@click.command('create', aliases=['create-user'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('email', type=BARS_EMAIL_IDENTIFIER, required=False)
 @click.argument('first_name', required=False)
@@ -79,7 +79,6 @@ def create_user_cmd(
                 click.echo("⚠️  No password provided - user will be required to set password on first login", err=True)
     
     # Client is guaranteed to be available (enforced in google group initialization)
-    import time
     start_time = time.time()
     from bars_cli._core.context import get_service
     client = get_service(ctx, 'google_api_client')

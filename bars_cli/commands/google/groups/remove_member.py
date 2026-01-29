@@ -4,19 +4,26 @@ Remove member command for Google Directory API.
 
 from typing import Optional
 
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types.bars_email_identifier import BARS_EMAIL_IDENTIFIER
 from bars_cli._core.utils.json_output import output_json_error
 
 
-def _remove_member_impl(
+@click.command('remove-member', aliases=['remove-user'])
+@handle_display_options(display=True, exit_on_error=True)
+@click.argument('group_email', type=BARS_EMAIL_IDENTIFIER, required=False)
+@click.argument('user_email', type=BARS_EMAIL_IDENTIFIER, required=False)
+@click.pass_context
+def remove_member_cmd(
     ctx: click.Context,
     group_email: Optional[str] = None,
     user_email: Optional[str] = None
 ) -> dict[str, str]:
     """
+    Remove a user from a Google Workspace group.
+    
     GROUP_EMAIL: Group email address (must end with @bigapplerecsports.com)
     USER_EMAIL: User email address (must end with @bigapplerecsports.com)
     
@@ -84,18 +91,4 @@ def _remove_member_impl(
             click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
         
         raise click.ClickException(error_msg) from e
-
-
-@click.command('remove-member')
-@handle_display_options(display=True, exit_on_error=True)
-@click.argument('group_email', type=BARS_EMAIL_IDENTIFIER, required=False)
-@click.argument('user_email', type=BARS_EMAIL_IDENTIFIER, required=False)
-@click.pass_context
-def remove_member_cmd(
-    ctx: click.Context,
-    group_email: Optional[str] = None,
-    user_email: Optional[str] = None
-) -> dict[str, str]:
-    """Remove a user from a Google Workspace group."""
-    return _remove_member_impl(ctx, group_email, user_email)
 

@@ -271,12 +271,7 @@ Each function has its own directory containing:
 - **Pickleball**: Pickleball_WaitList.png
 
 ### Local Development
-```bash
-# Setup lambda development environment (creates symbolic links for imports)
-python3 scripts/setup_local_development.py
-```
-
-**Important**: Run setup script before working with lambda functions locally to enable `bars_common_utils` imports.
+Lambda functions can be developed and tested locally. See [lambda/functions/README.md](lambda/functions/README.md) for details.
 
 ## 🚀 Deployment
 
@@ -369,11 +364,8 @@ python backend/test_slack_message_formatting.py
 
 **Lambda Development**
 ```bash
-# Setup symlinks for imports
-python3 scripts/setup_local_development.py
-
 # Test lambda functions
-cd lambda-functions && python3 tests/run_tests.py unit
+cd lambda/functions && python3 tests/run_tests.py unit
 ```
 
 ## 📚 Documentation

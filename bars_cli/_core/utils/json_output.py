@@ -53,7 +53,7 @@ def output_json(
         indent: Number of spaces for indentation (default: 2)
         default: Function to handle non-serializable objects (default: str)
     """
-    import click
+    import click_extra as click
     
     # Convert to JSON-serializable format
     json_data = to_json_data(data)

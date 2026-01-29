@@ -8,7 +8,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 # Import from backend (sys.path is set in main.py)
-from config import config
+from backend.config import config
 
 
 def get_bot_token(bot_name: str) -> str:

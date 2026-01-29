@@ -4,7 +4,7 @@ Get group command for Google Directory API.
 
 from typing import Optional, List
 
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types.bars_email_identifier import BARS_EMAIL_IDENTIFIER

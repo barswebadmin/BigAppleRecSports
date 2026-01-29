@@ -1,19 +1,19 @@
 """Remove user from Slack usergroup command."""
 import sys
 
-import click
+import click_extra as click
 from slack_sdk.errors import SlackApiError
 
 from bars_cli._core.param_types import SLACK_GROUP_IDENTIFIER, SLACK_USER_IDENTIFIER
 
 
-@click.command('remove-user')
+@click.command('remove-user-from-group', aliases=['remove-user', 'remove-user-from-team'])
 @click.argument('group_identifier', type=SLACK_GROUP_IDENTIFIER)
 @click.argument('user_identifier', type=SLACK_USER_IDENTIFIER)
 @click.option('--bot', default='leadership', help='Which bot to use')
 @click.option('--dry-run', is_flag=True, help='Preview changes without applying')
 @click.pass_context
-def remove_slack_user_from_group(ctx: click.Context, group_identifier: dict, user_identifier: dict, bot: str, dry_run: bool):
+def remove_user_from_group_cmd(ctx: click.Context, group_identifier: dict, user_identifier: dict, bot: str, dry_run: bool):
     """
     Remove a user from a usergroup.
     

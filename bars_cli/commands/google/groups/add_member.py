@@ -4,7 +4,7 @@ Add member command for Google Directory API.
 
 from typing import Optional, Dict, Any
 
-import click
+import click_extra as click
 from googleapiclient.errors import HttpError
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
@@ -17,12 +17,19 @@ from backend.modules.integrations.google.services.google_directory_service impor
 from bars_cli.commands.google._shared.google_formatters import _format_member_added
 
 
-def _add_member_impl(
+@click.command('add-member')
+@handle_display_options(display=True, exit_on_error=True)
+@click.argument('group_email', type=BARS_EMAIL_IDENTIFIER, required=False)
+@click.argument('user_email', type=BARS_EMAIL_IDENTIFIER, required=False)
+@click.pass_context
+def add_member_cmd(
     ctx: click.Context,
     group_email: Optional[str] = None,
     user_email: Optional[str] = None
 ) -> Optional[MemberResource]:
     """
+    Add a user to a Google Workspace group.
+    
     GROUP_EMAIL: Group email address (must end with @bigapplerecsports.com)
     USER_EMAIL: User email address (must end with @bigapplerecsports.com)
     
@@ -107,19 +114,5 @@ def _add_member_impl(
             click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
         
         raise click.ClickException(error_msg) from e
-
-
-@click.command('add-member')
-@handle_display_options(display=True, exit_on_error=True)
-@click.argument('group_email', type=BARS_EMAIL_IDENTIFIER, required=False)
-@click.argument('user_email', type=BARS_EMAIL_IDENTIFIER, required=False)
-@click.pass_context
-def add_member_cmd(
-    ctx: click.Context,
-    group_email: Optional[str] = None,
-    user_email: Optional[str] = None
-) -> Optional[MemberResource]:
-    """Add a user to a Google Workspace group."""
-    return _add_member_impl(ctx, group_email, user_email)
 
 

@@ -1,11 +1,11 @@
 """Get Slack user details command."""
 from typing import Dict, Any, Optional
 
-import click
+import click_extra as click
 
 from bars_cli._core.param_types import SLACK_USER_IDENTIFIER
 from bars_cli._core.decorators.handle_display_options import handle_display_options
-from bars_cli.backend_services.slack.models.slack_user import SlackUser
+from backend.modules.integrations.slack.models.slack_user import SlackUser
 from bars_cli.commands.slack._shared.command_helpers import handle_slack_get_command
 
 
@@ -59,21 +59,13 @@ def _extract_user_identifier(identifier: Dict[str, Any]) -> str:
 
 
 def _format_user_for_display(user_data: Dict[str, Any]) -> str:
-    """Format user data for display, handling both dict and SlackUser model."""
-    # Convert to SlackUser model if it's a dict
-    if isinstance(user_data, dict):
-        try:
-            user = SlackUser(**user_data)
-        except Exception:
-            # Fallback to dict if model creation fails
-            user = user_data
-    else:
-        user = user_data
+    """Format user data for display."""
+    user = SlackUser(**user_data)
     
     return format_user(user)
 
 
-@click.command('get')
+@click.command(name='get-user', aliases=['get'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SLACK_USER_IDENTIFIER, required=True)
 @click.pass_context

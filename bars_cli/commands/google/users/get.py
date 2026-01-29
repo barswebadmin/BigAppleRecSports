@@ -4,7 +4,7 @@ Get user command for Google Directory API.
 
 from typing import Optional
 
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types.bars_email_identifier import BARS_EMAIL_IDENTIFIER
@@ -14,7 +14,7 @@ from bars_cli.backend_services.google.models.google_directory_resources import U
 from bars_cli.commands.google._shared.google_formatters import _format_user
 
 
-@click.command('get')
+@click.command('get', aliases=['get-user'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('email', type=BARS_EMAIL_IDENTIFIER, required=False)
 @click.pass_context

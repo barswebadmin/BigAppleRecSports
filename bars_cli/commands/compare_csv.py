@@ -22,7 +22,7 @@ BACKEND RESPONSIBILITIES:
 """
 from typing import Optional
 
-import click
+import click_extra as click
 from rich.console import Console
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options

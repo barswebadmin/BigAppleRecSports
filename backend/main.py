@@ -122,6 +122,16 @@ app.include_router(slack.router)
 app.include_router(shopify.router)
 app.include_router(refunds.router)
 
+# Include new API routers
+from backend.routers.shopify_api import router as shopify_api_router
+from backend.routers.slack_api import router as slack_api_router
+from backend.routers.google import router as google_router
+
+app.include_router(shopify_api_router)
+app.include_router(slack_api_router)
+app.include_router(google_router)
+from backend.routers.shopify_api import health_check as shopify_health_check
+
 # Theme template editing
 from backend.routers import theme_templates
 app.include_router(theme_templates.router)

@@ -2,7 +2,7 @@
 
 from typing import List, Callable, Optional, Any, Dict
 
-import click
+import click_extra as click
 from rich.console import Console
 from rich.table import Table
 
@@ -11,7 +11,7 @@ from bars_cli._core.utils.json_output import output_json_error
 from bars_cli.backend_services.slack.models.slack_user import SlackUser
 from bars_cli.backend_services.slack.models.slack_group import SlackGroup
 
-def format_channels(channels: list) -> str:
+def format_channels(channels: list[Dict[str, Any]]) -> str:
     """Format channels list for display."""
     if not channels:
         return "No channels found."
@@ -85,11 +85,11 @@ def format_users(users: list[SlackUser]) -> str:
 
 def format_group(group: SlackGroup) -> str:
     """Format usergroup data for display."""
-    name = group.get('name', 'N/A')
-    handle = group.get('handle', 'N/A')
-    group_id = group.get('id', 'N/A')
-    description = group.get('description', '')
-    is_disabled = group.get('date_delete', 0) > 0 if group.get('date_delete') else False
+    name = group.name or 'N/A'
+    handle = group.handle or 'N/A'
+    group_id = group.id or 'N/A'
+    description = group.description or ''
+    is_disabled = group.date_delete > 0 if group.date_delete else False
     
     output = []
     output.append("\n👥 Usergroup Details:\n")
@@ -103,7 +103,7 @@ def format_group(group: SlackGroup) -> str:
     if is_disabled:
         output.append("  ⚠️  Status: DISABLED")
     
-    users = group.get('users', [])
+    users = group.users or []
     user_count = len(users)
     output.append(f"  Members: {user_count}")
     

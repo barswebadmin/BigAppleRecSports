@@ -19,13 +19,8 @@ import json
 import argparse
 from pathlib import Path
 
-try:
-    import boto3
-    from botocore.exceptions import ClientError, BotoCoreError
-except ImportError:
-    print("❌ Missing required dependencies. Install with:")
-    print("   pip install boto3")
-    sys.exit(1)
+import boto3
+from botocore.exceptions import ClientError, BotoCoreError
 
 project_root = Path(__file__).parent.parent.parent
 

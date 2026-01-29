@@ -2,21 +2,19 @@
 List users command for Google Directory API.
 """
 
-from typing import List
-
-import click
+import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.utils.json_output import output_json_list, output_json_error
 
-from bars_cli.backend_services.google.models.google_directory_resources import UserResource
+from backend.modules.integrations.google.models.google_directory_resources import UserResource
 from bars_cli.commands.google._shared.google_formatters import _format_users_list
 
 
-@click.command('list')
+@click.command('list', aliases=['list-users'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.pass_context
-def list_users_cmd(ctx: click.Context) -> List[UserResource]:
+def list_users_cmd(ctx: click.Context) -> list[UserResource]:
     """
     List all users in Google Workspace.
     
@@ -37,7 +35,7 @@ def list_users_cmd(ctx: click.Context) -> List[UserResource]:
             click.echo("🔍 Fetching all users...", err=True)
         
         # List all users using Google Directory API
-        users: List[UserResource] = client.list_all_users()
+        users: list[UserResource] = client.list_all_users()
         
         if not users:
             if should_display and not json_output:

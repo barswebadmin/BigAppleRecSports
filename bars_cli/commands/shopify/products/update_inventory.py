@@ -4,7 +4,7 @@ import sys
 import traceback
 from typing import Dict, Any, Optional, List, Tuple, TYPE_CHECKING
 
-import click
+import click_extra as click
 from rich.console import Console
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
@@ -93,7 +93,7 @@ def _prompt_inventory_selection(
 
 
 
-@click.command('update-inventory')
+@click.command(name='update-inventory', aliases=['update-inventory'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SHOPIFY_PRODUCT_IDENTIFIER, required=False)
 @click.pass_context

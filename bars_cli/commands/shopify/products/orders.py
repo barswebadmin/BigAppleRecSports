@@ -5,7 +5,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import traceback
 
-import click
+import click_extra as click
 from rich.console import Console
 
 from bars_cli._core.context import get_display_context, get_service
@@ -33,7 +33,7 @@ else:
 
 
 
-@click.command('get-orders')
+@click.command(name='product-orders', aliases=['orders', 'get-orders'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.option('--csv', is_flag=True, default=False, help='Output as CSV format matching Shopify export (skip prompt)')
 @click.option('--csv-file', type=click.Path(), help='Write CSV to file instead of stdout (skip prompt)')

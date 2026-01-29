@@ -1,11 +1,8 @@
 """Get Shopify order command."""
 
-import csv
-import json
-import sys
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
-import click
+import click_extra as click
 from rich.console import Console
 
 from bars_cli._core.context import get_display_context, get_service

@@ -4,7 +4,7 @@ import re
 import sys
 from typing import Dict, Any, Optional, cast
 
-import click
+import click_extra as click
 from slack_sdk.errors import SlackApiError
 
 from bars_cli.backend_services.slack.models.slack_user import SlackUser, SlackUserProfile
@@ -356,7 +356,7 @@ def _format_profile_update_result(
             click.echo(json.dumps(result.get("response", {}), indent=2, default=str), err=True)
 
 
-@click.command('update')
+@click.command('update-user', aliases=['update'])
 @handle_display_options(display=True, exit_on_error=True)
 @click.argument('identifier', type=SLACK_USER_IDENTIFIER, required=False)
 @profile_options_from_model(SlackUserProfile, include_optional=True)

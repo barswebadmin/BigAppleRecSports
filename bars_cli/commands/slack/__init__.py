@@ -6,22 +6,32 @@ Command structure:
 - bars slack user * / bars slack users *
 - bars slack channel * / bars slack channels *
 """
-import click
-from click_aliases import ClickAliasedGroup
+import click_extra as click
 
-from .groups import slack_group
-from .users import slack_user
-from .channels import slack_channel
+from .groups import slack_groups_grp
+from .users import slack_users_grp
+from .channels import slack_channels_grp
 
 
 @click.group(
-    cls=ClickAliasedGroup,
+    name='slack',
     context_settings={"ignore_unknown_options": True}
 )
 @click.pass_context
-def slack(ctx: click.Context):
+def slack_grp(ctx: click.Context):
     """Slack management commands."""
-    # Service is lazily initialized on first access via ctx.meta['slack_service']
+    # Initialize slack_service once in meta (shared across all contexts)
+    # Override LazyServiceProxy from main.py with actual service instance
+    from bars_cli._core.context import LazyServiceProxy
+    if 'slack_service' not in ctx.meta or isinstance(ctx.meta.get('slack_service'), LazyServiceProxy):
+        try:
+            from bars_cli.backend_services.slack.slack_service import SlackService
+            ctx.meta['slack_service'] = SlackService()
+        except (RuntimeError, Exception) as e:
+            # Store error in meta so commands can show helpful messages
+            ctx.meta['slack_service_error'] = str(e)
+            ctx.meta['slack_service'] = None
+    
     # Initialize admin_bot once in meta (shared across all contexts)
     if 'admin_bot' not in ctx.meta:
         try:
@@ -36,12 +46,12 @@ def slack(ctx: click.Context):
 
 
 # Register subcommands with aliases
-slack.add_command(slack_group, 'groups', aliases=['group'])
-slack.add_command(slack_user, 'users', aliases=['user'])
-slack.add_command(slack_channel, 'channels', aliases=['channel'])
+slack_grp.add_command(slack_groups_grp)
+slack_grp.add_command(slack_users_grp)
+slack_grp.add_command(slack_channels_grp)
 
 
 
 
-__all__ = ["slack"]
+__all__ = ["slack_grp"]
 

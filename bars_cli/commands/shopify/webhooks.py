@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urljoin
 
-import click
+import click_extra as click
 import requests
 
 
@@ -102,12 +102,12 @@ def _post_sample(
         click.echo(text)
 
 
-@click.group()
+@click.group(name='webhooks', aliases=['webhook'])
 def shopify_webhooks() -> None:
     """Send sample Shopify webhooks to a target URL."""
 
 
-@shopify_webhooks.command("orders-create")
+@shopify_webhooks.command(name='orders-create', aliases=['orders-create'])
 @click.option("--url", "base_url", default="bars-backend.loca.lt", show_default=True)
 @click.option("--timeout", "timeout_seconds", default=10.0, show_default=True, type=float)
 def orders_create(base_url: str, timeout_seconds: float) -> None:
@@ -120,7 +120,7 @@ def orders_create(base_url: str, timeout_seconds: float) -> None:
     )
 
 
-@shopify_webhooks.command("orders-cancel")
+@shopify_webhooks.command(name='orders-cancel', aliases=['orders-cancel'])
 @click.option("--url", "base_url", default="bars-backend.loca.lt", show_default=True)
 @click.option("--timeout", "timeout_seconds", default=10.0, show_default=True, type=float)
 def orders_cancel(base_url: str, timeout_seconds: float) -> None:
@@ -133,7 +133,7 @@ def orders_cancel(base_url: str, timeout_seconds: float) -> None:
     )
 
 
-@shopify_webhooks.command("refunds-create")
+@shopify_webhooks.command(name='refunds-create', aliases=['refunds-create'])
 @click.option("--url", "base_url", default="bars-backend.loca.lt", show_default=True)
 @click.option("--timeout", "timeout_seconds", default=10.0, show_default=True, type=float)
 def refunds_create(base_url: str, timeout_seconds: float) -> None:
@@ -146,7 +146,7 @@ def refunds_create(base_url: str, timeout_seconds: float) -> None:
     )
 
 
-@shopify_webhooks.command("orders-update")
+@shopify_webhooks.command(name='orders-update', aliases=['orders-update'])
 @click.option(
     "--scenario",
     type=click.Choice(["refund-create", "order-cancel"], case_sensitive=False),
@@ -170,7 +170,7 @@ def orders_update(scenario: str, base_url: str, timeout_seconds: float) -> None:
     )
 
 
-@shopify_webhooks.command("products-update")
+@shopify_webhooks.command(name='products-update', aliases=['products-update'])
 @click.option(
     "--scenario",
     type=click.Choice(["plain", "on-order"], case_sensitive=False),

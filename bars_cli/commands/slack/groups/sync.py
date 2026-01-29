@@ -3,17 +3,17 @@ import sys
 import json
 from typing import Optional, TextIO
 
-import click
+import click_extra as click
 from slack_sdk.errors import SlackApiError
 
 
-@click.command('sync')
+@click.command('sync-groups', aliases=['sync'])
 @click.option('--hierarchy-json', type=click.File('r'), help='Leadership hierarchy JSON file')
 @click.option('--bot', default='leadership', help='Which bot to use')
 @click.option('--dry-run', is_flag=True, help='Preview changes without applying')
 @click.option('--create-missing', is_flag=True, default=True, help='Create groups that don\'t exist')
 @click.pass_context
-def sync_groups(ctx: click.Context, hierarchy_json: Optional[TextIO], bot: str, dry_run: bool, create_missing: bool):
+def sync_groups_cmd(ctx: click.Context, hierarchy_json: Optional[TextIO], bot: str, dry_run: bool, create_missing: bool):
     """
     Bulk sync usergroups from leadership hierarchy.
     
@@ -38,7 +38,7 @@ def sync_groups(ctx: click.Context, hierarchy_json: Optional[TextIO], bot: str, 
         provisioner = slack_service.get_usergroup_provisioner(bot)
         
         # Build group plans
-        from modules.leadership.domain.models import LeadershipHierarchy
+        from backend.modules.leadership.domain.models import LeadershipHierarchy
         hierarchy = LeadershipHierarchy.model_validate(hierarchy_data)
         
         click.echo("📊 Building group membership plans...")

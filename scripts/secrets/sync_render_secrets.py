@@ -39,14 +39,9 @@ from typing import Dict, Optional
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-try:
-    import requests
-    import boto3
-    from botocore.exceptions import ClientError, BotoCoreError
-except ImportError:
-    print("❌ Missing required dependencies. Install with:")
-    print("   pip install requests boto3")
-    sys.exit(1)
+import requests
+import boto3
+from botocore.exceptions import ClientError, BotoCoreError
 
 
 def load_env_file(env_path: Optional[Path] = None) -> Dict[str, str]:

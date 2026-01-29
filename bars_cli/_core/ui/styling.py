@@ -5,7 +5,7 @@ function to create Console instances with appropriate themes.
 """
 
 from typing import Optional, Literal
-import click
+import click_extra as click
 from rich.console import Console
 from rich.theme import Theme
 

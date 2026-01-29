@@ -6,65 +6,36 @@ Command structure:
 - bars google user * / bars google users *
 - bars google sheets *
 """
-import click
-from click_aliases import ClickAliasedGroup
+import click_extra as click
 
+from .groups import google_groups_grp
+from .users import google_users_grp
+from .sheets import google_sheets_grp
 
 @click.group(
-    cls=ClickAliasedGroup,
+    name='google',
+    aliases=['g'],
     context_settings={"ignore_unknown_options": True}
 )
 @click.pass_context
-def google(ctx: click.Context):
+def google_grp(ctx: click.Context):
     """Google management commands."""
-    # Service is lazily initialized on first access via ctx.meta['google_api_client']
-    pass
+    # Initialize google_api_client once in meta (shared across all contexts)
+    # Override LazyServiceProxy from main.py with actual service instance
+    from bars_cli._core.context import LazyServiceProxy
+    if 'google_api_client' not in ctx.meta or isinstance(ctx.meta.get('google_api_client'), LazyServiceProxy):
+        try:
+            from bars_cli.backend_services.google.google_api_client import GoogleApiClient
+            ctx.meta['google_api_client'] = GoogleApiClient()
+        except (RuntimeError, Exception) as e:
+            # Store error in meta so commands can show helpful messages
+            ctx.meta['google_api_client_error'] = str(e)
+            ctx.meta['google_api_client'] = None
+
+google_grp.add_command(google_groups_grp)
+google_grp.add_command(google_users_grp)
+google_grp.add_command(google_sheets_grp)
 
 
-# Create subcommand groups
-@click.group('groups', cls=ClickAliasedGroup)
-@click.pass_context
-def groups_group(ctx: click.Context):
-    """Google Groups management commands."""
-    pass
-
-
-@click.group('users')
-@click.pass_context
-def users_group(ctx: click.Context):
-    """Google Users management commands."""
-    pass
-
-
-@click.group('sheets')
-@click.pass_context
-def sheets_group(ctx: click.Context):
-    """Google Sheets management commands."""
-    pass
-
-
-# Register subcommands
-from .groups.get import get_group_cmd
-from .groups.list import list_groups_cmd
-from .groups.add_member import add_member_cmd
-from .groups.remove_member import remove_member_cmd
-from .users.get import get_user_cmd
-from .users.list import list_users_cmd
-from .users.create import create_user_cmd
-
-groups_group.add_command(get_group_cmd)
-groups_group.add_command(list_groups_cmd)
-groups_group.add_command(add_member_cmd, 'add-member', aliases=['add-user', 'add_member', 'add_user'])
-groups_group.add_command(remove_member_cmd, 'remove-member', aliases=['remove-user', 'remove_member', 'remove_user'])
-users_group.add_command(get_user_cmd)
-users_group.add_command(list_users_cmd)
-users_group.add_command(create_user_cmd)
-
-# Register groups with aliases
-google.add_command(groups_group, 'groups', aliases=['group'])
-google.add_command(users_group, 'users', aliases=['user'])
-google.add_command(sheets_group, 'sheets', aliases=['sheet'])
-
-
-__all__ = ["google"]
+__all__ = ["google_grp"]
 

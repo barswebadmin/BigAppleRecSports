@@ -3,7 +3,7 @@
 import signal
 import sys
 
-import click
+import click_extra as click
 
 
 def clear_lines(count: int) -> None:
