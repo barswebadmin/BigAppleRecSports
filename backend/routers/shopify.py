@@ -4,16 +4,16 @@ Shopify Webhooks Router
 Handles incoming Shopify webhooks for product changes (especially inventory updates)
 """
 
-from fastapi import APIRouter, Request, HTTPException
-import logging
 import json
-from modules.integrations.controllers.webhooks.shopify import ShopifyWebhooksController
+import logging
+
+from fastapi import APIRouter, Request, HTTPException
+
+from controllers.webhooks import ShopifyWebhooksController
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/shopify", tags=["shopify"])
-
-webhooks_router = APIRouter(prefix="/webhooks", tags=["shopify-webhooks"])
+router = APIRouter(prefix="/webhooks/shopify", tags=["shopify-webhooks"])
 
 _controller = ShopifyWebhooksController()
 
@@ -47,7 +47,7 @@ def _log_webhook_request(headers: dict[str, str], body: bytes, *, kind: str) -> 
         logger.info("SHOPIFY_WEBHOOK body_raw=%s", body.decode("utf-8", errors="replace"))
 
 
-@webhooks_router.post("/orders-create")
+@router.post("/orders-create")
 async def handle_orders_create(request: Request):
     headers = dict(request.headers)
     topic = _get_shopify_topic(headers)
@@ -58,7 +58,7 @@ async def handle_orders_create(request: Request):
     return {"ok": ok}
 
 
-@webhooks_router.post("/refunds-create")
+@router.post("/refunds-create")
 async def handle_refunds_create(request: Request):
     headers = dict(request.headers)
     topic = _get_shopify_topic(headers)
@@ -69,7 +69,7 @@ async def handle_refunds_create(request: Request):
     return {"ok": ok}
 
 
-@webhooks_router.post("/products-update")
+@router.post("/products-update")
 async def handle_products_update(request: Request):
     headers = dict(request.headers)
     topic = _get_shopify_topic(headers)
@@ -80,7 +80,7 @@ async def handle_products_update(request: Request):
     return {"ok": ok}
 
 
-@webhooks_router.post("/orders-update")
+@router.post("/orders-update")
 async def handle_orders_update(request: Request):
     headers = dict(request.headers)
     topic = _get_shopify_topic(headers)
@@ -91,7 +91,7 @@ async def handle_orders_update(request: Request):
     return {"ok": ok}
 
 
-@webhooks_router.post("/orders-cancel")
+@router.post("/orders-cancel")
 async def handle_orders_cancel(request: Request):
     headers = dict(request.headers)
     topic = _get_shopify_topic(headers)
@@ -101,8 +101,6 @@ async def handle_orders_cancel(request: Request):
     ok = _controller.handle_webhook_orders_cancel(body=body, headers=headers)
     return {"ok": ok}
 
-
-router.include_router(webhooks_router)
 
 # =============================================================================
 # SHOPIFY WEBHOOKS (END)

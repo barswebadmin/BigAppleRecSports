@@ -18,7 +18,7 @@ Complete deployment procedures for all BARS components.
 Deploys automatically when pushing to `main` branch with changes to:
 - `backend/**`
 - `requirements.txt`
-- `render.yaml`
+- `render.yaml` (repository root)
 - `shared-utilities/**`
 
 ### Manual Deployment
@@ -414,7 +414,7 @@ If issues occur in production:
 - Demonstrated automatic version increment system
 
 #### 📁 Files Changed
-- `backend/main.py`, `backend/config.py`, `render.yaml`
+- `backend/main.py`, `backend/config.py`, `render.yaml` (repo root)
 - Enhanced security measures and monitoring endpoints
 - Improved development experience with hot reload
 

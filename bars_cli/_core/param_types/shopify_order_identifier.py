@@ -1,48 +1,24 @@
 """Click parameter type for Shopify order identifiers."""
 
-from typing import Dict, Any, Optional, Callable, TYPE_CHECKING
+from typing import Dict, Any
 
 from .base import ValidatedParamType
-
-if TYPE_CHECKING:
-    from bars_cli.backend_services.shopify.services import ShopifyService
-
-# Lazy import for ShopifyService to avoid circular dependencies
-_normalize_order_id: Optional[Callable[[Optional[str]], Optional[Dict[str, str]]]] = None
-_normalize_order_number: Optional[Callable[[Optional[str]], Optional[Dict[str, str]]]] = None
-
-
-def _get_normalizers():
-    """Get normalizer functions from ShopifyService."""
-    global _normalize_order_id, _normalize_order_number
-    
-    if _normalize_order_id is None or _normalize_order_number is None:
-        # Import via symlink - service handles the backend imports correctly
-        from bars_cli.backend_services.shopify.services import ShopifyService  # type: ignore
-        _normalize_order_id = ShopifyService.normalize_order_identifier  # type: ignore
-        _normalize_order_number = ShopifyService.normalize_order_number  # type: ignore
-    
-    return _normalize_order_id, _normalize_order_number
 
 
 def _convert_shopify_order_identifier(identifier: str) -> Dict[str, Any]:
     """Convert Shopify order identifier input to dict format.
     
     Shopify orders can be identified by:
-    - Order number: 1234 or #1234
-    - Order ID: gid://shopify/Order/123456789 or just 123456789 (digits only)
-    
-    Uses normalizers directly to validate and normalize input.
+    - Order number: 1234 or #1234 (5 digits after stripping #)
+    - Order ID: gid://shopify/Order/123456789 or 123456789 (11-16 digits)
     
     Args:
         identifier: Raw identifier string from user input
         
     Returns:
         Dict with keys:
-        - identifier: Original identifier string
-        - query: GraphQL search query string
-        - not_found_message: Error message if not found
-        - first: Number of results to fetch (1 for single lookups)
+        - identifier: Normalized identifier string (# stripped for order numbers, just digits)
+        - type: "order_number" or "order_id"
     
     Raises:
         ValueError: If identifier format is invalid
@@ -51,47 +27,43 @@ def _convert_shopify_order_identifier(identifier: str) -> Dict[str, Any]:
     if not identifier:
         raise ValueError("Shopify order identifier cannot be empty")
     
-    # Get normalizers from service (lazy import)
-    normalize_order_id, normalize_order_number = _get_normalizers()
-    
-    if normalize_order_id is None or normalize_order_number is None:
-        raise RuntimeError("Failed to load Shopify normalizers from service")
-    
-    # Try order ID first (more specific - requires 10-15 digits)
-    # This handles gid://shopify/Order/1234567890 or 1234567890
-    normalized_id = normalize_order_id(identifier)
-    if normalized_id:
-        order_id = normalized_id["digits_only"]
+    # Try order number first (5 digits after stripping leading #)
+    test_number = identifier.lstrip('#')
+    if test_number.isdigit() and len(test_number) == 5:
+        # It's an order number - return WITHOUT # prefix (to avoid URL fragment issues)
         return {
-            "identifier": identifier,
-            "query": f"id:{order_id}",
-            "not_found_message": f"No order found with ID: {identifier}",
-            "first": 1
+            "identifier": test_number,  # Send just digits, backend will add # for query
+            "type": "order_number"
         }
     
-    # Try order number (handles #1234 and 1234, requires 4+ digits)
-    normalized_number = normalize_order_number(identifier)
-    if normalized_number:
-        order_num = normalized_number["digits_only"]
+    # Try order ID (11-16 digits, possibly in gid:// format)
+    # Split on '/' and take last element
+    parts = identifier.split('/')
+    test_id = parts[-1]
+    
+    if test_id.isdigit() and 11 <= len(test_id) <= 16:
+        # It's an order ID - return just the digits
         return {
-            "identifier": identifier,
-            "query": f"name:#{order_num}",
-            "not_found_message": f"No order found with number: {order_num}",
-            "first": 1
+            "identifier": test_id,
+            "type": "order_id"
         }
     
-    # If neither normalizer accepts it, raise error
-    raise ValueError(f"Invalid order identifier format: {identifier}. Expected order number (e.g., 1234 or #1234) or order ID (e.g., gid://shopify/Order/1234567890 or 1234567890)")
+    # If neither format matches, raise error
+    raise ValueError(
+        f"Invalid order identifier format: {identifier}. "
+        f"Expected order number (5 digits, e.g., 1234 or #12345) "
+        f"or order ID (11-16 digits, e.g., gid://shopify/Order/1234567890 or 1234567890)"
+    )
 
 
 class ShopifyOrderIdentifierParam(ValidatedParamType):
     """Click parameter type for Shopify order identifiers.
     
     Supports multiple formats:
-    - Order number: 1234 or #1234
-    - Order ID: gid://shopify/Order/123456789 or 123456789
+    - Order number: 12345 or #12345 (5 digits)
+    - Order ID: gid://shopify/Order/123456789 or 123456789 (11-16 digits)
     
-    Returns a dict with query parameters for GraphQL search.
+    Returns a dict with the identifier to send to the API.
     """
     
     def __init__(self):
@@ -102,4 +74,5 @@ class ShopifyOrderIdentifierParam(ValidatedParamType):
 
 
 SHOPIFY_ORDER_IDENTIFIER = ShopifyOrderIdentifierParam()
+
 

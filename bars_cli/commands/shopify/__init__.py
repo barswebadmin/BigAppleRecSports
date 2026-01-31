@@ -24,7 +24,7 @@ def shopify_grp(ctx: click.Context):
     """Shopify management commands."""
     # Initialize shopify_service once in meta (shared across all contexts)
     # Override LazyServiceProxy from main.py with actual service instance
-    from bars_cli._core.context import LazyServiceProxy
+    from bars_cli._core.legacy_services import LazyServiceProxy
     if 'shopify_service' not in ctx.meta or isinstance(ctx.meta.get('shopify_service'), LazyServiceProxy):
         try:
             from bars_cli.backend_services.shopify.services import ShopifyService

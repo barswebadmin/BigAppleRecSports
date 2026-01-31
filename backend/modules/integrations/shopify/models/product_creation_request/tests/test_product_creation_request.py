@@ -4,7 +4,7 @@ Tests the Pydantic model validation logic directly
 """
 
 import pytest
-from backend.modules.integrations.shopify.models.product_creation_request.product_creation_request import ProductCreationRequest, ProductCreationRequestValidationError
+from modules.integrations.shopify.models.product_creation_request.product_creation_request import ProductCreationRequest, ProductCreationRequestValidationError
 
 
 class TestProductCreationRequestModel:

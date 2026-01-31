@@ -10,14 +10,14 @@ to existing backend services. It does NOT rewrite or duplicate existing function
 
 from typing import Dict, Any, Optional
 
-from backend.controllers.api.base import BaseAPIController
-from backend.modules.integrations.shopify.services.shopify_service import ShopifyService
-from backend.shared.api_models import (
+from controllers.api.base import BaseAPIController
+from modules.integrations.shopify.services.shopify_service import ShopifyService
+from shared.api_models import (
     APIError,
     NotFoundAPIError,
     ValidationAPIError
 )
-from backend.modules.integrations.shopify.models import (
+from modules.integrations.shopify.models import (
     OrderResponse,
     OrderListResponse,
     ShopifyOrderIdentifierRequest,
@@ -130,19 +130,27 @@ class ShopifyAPIController(BaseAPIController):
         Get a specific order by identifier.
 
         DELEGATES to existing ShopifyService.get_order_by_identifier - same as CLI uses.
+        Returns full order object as JSON without filtering.
         """
         try:
-            self.log_api_request("GET", f"/orders/{identifier}")
+            self.log_api_request("GET", f"/orders?identifier={identifier}")
 
-            # Validate and parse identifier using request model
-            identifier_request = ShopifyOrderIdentifierRequest(identifier=identifier)
-            identifier_dict = identifier_request.parse()
+            # Parse identifier to determine type and build query
+            identifier_type, query_str = self._parse_order_identifier(identifier)
+
+            # Build query_params dict for service (same format as CLI uses)
+            query_params = {
+                "query": query_str,
+                "first": 1,
+                "not_found_message": f"Order not found: {identifier}",
+                "identifier": identifier
+            }
 
             # DELEGATE to existing service method - same as CLI command uses
-            self.log_service_call("get_order_by_identifier", identifier_dict)
+            self.log_service_call("get_order_by_identifier", query_params)
             orders = self.shopify_service.get_order_by_identifier(
-                identifier_dict,
-                line_items_first=5  # Same default as CLI
+                query_params,
+                line_items_first=50  # Fetch more line items for complete data
             )
 
             if not orders:
@@ -151,18 +159,19 @@ class ShopifyAPIController(BaseAPIController):
             # Use first order (same logic as CLI)
             order = orders[0]
 
-            # Convert to API response format
-            # REUSE existing data conversion - DO NOT rewrite
-            order_dict = self._convert_order_to_dict(order)
+            # Convert sgqlc object to JSON dict (preserves all fields)
+            import json
+            if hasattr(order, '__json_data__'):
+                order_dict = order.__json_data__
+            else:
+                # Fallback: use json serialization
+                order_dict = json.loads(json.dumps(order, default=str))
 
-            # Add payment summary using existing service method
-            payment_summary = self.shopify_service.calculate_payment_summary(order)
-            order_dict["payment_summary"] = payment_summary
-
-            return OrderResponse(**self.format_success_response(
+            result = OrderResponse(**self.format_success_response(
                 data=order_dict,
                 message="Order retrieved successfully"
             ))
+            return result
 
         except ValidationAPIError:
             # Re-raise validation errors as-is
@@ -173,9 +182,274 @@ class ShopifyAPIController(BaseAPIController):
             self.logger.error("Error getting order %s: %s", identifier, e)
             raise self.map_exception_to_http_error(e)
 
+    async def validate_order_cancellation(self, identifier: str, submitted_at: Optional[str] = None) -> OrderResponse:
+        """
+        Validate if an order is eligible for cancellation with enriched data.
+
+        DELEGATES to ShopifyService.enrich_order_with_cancellation_and_refund_info.
+        Returns order data with cancellation status, payment summary, and refund calculations.
+        
+        Args:
+            identifier: Order identifier (number or ID)
+            submitted_at: Optional ISO 8601 datetime string for refund calculation
+        """
+        try:
+            self.log_api_request("GET", f"/orders?identifier={identifier}&reason=cancel")
+
+            # Parse identifier to determine type and build query
+            identifier_type, query_str = self._parse_order_identifier(identifier)
+
+            # Build query_params dict for service
+            query_params = {
+                "query": query_str,
+                "first": 1,
+                "not_found_message": f"Order not found: {identifier}",
+                "identifier": identifier
+            }
+
+            # DELEGATE to enriched service method
+            self.log_service_call("enrich_order_with_cancellation_and_refund_info", query_params)
+            result = self.shopify_service.enrich_order_with_cancellation_and_refund_info(
+                query_params, 
+                reason="cancel",
+                submitted_at=submitted_at
+            )
+
+            # Extract status code and data from result
+            status_code = result.get("status_code", 500)
+            success = result.get("success", False)
+            message = result.get("message", "Unknown error")
+            
+            # Build response data with all enriched information
+            response_data = {
+                "order": result.get("order"),
+                "cancellation_status": result.get("cancellation_status"),
+                "payment_summary": result.get("payment_summary")
+            }
+
+            # Map status codes to HTTP exceptions or return success
+            if status_code == 404:
+                raise NotFoundAPIError("Order", identifier)
+            elif status_code == 202:
+                # Order already canceled - return with 202 status (warning, not error)
+                from fastapi import Response
+                return Response(
+                    content=json.dumps({
+                        "success": False,
+                        "message": message,
+                        "data": response_data
+                    }),
+                    status_code=202,
+                    media_type="application/json"
+                )
+            elif status_code == 500:
+                raise APIError(message)
+            elif status_code == 200:
+                # Order is eligible - return success with enriched data
+                return OrderResponse(**self.format_success_response(
+                    data=response_data,
+                    message=message
+                ))
+            else:
+                # Unexpected status code
+                raise APIError(f"Unexpected status code: {status_code}")
+
+        except ValidationAPIError:
+            raise
+        except APIError:
+            raise
+        except Exception as e:
+            self.logger.error("Error validating order cancellation %s: %s", identifier, e)
+            raise self.map_exception_to_http_error(e)
+    
+    async def validate_order_refund(self, identifier: str, submitted_at: Optional[str] = None) -> OrderResponse:
+        """
+        Validate if an order has refundable amount with enriched data including refund calculations.
+
+        DELEGATES to ShopifyService.enrich_order_with_cancellation_and_refund_info.
+        Returns order data with cancellation status, payment summary, and refund calculations for both types.
+        
+        Args:
+            identifier: Order identifier (number or ID)
+            submitted_at: Optional ISO 8601 datetime string for refund calculation (defaults to current time)
+        """
+        try:
+            self.log_api_request("GET", f"/orders?identifier={identifier}&reason=refund")
+
+            # Parse identifier to determine type and build query
+            identifier_type, query_str = self._parse_order_identifier(identifier)
+
+            # Build query_params dict for service
+            query_params = {
+                "query": query_str,
+                "first": 1,
+                "not_found_message": f"Order not found: {identifier}",
+                "identifier": identifier
+            }
+
+            # DELEGATE to enriched service method
+            self.log_service_call("enrich_order_with_cancellation_and_refund_info", query_params)
+            result = self.shopify_service.enrich_order_with_cancellation_and_refund_info(
+                query_params,
+                reason="refund",
+                submitted_at=submitted_at
+            )
+
+            # Extract status code and data from result
+            status_code = result.get("status_code", 500)
+            success = result.get("success", False)
+            message = result.get("message", "Unknown error")
+            
+            # Build response data with all enriched information
+            response_data = {
+                "order": result.get("order"),
+                "cancellation_status": result.get("cancellation_status"),
+                "payment_summary": result.get("payment_summary"),
+                "refund_calculations": result.get("refund_calculations")
+            }
+
+            # Map status codes to HTTP exceptions or return success
+            if status_code == 404:
+                raise NotFoundAPIError("Order", identifier)
+            elif status_code == 202:
+                # No refundable amount - return with 202 status (warning, not error)
+                from fastapi import Response
+                return Response(
+                    content=json.dumps({
+                        "success": False,
+                        "message": message,
+                        "data": response_data
+                    }),
+                    status_code=202,
+                    media_type="application/json"
+                )
+            elif status_code == 500:
+                raise APIError(message)
+            elif status_code == 200:
+                # Order has refundable amount - return success with enriched data
+                return OrderResponse(**self.format_success_response(
+                    data=response_data,
+                    message=message
+                ))
+            else:
+                # Unexpected status code
+                raise APIError(f"Unexpected status code: {status_code}")
+
+        except ValidationAPIError:
+            raise
+        except APIError:
+            raise
+        except Exception as e:
+            self.logger.error("Error validating order refund %s: %s", identifier, e)
+            raise self.map_exception_to_http_error(e)
+
+    async def cancel_order(
+        self,
+        order_id: str,
+        reason: str = "CUSTOMER",
+        notify_customer: bool = False,
+        refund: bool = False,
+        restock: bool = False,
+        staff_note: Optional[str] = None
+    ) -> OrderResponse:
+        """
+        Cancel an order using Shopify's orderCancel mutation.
+
+        DELEGATES to ShopifyService.cancel_order.
+        Returns success/error based on mutation result.
+        """
+        try:
+            self.log_api_request("DELETE", f"/orders/{order_id}")
+
+            # DELEGATE to service method
+            cancel_params = {
+                "order_id": order_id,
+                "reason": reason,
+                "notify_customer": notify_customer,
+                "refund": refund,
+                "restock": restock,
+                "staff_note": staff_note or "Cancelled via API"
+            }
+            self.log_service_call("cancel_order", cancel_params)
+            
+            result = self.shopify_service.cancel_order(
+                order_id=order_id,
+                reason=reason,
+                notify_customer=notify_customer,
+                refund=refund,
+                restock=restock,
+                staff_note=staff_note
+            )
+
+            # Check if cancellation was successful
+            if result.get("success"):
+                # Return success response with job data
+                return OrderResponse(**self.format_success_response(
+                    data=result.get("data", {}),
+                    message="Order cancelled successfully"
+                ))
+            else:
+                # Shopify returned errors - map to 422 (Unprocessable Entity)
+                error_msg = result.get("message", "Unknown error")
+                errors = result.get("errors", [])
+                
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "success": False,
+                        "message": error_msg,
+                        "errors": errors
+                    }
+                )
+
+        except ValidationAPIError:
+            raise
+        except APIError:
+            raise
+        except Exception as e:
+            self.logger.error("Error cancelling order %s: %s", order_id, e)
+            raise self.map_exception_to_http_error(e)
+
     # ============================================================================
     # HELPER METHODS
     # ============================================================================
+
+    def _parse_order_identifier(self, identifier: str) -> tuple[str, str]:
+        """
+        Parse order identifier and build GraphQL query string.
+        
+        Args:
+            identifier: Order number (12345, normalized without #) or Order ID (123456789, just digits)
+        
+        Returns:
+            Tuple of (identifier_type, query_string)
+            - identifier_type: "order_number" or "order_id"
+            - query_string: GraphQL query string (e.g., "name:#12345" or "id:123456789")
+        
+        Raises:
+            ValidationAPIError: If identifier format is invalid
+        """
+        identifier = identifier.strip() if identifier else ""
+        if not identifier:
+            raise ValidationAPIError("Order identifier cannot be empty")
+        
+        # Check if it's a 5-digit order number (already normalized without #)
+        if identifier.isdigit() and len(identifier) == 5:
+            # It's an order number - add # prefix for GraphQL query
+            return ("order_number", f"name:#{identifier}")
+        
+        # Check if it's an 11-16 digit order ID
+        if identifier.isdigit() and 11 <= len(identifier) <= 16:
+            # It's an order ID - use as-is
+            return ("order_id", f"id:{identifier}")
+        
+        # If neither format matches, raise error
+        raise ValidationAPIError(
+            f"Invalid order identifier format: {identifier}. "
+            f"Expected order number (5 digits, e.g., 12345) "
+            f"or order ID (11-16 digits, e.g., 1234567890)"
+        )
 
     def _build_order_search_query(
         self,
@@ -210,9 +484,14 @@ class ShopifyAPIController(BaseAPIController):
                 total_price_amount = str(order.totalPriceSet.shopMoney.amount)
                 currency = str(order.totalPriceSet.shopMoney.currencyCode)
 
+            # Extract order number from order.name field (e.g., "#45308")
+            order_number = "unknown"
+            if hasattr(order, 'name') and order.name:
+                order_number = str(order.name)
+
             return {
                 "id": str(order.id),
-                "order_number": str(order.name),
+                "order_number": order_number,  # Use order.name as order_number
                 "email": str(order.email) if order.email else None,
                 "total_price": total_price_amount,
                 "currency": currency,

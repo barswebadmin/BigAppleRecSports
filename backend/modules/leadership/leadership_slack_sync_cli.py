@@ -1,13 +1,16 @@
+"""Leadership Slack sync CLI - synchronizes leadership assignments to Slack usergroups."""
+
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import re
 from typing import Dict, List, Optional, Tuple
 
-from backend.config import config
-from modules.integrations.slack.usergroup_client import SlackUsergroupClient
+from config import config
+from modules.integrations.slack.client.usergroup_client import SlackUsergroupClient
 
 
 def normalize_handle(text: str) -> str:
@@ -67,19 +70,39 @@ def build_group_plans(
     return plans
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Slack usergroup dry-run sync from leadership assignments")
-    parser.add_argument("--assignments", default="/workspace/data/leadership_assignments.json", help="Grouped assignments JSON (from scraper)")
-    parser.add_argument("--name-to-id", default="/workspace/data/slack_name_to_id.json", help="Optional name->Slack ID mapping JSON")
-    parser.add_argument("--group-overrides", default="/workspace/data/slack_group_overrides.json", help="Optional group handle->Slack IDs mapping JSON")
-    parser.add_argument("--dry-run", action="store_true", help="Only check and print diffs, don't modify Slack")
+async def main() -> int:
+    """Main async function to sync leadership assignments to Slack usergroups."""
+    parser = argparse.ArgumentParser(
+        description="Slack usergroup dry-run sync from leadership assignments"
+    )
+    parser.add_argument(
+        "--assignments",
+        default="/workspace/data/leadership_assignments.json",
+        help="Grouped assignments JSON (from scraper)"
+    )
+    parser.add_argument(
+        "--name-to-id",
+        default="/workspace/data/slack_name_to_id.json",
+        help="Optional name->Slack ID mapping JSON"
+    )
+    parser.add_argument(
+        "--group-overrides",
+        default="/workspace/data/slack_group_overrides.json",
+        help="Optional group handle->Slack IDs mapping JSON"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Only check and print diffs, don't modify Slack"
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.assignments):
         print(f"❌ Assignments file not found: {args.assignments}")
         return 1
 
-    assignments = json.load(open(args.assignments, "r", encoding="utf-8"))
+    with open(args.assignments, "r", encoding="utf-8") as f:
+        assignments = json.load(f)
     name_to_id = load_json(args.name_to_id) or {}
     group_overrides = load_json(args.group_overrides) or {}
 
@@ -91,7 +114,7 @@ def main() -> int:
 
     if client and token:
         try:
-            usergroups = client.list_usergroups()
+            usergroups = await client.list_usergroups()
             for ug in usergroups:
                 handle = ug.get("handle")
                 gid = ug.get("id")
@@ -124,13 +147,15 @@ def main() -> int:
     created = 0
     updated = 0
     for handle, ids in to_create:
-        gid = client.create_usergroup(name=handle.replace("-", " ").title(), handle=handle)
+        gid = await client.create_usergroup(
+            name=handle.replace("-", " ").title(), handle=handle
+        )
         if gid and ids:
-            if client.update_usergroup_users(gid, ids):
+            if await client.update_usergroup_users(gid, ids):
                 created += 1
     for handle, gid, ids in to_update:
         if gid and ids:
-            if client.update_usergroup_users(gid, ids):
+            if await client.update_usergroup_users(gid, ids):
                 updated += 1
 
     print(f"✅ Applied: created={created}, updated={updated}")
@@ -138,5 +163,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(asyncio.run(main()))
 

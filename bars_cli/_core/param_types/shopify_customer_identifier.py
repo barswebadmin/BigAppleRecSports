@@ -106,13 +106,16 @@ def _convert_shopify_customer_identifier(identifier: str) -> Dict[str, Any]:
         name = remaining_parts[0]
         choice = prompt_select_from_options(
             display_text=f"Is '{name}' a first name or last name?",
-            options=["First name", "Last name"]
+            options=[
+                {"value": "first", "display": "First name"},
+                {"value": "last", "display": "Last name"}
+            ]
         )
-        
+
         if choice is None:
             raise ValueError("Name type selection cancelled")
-        
-        if choice == "First name":
+
+        if choice == "first":
             return {
                 "identifier": identifier,
                 "query": f"first_name:{name}",

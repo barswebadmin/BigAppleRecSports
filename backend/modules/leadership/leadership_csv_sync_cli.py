@@ -1,14 +1,17 @@
+"""CSV-driven Slack usergroup sync CLI for Directors/Ops."""
+
 from __future__ import annotations
 
 import argparse
+import asyncio
 import csv
 import json
 import os
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-from backend.config import config
-from modules.integrations.slack.usergroup_client import SlackUsergroupClient
+from config import config
+from modules.integrations.slack.client.usergroup_client import SlackUsergroupClient
 
 
 def normalize_handle(text: str) -> str:
@@ -109,12 +112,29 @@ def load_json(path: Optional[str]) -> Dict:
         return json.load(f)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="CSV-driven Slack usergroup sync (Directors/Ops)")
-    parser.add_argument("--csv", required=True, help="Path to CSV with columns: Sport,Night,Division,Directors,Ops")
-    parser.add_argument("--name-to-id", help="Optional JSON mapping of names/labels to Slack IDs (<@U...>)")
-    parser.add_argument("--group-overrides", help="Optional JSON mapping of group handle -> extra Slack IDs list")
-    parser.add_argument("--apply", action="store_true", help="Apply changes to Slack (omit for dry run)")
+async def main() -> int:
+    """Main async function to sync CSV data to Slack usergroups."""
+    parser = argparse.ArgumentParser(
+        description="CSV-driven Slack usergroup sync (Directors/Ops)"
+    )
+    parser.add_argument(
+        "--csv",
+        required=True,
+        help="Path to CSV with columns: Sport,Night,Division,Directors,Ops"
+    )
+    parser.add_argument(
+        "--name-to-id",
+        help="Optional JSON mapping of names/labels to Slack IDs (<@U...>)"
+    )
+    parser.add_argument(
+        "--group-overrides",
+        help="Optional JSON mapping of group handle -> extra Slack IDs list"
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply changes to Slack (omit for dry run)"
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.csv):
@@ -137,13 +157,17 @@ def main() -> int:
         return 0
 
     if not token:
-        print("❌ No Slack bot token configured. Set SLACK_DEV_BOT_TOKEN or SLACK_REFUNDS_BOT_TOKEN.")
+        print(
+            "❌ No Slack bot token configured. "
+            "Set SLACK_DEV_BOT_TOKEN or SLACK_REFUNDS_BOT_TOKEN."
+        )
         return 1
 
     client = SlackUsergroupClient(token)
     existing: Dict[str, str] = {}
     try:
-        for ug in client.list_usergroups():
+        usergroups = await client.list_usergroups()
+        for ug in usergroups:
             h, gid = ug.get("handle"), ug.get("id")
             if h and gid:
                 existing[h] = gid
@@ -155,13 +179,17 @@ def main() -> int:
     for handle, members in plans.items():
         gid = existing.get(handle)
         if not gid:
-            gid = client.create_usergroup(name=handle.replace("-", " ").title(), handle=handle, description="Auto-managed from CSV")
+            gid = await client.create_usergroup(
+                name=handle.replace("-", " ").title(),
+                handle=handle,
+                description="Auto-managed from CSV"
+            )
             if gid:
                 existing[handle] = gid
-                if members and client.update_usergroup_users(gid, members):
+                if members and await client.update_usergroup_users(gid, members):
                     created += 1
         else:
-            if members and client.update_usergroup_users(gid, members):
+            if members and await client.update_usergroup_users(gid, members):
                 updated += 1
 
     print(f"✅ Applied: created={created}, updated={updated}")
@@ -169,5 +197,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(asyncio.run(main()))
 

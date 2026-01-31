@@ -9,7 +9,7 @@ from .prompts import (
     prompt_result_selection,
 )
 from .validators import ValidationResult
-from .context import init_context, get_context_value, set_context_value, get_env_var
+from .context import init_context, get_context_value, set_context_value
 __all__ = [
     "retry_until_valid",
     "retry_operation_until_valid",
@@ -22,6 +22,5 @@ __all__ = [
     "init_context",
     "get_context_value",
     "set_context_value",
-    "get_env_var",
 ]
 

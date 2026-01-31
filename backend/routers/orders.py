@@ -1,110 +1,176 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, Dict, Any
-import logging
-from pydantic import BaseModel
-from datetime import datetime, timezone
-import dateutil.parser
+"""
+Orders API Router
 
-from modules.orders.services.orders_service import OrdersService
-from modules.integrations.slack.slack_service import SlackService
-from shared.order_fetcher import fetch_order_from_shopify
-from modules.integrations.shopify.models.requests import FetchOrderRequest
-from backend.config import config
+Handles order operations across the system.
+Currently delegates to Shopify service, will migrate to dedicated orders service.
+"""
+
+import logging
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import ValidationError
+
+from modules.integrations.shopify.controllers.api_controller import ShopifyAPIController
+from modules.integrations.shopify.models.requests import ShopifyOrderIdentifierRequest
+from shared.api_models import SuccessResponse, ValidationAPIError
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-orders_service = OrdersService()
-slack_service = SlackService()
+# TODO: Migrate to OrdersController when orders service is implemented
+_shopify_controller = ShopifyAPIController()
 
+# =============================================================================
+# ORDERS
+# =============================================================================
 
-class SlackNotificationRequest(BaseModel):
-    order_number: str
-    requestor_name: Dict[str, str]  # {"first": "John", "last": "Doe"}
-    requestor_email: str
-    refund_type: str  # "refund" or "credit"
-    notes: str
-    order_data: Optional[Dict[str, Any]] = None
-    sheet_link: Optional[str] = None  # Google Sheets link to the specific row
-    request_submitted_at: Optional[str] = None
-
-
-@router.get("/{order_number}")
+@router.get("", response_model=SuccessResponse)
 async def get_order(
-    order_number: str,
-    email: Optional[str] = Query(
-        None, description="Email to search by if order number fails"
+    number: Optional[str] = Query(
+        None,
+        description="Order number (5 digits, e.g., 12345)",
+        min_length=5,
+        max_length=5
     ),
-) -> Dict[str, Any]:
+    id: Optional[str] = Query(
+        None,
+        description="Order ID (11-16 digits)",
+        min_length=11,
+        max_length=16
+    ),
+    reason: Optional[str] = Query(
+        None,
+        description="Operation reason: 'cancel' to validate cancellation eligibility, 'refund' to get refund calculations"
+    ),
+    submitted_at: Optional[str] = Query(
+        None,
+        description="ISO 8601 datetime string for refund calculation (e.g., '2025-01-30T15:08:40Z'). Defaults to current time if not provided."
+    )
+):
     """
-    Get order details by order number (or email as fallback)
-    Based on fetchShopifyOrderDetails from the Google Apps Script
+    Get order details by order number or ID.
+    
+    Query Parameters (provide ONE identifier):
+    - number: Order number (5 digits, e.g., 12345)
+    - id: Order ID (11-16 digits, e.g., 1234567890)
+    - reason: Optional operation reason:
+        - 'cancel': Validates cancellation eligibility, returns cancellation status and payment summary
+        - 'refund': Returns refund calculations for both refund types, cancellation status, and payment summary
+    - submitted_at: Optional ISO 8601 datetime for refund calculation (only used with reason='refund')
+    
+    Returns order data with line items, customer info, and payment summary.
+    
+    If reason='cancel', returns enriched data:
+    - 200: Order is eligible for cancellation
+    - 202: Order already canceled (warning)
+    - 404: Order not found
+    
+    If reason='refund', returns enriched data with refund calculations:
+    - 200: Order has refundable amount
+    - 202: No refundable amount remaining (warning)
+    - 404: Order not found
+    
+    Raises:
+    - 400: Invalid parameters or missing both number and id
+    - 404: Order not found
+    - 500: Server error
+    
+    TODO: Migrate to OrdersService when implemented
     """
+    # Validate that exactly one parameter is provided
+    if not number and not id:
+        raise HTTPException(
+            status_code=400,
+            detail="Must provide either 'number' or 'id' query parameter"
+        )
+    
+    if number and id:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot provide both 'number' and 'id' query parameters"
+        )
+    
+    # Determine which identifier was provided
+    if number:
+        identifier = number
+        identifier_type = "order_number"
+    else:
+        identifier = id
+        identifier_type = "order_id"
+    
     try:
-        # Try to fetch by order number first
-        fetch_request = FetchOrderRequest.create({"order_number": order_number})
-        result = fetch_order_from_shopify(fetch_request)
-
-        # If order not found by number and email provided, try by email
-        if not result["success"] and email:
-            logger.info(f"Order {order_number} not found, trying by email: {email}")
-            fetch_request = FetchOrderRequest.create({"email": email})
-            result = fetch_order_from_shopify(fetch_request)
-
-        if not result["success"]:
-            raise HTTPException(status_code=406, detail=result["message"])
-
-        order_data = result["data"]
-
-        # Add calculated refund information
-        refund_calculation = orders_service.calculate_refund_due(order_data, "refund", None)
-        credit_calculation = orders_service.calculate_refund_due(order_data, "credit", None)
-        # TODO: Implement get_inventory_summary method in OrdersService
-        # inventory_summary = orders_service.get_inventory_summary(order_data)
-        inventory_summary = {"message": "Inventory summary not yet implemented"}
-
-        # Enhance response with additional calculated data
-        enhanced_response = {
-            "order": order_data,
-            "refund_calculation": refund_calculation,
-            "credit_calculation": credit_calculation,
-            "inventory_summary": inventory_summary,
-            "product_urls": {
-                "shopify_admin": f"https://admin.shopify.com/store/09fe59-3/products/{order_data['product']['productId'].split('/')[-1]}",
-                "order_admin": f"https://admin.shopify.com/store/09fe59-3/orders/{order_data['orderId'].split('/')[-1]}",
-            },
-        }
-
-        return {"success": True, "data": enhanced_response}
-
+        # Validate identifier format using Pydantic model
+        try:
+            identifier_request = ShopifyOrderIdentifierRequest(identifier=identifier)
+            parsed = identifier_request.parse()
+        except ValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except ValidationAPIError as e:
+            raise HTTPException(status_code=400, detail=e.message)
+        
+        # Route based on reason parameter
+        if reason and reason.lower() == 'cancel':
+            # Validate cancellation eligibility with enriched data
+            result = await _shopify_controller.validate_order_cancellation(identifier, submitted_at)
+        elif reason and reason.lower() == 'refund':
+            # Get refund calculations with enriched data
+            result = await _shopify_controller.validate_order_refund(identifier, submitted_at)
+        elif reason:
+            # Unexpected reason value - log warning and proceed with standard retrieval
+            logger.warning(f"Unexpected 'reason' parameter value: '{reason}'. Expected 'cancel' or 'refund'. Ignoring and proceeding with standard order retrieval.")
+            result = await _shopify_controller.get_order(identifier)
+        else:
+            # Standard order retrieval (no reason provided)
+            result = await _shopify_controller.get_order(identifier)
+        
+        return result
     except HTTPException:
-        # Re-raise HTTPExceptions as-is (like 406 for order not found)
         raise
     except Exception as e:
-        logger.error(f"Error fetching order {order_number}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching order: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.post("/send-to-slack")
-async def send_refund_to_slack(
-    request: SlackNotificationRequest,
-    slackChannelName: str = Query(
-        None, description="Optional slack channel name to override default"
-    ),
-    mentionStrategy: str = Query(
-        None, description="Optional mention strategy: 'sportAliases' or 'user|{name}'"
-    ),
-) -> Dict[str, Any]:
+@router.delete("/{order_id}", response_model=SuccessResponse)
+async def cancel_order(
+    order_id: str,
+    reason: Optional[str] = Query(default="CUSTOMER", description="Cancellation reason"),
+    notify_customer: bool = Query(default=False, description="Whether to notify customer"),
+    refund: bool = Query(default=False, description="Whether to refund"),
+    restock: bool = Query(default=False, description="Whether to restock"),
+    staff_note: Optional[str] = Query(default=None, description="Staff note")
+):
     """
-    Legacy endpoint - Slack refund functionality removed.
-    This endpoint is kept for backward compatibility but no longer processes refunds via Slack.
+    Cancel an order by ID.
+    
+    Path Parameters:
+    - order_id: Full Shopify order ID (e.g., gid://shopify/Order/1234567890)
+    
+    Query Parameters:
+    - reason: Cancellation reason (CUSTOMER, FRAUD, INVENTORY, DECLINED, OTHER)
+    - notify_customer: Whether to notify the customer (default: False)
+    - refund: Whether to automatically refund (default: False)
+    - restock: Whether to restock inventory (default: False)
+    - staff_note: Optional staff note
+    
+    Returns success response with job data if successful.
+    
+    Raises:
+    - 422: Shopify returned user errors (e.g., order already canceled)
+    - 500: Server error
+    
+    TODO: Migrate to OrdersService when implemented
     """
-    logger.warning(f"Legacy endpoint called: /send-to-slack for order {request.order_number}")
-    return {
-        "success": False,
-        "message": "Slack refund functionality has been removed. Please use the new refund processing system.",
-        "data": {
-            "order_number": request.order_number,
-            "requestor_email": request.requestor_email,
-        }
-    }
+    try:
+        result = await _shopify_controller.cancel_order(
+            order_id=order_id,
+            reason=reason,
+            notify_customer=notify_customer,
+            refund=refund,
+            restock=restock,
+            staff_note=staff_note
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

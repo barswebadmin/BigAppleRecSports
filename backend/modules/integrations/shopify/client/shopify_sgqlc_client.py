@@ -10,7 +10,7 @@ import urllib.error
 from sgqlc.operation import Operation
 from sgqlc.endpoint.http import HTTPEndpoint
 
-from backend.config import config as global_config
+from config import config as global_config
 
 
 class ShopifySGQLCClient:

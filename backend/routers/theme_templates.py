@@ -8,9 +8,9 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional, Dict, Any
 import logging
 
-from backend.modules.integrations.shopify.services.shopify_service import ShopifyService
-from backend.modules.integrations.shopify.services.theme_template_service import ThemeTemplateService
-from backend.modules.integrations.shopify.models.theme_template_models import (
+from modules.integrations.shopify.services.shopify_service import ShopifyService
+from modules.integrations.shopify.services.theme_template_service import ThemeTemplateService
+from modules.integrations.shopify.models.theme_template_models import (
     ThemeTemplate,
     Section,
     Block,

@@ -1,2 +1,0 @@
-"""Webhook controllers (provider-specific)."""
-

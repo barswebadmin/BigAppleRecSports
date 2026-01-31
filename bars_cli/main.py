@@ -6,43 +6,73 @@ Uses Click for command-line interface.
 import os
 import sys
 from pathlib import Path
-from typing import Any
 from dotenv import load_dotenv
 
-# Add project root to Python path so 'backend' module can be imported
-# This ensures imports work both when installed via pipx and when run directly
-project_root = Path(__file__).parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+import sys
+import os
+from pathlib import Path
+
+# Environment-aware path setup
+def setup_paths():
+    """Setup paths based on environment."""
+    
+    # Check if we're in production (Render sets this)
+    if os.getenv('RENDER') or os.getenv('PYTHONPATH'):
+        # In production, assume paths are already set up
+        return
+    
+    # Development mode - find and add repo paths
+    current_file = Path(__file__).resolve()
+    repo_root = current_file
+    
+    # Walk up to find repo root
+    for _ in range(10):  # Max 10 levels up
+        if (repo_root / "shared_utilities").exists() and (repo_root / "backend").exists():
+            # Add paths for development
+            for path in [str(repo_root), str(repo_root / "shared_utilities"), str(repo_root / "backend")]:
+                if path not in sys.path:
+                    sys.path.insert(0, path)
+            
+            # Load .env file from repo root
+            env_file = repo_root / ".env"
+            if env_file.exists():
+                load_dotenv(env_file)
+            
+            return
+        
+        if repo_root.parent == repo_root:
+            break
+        repo_root = repo_root.parent
+
+# Setup paths
+setup_paths()
+
+# Import with fallback
+try:
+    from paths import get_repo_root
+except ImportError:
+    def get_repo_root():
+        return Path.cwd()
 
 import click_extra as click
 
 from ._core.decorators.handle_display_options import handle_display_options
-from ._core.context import LazyServiceDict, LazyServiceProxy
+from ._core.legacy_services import LazyServiceDict, LazyServiceProxy
 from ._core.ui.display import display_response
+from shared_utilities.api_clients.http_client import SyncHTTPClient
 from .commands.slack import slack_grp as slack
 from .commands.google import google_grp as google
 from .commands.shopify import shopify_group as shopify
 from .commands.compare_csv import compare_csv_cmd
 
 
-def load_environment(env: str = "production"):
-    """Load environment variables based on specified environment."""
-    env_path = Path(__file__).parent.parent / ".env"
-    if env_path.exists():
-        load_dotenv(env_path, override=False)
-    
-    if env:
-        os.environ["ENVIRONMENT"] = env.lower()
-
-
 @click.group(
+    name="bars-cli",
     context_settings={
         "allow_interspersed_args": True,
         "ignore_unknown_options": True
     }
 )
-@click.version_option(version="1.0.0", prog_name="bars")
 @click.option(
     '--json',
     'json_output',
@@ -75,8 +105,6 @@ def cli(ctx: click.Context, json_output: bool, env: str):
     ctx.obj['display_response'] = display_response
     # should_display will be set by handle_display_options decorator when commands run
     
-    load_environment(env)
-    
     # Initialize lazy service creation
     # Store LazyServiceProxy objects in ctx.meta that create services on first access
     if '_lazy_services_initialized' not in ctx.meta:
@@ -85,6 +113,17 @@ def cli(ctx: click.Context, json_output: bool, env: str):
         for service_key, create_func in LazyServiceDict._SERVICE_CREATORS.items():
             ctx.meta[service_key] = LazyServiceProxy(create_func, service_key)
         ctx.meta['_lazy_services_initialized'] = True
+    
+    # Initialize shared HTTP client for all commands
+    # This creates a single client instance that all commands can use
+    if 'http_client' not in ctx.meta:
+        # Use sync client by default for CLI commands (simpler, works everywhere)
+        # Commands can create async clients if needed for parallel operations
+        ctx.meta['http_client'] = SyncHTTPClient(
+            timeout=30.0
+            # Headers are now set automatically by the client using defaults
+            # Content-Type: application/json, Accept: application/json, User-Agent: bars-cli/1.0.0
+        )
     
     # Initialize admin_bot lazily and store in context (via slack group)
     # This avoids import-time errors and makes it available to all child commands
@@ -103,4 +142,3 @@ if __name__ == '__main__':
         cli()
     except (KeyboardInterrupt, click.Abort):
         sys.exit(0)
-

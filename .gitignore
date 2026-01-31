@@ -46,6 +46,7 @@ coverage_html/
 # Local development
 .env
 .env.local
+.env.backup
 .env.production
 .envrc
 .direnv/

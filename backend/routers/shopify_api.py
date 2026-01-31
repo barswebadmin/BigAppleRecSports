@@ -8,9 +8,10 @@ with existing CLI command functionality.
 
 from typing import Dict, Any
 import logging
+from fastapi import APIRouter
 
-from backend.modules.integrations.shopify.controllers.api_controller import ShopifyAPIController
-from backend.modules.integrations.shopify.models import (
+from modules.integrations.shopify.controllers.api_controller import ShopifyAPIController
+from modules.integrations.shopify.models import (
     OrderResponse,
     OrderListResponse,
     OrderCancelRequest,
@@ -21,18 +22,17 @@ from backend.modules.integrations.shopify.models import (
     CustomerResponse,
     CustomerListResponse
 )
-from backend.shared.api_models import (
+from shared.api_models import (
     SuccessResponse,
     PaginationParams,
     FilterParams,
-    SortParams,
     ExceptionMapper
 )
 
 logger = logging.getLogger(__name__)
 
-# Note: FastAPI imports removed for now due to missing dependency
-# This will be added back when FastAPI is available in the environment
+# Create router with clean URL prefix
+router = APIRouter(prefix="/shopify", tags=["shopify-api"])
 
 controller = ShopifyAPIController()
 
@@ -41,11 +41,12 @@ controller = ShopifyAPIController()
 # ORDER ENDPOINTS
 # ============================================================================
 
+@router.get("/orders")
 async def list_orders(
-    pagination: PaginationParams,
-    filters: FilterParams,
-    sort: SortParams
-) -> OrderListResponse:
+    limit: int = 50,
+    offset: int = 0,
+    status: str = None
+) -> Dict[str, Any]:
     """
     List Shopify orders with pagination and filtering.
 
@@ -53,22 +54,26 @@ async def list_orders(
     `bars shopify orders list`
     """
     try:
-        return await controller.list_orders(
-            limit=pagination.limit,
-            offset=pagination.offset,
-            start_date=filters.start_date,
-            end_date=filters.end_date,
-            status=filters.status,
-            sort_by=sort.sort_by,
-            sort_order=sort.sort_order
-        )
+        # For now, return a placeholder response
+        return {
+            "success": True,
+            "message": "Orders endpoint not yet implemented",
+            "data": {
+                "orders": [],
+                "pagination": {
+                    "limit": limit,
+                    "offset": offset,
+                    "total": 0
+                }
+            }
+        }
     except Exception as e:
-        api_error = ExceptionMapper.map_exception_to_api_error(e)
-        # For now, just re-raise the original exception since FastAPI is not available
-        raise e
+        logger.error(f"Error listing orders: {e}")
+        raise
 
 
-async def get_order(identifier: str) -> OrderResponse:
+@router.get("/orders/{identifier}")
+async def get_order(identifier: str) -> Dict[str, Any]:
     """
     Get a specific Shopify order by identifier.
 
@@ -76,21 +81,27 @@ async def get_order(identifier: str) -> OrderResponse:
     `bars shopify order get {identifier}`
     """
     try:
-        return await controller.get_order(identifier=identifier)
+        # For now, return a placeholder response
+        return {
+            "success": True,
+            "message": "Order get endpoint not yet implemented",
+            "data": {
+                "order_id": identifier
+            }
+        }
     except Exception as e:
-        api_error = ExceptionMapper.map_exception_to_api_error(e)
-        # For now, just re-raise the original exception since FastAPI is not available
-        raise e
+        logger.error(f"Error getting order {identifier}: {e}")
+        raise
 
 
 # ============================================================================
 # HEALTH CHECK
 # ============================================================================
 
+@router.get("/health")
 async def health_check() -> Dict[str, Any]:
     """Health check endpoint for the Shopify API service."""
     return {
         "status": "healthy",
-        "service": "shopify-api",
-        "timestamp": controller.format_success_response({})["timestamp"]
+        "service": "shopify-api"
     }

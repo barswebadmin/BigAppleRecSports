@@ -8,14 +8,14 @@ Delegates all business logic to SlackAPIController.
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 
-from backend.modules.integrations.slack.controllers import SlackAPIController
-from backend.modules.integrations.slack.models import (
+from modules.integrations.slack.controllers import SlackAPIController
+from modules.integrations.slack.models import (
     SlackMessageRequest,
     SlackUserGroupRequest
 )
-from backend.shared.api_models import APIResponse, ValidationAPIError
+from shared.api_models import APIResponse, ValidationAPIError
 
-router = APIRouter(prefix="/api/v1/slack", tags=["slack-api"])
+router = APIRouter(prefix="/slack", tags=["slack-api"])
 
 
 def get_slack_controller() -> SlackAPIController:
