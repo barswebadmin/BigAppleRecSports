@@ -22,7 +22,7 @@ def slack_grp(ctx: click.Context):
     """Slack management commands."""
     # Initialize slack_service once in meta (shared across all contexts)
     # Override LazyServiceProxy from main.py with actual service instance
-    from bars_cli._core.context import LazyServiceProxy
+    from bars_cli._core.legacy_services import LazyServiceProxy
     if 'slack_service' not in ctx.meta or isinstance(ctx.meta.get('slack_service'), LazyServiceProxy):
         try:
             from bars_cli.backend_services.slack.slack_service import SlackService

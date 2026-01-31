@@ -6,9 +6,11 @@ Provides type-safe models for Slack notifications, interactions, and data struct
 from pydantic import field_validator, ConfigDict
 from typing import List, Optional, Dict, Union, Any
 from enum import Enum
-import re
 
 from shared.model_config import ApiModel
+
+# Import centralized validators
+from shared.validators import validate_email_with_results
 
 
 # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
@@ -94,11 +96,12 @@ class RefundSlackNotificationRequest(ApiModel):
     @field_validator('requestor_email')
     @classmethod
     def validate_email(cls, v):
-        """Validate email format"""
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, v):
-            raise ValueError(f"Invalid email format: {v}")
-        return v
+        """Validate email format using centralized validators."""
+        from shared.validators import validate_email_with_results
+        result = validate_email_with_results(v)
+        if not result.is_valid:
+            raise ValueError(result.error_message)
+        return result.input_after_validation
 
 
 # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed

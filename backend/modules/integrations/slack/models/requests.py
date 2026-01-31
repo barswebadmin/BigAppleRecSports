@@ -5,11 +5,12 @@ Pydantic models for validating and parsing Slack API requests.
 These models handle identifier parsing, validation, and return proper validation errors.
 """
 
-import re
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, validator
 
-from backend.shared.api_models import ValidationAPIError
+from shared.api_models import ValidationAPIError
+# Import centralized validators
+from shared.validators import validate_email_with_results
 
 
 # ============================================================================
@@ -41,11 +42,11 @@ class SlackUserIdentifierRequest(BaseModel):
         
         try:
             if '@' in identifier:
-                # Email format - validate it
-                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-                if not re.match(email_pattern, identifier):
-                    raise ValueError("Invalid email format")
-                return {"email": identifier}
+                # Email format - validate using centralized validators
+                result = validate_email_with_results(identifier)
+                if not result.is_valid:
+                    raise ValueError(result.error_message)
+                return {"email": result.input_after_validation}
             if identifier.startswith('U') and len(identifier) >= 9:
                 # Slack user ID format: U1234567890
                 return {"user_id": identifier}

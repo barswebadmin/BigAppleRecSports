@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Any
 from pydantic import field_validator, ConfigDict
-from backend.shared.model_config import ApiModel
+from shared.model_config import ApiModel
 
 
 class SlackUserProfile(ApiModel):

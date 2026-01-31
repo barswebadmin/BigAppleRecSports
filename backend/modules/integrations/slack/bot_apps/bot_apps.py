@@ -2,7 +2,7 @@
 
 from typing import Optional, Dict, Any, Union, List
 from slack_bolt import App
-from backend.config import config as global_config
+from config import config as global_config
 from modules.integrations.slack.client import SlackClient, SlackUserIdentifier
 from modules.integrations.slack.user_lookup import lookup_user as _lookup_user
 from modules.integrations.slack.slack_service import SlackService

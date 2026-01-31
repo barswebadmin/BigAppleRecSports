@@ -31,7 +31,7 @@ def sync_groups_cmd(ctx: click.Context, hierarchy_json: Optional[TextIO], bot: s
         hierarchy_data = json.load(hierarchy_json)
         
         # Service is guaranteed to be available (initialized in slack group)
-        from bars_cli._core.context import get_service
+        from bars_cli._core.legacy_services import get_service
         slack_service = get_service(ctx, 'slack_service')
         
         # Initialize services

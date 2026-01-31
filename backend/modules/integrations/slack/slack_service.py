@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from slack_sdk import WebClient
 
 # Our systems
-from backend.config import Config
+from config import Config
 config = Config()
 # from models.slack import Slack, RefundType, SlackMessageType
 

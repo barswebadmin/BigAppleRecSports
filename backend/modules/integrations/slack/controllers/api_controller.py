@@ -10,15 +10,15 @@ to existing backend services. It does NOT rewrite or duplicate existing function
 
 from typing import Dict, Any, Optional
 
-from backend.controllers.api.base import BaseAPIController
-from backend.modules.integrations.slack.slack_service import SlackService
-from backend.shared.api_models import (
+from controllers.api.base import BaseAPIController
+from modules.integrations.slack.slack_service import SlackService
+from shared.api_models import (
     APIError,
     NotFoundAPIError,
     ValidationAPIError,
     APIResponse
 )
-from backend.modules.integrations.slack.models import (
+from modules.integrations.slack.models import (
     SlackUserIdentifierRequest,
     SlackGroupIdentifierRequest,
     SlackChannelIdentifierRequest,

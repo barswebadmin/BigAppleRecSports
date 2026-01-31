@@ -7,7 +7,7 @@ from slack_sdk.errors import SlackApiError
 
 from bars_cli.backend_services.slack.models.slack_user import SlackUser
 from bars_cli._core.decorators.handle_display_options import handle_display_options
-from bars_cli._core.context import get_service
+from bars_cli._core.legacy_services import get_service
 from bars_cli._core.utils.json_output import output_json_list, output_json_error
 
 from .._shared.slack_formatters import format_users

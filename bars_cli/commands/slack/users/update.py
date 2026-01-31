@@ -188,11 +188,11 @@ def handle_display_name_update(
 def collect_interactive_updates(user: SlackUser, slack_service: Any) -> Dict[str, Any]:
     """
     Collect profile updates interactively from user.
-    
+
     Args:
         user: Current SlackUser instance
         slack_service: SlackService instance
-        
+
     Returns:
         Dictionary of profile updates
     """
@@ -200,7 +200,7 @@ def collect_interactive_updates(user: SlackUser, slack_service: Any) -> Dict[str
     if not user.profile:
         raise click.ClickException("User profile is not available")
     current_profile: SlackUserProfile = user.profile
-    
+
     current_values = {
         'first_name': current_profile.first_name or '',
         'last_name': current_profile.last_name or '',
@@ -210,52 +210,51 @@ def collect_interactive_updates(user: SlackUser, slack_service: Any) -> Dict[str
         'title': current_profile.title or '',
         'phone': current_profile.phone or '',
     }
-    
+
     field_options = [
-        format_option("first_name", current_values['first_name']),
-        format_option("last_name", current_values['last_name']),
-        format_option("pronouns", current_values['pronouns'] or ''),
-        format_option("display_name", current_values['display_name'] or ''),
-        format_option("email", current_values['email']),
-        format_option("title", current_values['title']),
-        format_option("phone", current_values['phone']),
-        "Image"
+        {"value": "first_name", "display": format_option("first_name", current_values['first_name'])},
+        {"value": "last_name", "display": format_option("last_name", current_values['last_name'])},
+        {"value": "pronouns", "display": format_option("pronouns", current_values['pronouns'] or '')},
+        {"value": "display_name", "display": format_option("display_name", current_values['display_name'] or '')},
+        {"value": "email", "display": format_option("email", current_values['email'])},
+        {"value": "title", "display": format_option("title", current_values['title'])},
+        {"value": "phone", "display": format_option("phone", current_values['phone'])},
+        {"value": "image", "display": "Image"}
     ]
-    
+
     field_handlers = {
-        "First Name": lambda: prompt_and_update_field("first_name", current_values['first_name'], "New first name", profile_updates),
-        "Last Name": lambda: prompt_and_update_field("last_name", current_values['last_name'], "New last name", profile_updates),
-        "Pronouns": lambda: handle_pronouns_update(profile_updates, current_values['pronouns'], current_values['display_name'], slack_service),
-        "Display Name": lambda: handle_display_name_update(profile_updates, current_values['display_name'], current_profile, slack_service),
-        "Email": lambda: prompt_and_update_field("email", current_values['email'], "New email", profile_updates),
-        "Title": lambda: prompt_and_update_field("title", current_values['title'], "New title", profile_updates),
-        "Phone": lambda: prompt_and_update_field("phone", current_values['phone'], "New phone", profile_updates),
-        "Image": lambda: click.echo("⚠️  Image updates are not yet supported via CLI\n💡 Use Slack's UI to update profile images"),
+        "first_name": lambda: prompt_and_update_field("first_name", current_values['first_name'], "New first name", profile_updates),
+        "last_name": lambda: prompt_and_update_field("last_name", current_values['last_name'], "New last name", profile_updates),
+        "pronouns": lambda: handle_pronouns_update(profile_updates, current_values['pronouns'], current_values['display_name'], slack_service),
+        "display_name": lambda: handle_display_name_update(profile_updates, current_values['display_name'], current_profile, slack_service),
+        "email": lambda: prompt_and_update_field("email", current_values['email'], "New email", profile_updates),
+        "title": lambda: prompt_and_update_field("title", current_values['title'], "New title", profile_updates),
+        "phone": lambda: prompt_and_update_field("phone", current_values['phone'], "New phone", profile_updates),
+        "image": lambda: click.echo("⚠️  Image updates are not yet supported via CLI\n💡 Use Slack's UI to update profile images"),
     }
-    
+
     while True:
         selected_field = prompt_select_from_options(
             "Select field to update",
             field_options,
-            show_current="Select a field to update"
+            current_value="Select a field to update",
+            current_value_mode="display"
         )
-        
+
         if selected_field is None:
             break
-        
-        field_name = selected_field.split(" (Current:")[0].strip()
-        
-        handler = field_handlers.get(field_name)
+
+        handler = field_handlers.get(selected_field)
         if handler:
             handler()
         else:
-            click.echo(f"⚠️  Unknown field: {field_name}")
-        
+            click.echo(f"⚠️  Unknown field: {selected_field}")
+
         click.echo()
         continue_updating = prompt_confirmation("Update another field?", default=False)
         if not continue_updating:
             break
-    
+
     return profile_updates
 
 
@@ -380,7 +379,7 @@ def update_user_cmd(
       bars slack user update user@example.com --title "Commissioner" --phone "+1-555-123-4567"
       bars slack user update user@example.com --status-text "BARS Leadership" --status-emoji ":tada:"
     """
-    from bars_cli._core.context import get_service
+    from bars_cli._core.legacy_services import get_service
     
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False
     should_display = ctx.obj.get('should_display', True) if ctx.obj else True

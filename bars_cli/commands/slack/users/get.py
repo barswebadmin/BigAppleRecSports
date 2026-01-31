@@ -80,7 +80,7 @@ def get_user_cmd(ctx: click.Context, identifier: Dict[str, Any]) -> Optional[Sla
       bars slack user get U03LZKQSHEU
       bars --json slack user get stephen@example.com
     """
-    from bars_cli._core.context import get_service
+    from bars_cli._core.legacy_services import get_service
     
     slack_service = get_service(ctx, 'slack_service')
     json_output = ctx.obj.get('json_output', False) if ctx.obj else False

@@ -5,7 +5,7 @@ import click_extra as click
 
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SLACK_GROUP_IDENTIFIER
-from bars_cli._core.context import get_service
+from bars_cli._core.legacy_services import get_service
 from bars_cli.commands.slack._shared.command_helpers import extract_group_identifier
 from .._shared.slack_formatters import format_group
 

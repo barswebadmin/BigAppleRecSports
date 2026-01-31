@@ -16,7 +16,7 @@ sys.path.append(
 
 from modules.integrations.slack.slack_refunds_utils import SlackRefundsUtils
 from modules.orders.services.orders_service import OrdersService
-from backend.config import Config
+from config import Config
 
 
 class TestSlackDynamicClient:

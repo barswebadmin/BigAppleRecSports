@@ -19,7 +19,7 @@ from modules.integrations.slack.helpers import download_and_parse_csv
 from modules.integrations.slack.bot_apps import leadership_bot
 from modules.leadership.services.results_formatter import LeadershipResultsFormatter
 from modules.integrations.slack.user_lookup import lookup_user_ids_by_emails, enrich_hierarchy
-from modules.leadership.services.csv_parser import LeadershipCSVParser
+# from modules.leadership.services.csv_parser import LeadershipCSVParser
 from shared.csv import parse_csv_text
 from shared.csv.csv_processor import CSVProcessor
 
@@ -59,128 +59,128 @@ def handle_update_bars_leadership_command(ack: Ack, command: dict):
     leadership_bot.views_open(trigger_id=trigger_id, view=modal_view)
 
 
-@leadership_bot.view("update_leadership_modal")
-def handle_update_leadership_submission(ack: Ack, respond: Respond, context: BoltContext, view: dict):
-    """Handle leadership update modal submission - fetch and parse Google Sheet."""
-    ack()
+# @leadership_bot.view("update_leadership_modal")
+# def handle_update_leadership_submission(ack: Ack, respond: Respond, context: BoltContext, view: dict):
+#     """Handle leadership update modal submission - fetch and parse Google Sheet."""
+#     ack()
     
-    user_id = context.user_id
-    sheet_url = view["state"]["values"]["sheet_url_block"]["sheet_url"]["value"]
+#     user_id = context.user_id
+#     sheet_url = view["state"]["values"]["sheet_url_block"]["sheet_url"]["value"]
     
-    try:
-        sheets_client = GoogleApiClient()
-        sheet_id = sheets_client.extract_sheet_id_from_url(sheet_url)
+#     try:
+#         sheets_client = GoogleApiClient()
+#         sheet_id = sheets_client.extract_sheet_id_from_url(sheet_url)
         
-        initial_blocks = [
-            GenericMessageBuilder.header("📊 Fetching Leadership Data"),
-            GenericMessageBuilder.section(f"🔄 Downloading sheet: `{sheet_id[:20]}...`")
-        ]
+#         initial_blocks = [
+#             GenericMessageBuilder.header("📊 Fetching Leadership Data"),
+#             GenericMessageBuilder.section(f"🔄 Downloading sheet: `{sheet_id[:20]}...`")
+#         ]
         
-        respond(
-            text="Fetching leadership data from Google Sheets...",
-            blocks=initial_blocks
-        )
+#         respond(
+#             text="Fetching leadership data from Google Sheets...",
+#             blocks=initial_blocks
+#         )
         
-        csv_data = sheets_client.fetch_sheet_as_csv(sheet_id)
+#         csv_data = sheets_client.fetch_sheet_as_csv(sheet_id)
         
-        if not csv_data or len(csv_data) < 5:
-            _post_error_message(
-                respond,
-                f"Sheet appears empty or invalid. Found {len(csv_data)} rows."
-            )
-            return
+#         if not csv_data or len(csv_data) < 5:
+#             _post_error_message(
+#                 respond,
+#                 f"Sheet appears empty or invalid. Found {len(csv_data)} rows."
+#             )
+#             return
         
-        logger.info(f"📊 Fetched {len(csv_data)} rows from Google Sheet")
+#         logger.info(f"📊 Fetched {len(csv_data)} rows from Google Sheet")
         
-        parser = LeadershipCSVParser()
-        hierarchy = parser.parse(csv_data)
+#         parser = LeadershipCSVParser()
+#         hierarchy = parser.parse(csv_data)
         
-        logger.info(f"📊 Parsed hierarchy: {len(hierarchy.sections)} sections")
-        for section_name, section_data in hierarchy.sections.items():
-            if isinstance(section_data, dict):
-                logger.info(f"  {section_name}: {len(section_data)} positions")
-            elif isinstance(section_data, list):
-                logger.info(f"  {section_name}: {len(section_data)} members")
+#         logger.info(f"📊 Parsed hierarchy: {len(hierarchy.sections)} sections")
+#         for section_name, section_data in hierarchy.sections.items():
+#             if isinstance(section_data, dict):
+#                 logger.info(f"  {section_name}: {len(section_data)} positions")
+#             elif isinstance(section_data, list):
+#                 logger.info(f"  {section_name}: {len(section_data)} members")
         
-        expected_config = load_hierarchy_config()
-        expected_positions = expected_config.get_all_expected_positions()
-        total_expected = sum(len(positions) for positions in expected_positions.values())
+#         expected_config = load_hierarchy_config()
+#         expected_positions = expected_config.get_all_expected_positions()
+#         total_expected = sum(len(positions) for positions in expected_positions.values())
         
-        parsed_count = sum(
-            len(section_data) if isinstance(section_data, dict) else 0
-            for section_data in hierarchy.sections.values()
-        )
+#         parsed_count = sum(
+#             len(section_data) if isinstance(section_data, dict) else 0
+#             for section_data in hierarchy.sections.values()
+#         )
         
-        logger.warning("⚠️  HIERARCHY VALIDATION:")
-        logger.warning(f"   Expected: {total_expected} positions")
-        logger.warning(f"   Parsed:   {parsed_count} positions")
-        logger.warning(f"   Missing:  {total_expected - parsed_count} positions")
-        logger.warning("")
+#         logger.warning("⚠️  HIERARCHY VALIDATION:")
+#         logger.warning(f"   Expected: {total_expected} positions")
+#         logger.warning(f"   Parsed:   {parsed_count} positions")
+#         logger.warning(f"   Missing:  {total_expected - parsed_count} positions")
+#         logger.warning("")
         
-        for section_key, expected_roles in expected_positions.items():
-            section_data = hierarchy.sections.get(section_key, {})
-            if isinstance(section_data, dict):
-                parsed_roles = set(section_data.keys())
-                expected_roles_set = set(expected_roles)
+#         for section_key, expected_roles in expected_positions.items():
+#             section_data = hierarchy.sections.get(section_key, {})
+#             if isinstance(section_data, dict):
+#                 parsed_roles = set(section_data.keys())
+#                 expected_roles_set = set(expected_roles)
                 
-                missing = expected_roles_set - parsed_roles
-                extra = parsed_roles - expected_roles_set
+#                 missing = expected_roles_set - parsed_roles
+#                 extra = parsed_roles - expected_roles_set
                 
-                if missing or extra:
-                    logger.warning(f"   {section_key}:")
-                    if missing:
-                        logger.warning(f"     Missing: {', '.join(sorted(missing))}")
-                    if extra:
-                        logger.warning(f"     Extra:   {', '.join(sorted(extra))}")
-            else:
-                logger.warning(f"   {section_key}: Expected dict, got {type(section_data).__name__}")
+#                 if missing or extra:
+#                     logger.warning(f"   {section_key}:")
+#                     if missing:
+#                         logger.warning(f"     Missing: {', '.join(sorted(missing))}")
+#                     if extra:
+#                         logger.warning(f"     Extra:   {', '.join(sorted(extra))}")
+#             else:
+#                 logger.warning(f"   {section_key}: Expected dict, got {type(section_data).__name__}")
         
-        lookup_results = enrich_hierarchy(leadership_bot.client, hierarchy, max_workers=5)
+#         lookup_results = enrich_hierarchy(leadership_bot.client, hierarchy, max_workers=5)
         
-        logger.info(f"📊 Enriched {len(lookup_results)} members with Slack user IDs")
+#         logger.info(f"📊 Enriched {len(lookup_results)} members with Slack user IDs")
         
-        import json
-        from pathlib import Path
-        debug_file = Path(__file__).parent / "result.json"
-        with open(debug_file, "w") as f:
-            json.dump({
-                "hierarchy": hierarchy.model_dump(),
-                "lookup_results": lookup_results,
-                "csv_row_count": len(csv_data)
-            }, f, indent=2, default=str)
-        logger.info(f"📄 Saved debug data to {debug_file}")
+#         import json
+#         from pathlib import Path
+#         debug_file = Path(__file__).parent / "result.json"
+#         with open(debug_file, "w") as f:
+#             json.dump({
+#                 "hierarchy": hierarchy.model_dump(),
+#                 "lookup_results": lookup_results,
+#                 "csv_row_count": len(csv_data)
+#             }, f, indent=2, default=str)
+#         logger.info(f"📄 Saved debug data to {debug_file}")
         
-        formatter = LeadershipResultsFormatter()
-        analysis = formatter.analyze_completeness(hierarchy, lookup_results)
+#         formatter = LeadershipResultsFormatter()
+#         analysis = formatter.analyze_completeness(hierarchy, lookup_results)
         
-        total = len(analysis.successes) + len(analysis.warnings) + len(analysis.failures) + len(analysis.vacant_positions)
-        logger.info(f"📊 Analysis: {total} total, {len(analysis.successes)} success, {len(analysis.warnings)} warnings, {len(analysis.failures)} failures, {len(analysis.vacant_positions)} vacant")
+#         total = len(analysis.successes) + len(analysis.warnings) + len(analysis.failures) + len(analysis.vacant_positions)
+#         logger.info(f"📊 Analysis: {total} total, {len(analysis.successes)} success, {len(analysis.warnings)} warnings, {len(analysis.failures)} failures, {len(analysis.vacant_positions)} vacant")
         
-        result_blocks = formatter.format_results_for_slack(analysis)
+#         result_blocks = formatter.format_results_for_slack(analysis)
         
-        respond(
-            text="Leadership data processed successfully",
-            blocks=result_blocks
-        )
+#         respond(
+#             text="Leadership data processed successfully",
+#             blocks=result_blocks
+#         )
         
-    except PermissionError as e:
-        logger.error(f"Google Sheets permission error: {e}")
-        _post_error_message(
-            respond,
-            f"❌ Permission denied: {str(e)}\n\nMake sure the sheet is shared with: `bars-backend-service@bars-backend-services.iam.gserviceaccount.com`"
-        )
-    except ValueError as e:
-        logger.error(f"Invalid sheet URL or ID: {e}")
-        _post_error_message(
-            respond,
-            f"❌ Invalid Google Sheet URL: {str(e)}"
-        )
-    except Exception as e:
-        logger.error(f"Error processing leadership sheet: {e}", exc_info=True)
-        _post_error_message(
-            respond,
-            f"❌ Error processing sheet: {str(e)}"
-        )
+#     except PermissionError as e:
+#         logger.error(f"Google Sheets permission error: {e}")
+#         _post_error_message(
+#             respond,
+#             f"❌ Permission denied: {str(e)}\n\nMake sure the sheet is shared with: `bars-backend-service@bars-backend-services.iam.gserviceaccount.com`"
+#         )
+#     except ValueError as e:
+#         logger.error(f"Invalid sheet URL or ID: {e}")
+#         _post_error_message(
+#             respond,
+#             f"❌ Invalid Google Sheet URL: {str(e)}"
+#         )
+#     except Exception as e:
+#         logger.error(f"Error processing leadership sheet: {e}", exc_info=True)
+#         _post_error_message(
+#             respond,
+#             f"❌ Error processing sheet: {str(e)}"
+#         )
 
 
 @leadership_bot.command("/get-user-ids")
