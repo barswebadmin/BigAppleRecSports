@@ -10,7 +10,7 @@ Provides methods to:
 from typing import List, Optional, Dict, Any, Tuple
 import logging
 
-from backend.modules.integrations.shopify.models.theme_template_models import (
+from modules.integrations.shopify.models.theme_template_models import (
     ThemeTemplate,
     Section,
     Block,
@@ -19,7 +19,7 @@ from backend.modules.integrations.shopify.models.theme_template_models import (
     FontConfig,
     PaddingConfig,
 )
-from backend.modules.integrations.shopify.services.shopify_service import ShopifyService
+from modules.integrations.shopify.services.shopify_service import ShopifyService
 
 logger = logging.getLogger(__name__)
 

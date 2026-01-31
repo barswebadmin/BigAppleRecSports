@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
 import click_extra as click
 
-from bars_cli._core.context import get_service
+from bars_cli._core.legacy_services import get_service
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_CUSTOMER_IDENTIFIER
 from bars_cli._core.ui.styling import get_console

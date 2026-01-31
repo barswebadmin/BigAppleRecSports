@@ -9,7 +9,7 @@ from sgqlc.types import Type, Field, String, Int, list_of
 from sgqlc.types.relay import Connection, connection_args
 
 # Import Customer for Order.customer field
-from backend.modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import Customer
+from modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import Customer
 
 
 class MoneySet(Type):

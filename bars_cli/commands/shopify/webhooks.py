@@ -11,8 +11,15 @@ import click_extra as click
 import requests
 
 
+import sys
+from pathlib import Path
+
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    return get_repo_root()
 
 
 def _normalize_base_url(raw: str) -> str:

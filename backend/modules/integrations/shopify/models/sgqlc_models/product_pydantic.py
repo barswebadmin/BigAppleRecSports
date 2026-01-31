@@ -7,9 +7,9 @@ Uses forward references to avoid circular imports.
 from typing import List, TYPE_CHECKING, Optional
 from pydantic import BaseModel, Field
 
-from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection
+from modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection
 
-from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import ShopifyBaseModel, create_list_model
+from modules.integrations.shopify.models.sgqlc_models.common_pydantic import ShopifyBaseModel, create_list_model
 
 if TYPE_CHECKING:
     pass

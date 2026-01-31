@@ -14,7 +14,7 @@ from typing import Type, Dict, Any, Optional, List, get_origin, get_args
 from pydantic import BaseModel
 from sgqlc.types import Type as SGQLCType, Field, list_of, map_python_to_graphql
 from sgqlc.types.relay import Connection as SGQLCConnection, connection_args
-from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection as PydanticConnection
+from modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection as PydanticConnection
 
 # Cache for generated sgqlc types
 _sgqlc_type_cache: Dict[Type[BaseModel], Type[SGQLCType]] = {}
@@ -71,7 +71,7 @@ def _resolve_type_name(type_name: str) -> Optional[Type[BaseModel]]:
     """Resolve a type name string to an actual BaseModel class using models namespace."""
     try:
         # Try sgqlc_models module first (where our Pydantic models are)
-        from backend.modules.integrations.shopify.models import sgqlc_models
+        from modules.integrations.shopify.models import sgqlc_models
         # Check product_pydantic, customer_pydantic, etc. for the model
         for module_name in ['product_pydantic', 'customer_pydantic', 'order_pydantic', 'common_pydantic']:
             try:
@@ -133,7 +133,7 @@ def _extract_connection_inner_type(annotation: Any) -> Optional[Type[BaseModel]]
                         inner_type_str = match.group(1).strip().split('.')[-1]
                         # Try to resolve from product_pydantic module directly
                         try:
-                            from backend.modules.integrations.shopify.models.sgqlc_models import product_pydantic
+                            from modules.integrations.shopify.models.sgqlc_models import product_pydantic
                             if hasattr(product_pydantic, inner_type_str):
                                 resolved = getattr(product_pydantic, inner_type_str)
                                 if isinstance(resolved, type) and issubclass(resolved, BaseModel):

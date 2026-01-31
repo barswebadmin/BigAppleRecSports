@@ -6,13 +6,13 @@ Import from here to get sgqlc Type classes for query generation.
 """
 
 # Import direct sgqlc Type definitions
-from backend.modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import (
+from modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import (
     Address,
     Customer,
     CustomerConnection,
 )
 
-from backend.modules.integrations.shopify.models.sgqlc_models.order_sgqlc import (
+from modules.integrations.shopify.models.sgqlc_models.order_sgqlc import (
     MoneySet,
     MoneySetWrapper,
     InventoryItem,
@@ -33,11 +33,11 @@ from backend.modules.integrations.shopify.models.sgqlc_models.order_sgqlc import
 )
 
 # Import Pydantic models (for data validation/parsing)
-from backend.modules.integrations.shopify.models.sgqlc_models.customer_pydantic import (
+from modules.integrations.shopify.models.sgqlc_models.customer_pydantic import (
     Address as AddressPydantic,
     Customer as CustomerPydantic,
 )
-from backend.modules.integrations.shopify.models.sgqlc_models.order_pydantic import (
+from modules.integrations.shopify.models.sgqlc_models.order_pydantic import (
     MoneySet as MoneySetPydantic,
     MoneySetWrapper as MoneySetWrapperPydantic,
     RefundTransaction as RefundTransactionPydantic,
@@ -53,7 +53,7 @@ from backend.modules.integrations.shopify.models.sgqlc_models.order_pydantic imp
 )
 
 # Import Pydantic models for products (for data validation/parsing)
-from backend.modules.integrations.shopify.models.sgqlc_models.product_pydantic import (
+from modules.integrations.shopify.models.sgqlc_models.product_pydantic import (
     Image as ImagePydantic,
     ProductOptionValue as ProductOptionValuePydantic,
     Metafield as MetafieldPydantic,
@@ -62,7 +62,7 @@ from backend.modules.integrations.shopify.models.sgqlc_models.product_pydantic i
 )
 
 # Import direct sgqlc Type definitions for products
-from backend.modules.integrations.shopify.models.sgqlc_models.product_sgqlc import (
+from modules.integrations.shopify.models.sgqlc_models.product_sgqlc import (
     Image,
     ImageConnection,
     ProductOption,
@@ -84,13 +84,13 @@ from backend.modules.integrations.shopify.models.sgqlc_models.product_sgqlc impo
 )
 
 # Import direct sgqlc Type definitions for locations
-from backend.modules.integrations.shopify.models.sgqlc_models.location_sgqlc import (
+from modules.integrations.shopify.models.sgqlc_models.location_sgqlc import (
     Location,
     LocationConnection,
 )
 
 # Import direct sgqlc Type definitions for files
-from backend.modules.integrations.shopify.models.sgqlc_models.file_sgqlc import (
+from modules.integrations.shopify.models.sgqlc_models.file_sgqlc import (
     File,
     FileConnection,
 )

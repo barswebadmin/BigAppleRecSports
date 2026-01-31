@@ -1,81 +1,24 @@
-"""Get Shopify order command."""
+"""Get Shopify order command - HTTP client version."""
 
-from typing import Dict, Any, Optional, List, TYPE_CHECKING
+import json
+from typing import Dict, Any, Optional
 
 import click_extra as click
-from rich.console import Console
 
-from bars_cli._core.context import get_display_context, get_service
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_ORDER_IDENTIFIER
-from bars_cli._core.ui.styling import get_console
-from bars_cli.backend_services.shared.csv.csv_io import write_csv_file
-from bars_cli.commands.shopify._shared.command_helpers import (
-    handle_multiple_shopify_results,
-    handle_shopify_response,
-    handle_shopify_error_response,
-    validate_identifier,
-    write_csv_dict_to_stdout,
-)
-from bars_cli.commands.shopify._shared.shopify_formatters import (
-    _format_order_option,
-    format_order_rich,
-)
-
-if TYPE_CHECKING:
-    from bars_cli.backend_services.shopify.models.sgqlc_models import Order
-else:
-    Order = Any
-
-
-def display_order(
-    order: Order,
-    shopify_service: Any,
-    csv: bool,
-    csv_file: Optional[str],
-    show_properties: bool,
-    console: Console
-) -> str:
-    """Display order using formatters directly.
-    
-    Returns empty string since Rich prints directly.
-    """
-    if csv or csv_file:
-        order_dict = shopify_service.order_to_csv_dict(order)
-        if csv_file:
-            write_csv_file([order_dict], file_path=csv_file)
-            click.echo(f"CSV written to {csv_file}", err=True)
-        else:
-            write_csv_dict_to_stdout([order_dict])
-    else:
-        # Calculate total paid and format it
-        payment_summary = shopify_service.calculate_payment_summary(order)
-        total_amount = payment_summary.get('total_amount', 0.0)
-        currency = payment_summary.get('currency', 'USD')
-        total_paid = f"${total_amount:.2f} {currency}" if total_amount > 0 else "N/A"
-        
-        format_order_rich(order, console=console, show_properties=show_properties, total_paid=total_paid)
-    return ""  # Rich prints directly, return empty string for compatibility
-
-
+from bars_cli._core.utils.json_output import output_json_item, output_json_error
+from bars_cli._core.context import get_http_client
 
 
 @click.command('get')
 @handle_display_options(display=True, exit_on_error=True)
-@click.option('--one', 'must_return_one', is_flag=True, default=False, help='Require selecting exactly one order (no "All" option)')
-@click.option('-P', '--show-properties', 'show_properties', is_flag=True, default=False, help='Show line item custom attributes')
-@click.option('--csv', is_flag=True, default=False, help='Output as CSV format matching Shopify export')
-@click.option('--csv-file', type=click.Path(), help='Write CSV to file instead of stdout')
 @click.argument('identifier', type=SHOPIFY_ORDER_IDENTIFIER, required=False)
 @click.pass_context
 def get_order_cmd(
     ctx: click.Context,
-    identifier: Optional[Dict[str, Any]],
-    must_return_one: bool = False,
-    show_properties: bool = False,
-    csv: bool = False,
-    csv_file: Optional[str] = None
-) -> Optional[List[Any]]:
+    identifier: Optional[Dict[str, Any]] = None
+) -> Optional[dict]:
     """
     Get Shopify order details by order number or ID.
     
@@ -85,68 +28,167 @@ def get_order_cmd(
       bars shopify order get 1234
       bars shopify order get #1234
       bars shopify order get gid://shopify/Order/123456789
-      bars shopify order get 123456789
       bars --json shopify order get 1234
-      bars shopify order get 1234 --show-properties
-      bars shopify order get 1234 --csv
     """
-    json_output, should_display = get_display_context(ctx)
-    console = get_console("formatted", ctx=ctx) if should_display and not json_output else Console()
-    
-    # Validate identifier
-    validate_identifier(identifier, "order", json_output, should_display, "Order identifier is required")
-    
-    # After validation, identifier is guaranteed to be not None
-    assert identifier is not None
-    
+    json_output = ctx.obj.get('json_output', False)
+    should_display = ctx.obj.get('should_display', True)
+
+    # Prompt for identifier if not provided
+    if not identifier:
+        identifier_str = click.prompt('Order identifier (number or ID)')
+        identifier = SHOPIFY_ORDER_IDENTIFIER.convert(identifier_str, None, ctx)
+
+    # Get HTTP client from context (BARS API base URL)
+    client = get_http_client(ctx)
+
     try:
+        # Extract identifier string and type from dict
+        identifier_value = identifier.get("identifier", "")
+        identifier_type = identifier.get("type", "")
+        
         # Display lookup message
         if should_display and not json_output:
-            lookup_value = identifier.get("identifier", "order")
-            click.echo(f"🔍 Looking up: {lookup_value}", err=True)
-        
-        # Get Shopify service (lazily initialized on first access via LazyServiceProxy)
-        shopify_service = get_service(ctx, 'shopify_service')
-        
-        def format_order_wrapper(order: Order) -> str:
-            """Wrapper for display_order to match expected signature."""
-            return display_order(order, shopify_service, csv, csv_file, show_properties, console)
-        
-        # Call service method
-        try:
-            entities = shopify_service.get_order_by_identifier(identifier, line_items_first=5)  # type: ignore[attr-defined]
-        except (RuntimeError, ValueError) as e:
-            handle_shopify_error_response(e, json_output, should_display)
-        
-        # Route response to appropriate handler
-        return handle_shopify_response(
-            entities=entities,
-            identifier=identifier,
-            entity_name="order",
-            json_output=json_output,
-            should_display=should_display,
-            format_func=format_order_wrapper,
-            handle_multiple_func=(
-                handle_multiple_shopify_results,
-                {
-                    "entity_name": "order",
-                    "format_option_func": _format_order_option,
-                    "format_func": format_order_wrapper,
-                    "must_return_one": must_return_one
-                }
-            )
-        )
-        
-    except click.ClickException:
-        # Re-raise Click exceptions - decorator will handle exit
-        raise
-    except Exception as e:
-        from bars_cli.commands.shopify._shared.shopify_formatters import format_error
-        import traceback
-        error_type = type(e).__name__
-        error_msg = str(e)
-        format_error(error_msg, error_type=error_type, json_output=json_output, should_display=should_display)
-        if should_display and not json_output:
-            click.echo(traceback.format_exc(), err=True)
+            # Show user-friendly format with # for order numbers
+            display_value = f"#{identifier_value}" if identifier_type == "order_number" else identifier_value
+            click.echo(f"🔍 Looking up order: {display_value}", err=True)
+
+        # Build API endpoint with appropriate query parameter based on type
+        if identifier_type == "order_number":
+            endpoint = f'http://localhost:8000/orders?number={identifier_value}'
+        else:  # order_id
+            endpoint = f'http://localhost:8000/orders?id={identifier_value}'
+
+        # Make the API request
+        response = client.get(endpoint)
+
+        # Handle successful response
+        if response.status_code == 200:
+            response_data = response.json()
+
+            # Extract order data from response
+            if 'data' in response_data:
+                order_data = response_data['data']
+                
+                if not order_data:
+                    error_msg = f"No order found for identifier: {identifier_value}"
+                    if json_output:
+                        output_json_error(error_msg)
+                    else:
+                        click.echo(f"❌ {error_msg}", err=True)
+                    raise click.ClickException(error_msg)
+
+                # Display result
+                if should_display:
+                    if json_output:
+                        output_json_item(order_data)
+                    else:
+                        _format_order(order_data)
+
+                return order_data
+
+            error_msg = "Invalid response format from API"
+            if json_output:
+                output_json_error(error_msg)
+            else:
+                click.echo(f"❌ {error_msg}", err=True)
+            raise click.ClickException(error_msg)
+
+        # Handle error response
+        if response.status_code == 404:
+            error_msg = f"Order not found: {identifier_value}"
+            if json_output:
+                output_json_error(error_msg, error_type="NotFound")
+            else:
+                click.echo(f"❌ {error_msg}", err=True)
+            raise click.ClickException(error_msg)
+
+        error_msg = _extract_error_message(response)
+        if json_output:
+            output_json_error(error_msg, error_type="APIError")
+        else:
+            click.echo(f"❌ {error_msg}", err=True)
+            click.echo(f"Status Code: {response.status_code}", err=True)
         raise click.ClickException(error_msg)
 
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+
+        if json_output:
+            output_json_error(error_msg, error_type=error_type)
+        else:
+            click.echo(f"❌ Unexpected error ({error_type}): {error_msg}", err=True)
+
+        raise click.ClickException(error_msg) from e
+
+
+def _format_order(order: dict) -> None:
+    """Format order data for display.
+    
+    Args:
+        order: Order data dict from API with computed fields
+    """
+    output = []
+    output.append("\n✅ Order Found!")
+    output.append("=" * 60)
+    
+    # Display order number as hyperlink (if terminal supports it)
+    if order.get('order_number_link'):
+        output.append(f"{'Order':<20} {order['order_number_link']}")
+    else:
+        output.append(f"{'Order':<20} #{order.get('number', 'N/A')}")
+    
+    # Display product as hyperlink
+    if order.get('product_link'):
+        output.append(f"{'Product':<20} {order['product_link']}")
+    elif order.get('product_title'):
+        output.append(f"{'Product':<20} {order['product_title']}")
+    
+    # Display order email with fallback
+    order_email = order.get('form_email')
+    if order_email and order_email != 'N/A':
+        output.append(f"{'Order Email':<20} {order_email}")
+    else:
+        output.append(f"{'Order Email':<20} Not collected in form")
+    
+    output.append(f"{'Amount Paid':<20} ${order.get('amount_paid', '0.00')}")
+    
+    if order.get('createdAt'):
+        output.append(f"{'Created At':<20} {order['createdAt']}")
+    
+    # Cancellation status
+    output.append(f"{'Cancellation Status':<20} {order.get('cancellation_status', 'N/A')}")
+    
+    # Refund status
+    output.append(f"{'Refund Status':<20} {order.get('refund_status', 'N/A (Not Refunded)')}")
+    
+    # Customer info
+    if order.get('customer'):
+        customer = order['customer']
+        output.append(f"\n{'Customer:':<20}")
+        if customer.get('first_name') or customer.get('last_name'):
+            name = f"{customer.get('first_name', '')} {customer.get('last_name', '')}".strip()
+            output.append(f"  {'Name':<18} {name}")
+        if customer.get('email'):
+            output.append(f"  {'Email':<18} {customer['email']}")
+    
+    output.append("=" * 60)
+    click.echo('\n'.join(output))
+
+
+def _extract_error_message(response) -> str:
+    """Extract error message from API response."""
+    error_msg = f"API request failed with status {response.status_code}"
+    try:
+        error_response = response.json()
+        if isinstance(error_response, dict):
+            if 'message' in error_response:
+                error_msg = f"API Error: {error_response['message']}"
+            elif 'error' in error_response:
+                error_msg = f"API Error: {error_response['error']}"
+            elif 'detail' in error_response:
+                if isinstance(error_response['detail'], str):
+                    error_msg = f"API Error: {error_response['detail']}"
+    except json.JSONDecodeError:
+        pass
+    return error_msg

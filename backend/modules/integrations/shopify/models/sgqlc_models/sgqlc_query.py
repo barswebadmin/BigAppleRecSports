@@ -10,14 +10,14 @@ from sgqlc.types import Type, Field, String, ID, Int
 from sgqlc.types.relay import connection_args
 from sgqlc.operation import Operation
 
-from backend.modules.integrations.shopify.models.sgqlc_models import (
+from modules.integrations.shopify.models.sgqlc_models import (
     CustomerConnection,
     OrderConnection,
     ProductConnection,
     LocationConnection,
     FileConnection,
 )
-from backend.modules.integrations.shopify.models import sgqlc_models
+from modules.integrations.shopify.models import sgqlc_models
 
 
 class BaseQuery(Type):
@@ -359,7 +359,7 @@ class BaseQuery(Type):
             # Special case: Customer.orders - sort by creation date descending (newest first)
             elif model_class.__name__ == 'Customer' and conn_field == 'orders':
                 # Import OrderSortKeys enum
-                from backend.modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import OrderSortKeys
+                from modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import OrderSortKeys
                 # Sort by CREATED_AT in descending order (newest first)
                 conn_sel = getattr(selector, conn_field)(first=first, sortKey=OrderSortKeys.CREATED_AT, reverse=True)  # type: ignore[union-attr]
             else:

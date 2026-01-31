@@ -5,11 +5,12 @@ Pydantic models for validating and parsing Shopify API requests.
 These models handle identifier parsing, validation, and return proper validation errors.
 """
 
-import re
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, validator
 
-from backend.shared.api_models import ValidationAPIError
+from shared.api_models import ValidationAPIError
+# Import centralized validators
+from shared.validators import validate_email_with_results
 
 
 # ============================================================================
@@ -17,46 +18,68 @@ from backend.shared.api_models import ValidationAPIError
 # ============================================================================
 
 class ShopifyOrderIdentifierRequest(BaseModel):
-    """Request model for Shopify order identifier parsing and validation."""
-    identifier: str = Field(..., min_length=1, description="Order identifier")
+    """
+    Request model for Shopify order identifier parsing and validation.
+    
+    Validates and parses order identifiers in two formats:
+    - Order number: 5 digits (normalized, without #) → query: "name:#12345"
+    - Order ID: 11-16 digits (just digits) → query: "id:123456789"
+    
+    Note: CLI normalizes identifiers by stripping # to avoid URL fragment issues.
+    """
+    identifier: str = Field(..., min_length=1, description="Order identifier (number or ID)")
 
     @validator('identifier')
     def validate_identifier(cls, v):
-        """Validate order identifier."""
+        """Validate order identifier format."""
         if not v or not v.strip():
             raise ValueError("Order identifier cannot be empty")
         return v.strip()
 
-    def parse(self) -> Dict[str, Any]:
+    def parse(self) -> Dict[str, str]:
         """
-        Parse the identifier and return service-compatible format.
+        Parse and validate the identifier, returning query type and GraphQL query string.
         
         Returns:
-            Dictionary with parsed identifier information
+            Dict with keys:
+            - type: "order_number" or "order_id"
+            - query: GraphQL query string (e.g., "name:#12345" or "id:123456789")
+            - identifier: Original identifier value
             
         Raises:
             ValidationAPIError: If identifier format is invalid
         """
         identifier = self.identifier.strip()
         
-        try:
-            if identifier.startswith('#'):
-                # Order number format: #1001
-                return {"order_number": identifier[1:]}
-            if identifier.startswith('gid://shopify/Order/'):
-                # GraphQL ID format: gid://shopify/Order/123456
-                order_id = identifier.split('/')[-1]
-                return {"order_id": order_id}
-            if identifier.isdigit():
-                # Could be order number or ID - let service handle both
-                return {"identifier": identifier}
-            
-            raise ValueError(f"Invalid order identifier format: {identifier}")
-        except ValueError as e:
-            raise ValidationAPIError(
-                message=str(e),
-                field_errors={"identifier": [str(e)]}
-            ) from e
+        # Check if it's a 5-digit order number (already normalized without #)
+        if identifier.isdigit() and len(identifier) == 5:
+            # Valid order number - add # prefix for GraphQL query
+            return {
+                "type": "order_number",
+                "query": f"name:#{identifier}",
+                "identifier": identifier
+            }
+        
+        # Check if it's an 11-16 digit order ID
+        if identifier.isdigit() and 11 <= len(identifier) <= 16:
+            # Valid order ID - use as-is
+            return {
+                "type": "order_id",
+                "query": f"id:{identifier}",
+                "identifier": identifier
+            }
+        
+        # If neither format matches, raise validation error
+        raise ValidationAPIError(
+            message=(
+                f"Invalid order identifier format: {identifier}. "
+                f"Expected order number (5 digits, e.g., 12345) "
+                f"or order ID (11-16 digits, e.g., 1234567890)"
+            ),
+            field_errors={"identifier": [
+                "Must be either a 5-digit order number or an 11-16 digit order ID"
+            ]}
+        )
 
 
 class ShopifyProductIdentifierRequest(BaseModel):
@@ -125,11 +148,11 @@ class ShopifyCustomerIdentifierRequest(BaseModel):
         
         try:
             if '@' in identifier:
-                # Email format - validate it
-                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-                if not re.match(email_pattern, identifier):
-                    raise ValueError("Invalid email format")
-                return {"email": identifier}
+                # Email format - validate using centralized validators
+                result = validate_email_with_results(identifier)
+                if not result.is_valid:
+                    raise ValueError(result.error_message)
+                return {"email": result.input_after_validation}
             if identifier.startswith('gid://shopify/Customer/'):
                 # GraphQL ID format: gid://shopify/Customer/123456
                 customer_id = identifier.split('/')[-1]
@@ -249,11 +272,11 @@ class FetchOrderRequest(BaseModel):
         Flexible factory accepting a dict like {"order_number": "43298"}
         or {"order_id": "5885712466014"} or {"email": "user@example.com"}.
         """
-        from backend.modules.integrations.shopify.services.shopify_normalizers import (
+        from modules.integrations.shopify.services.shopify_normalizers import (
             normalize_order_number,
             normalize_order_identifier,
         )
-        from backend.shared.validators import validate_email
+        from shared.validators import validate_email_with_results
 
         order_id_input = data.get("order_id")
         order_number_input = data.get("order_number")
@@ -265,7 +288,7 @@ class FetchOrderRequest(BaseModel):
         norm_num = normalize_order_number(order_number_input) if order_number_input else None
         order_number = norm_num.get("digits_only") if norm_num else None
 
-        email = email_input if validate_email(email_input).is_valid else None
+        email = email_input if validate_email_with_results(email_input).is_valid else None
 
         if not order_id and not order_number and not email:
             raise ValueError("Must provide a valid order_id, order_number, or email")

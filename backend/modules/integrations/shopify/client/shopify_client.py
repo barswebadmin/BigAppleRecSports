@@ -1,121 +1,86 @@
-from typing import Dict, Any, Optional
-import requests
+"""
+ShopifyClient - HTTP client using HTTPX to interact with Shopify GraphQL with retries/timeouts.
+"""
 
-from backend.config import Config, config
+from typing import Dict, Any
+
+from shared_utilities.api_clients.http_client import SyncHTTPClient, RetryPolicy
+from config import config
 from ..models.requests import FetchOrderRequest
 from ..models.responses import ShopifyResponse, ShopifyResponseKind
 from ..parsers import parse_shopify_response
-# from ..builders import build_order_fetch_request_payload  # DEPRECATED: replaced by sgqlc
-
- 
-"""
-ShopifyClient - HTTP client using requests to interact with Shopify GraphQL with retries/timeouts.
-"""
 
 
-class ShopifyClient:
+class ShopifyClient(SyncHTTPClient):
+    """Shopify GraphQL client with centralized HTTP error handling and retries."""
+
     def __init__(self) -> None:
-        # Allow injection of config instance for CLI use with proper environment
-        self._config = config.shopify
-        self._token = self._config.token.admin
-        self._headers = {
-            "Content-Type": "application/json",
-            "X-Shopify-Access-Token": self._token,
-        }
-        self._admin_url = self._config.url.admin
-        self._graphql_url = self._config.url.api_graph_ql
-        self._store_id = self._config.store_id
-        self._location_id = self._config.location_id
+        self._config = config['SHOPIFY']
+        self._token = self._config['TOKEN']['ADMIN']
 
-    # ------------------------------------------------------------------
-    # HTTP helper
-    # ------------------------------------------------------------------
-    def post_graphql_safe(self, body: Dict[str, Any]) -> requests.Response:
-        """POST to Shopify GraphQL with retries and timeout."""
-        url = self._graphql_url
-        headers = self._headers
-        max_retries = 3
-        timeout_seconds = 10
-        
-        # Debug: Print the actual URL being used (remove in production)
-        # print(f"[SHOPIFY_CLIENT_DEBUG] Making request to: {url}")
+        retry_policy = RetryPolicy(
+            max_retries=3,
+            base_delay=1.0,
+            retryable_status_codes=[429, 500, 502, 503, 504]
+        )
 
-        last_exc: Optional[Exception] = None
-        for _ in range(max_retries):
-            try:
-                return requests.post(url, json=body, headers=headers, timeout=timeout_seconds)
-            except requests.Timeout as e:
-                # Bubble up timeouts immediately; they shouldn't be retried blindly
-                raise TimeoutError(f"Shopify request timeout after {timeout_seconds}s") from e
-            except requests.RequestException as e:
-                last_exc = e
-                continue
-        # Retries exhausted
-        if last_exc:
-            raise last_exc
-        raise RuntimeError("Unexpected transport error")
+        super().__init__(
+            base_url=self._config['URL']['API_GRAPH_QL'],
+            content_type="application/json",
+            custom_headers={"X-Shopify-Access-Token": self._token},
+            retry_policy=retry_policy,
+            timeout=10.0
+        )
+
+        self._admin_url = self._config['URL']['ADMIN']
+        self._graphql_url = self._config['URL']['API_GRAPH_QL']
+        self._store_id = self._config['STORE_ID']
+        self._location_id = self._config['LOCATION_ID']
 
     def send_request(self, payload: Dict[str, Any]) -> ShopifyResponse:
+        """Send GraphQL request to Shopify with automatic retries."""
         body = {"query": payload.get("query"), "variables": payload.get("variables", {})}
-        if not body.get("query"): 
+        if not body.get("query"):
             raise ValueError("Error sending Shopify request: missing GraphQL query")
 
-        resp = self.post_graphql_safe(body)
-        status = resp.status_code
-        # Try to parse JSON body; if not JSON, keep text
-        parsed: Any
         try:
-            parsed = resp.json()
-        except Exception:
-            parsed = {"text": resp.text}
+            # Use inherited HTTP client with automatic retries
+            resp = self.post("/", json=body)
+            status = resp.status_code
 
-        if status == 404:
-            return ShopifyResponse.Error(
-                kind=ShopifyResponseKind.NOT_FOUND, 
-                errors=parsed.get("errors")
-            )  
+            # Try to parse JSON body; if not JSON, keep text
+            parsed: Any
+            try:
+                parsed = resp.json()
+            except Exception:
+                parsed = {"text": resp.text}
 
-        if status == 401:
-            # Success → return parsed response with original status
-            return ShopifyResponse.Error(
-                kind=ShopifyResponseKind.UNAUTHORIZED, 
-                errors=parsed.get("errors")
-            )
+            if status == 404:
+                return ShopifyResponse.Error(
+                    kind=ShopifyResponseKind.NOT_FOUND,
+                    errors=parsed.get("errors")
+                )
 
-        if status >= 500:
-            msg = str(parsed.get("errors") if isinstance(parsed, dict) else resp.text)
-            return ShopifyResponse.Error(
-                kind=ShopifyResponseKind.SERVER_ERROR, 
-                errors=msg
-            )
+            if status == 401:
+                return ShopifyResponse.Error(
+                    kind=ShopifyResponseKind.UNAUTHORIZED,
+                    errors=parsed.get("errors")
+                )
 
-        try:
+            if status >= 500:
+                msg = str(parsed.get("errors") if isinstance(parsed, dict) else resp.text)
+                return ShopifyResponse.Error(
+                    kind=ShopifyResponseKind.SERVER_ERROR,
+                    errors=msg
+                )
+
             return parse_shopify_response(parsed)
         except Exception as e:
             return ShopifyResponse.Error(
-                kind=ShopifyResponseKind.UNEXPECTED_ERROR, 
+                kind=ShopifyResponseKind.UNEXPECTED_ERROR,
                 errors=str(e)
             )
 
-
-    # def send_batch_requests(self, payloads: list[Dict[str, Any]]) -> list[ShopifyResponse]:
-    #     """Parallel fan-out of multiple single-operation calls."""
-    #     if not payloads:
-    #         return []
-    #     results: list[ShopifyResponse] = [ShopifyResponse.Error(message="Pending", status_code=500)] * len(payloads)
-    #     with ThreadPoolExecutor(max_workers=min(8, len(payloads))) as pool:
-    #         futures = {pool.submit(self.send_request, payloads[i]): i for i in range(len(payloads))}
-    #         for fut in as_completed(futures):
-    #             idx = futures[fut]
-    #             try:
-    #                 results[idx] = fut.result()
-    #             except Exception as e:
-    #                 results[idx] = ShopifyResponse.Error(message=str(e), status_code=500)
-    #     return results
-
-    # ------------------------------------------------------------------
-    # Instance methods
-    # ------------------------------------------------------------------
     def fetch_order_details(
         self,
         *,
@@ -130,6 +95,7 @@ class ShopifyClient:
         # payload = build_order_fetch_request_payload(request_args)
         # resp = self.send_request(payload)
         # return resp
-        raise NotImplementedError("fetch_order_details is deprecated. Use ShopifyService.get_order_by_identifier() instead.")
-
-    
+        raise NotImplementedError(
+            "fetch_order_details is deprecated. "
+            "Use ShopifyService.get_order_by_identifier() instead."
+        )

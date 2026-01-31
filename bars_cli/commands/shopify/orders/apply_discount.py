@@ -30,29 +30,20 @@ else:
 
 def prompt_discount_type() -> str:
     """Prompt user for discount type: 'fixed' or 'percentage'."""
-    options_data = [
+    options = [
         {"value": "fixed", "display": "Fixed amount (e.g., $5.00)"},
         {"value": "percentage", "display": "Percentage (e.g., 5% for 5% off)"}
     ]
-    
-    # Extract display strings for the prompt
-    display_options = [opt["display"] for opt in options_data]
-    
-    selected_display = prompt_select_from_options(
+
+    selected_value = prompt_select_from_options(
         "Select discount type",
-        display_options
+        options
     )
 
-    if selected_display is None:
+    if selected_value is None:
         raise click.Abort()
-    
-    # Map back to value
-    for opt in options_data:
-        if opt["display"] == selected_display:
-            return opt["value"]
-    
-    # Fallback (should not reach here)
-    return options_data[0]["value"]
+
+    return selected_value
 
 
 def prompt_fixed_amount() -> float:

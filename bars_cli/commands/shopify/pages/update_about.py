@@ -9,7 +9,8 @@ import re
 import click_extra as click
 from rich.console import Console
 
-from bars_cli._core.context import get_display_context, get_service
+from bars_cli._core.context import get_display_context
+from bars_cli._core.legacy_services import get_service
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli.commands.shopify._shared.command_helpers import handle_shopify_error_response
 from bars_cli._core.prompts import prompt_confirmation, prompt_select_from_options, prompt_text_input
@@ -611,7 +612,7 @@ def _handle_interactive_update(
     # Actually, we should call the internal logic directly
     from backend.modules.integrations.shopify.models.theme_template_models import Block
     from bars_cli.commands.shopify._shared.shopify_formatters import format_block_option
-    from bars_cli._core.prompts import prompt_select_from_options, ALL_SENTINEL
+    from bars_cli._core.prompts import prompt_select_from_options
     
     # Get all blocks
     all_blocks: List[Block] = []
@@ -645,28 +646,29 @@ def _handle_interactive_update(
         return False
     
     # Prompt for block selection
-    block_options = [format_block_option(block) for block in filled_blocks]
+    block_options = []
+    block_map = {}
+    for i, block in enumerate(filled_blocks):
+        display_text = format_block_option(block)
+        block_key = f"block_{i}"
+        block_options.append({"value": block_key, "display": display_text})
+        block_map[block_key] = block
+
     selected_option = prompt_select_from_options(
         display_text=f"Select Leadership Entry ({len(filled_blocks)} found)",
         options=block_options,
         display_all=True,
-        display_exit=True,
-        autocomplete=True
+        display_cancel=True
     )
-    
+
     if selected_option is None:
         return False
-    
+
     # Determine selected blocks
-    if selected_option == ALL_SENTINEL:
+    if selected_option == "All":
         selected_blocks = filled_blocks
     else:
-        selected_block = None
-        for i, opt in enumerate(block_options):
-            if opt == selected_option:
-                selected_block = filled_blocks[i]
-                break
-        
+        selected_block = block_map.get(selected_option)
         if selected_block is None:
             click.echo("❌ Invalid selection", err=True)
             return False
@@ -674,35 +676,41 @@ def _handle_interactive_update(
         selected_blocks = [selected_block]
     
     # Prompt for field selection
-    field_options = ["Name", "Pronouns", "Position", "Image"]
+    field_options = [
+        {"value": "text", "display": "Name"},
+        {"value": "subtitle", "display": "Pronouns"},
+        {"value": "description", "display": "Position"},
+        {"value": "image", "display": "Image"}
+    ]
     selected_field = prompt_select_from_options(
         display_text="Select field to edit",
         options=field_options,
-        display_all=False,
-        display_exit=True,
-        autocomplete=True
+        display_cancel=True
     )
-    
+
     if selected_field is None:
         return False
     
-    # Map display names to field names
-    field_map = {
-        "Name": "text",
-        "Pronouns": "subtitle",
-        "Position": "description",
-        "Image": "image"
-    }
-    field_name = field_map.get(selected_field)
+    # selected_field now contains the actual field name (text, subtitle, description, image)
+    field_name = selected_field
     if not field_name:
         click.echo("❌ Invalid field selection", err=True)
         return False
-    
+
+    # Map field names to display names for messages
+    field_display_map = {
+        "text": "Name",
+        "subtitle": "Pronouns", 
+        "description": "Position",
+        "image": "Image"
+    }
+    field_display_name = field_display_map.get(field_name, field_name)
+
     # Get current value for display
     if selected_blocks:
         current_value = getattr(selected_blocks[0].settings, field_name, None) or "N/A"
         if should_display and not json_output:
-            console.print(f"\n[cyan]Current {selected_field}: {current_value}[/cyan]")
+            console.print(f"\n[cyan]Current {field_display_name}: {current_value}[/cyan]")
     
     # Prompt for new value
     if field_name == "image":

@@ -1,8 +1,8 @@
 from typing import Any, Dict, Optional
 from validator_collection import is_between, is_integer, is_string, is_url
-from backend.shared.validators import ValidationResult
+from shared.validators import ValidationResult
 
-from backend.config import config
+from config import config
 import logging
 
 logger = logging.getLogger(__name__)

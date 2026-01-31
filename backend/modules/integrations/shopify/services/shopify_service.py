@@ -12,9 +12,6 @@ This service is pure Shopify - no BARS domain logic.
 
 import json
 import logging
-import sys
-from datetime import datetime
-from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,17 +21,11 @@ else:
     CancelReasonType = str  # Runtime fallback
     AnyType = Any
 
-from backend.modules.integrations.shopify.client.shopify_sgqlc_client import ShopifySGQLCClient
-from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_query import Query
+from modules.integrations.shopify.client.shopify_sgqlc_client import ShopifySGQLCClient
+from modules.integrations.shopify.models.sgqlc_models.sgqlc_query import Query
 from sgqlc.operation import Operation
-from backend.config import config
-
-# Import shopify normalizers
-# Add backend/shared to path if not already there
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-from backend.modules.integrations.shopify.services.shopify_normalizers import (
+from config import config
+from modules.integrations.shopify.services.shopify_normalizers import (
     normalize_order_identifier,
     normalize_order_number,
     normalize_product_identifier,
@@ -655,6 +646,240 @@ class ShopifyService:
             raise ValueError(f"{not_found_msg}\n{json.dumps(response, indent=2, default=str)}")
         
         return orders_nodes
+    
+    def validate_order_cancellation_eligibility(
+        self,
+        identifier: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Validate if an order is eligible for cancellation."""
+        try:
+            orders = self.get_order_by_identifier(identifier, line_items_first=5)
+            
+            if not orders or len(orders) == 0:
+                return {
+                    "status_code": 404,
+                    "success": False,
+                    "message": f"Order not found: {identifier.get('identifier', 'N/A')}",
+                    "order": None
+                }
+            
+            order = orders[0]
+            cancelled_at = getattr(order, 'cancelledAt', None)
+            
+            if cancelled_at is not None:
+                return {
+                    "status_code": 409,
+                    "success": False,
+                    "message": "Order already canceled",
+                    "order": order
+                }
+            else:
+                return {
+                    "status_code": 200,
+                    "success": True,
+                    "message": "Order is eligible for cancellation",
+                    "order": order
+                }
+        
+        except ValueError as e:
+            error_msg = str(e)
+            if "not found" in error_msg.lower() or "no orders found" in error_msg.lower():
+                return {"status_code": 404, "success": False, "message": error_msg, "order": None}
+            else:
+                return {"status_code": 500, "success": False, "message": f"Error fetching order: {error_msg}", "order": None}
+        
+        except RuntimeError as e:
+            return {"status_code": 500, "success": False, "message": f"Error fetching order: {str(e)}", "order": None}
+        
+        except Exception as e:
+            return {"status_code": 500, "success": False, "message": f"Unexpected error: {str(e)}", "order": None}
+    
+    def enrich_order_with_cancellation_and_refund_info(
+        self,
+        identifier: Dict[str, Any],
+        reason: str,
+        submitted_at: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Enrich order data with cancellation status, refund status, and refund calculations.
+        
+        This method provides all the information needed for cancel/refund workflows:
+        - Cancellation eligibility and status
+        - Payment summary (total paid, refunded, remaining)
+        - Refund calculations for both refund types (if reason=refund)
+        - Season information for refund calculations
+        
+        Args:
+            identifier: Order identifier dict with query and identifier fields
+            reason: "cancel" or "refund" - determines what calculations to include
+            submitted_at: Optional ISO 8601 datetime string for refund calculation (defaults to current time)
+        
+        Returns:
+            Dict with structure:
+            {
+                "status_code": int,  # 200 (success), 202 (warning), 404 (not found), 500 (error)
+                "success": bool,
+                "message": str,
+                "order": {...},  # Full order object as dict
+                "cancellation_status": {
+                    "is_canceled": bool,
+                    "canceled_at": str or None,
+                    "cancel_reason": str or None,
+                    "eligible_for_cancellation": bool
+                },
+                "payment_summary": {
+                    "total_amount": float,
+                    "currency": str,
+                    "total_refunded": float,
+                    "pending_refunds": float,
+                    "completed_refunds": float,
+                    "remaining_refundable": float
+                },
+                "refund_calculations": {  # Only if reason="refund"
+                    "season_start_date": str or None,
+                    "off_dates": str or None,
+                    "submitted_at": str,  # ISO 8601 datetime used for calculation
+                    "refund_to_original": {
+                        "amount": float or None,
+                        "message": str or None
+                    },
+                    "store_credit": {
+                        "amount": float or None,
+                        "message": str or None
+                    }
+                }
+            }
+        """
+        from datetime import datetime, timezone
+        
+        try:
+            # Fetch order
+            orders = self.get_order_by_identifier(identifier, line_items_first=50)
+            
+            if not orders or len(orders) == 0:
+                return {
+                    "status_code": 404,
+                    "success": False,
+                    "message": f"Order not found: {identifier.get('identifier', 'N/A')}",
+                    "order": None
+                }
+            
+            order = orders[0]
+            
+            # Convert order to dict
+            import json
+            if hasattr(order, '__json_data__'):
+                order_dict = order.__json_data__
+            else:
+                order_dict = json.loads(json.dumps(order, default=str))
+            
+            # Check cancellation status
+            cancelled_at = getattr(order, 'cancelledAt', None)
+            cancel_reason = getattr(order, 'cancelReason', None)
+            is_canceled = cancelled_at is not None
+            eligible_for_cancellation = not is_canceled
+            
+            cancellation_status = {
+                "is_canceled": is_canceled,
+                "canceled_at": str(cancelled_at) if cancelled_at else None,
+                "cancel_reason": str(cancel_reason) if cancel_reason else None,
+                "eligible_for_cancellation": eligible_for_cancellation
+            }
+            
+            # Calculate payment summary
+            payment_summary = self.calculate_payment_summary(order)
+            
+            # Determine status code and message
+            if reason == "cancel":
+                if is_canceled:
+                    status_code = 202  # Warning: already canceled
+                    success = False
+                    message = "Order already canceled"
+                else:
+                    status_code = 200
+                    success = True
+                    message = "Order is eligible for cancellation"
+            else:  # reason == "refund"
+                if payment_summary['remaining_refundable'] <= 0:
+                    status_code = 202  # Warning: no refundable amount
+                    success = False
+                    if payment_summary['total_amount'] == 0:
+                        message = "No payment found. Order total is $0.00 - nothing to refund."
+                    else:
+                        message = "No refundable amount remaining. Order is fully refunded."
+                else:
+                    status_code = 200
+                    success = True
+                    message = "Order has refundable amount"
+            
+            # Build response
+            response = {
+                "status_code": status_code,
+                "success": success,
+                "message": message,
+                "order": order_dict,
+                "cancellation_status": cancellation_status,
+                "payment_summary": payment_summary
+            }
+            
+            # Add refund calculations if reason=refund
+            if reason == "refund":
+                # Parse submitted_at or use current time
+                if submitted_at:
+                    try:
+                        # Parse ISO 8601 format
+                        submitted_dt = datetime.fromisoformat(submitted_at.replace('Z', '+00:00'))
+                    except (ValueError, AttributeError):
+                        submitted_dt = datetime.now(timezone.utc)
+                else:
+                    submitted_dt = datetime.now(timezone.utc)
+                
+                # Extract season info
+                season_start_date_str, off_dates_str = self.extract_season_info_from_order(order)
+                
+                # Calculate refund amounts for both types
+                refund_amount, refund_message = self.calculate_estimated_refund(
+                    order=order,
+                    total_amount=payment_summary['total_amount'],
+                    refund_type="refund",
+                    submitted_at=submitted_dt
+                )
+                
+                credit_amount, credit_message = self.calculate_estimated_refund(
+                    order=order,
+                    total_amount=payment_summary['total_amount'],
+                    refund_type="credit",
+                    submitted_at=submitted_dt
+                )
+                
+                response["refund_calculations"] = {
+                    "season_start_date": season_start_date_str,
+                    "off_dates": off_dates_str,
+                    "submitted_at": submitted_dt.isoformat(),
+                    "refund_to_original": {
+                        "amount": refund_amount,
+                        "message": refund_message
+                    },
+                    "store_credit": {
+                        "amount": credit_amount,
+                        "message": credit_message
+                    }
+                }
+            
+            return response
+        
+        except ValueError as e:
+            error_msg = str(e)
+            if "not found" in error_msg.lower() or "no orders found" in error_msg.lower():
+                return {"status_code": 404, "success": False, "message": error_msg, "order": None}
+            else:
+                return {"status_code": 500, "success": False, "message": f"Error fetching order: {error_msg}", "order": None}
+        
+        except RuntimeError as e:
+            return {"status_code": 500, "success": False, "message": f"Error fetching order: {str(e)}", "order": None}
+        
+        except Exception as e:
+            return {"status_code": 500, "success": False, "message": f"Unexpected error: {str(e)}", "order": None}
     
     def cancel_order(
         self,

@@ -36,7 +36,7 @@ else:
     InventoryItem = Any
 
 
-ALL_SENTINEL = "__ALL__"
+# Removed ALL_SENTINEL - use display_all=True in prompt_select_from_options instead
 
 
 def handle_shopify_error_response(
@@ -256,29 +256,27 @@ def handle_multiple_shopify_results(
         return None
     
     # Format options for selection
-    options = [format_option_func(item) for item in items]
-    
-    # Add "All" option if not must_return_one (before Exit, which is added by prompt_select_from_options)
-    if not must_return_one:
-        all_option = click.style("All", fg="green", bold=True)
-        options.append(all_option)
-    
-    # Use prompt_select_from_options for selection (it automatically adds "Exit" at the end)
+    options = []
+    item_map = {}
+    for i, item in enumerate(items):
+        display_text = format_option_func(item)
+        item_key = f"item_{i}"
+        options.append({"value": item_key, "display": display_text})
+        item_map[item_key] = item
+
+    # Use prompt_select_from_options for selection
     selected_option = prompt_select_from_options(
         display_text=f"Select {entity_name.capitalize()} ({len(items)} found)",
-        options=options
+        options=options,
+        display_all=not must_return_one
     )
-    
+
     # Handle exit/cancellation
     if selected_option is None:
         return None
-    
+
     # Handle "All" selection
-    # Strip ANSI codes for comparison (prompt_select_from_options may return with or without ANSI)
-    selected_clean = strip_ansi(selected_option).strip().lower()
-    
-    # Check if "All" was selected
-    if selected_clean == "all":
+    if selected_option == "All":
         # Display all items
         if should_display:
             if json_output:
@@ -287,27 +285,12 @@ def handle_multiple_shopify_results(
                 for item in items:
                     click.echo(format_func(item))
         return items
-    
-    # Find the item that matches the selected option
-    # Remove "All" from options list for indexing (if it was added)
-    item_options = options[:-1] if not must_return_one and len(options) > len(items) else options
-    
-    # Try to find exact match first
-    selected_item = None
-    try:
-        selected_idx = item_options.index(selected_option)
-        selected_item = items[selected_idx]
-    except ValueError:
-        # Fallback: try to find by matching stripped text (in case of ANSI code differences)
-        for i, opt in enumerate(item_options):
-            opt_clean = strip_ansi(opt).strip()
-            if opt_clean == selected_clean:
-                selected_item = items[i]
-                break
-    
+
+    # Find the selected item using the item_map
+    selected_item = item_map.get(selected_option)
     if selected_item is None:
         return None
-    
+
     # Display selected item using single result handler
     return handle_single_shopify_result(
         entity=selected_item,

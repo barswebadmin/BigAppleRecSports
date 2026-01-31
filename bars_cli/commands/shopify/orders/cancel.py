@@ -11,11 +11,7 @@ from bars_cli._core.decorators.handle_display_options import handle_display_opti
 from bars_cli._core.param_types import SHOPIFY_ORDER_IDENTIFIER
 from bars_cli._core.prompts import prompt_confirmation
 from bars_cli.commands.shopify._shared.shopify_formatters import (
-    _format_customer_name_from_order,
-    _get_product_title_from_order,
     extract_connection_nodes,
-    format_already_cancelled_order,
-    format_order_to_cancel,
     format_cancellation_error,
     format_cancellation_success,
     format_variants_table,
@@ -34,89 +30,314 @@ else:
     LineItem = Any
 
 
-
-
-def _check_if_cancelled(order: Order) -> bool:
-    """Check if order is already cancelled.
-    
-    Returns:
-        True if order is cancelled, False otherwise
-    """
-    from typing import cast
-    cancelled_at = getattr(order, 'cancelledAt', None)
-    return bool(cast(Optional[str], cancelled_at))
-
-
 def _handle_cancellation_stage(
     identifier: Dict[str, Any],
-    shopify_service: Any,
+    ctx: click.Context,
     reason: str,
     confirm: bool,
     console: Console
-) -> Tuple[Order, str, str, str]:
+) -> Tuple[Dict[str, Any], str, str, str]:
     """Handle cancellation stage: fetch order, check status, cancel if needed.
     
     Returns:
-        Tuple of (order, order_id, order_name, customer_name)
+        Tuple of (order_dict, order_id, order_name, customer_name)
     """
-    # Fetch order
-    order_num = identifier.get("identifier", "").strip().lstrip('#')
+    from bars_cli._core.context import get_http_client
+    
+    # Get HTTP client
+    client = get_http_client(ctx)
+    
+    # Extract identifier info
+    identifier_value = identifier.get("identifier", "")
+    identifier_type = identifier.get("type", "")
+    
+    # Display lookup message
+    order_num = identifier_value.strip().lstrip('#')
     console.print(f"\n[cyan]Looking up order #{order_num}...[/cyan]\n")
     
-    orders = shopify_service.get_order_by_identifier(identifier, line_items_first=5)
-    if not orders:
-        raise click.ClickException(f"No order found with identifier: {identifier.get('identifier', 'N/A')}")
-    order = orders[0]
-    order_id: str = cast(str, order.id)
-    order_name: str = cast(str, order.name)
-    customer_name = _format_customer_name_from_order(order)
+    # Build API endpoint with reason=cancel parameter
+    if identifier_type == "order_number":
+        endpoint = f'http://localhost:8000/orders?number={identifier_value}&reason=cancel'
+    else:  # order_id
+        endpoint = f'http://localhost:8000/orders?id={identifier_value}&reason=cancel'
     
-    # Get product title for display
-    product_title = _get_product_title_from_order(order)
+    # Make the API request
+    response = client.get(endpoint)
     
-    # Check if already cancelled
-    order_already_cancelled = _check_if_cancelled(order)
+    # Handle response based on status code
+    if response.status_code == 404:
+        # Order not found
+        error_msg = f"Order not found: {identifier_value}"
+        console.print(f"[red]❌ {error_msg}[/red]\n")
+        raise click.ClickException(error_msg)
     
-    if order_already_cancelled:
-        format_already_cancelled_order(order, order_name, customer_name, console)
+    elif response.status_code == 202:
+        # Order already canceled - extract enriched data and display warning
+        try:
+            response_data = response.json()
+            data = response_data.get('data', {})
+            message = response_data.get('message', 'Order already canceled')
+            
+            # Extract nested order data from enriched response
+            order_data = data.get('order', {})
+            cancellation_status = data.get('cancellation_status', {})
+            payment_summary = data.get('payment_summary', {})
+            
+            # Format and display the order with enriched data
+            _format_order_for_cancel_enriched(order_data, cancellation_status, payment_summary, console, already_canceled=True)
+            
+            # Extract order info for return
+            order_id = order_data.get('id', '')
+            order_name = order_data.get('name', f"#{order_num}")
+            customer = order_data.get('customer', {})
+            customer_name = f"{customer.get('firstName', '')} {customer.get('lastName', '')}".strip() if customer else "Unknown"
+            
+            # Warn but allow continuation
+            console.print(f"\n[yellow]⚠️  {message}[/yellow]")
+            
+            # Prompt whether to continue
+            if not confirm:
+                if not prompt_confirmation("Order is already canceled. Continue to refund stage?", default=True):
+                    console.print()
+                    console.print("[red]Cancellation workflow aborted.[/red]\n")
+                    raise click.ClickException("Workflow aborted by user")
+                console.print()
+            
+            return order_data, order_id, order_name, customer_name
+            
+        except (ValueError, KeyError) as e:
+            console.print(f"[red]Error parsing response: {e}[/red]\n")
+            raise click.ClickException("Failed to parse API response")
+    
+    elif response.status_code == 200:
+        # Order is eligible for cancellation
+        try:
+            response_data = response.json()
+            data = response_data.get('data', {})
+            
+            if not data:
+                error_msg = f"No order data returned for identifier: {identifier_value}"
+                console.print(f"[red]❌ {error_msg}[/red]\n")
+                raise click.ClickException(error_msg)
+            
+            # Extract nested order data from enriched response
+            order_data = data.get('order', {})
+            cancellation_status = data.get('cancellation_status', {})
+            payment_summary = data.get('payment_summary', {})
+            
+            # Format and display the order with enriched data
+            _format_order_for_cancel_enriched(order_data, cancellation_status, payment_summary, console, already_canceled=False)
+            
+            # Extract order info
+            order_id = order_data.get('id', '')
+            order_name = order_data.get('name', f"#{order_num}")
+            customer = order_data.get('customer', {})
+            customer_name = f"{customer.get('firstName', '')} {customer.get('lastName', '')}".strip() if customer else "Unknown"
+            
+            # Confirmation prompt
+            if not confirm:
+                if not prompt_confirmation("Are you sure you want to cancel this order?", default=True):
+                    console.print()
+                    console.print("[red]Cancellation aborted.[/red]\n")
+                    raise click.ClickException("Cancellation aborted by user")
+                console.print()
+            
+            # Now actually cancel the order using DELETE request
+            console.print(f"[cyan]Cancelling order #{order_num}...[/cyan]\n")
+            
+            # Build DELETE endpoint
+            delete_endpoint = f'http://localhost:8000/orders/{order_id}?reason={reason}'
+            
+            # Make DELETE request
+            delete_response = client.delete(delete_endpoint)
+            
+            # Handle DELETE response
+            if delete_response.status_code == 200:
+                delete_data = delete_response.json()
+                job_data = delete_data.get('data', {})
+                job_id = job_data.get('id', 'N/A')
+                job_done = job_data.get('done', False)
+                
+                format_cancellation_success(order_num, job_id, job_done, reason, console)
+                
+                return order_data, order_id, order_name, customer_name
+            
+            elif delete_response.status_code == 422:
+                # Shopify returned user errors
+                try:
+                    error_response = delete_response.json()
+                    if isinstance(error_response, dict) and 'detail' in error_response:
+                        detail = error_response['detail']
+                        if isinstance(detail, dict):
+                            error_msg = detail.get('message', 'Cancellation failed')
+                        else:
+                            error_msg = str(detail)
+                    else:
+                        error_msg = error_response.get('message', 'Cancellation failed')
+                except:
+                    error_msg = "Cancellation failed"
+                
+                format_cancellation_error(error_msg, console)
+                raise click.ClickException(error_msg)
+            
+            else:
+                # Unexpected error
+                error_msg = f"DELETE request failed with status {delete_response.status_code}"
+                try:
+                    error_response = delete_response.json()
+                    if isinstance(error_response, dict):
+                        if 'message' in error_response:
+                            error_msg = f"API Error: {error_response['message']}"
+                        elif 'detail' in error_response:
+                            error_msg = f"API Error: {error_response['detail']}"
+                except:
+                    pass
+                
+                format_cancellation_error(error_msg, console)
+                raise click.ClickException(error_msg)
+            
+        except (ValueError, KeyError) as e:
+            console.print(f"[red]Error parsing response: {e}[/red]\n")
+            raise click.ClickException("Failed to parse API response")
+    
     else:
-        # Display order info before cancelling
-        format_order_to_cancel(order, order_name, order_id, customer_name, product_title, console)
+        # Unexpected status code
+        error_msg = f"API request failed with status {response.status_code}"
+        try:
+            error_response = response.json()
+            if isinstance(error_response, dict):
+                if 'message' in error_response:
+                    error_msg = f"API Error: {error_response['message']}"
+                elif 'detail' in error_response:
+                    error_msg = f"API Error: {error_response['detail']}"
+        except:
+            pass
+        
+        console.print(f"[red]❌ {error_msg}[/red]\n")
+        raise click.ClickException(error_msg)
+
+
+
+
+def _format_order_for_cancel_enriched(
+    order: dict,
+    cancellation_status: dict,
+    payment_summary: dict,
+    console: Console,
+    already_canceled: bool = False
+) -> None:
+    """Format order data with enriched cancellation and payment info for display.
     
-    # Confirmation
-    if not confirm:
-        if not prompt_confirmation("Are you sure you want to cancel this order?", default=True):
-            console.print()
-            console.print("[red]Cancellation aborted.[/red]\n")
-            raise click.ClickException("Cancellation aborted by user")
-        console.print()
+    Args:
+        order: Order data dict from API
+        cancellation_status: Cancellation status dict with is_canceled, canceled_at, etc.
+        payment_summary: Payment summary dict with total_amount, refunded, remaining, etc.
+        console: Rich console for output
+        already_canceled: Whether order is already canceled
+    """
+    if already_canceled:
+        console.print("\n[yellow]⚠️  Order Already Canceled[/yellow]")
+    else:
+        console.print("\n[green]✅ Order Found - Eligible for Cancellation[/green]")
     
-    # Cancel the order
-    order_num = identifier.get("identifier", "").strip().lstrip('#')
-    console.print(f"[cyan]Cancelling order #{order_num}...[/cyan]\n")
-    cancel_result = shopify_service.cancel_order(
-        order_id=order_id,
-        reason=reason,
-        notify_customer=False,
-        refund=False,
-        restock=False,
-        staff_note="Cancelled via CLI"
-    )
+    console.print("=" * 60)
     
-    # Check for errors
-    if not cancel_result.get("success"):
-        error_msg = cancel_result.get("message", "Unknown error")
-        format_cancellation_error(error_msg, console)
-        raise click.ClickException(error_msg if isinstance(error_msg, str) else "; ".join(error_msg))
+    # Display order number
+    order_name = order.get('name', 'N/A')
+    console.print(f"{'Order':<20} {order_name}")
     
-    # Success!
-    job_data = cancel_result.get("data", {})
-    job_id = job_data.get("id", "N/A")
-    job_done = job_data.get("done", False)
+    # Display customer info
+    customer = order.get('customer', {})
+    if customer:
+        if customer.get('firstName') or customer.get('lastName'):
+            name = f"{customer.get('firstName', '')} {customer.get('lastName', '')}".strip()
+            console.print(f"{'Customer':<20} {name}")
+        if customer.get('email'):
+            console.print(f"{'Email':<20} {customer['email']}")
     
-    format_cancellation_success(order_num, job_id, job_done, reason, console)
+    # Display payment summary
+    currency = payment_summary.get('currency', 'USD')
+    total_amount = payment_summary.get('total_amount', 0.0)
+    total_refunded = payment_summary.get('total_refunded', 0.0)
+    remaining_refundable = payment_summary.get('remaining_refundable', 0.0)
     
-    return order, order_id, order_name, customer_name
+    console.print(f"\n{'Payment Summary:':<20}")
+    console.print(f"  {'Total Paid':<18} ${total_amount:.2f} {currency}")
+    console.print(f"  {'Total Refunded':<18} ${total_refunded:.2f} {currency}")
+    console.print(f"  {'Remaining Refundable':<18} ${remaining_refundable:.2f} {currency}")
+    
+    # Display cancellation status
+    console.print(f"\n{'Cancellation Status:':<20}")
+    if cancellation_status.get('is_canceled'):
+        canceled_at = cancellation_status.get('canceled_at', 'N/A')
+        cancel_reason = cancellation_status.get('cancel_reason', 'N/A')
+        console.print(f"  {'Status':<18} [yellow]Canceled[/yellow]")
+        console.print(f"  {'Canceled At':<18} {canceled_at}")
+        console.print(f"  {'Reason':<18} {cancel_reason}")
+    else:
+        console.print(f"  {'Status':<18} [green]Active (Eligible for Cancellation)[/green]")
+    
+    console.print("=" * 60)
+    console.print()
+
+
+def _format_order_for_cancel(order: dict, console: Console, already_canceled: bool = False) -> None:
+    """Format order data for cancellation display.
+    
+    Args:
+        order: Order data dict from API
+        console: Rich console for output
+        already_canceled: Whether order is already canceled
+    """
+    if already_canceled:
+        console.print("\n[yellow]⚠️  Order Already Canceled[/yellow]")
+    else:
+        console.print("\n[green]✅ Order Found - Eligible for Cancellation[/green]")
+    
+    console.print("=" * 60)
+    
+    # Display order number as hyperlink (if available)
+    if order.get('order_number_link'):
+        console.print(f"{'Order':<20} {order['order_number_link']}")
+    else:
+        console.print(f"{'Order':<20} #{order.get('number', 'N/A')}")
+    
+    # Display product as hyperlink
+    if order.get('product_link'):
+        console.print(f"{'Product':<20} {order['product_link']}")
+    elif order.get('product_title'):
+        console.print(f"{'Product':<20} {order['product_title']}")
+    
+    # Display order email
+    order_email = order.get('form_email')
+    if order_email and order_email != 'N/A':
+        console.print(f"{'Order Email':<20} {order_email}")
+    else:
+        console.print(f"{'Order Email':<20} Not collected in form")
+    
+    console.print(f"{'Amount Paid':<20} ${order.get('amount_paid', '0.00')}")
+    
+    if order.get('createdAt'):
+        console.print(f"{'Created At':<20} {order['createdAt']}")
+    
+    # Cancellation status
+    console.print(f"{'Cancellation Status':<20} {order.get('cancellation_status', 'N/A')}")
+    
+    # Refund status
+    console.print(f"{'Refund Status':<20} {order.get('refund_status', 'N/A (Not Refunded)')}")
+    
+    # Customer info
+    if order.get('customer'):
+        customer = order['customer']
+        console.print(f"\n{'Customer:':<20}")
+        if customer.get('firstName') or customer.get('lastName'):
+            name = f"{customer.get('firstName', '')} {customer.get('lastName', '')}".strip()
+            console.print(f"  {'Name':<18} {name}")
+        if customer.get('email'):
+            console.print(f"  {'Email':<18} {customer['email']}")
+    
+    console.print("=" * 60)
+    console.print()
 
 
 def _handle_refund_stage(
@@ -269,14 +490,15 @@ def cancel_order_cmd(
     
     try:
         # Stage 1: Cancel
-        order, order_id, order_name, customer_name = _handle_cancellation_stage(
-            identifier, shopify_service, reason, confirm, console
+        order_data, order_id, order_name, customer_name = _handle_cancellation_stage(
+            identifier, ctx, reason, confirm, console
         )
         
         # Stage 2: Refund
         _handle_refund_stage(ctx, identifier, console)
         
         # Stage 3: Restock
+        shopify_service = ctx.meta["shopify_service"]
         _handle_restock_stage(identifier, shopify_service, console)
         
         return {

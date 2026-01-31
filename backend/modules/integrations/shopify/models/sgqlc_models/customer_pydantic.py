@@ -7,12 +7,12 @@ Uses forward references to avoid circular imports with Order models.
 from typing import TYPE_CHECKING, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
-from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection
+from modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection
 from sgqlc.operation import Operation
 from sgqlc.types import Variable
 
-from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import ShopifyBaseModel, create_list_model
-from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_bridge import get_sgqlc_type
+from modules.integrations.shopify.models.sgqlc_models.common_pydantic import ShopifyBaseModel, create_list_model
+from modules.integrations.shopify.models.sgqlc_models.sgqlc_bridge import get_sgqlc_type
 
 # Forward reference for Order - only imported at type-checking time
 if TYPE_CHECKING:

@@ -6,7 +6,7 @@ import json
 import click_extra as click
 from rich.console import Console
 
-from bars_cli._core.context import get_service
+from bars_cli._core.legacy_services import get_service
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli.commands.shopify._shared.command_helpers import handle_shopify_error_response
 from bars_cli.commands.shopify._shared.shopify_formatters import (
@@ -15,7 +15,7 @@ from bars_cli.commands.shopify._shared.shopify_formatters import (
     display_theme_assets_list,
     format_block_option,
 )
-from bars_cli._core.prompts import prompt_select_from_options, ALL_SENTINEL
+from bars_cli._core.prompts import prompt_select_from_options
 from bars_cli.backend_services.shopify.services import ShopifyService
 from rich.console import Console
 from rich.theme import Theme
@@ -316,32 +316,32 @@ def get_page_cmd(
                         return template_model
                     
                     # Format blocks for selection (only filled blocks)
-                    block_options = [format_block_option(block) for block in filled_blocks]
-                    
+                    block_options = []
+                    block_map = {}
+                    for i, block in enumerate(filled_blocks):
+                        display_text = format_block_option(block)
+                        block_key = f"block_{i}"
+                        block_options.append({"value": block_key, "display": display_text})
+                        block_map[block_key] = block
+
                     # Prompt user to select block(s)
                     selected_option = prompt_select_from_options(
                         display_text=f"Select Leadership Entry ({len(filled_blocks)} found)",
                         options=block_options,
                         display_all=True,
-                        display_exit=True,
-                        autocomplete=True
+                        display_cancel=True
                     )
-                    
+
                     if selected_option is None:
                         # User selected Exit
                         return None
                     
                     # Determine which blocks to display
-                    if selected_option == ALL_SENTINEL:
+                    if selected_option == "All":
                         selected_blocks = filled_blocks
                     else:
-                        # Find the selected block
-                        selected_block = None
-                        for i, opt in enumerate(block_options):
-                            if opt == selected_option:
-                                selected_block = filled_blocks[i]
-                                break
-                        
+                        # Find the selected block using the block_map
+                        selected_block = block_map.get(selected_option)
                         if selected_block is None:
                             click.echo("❌ Invalid selection", err=True)
                             return None

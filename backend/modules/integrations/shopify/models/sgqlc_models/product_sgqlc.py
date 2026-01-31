@@ -8,7 +8,7 @@ from sgqlc.types import Type, Field, String, Int, Boolean, list_of
 from sgqlc.types.relay import Connection, connection_args
 
 # Import InventoryItem from order_sgqlc to avoid duplication
-from backend.modules.integrations.shopify.models.sgqlc_models.order_sgqlc import InventoryItem
+from modules.integrations.shopify.models.sgqlc_models.order_sgqlc import InventoryItem
 
 
 class Image(Type):

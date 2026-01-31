@@ -11,15 +11,15 @@ import base64
 import logging
 from typing import Optional
 
-from backend.config import config
+from config import config
 
 logger = logging.getLogger(__name__)
 
 
 class ShopifySecurity:
     def __init__(self):
-        self.webhook_secret = config.shopify.webhook_secret
-        self.env = config.environment
+        self.webhook_secret = config['SHOPIFY']['WEBHOOK']['SECRET']
+        self.env = config['ENVIRONMENT']
 
     def verify_shopify_webhook(self, body: bytes, signature: str) -> bool:
         """Verify Shopify webhook using base64(HMAC-SHA256(body, secret)).

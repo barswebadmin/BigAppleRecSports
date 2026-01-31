@@ -8,7 +8,8 @@ import traceback
 import click_extra as click
 from rich.console import Console
 
-from bars_cli._core.context import get_display_context, get_service
+from bars_cli._core.context import get_display_context
+from bars_cli._core.legacy_services import get_service
 from bars_cli._core.decorators.handle_display_options import handle_display_options
 from bars_cli._core.param_types import SHOPIFY_PRODUCT_IDENTIFIER
 from bars_cli.backend_services.shared.csv.csv_io import write_csv_file
@@ -100,9 +101,9 @@ def product_orders_cmd(
         output_to_csv = csv or csv_file is not None
         if not output_to_csv and should_display and not json_output:
             output_options = [
-                "Display in terminal (formatted table)",
-                "Export to CSV file",
-                "Print CSV to stdout"
+                {"value": "terminal", "display": "Display in terminal (formatted table)"},
+                {"value": "csv_file", "display": "Export to CSV file"},
+                {"value": "csv_stdout", "display": "Print CSV to stdout"}
             ]
             selected = prompt_select_from_options(
                 "How would you like to view the results?",
@@ -111,11 +112,11 @@ def product_orders_cmd(
 
             if selected is None:
                 raise click.Abort()
-            
-            if selected == output_options[1]:  # Export to CSV file
+
+            if selected == "csv_file":  # Export to CSV file
                 csv_file = click.prompt("Enter CSV file path", type=str)
                 output_to_csv = True
-            elif selected == output_options[2]:  # Print CSV to stdout
+            elif selected == "csv_stdout":  # Print CSV to stdout
                 csv = True
                 output_to_csv = True
             # else: Display in terminal (default)
