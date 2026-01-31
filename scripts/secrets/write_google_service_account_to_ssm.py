@@ -22,7 +22,14 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError, BotoCoreError
 
-project_root = Path(__file__).parent.parent.parent
+import sys
+from pathlib import Path
+
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
+project_root = get_repo_root()
 
 
 def minify_json(json_data: dict) -> str:

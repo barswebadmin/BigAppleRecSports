@@ -52,4 +52,4 @@ jobs:
 
       - name: Run GAS tests
         if: steps.compile.outcome == 'success'
-        run: python scripts/ci/run_script.py scripts.testing.run_tests run_gas_tests
+        run: bash GoogleAppsScripts/tests/run_tests.sh

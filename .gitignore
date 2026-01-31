@@ -11,7 +11,10 @@ env/
 venv/
 ENV/
 .venv/
+**/.venv/
 .pytest_cache/
+*.bak
+*.py.bak
 
 # Backend-specific: Prevent cache files (cleaner development)
 backend/**/__pycache__/
@@ -46,6 +49,7 @@ coverage_html/
 .env.production
 .envrc
 .direnv/
+.config.toml
 *.log
 *.egg-info/
 **/*.egg-info/
@@ -72,6 +76,10 @@ backend.bak/shrimp-rules.md
 shrimp-rules.md
 SECRETS_BACKUP.env
 *.env
+
+# Symlinked shared utilities (source of truth is /shared_utilities)
+backend/shared_utilities
+lambda/functions/*/shared_utilities
 
 # Generated shared utilities (auto-deployed, don't commit)
 lambda-functions/*/shared_utilities/

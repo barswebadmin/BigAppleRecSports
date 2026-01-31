@@ -35,8 +35,14 @@ import argparse
 from pathlib import Path
 from typing import Dict, Optional
 
-# Add project root to path for imports
-project_root = Path(__file__).parent.parent.parent
+import sys
+from pathlib import Path
+
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
+project_root = get_repo_root()
 sys.path.insert(0, str(project_root))
 
 import requests

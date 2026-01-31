@@ -1,0 +1,14 @@
+---
+inclusion: manual
+---
+- **test method consolidation**: Prefer a single test function per feature with multiple cases looped; avoid many small, redundant tests.
+- **test placement**: Prefer `tests/` directories adjacent to the file-under-test; only lift higher when necessary.
+- **logging style**: Keep logs brief and focused only on values under test; include colorization and clear labels for expected and got.
+- **verbosity defaults**: Default to verbose with logs in local runs; provide a quiet mode for CI (e.g., `make test-q`).
+- **colorization**: Use ANSI colors for labels (e.g., cyan for "expected", yellow for "got"); show ✅/❌ symbols.
+- **pytest plugins**: Prefer `pytest-rich` locally for improved readability; fall back to quiet mode in CI.- **test method consolidation**: Prefer a single test function per feature with multiple cases looped; avoid many small, redundant tests.
+- **test placement**: Prefer `tests/` directories adjacent to the file-under-test; only lift higher when necessary.
+- **logging style**: Keep logs brief and focused only on values under test; include colorization and clear labels for expected and got.
+- **verbosity defaults**: Default to verbose with logs in local runs; provide a quiet mode for CI (e.g., `make test-q`).
+- **colorization**: Use ANSI colors for labels (e.g., cyan for "expected", yellow for "got"); show ✅/❌ symbols.
+- **pytest plugins**: Prefer `pytest-rich` locally for improved readability; fall back to quiet mode in CI.

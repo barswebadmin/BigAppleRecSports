@@ -63,65 +63,52 @@ class SecretFinding:
 
 
 def find_repo_root() -> Path:
-    """Find the repository root directory."""
-    current = Path.cwd()
+    """Find the repository root directory.
+
+    Pre-commit hooks always run from the repo root, but we verify just in case.
+    """
+    cwd = Path.cwd()
+    if (cwd / '.git').exists():
+        return cwd
+    # Fallback: search upward (shouldn't be needed in pre-commit)
+    current = cwd
     while current != current.parent:
         if (current / '.git').exists():
             return current
         current = current.parent
-    return Path.cwd()
+    return cwd
 
 
 def should_skip_file(file_path: Path, repo_root: Path) -> bool:
-    """Check if a file should be skipped from secret scanning."""
-    rel_path = file_path.relative_to(repo_root)
-    path_str = str(rel_path).lower()
-    
-    # Skip common non-code directories
-    skip_patterns = [
-        '.git/',
-        'node_modules/',
-        '__pycache__/',
-        '.venv/',
-        'venv/',
-        '.pytest_cache/',
-        'build/',
-        'dist/',
-        '.egg-info/',
-        '.mypy_cache/',
-        '.ruff_cache/',
-        '.clasp_',
-        'pull_validation/',
-    ]
-    
-    for pattern in skip_patterns:
-        if pattern in path_str:
-            return True
-    
+    """Check if a file should be skipped from secret scanning.
+
+    Note: This runs in pre-commit hooks, so git already filters .gitignore'd files.
+    We only need to skip binary files and non-text files.
+    """
     # Skip binary files
     if file_path.suffix in ['.pyc', '.pyo', '.so', '.dylib', '.dll', '.exe', '.zip', '.tar', '.gz']:
         return True
-    
+
     # Only scan text files
-    text_extensions = ['.py', '.js', '.ts', '.gs', '.sh', '.bash', '.yaml', '.yml', '.json', '.toml', '.md', '.txt', '.env', '.env.example']
+    text_extensions = [
+        '.py', '.js', '.ts', '.gs', '.sh', '.bash',
+        '.yaml', '.yml', '.json', '.toml', '.md', '.txt',
+        '.env', '.env.example'
+    ]
     if file_path.suffix not in text_extensions and not file_path.name.startswith('.'):
         return True
-    
+
     return False
 
 
-def scan_file(file_path: Path, repo_root: Path) -> List[SecretFinding]:
+def scan_file(file_path: Path) -> List[SecretFinding]:
     """Scan a single file for secrets."""
     findings = []
-    
-    if should_skip_file(file_path, repo_root):
-        return findings
-    
+
     try:
-        # Try to read as text
         content = file_path.read_text(encoding='utf-8', errors='ignore')
         lines = content.split('\n')
-        
+
         for line_num, line in enumerate(lines, start=1):
             for pattern, pattern_name in SECRET_PATTERNS:
                 matches = re.finditer(pattern, line, re.IGNORECASE)
@@ -141,7 +128,7 @@ def scan_file(file_path: Path, repo_root: Path) -> List[SecretFinding]:
     except Exception as e:
         # Log but don't fail on individual file errors
         print(f"⚠️  Warning: Error scanning {file_path}: {e}", file=sys.stderr)
-    
+
     return findings
 
 
@@ -173,24 +160,22 @@ def scan_repository(repo_root: Path, max_workers: int = 8) -> List[SecretFinding
     """Scan staged files for secrets using multiple workers."""
     console = Console()
     console.print("[cyan]🔍 Scanning staged files for secrets...[/cyan]")
-    
+
     # Get staged files (Added/Modified only)
-    all_files = []
     staged_files = get_staged_files(repo_root)
-    
-    for file_path in staged_files:
-        if not should_skip_file(file_path, repo_root):
-            all_files.append(file_path)
-    
-    total_files = len(all_files)
+
+    # Filter out files we should skip
+    files_to_scan = [f for f in staged_files if not should_skip_file(f, repo_root)]
+
+    total_files = len(files_to_scan)
     if total_files == 0:
         console.print("[cyan]No staged files to scan[/cyan]\n")
         return []
-    
+
     console.print(f"[cyan]Found {total_files} staged files to scan[/cyan]\n")
-    
+
     all_findings = []
-    
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -199,13 +184,13 @@ def scan_repository(repo_root: Path, max_workers: int = 8) -> List[SecretFinding
         console=console
     ) as progress:
         task = progress.add_task("[cyan]Scanning files...", total=total_files)
-        
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_file = {
-                executor.submit(scan_file, file_path, repo_root): file_path
-                for file_path in all_files
+                executor.submit(scan_file, file_path): file_path
+                for file_path in files_to_scan
             }
-            
+
             for future in as_completed(future_to_file):
                 try:
                     findings = future.result()
@@ -215,7 +200,7 @@ def scan_repository(repo_root: Path, max_workers: int = 8) -> List[SecretFinding
                     console.print(f"[yellow]⚠️  Error scanning {file_path}: {e}[/yellow]")
                 finally:
                     progress.update(task, advance=1)
-    
+
     return all_findings
 
 
@@ -270,31 +255,24 @@ def display_findings(findings: List[SecretFinding], repo_root: Path) -> Tuple[Li
 
 
 def prompt_user_for_test_files(test_findings: List[SecretFinding], repo_root: Path) -> bool:
-    """Prompt user for test file findings. Returns True if user wants to continue."""
+    """Prompt user for test file findings. Returns True if user wants to continue.
+
+    Pre-commit hooks are always interactive, so we always prompt.
+    """
     if not test_findings:
         return True
-    
+
     console = Console()
-    
+
     # Group by file for cleaner display
     by_file: Dict[Path, List[SecretFinding]] = {}
     for finding in test_findings:
         if finding.file_path not in by_file:
             by_file[finding.file_path] = []
         by_file[finding.file_path].append(finding)
-    
-    # Check if we're in a non-interactive environment (CI)
-    if not sys.stdin.isatty():
-        console.print("\n[yellow]⚠️  Test files contain potential secrets (non-interactive mode)[/yellow]")
-        console.print("[yellow]Commit will proceed, but please review these files:[/yellow]\n")
-        
-        for file_path, findings in sorted(by_file.items()):
-            rel_path = file_path.relative_to(repo_root)
-            console.print(f"[yellow]  {rel_path}[/yellow]")
-        return True
-    
+
     console.print("\n[yellow]⚠️  Test files contain potential secrets:[/yellow]\n")
-    
+
     for file_path, findings in sorted(by_file.items()):
         rel_path = file_path.relative_to(repo_root)
         console.print(f"[yellow]File: {rel_path}[/yellow]")
@@ -302,7 +280,7 @@ def prompt_user_for_test_files(test_findings: List[SecretFinding], repo_root: Pa
             console.print(f"  Line {finding.line_num}: [{finding.pattern_name}]")
             console.print(f"  Value: [yellow]{finding.match}[/yellow]")
         console.print()
-    
+
     while True:
         try:
             choice = Prompt.ask(
@@ -310,12 +288,12 @@ def prompt_user_for_test_files(test_findings: List[SecretFinding], repo_root: Pa
                 choices=["c", "r", "e"],
                 default="e"
             )
-            
+
             if choice == "c":
                 return True
-            elif choice == "r":
+            if choice == "r":
                 return False
-            elif choice == "e":
+            if choice == "e":
                 console.print("[red]Commit aborted by user[/red]")
                 return False
         except (KeyboardInterrupt, EOFError):

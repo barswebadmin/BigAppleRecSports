@@ -1,6 +1,6 @@
 # BARS Repository Makefile
 # Provides compilation and testing commands for all directories
-.PHONY: backend clasp clean help install install-backend install-cli install-google install-lambda ready start status stop test test-specific tunnel _backend_ports _backend_wait_for_healthy_port _check_process _deploy_lambda _get_backend_port _get_tunnel_port _get_tunnel_subdomain _get_tunnel_url _is_port_open _kill_backend _kill_tunnel _run_in_new_terminal
+.PHONY: backend clasp clean help install ready start status stop test test-specific tunnel _backend_ports _backend_wait_for_healthy_port _check_process _deploy_lambda _get_backend_port _get_tunnel_port _get_tunnel_subdomain _get_tunnel_url _is_port_open _kill_backend _kill_tunnel _run_in_new_terminal
 
 # Default target
 help:
@@ -12,11 +12,8 @@ help:
 	@echo "  make backend             - Start backend server (uvicorn) in dev mode"
 	@echo "  make tunnel              - Start localtunnel (tries multiple strategies with fallback)"
 	@echo "  make stop                - Stop all processes"
-	@echo "  make install             - Install all dependencies (Python + GAS)"
-	@echo "  make install-backend     - Install backend dependencies only"
-	@echo "  make install-cli         - Install CLI tool only"
-	@echo "  make install-google      - Install Google Apps Scripts dependencies only"
-	@echo "  make install-lambda      - Install Lambda function dependencies only"
+	@echo "  make install [target]    - Install dependencies (all, backend, cli, google, lambda)"
+	@echo "  make lock                - Generate UV lock files for all projects"
 	@echo "  make clean               - Clean up processes and cache files"
 	@echo "  make status              - Show running processes"
 	@echo ""
@@ -37,6 +34,9 @@ help:
 	@echo "  make clasp deploy <project> - Full deployment (push + version management)"
 	@echo ""
 	@echo "📋 Examples:"
+	@echo "  make install backend           - Install backend dependencies only"
+	@echo "  make install cli               - Install CLI tool only"
+	@echo "  make install shared_utilities  - Install shared utilities (for IDE/workspace)"
 	@echo "  make test lambda/functions/shopifyProductUpdateHandler"
 	@echo "  make test-specific TEST=backend/test_slack_message_formatting.py"
 	@echo "  make test-specific TEST=backend/test_orders_api.py::test_fetch_order"
@@ -60,6 +60,20 @@ ifneq ($(filter test,$(MAKECMDGOALS)),)
   endif
 endif
 
+# Handle arguments for install commands
+# This allows 'make install backend' instead of 'make install-backend'
+ifneq ($(filter install,$(MAKECMDGOALS)),)
+  # Get the argument after 'install'
+  INSTALL_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifneq ($(INSTALL_ARGS),)
+    INSTALL_TARGET := $(INSTALL_ARGS)
+    # Prevent make from trying to build these as targets
+    $(eval $(INSTALL_ARGS):;@:)
+  else
+    INSTALL_TARGET :=
+  endif
+endif
+
 # Default DIR if not set by arguments
 DIR ?= .
 
@@ -67,7 +81,11 @@ DIR ?= .
 # CONSTANTS
 # =============================================================================
 
-BACKEND_PYTHON := ./.venv/bin/python
+# Python interpreters for each project (using uv venvs)
+BACKEND_PYTHON := backend/.venv/bin/python
+CLI_PYTHON := bars_cli/.venv/bin/python
+LAMBDA_PYTHON := lambda/.venv/bin/python
+
 TUNNEL_PORT := 8000
 TUNNEL_SUBDOMAIN ?= bars-backend
 TUNNEL_FALLBACK_SUBDOMAIN ?= bars-backend-2
@@ -217,7 +235,7 @@ backend:
 		run_backend() { \
 			local port="$$1"; \
 			echo "🚀 Starting backend server on http://127.0.0.1:$$port ..."; \
-			(cd backend && PYTHONPATH="$(CURDIR)" $(BACKEND_PYTHON) -m uvicorn main:app --reload --host "127.0.0.1" --port "$$port"); \
+			(cd backend && PYTHONPATH="$(CURDIR)" .venv/bin/python -m uvicorn main:app --reload --host "127.0.0.1" --port "$$port"); \
 		}; \
 		if [ -n "$${PORT:-}" ]; then \
 			run_backend "$$PORT"; \
@@ -333,19 +351,28 @@ stop:
 # =============================================================================
 
 install:
-	@python3 scripts/installation_setup/install.py
+	@if [ -n "$(INSTALL_TARGET)" ]; then \
+		python3 scripts/installation_setup/install.py $(INSTALL_TARGET); \
+	else \
+		python3 scripts/installation_setup/install.py; \
+	fi
 
-install-backend:
-	@python3 scripts/installation_setup/install.py backend
-
-install-cli:
-	@python3 scripts/installation_setup/install.py cli
-
-install-google:
-	@python3 scripts/installation_setup/install.py google
-
-install-lambda:
-	@python3 scripts/installation_setup/install.py lambda
+lock:
+	@echo "🔒 Generating UV lock files for all projects..."
+	@echo ""
+	@echo "📦 Locking shared_utilities..."
+	@cd shared_utilities && uv lock
+	@echo ""
+	@echo "📦 Locking backend..."
+	@cd backend && uv lock
+	@echo ""
+	@echo "📦 Locking bars_cli..."
+	@cd bars_cli && uv lock
+	@echo ""
+	@echo "📦 Locking lambda..."
+	@cd lambda && uv lock
+	@echo ""
+	@echo "✅ All lock files generated"
 
 clean: stop
 	@echo "🧹 Cleaning up..."
@@ -445,13 +472,13 @@ test-specific:
 	@echo "🧪 Running specific test: $(TEST)"
 	@if echo "$(TEST)" | grep -q "::"; then \
 		echo "Running pytest test case: $(TEST)"; \
-		cd backend && $(BACKEND_PYTHON) -m pytest "../$(TEST)" -v; \
+		cd backend && .venv/bin/python -m pytest "../$(TEST)" -v; \
 	elif echo "$(TEST)" | grep -q "\.py$$"; then \
 		echo "Running Python test file: $(TEST)"; \
 		if echo "$(TEST)" | grep -q "^backend/"; then \
-			cd backend && $(BACKEND_PYTHON) -m pytest "../$(TEST)" -v; \
+			cd backend && .venv/bin/python -m pytest "../$(TEST)" -v; \
 		else \
-			cd backend && $(BACKEND_PYTHON) "../$(TEST)"; \
+			cd backend && .venv/bin/python "../$(TEST)"; \
 		fi; \
 	else \
 		echo "❌ Invalid test format. Use .py file or pytest::test_name format"; \
@@ -469,25 +496,25 @@ _test_backend_internal:
 		export ENVIRONMENT="test" && \
 		export SLACK_REFUNDS_BOT_TOKEN="test_slack_token" && \
 		echo "📋 Checking Python syntax..." && \
-		../.venv/bin/python -m py_compile config.py main.py && \
+		.venv/bin/python -m py_compile config.py main.py && \
 		echo "📋 Checking module imports..." && \
-		../.venv/bin/python -c "import sys; sys.path.append('.'); from config import config; print('✅ Config imports successfully'); from main import app; print('✅ Main FastAPI app imports successfully'); from modules.orders import OrdersService; print('✅ Orders service imports successfully'); from modules.integrations.slack import SlackClient; print('✅ Slack Client imports successfully'); from routers.refunds import router; print('✅ Refunds router imports successfully')" && \
+		.venv/bin/python -c "import sys; sys.path.append('.'); from config import config; print('✅ Config imports successfully'); from main import app; print('✅ Main FastAPI app imports successfully'); from modules.orders import OrdersService; print('✅ Orders service imports successfully'); from modules.integrations.slack import SlackClient; print('✅ Slack Client imports successfully'); from routers.refunds import router; print('✅ Refunds router imports successfully')" && \
 		echo "🧪 Step 2: Running comprehensive test suite..." && \
 		if [ -d "tests/unit" ] && [ "$$(find tests/unit -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then \
 			echo "🧪 Running unit tests..."; \
-			../.venv/bin/python -m pytest tests/unit/ -v; \
+			.venv/bin/python -m pytest tests/unit/ -v; \
 		else \
 			echo "⚠️ No unit tests found in tests/unit/, skipping..."; \
 		fi && \
 		echo "🧪 Running service-specific tests..." && \
-		../.venv/bin/python -m pytest services/*/tests/ -v || true && \
+		.venv/bin/python -m pytest services/*/tests/ -v || true && \
 		echo "🧪 Running router tests..." && \
-		../.venv/bin/python -m pytest routers/tests/ -v || true && \
+		.venv/bin/python -m pytest routers/tests/ -v || true && \
 		echo "🧪 Running Slack webhook tests..." && \
-		../.venv/bin/python -m pytest routers/tests/test_slack_router.py -v || true && \
+		.venv/bin/python -m pytest routers/tests/test_slack_router.py -v || true && \
 		if [ -d "tests/integration" ] && [ "$$(find tests/integration -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then \
 			echo "🧪 Running integration tests..."; \
-			../.venv/bin/python -m pytest tests/integration/ -v; \
+			.venv/bin/python -m pytest tests/integration/ -v; \
 		else \
 			echo "⚠️ No integration tests found in tests/integration/, skipping..."; \
 		fi && \
@@ -500,7 +527,7 @@ _test_backend_internal:
 			export SHOPIFY_TOKEN="test_token" && \
 			export ENVIRONMENT="test" && \
 			export SLACK_REFUNDS_BOT_TOKEN="test_slack_token" && \
-			../.venv/bin/python -m pytest "../$(DIR)" -v; \
+			.venv/bin/python -m pytest "../$(DIR)" -v; \
 		else \
 			echo "⚠️  No Python test files found in $(DIR)"; \
 		fi; \

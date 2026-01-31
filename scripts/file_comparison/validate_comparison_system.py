@@ -11,9 +11,13 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from enum import Enum
 
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
 from .compare_project_remote_with_local import compare_project_remote_with_local
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+REPO_ROOT = get_repo_root()
 GAS_ROOT = REPO_ROOT / "GoogleAppsScripts"
 PROJECTS_DIR = GAS_ROOT / "projects"
 LAMBDA_FUNCTIONS_DIR = REPO_ROOT / "lambda" / "functions"

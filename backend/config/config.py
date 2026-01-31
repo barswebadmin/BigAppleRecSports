@@ -1,240 +1,166 @@
 """
-Simple configuration loader that loads .env and exposes all environment variables via dot notation.
-All keys are normalized to lowercase.
-Supports nested dot notation (e.g., google.service_account_file -> config.google.service_account_file).
+Simplified configuration loader.
+
+Loads environment variables with dot notation into nested dictionaries.
+Supports dictionary-style access: config['GOOGLE']['SERVICE_ACCOUNT']
+
+Environment variables with dots are organized into nested structures:
+- GOOGLE.SERVICE_ACCOUNT -> config['GOOGLE']['SERVICE_ACCOUNT'] (parsed as JSON if valid)
+- SLACK.BOT_TOKEN_DEV -> config['SLACK']['BOT_TOKEN_DEV']
 """
-from dotenv import load_dotenv
-import os
 import json
-from typing import Dict, Any, Optional
-from pydantic import ConfigDict
+import os
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-from backend.shared.model_config import ApiModel
+from dotenv import load_dotenv
 
 
-class Config(ApiModel):
+class Config(dict):
     """
-    Programmatic configuration that loads .env and exposes all environment variables
-    via dot notation (e.g., config.shopify_token, config.google.service_account_file).
+    Configuration dictionary that loads from environment variables.
     
-    All environment variable keys are normalized to lowercase.
-    Environment variables with dots are organized into nested structures:
-    - google.service_account_file -> config.google.service_account_file
-    - SLACK.BOT_TOKEN_DEV -> config.slack.bot_token_dev
+    Supports nested access via dictionary keys:
+        config['GOOGLE']['SERVICE_ACCOUNT']['private_key']
+        config['SLACK']['BOT_TOKEN_DEV']
+    
+    Also supports attribute access for convenience:
+        config.GOOGLE.SERVICE_ACCOUNT.private_key
     """
     
-    model_config = ConfigDict(extra='allow')
+    def __init__(self):
+        super().__init__()
+        
+        # Load .env file (local development)
+        # In production (Render), env vars are injected directly
+        load_dotenv(override=True)
+        
+        # Build nested structure from environment variables
+        self._build_from_env()
     
-    def __init__(self, **data: Any):
-        is_root = not data
-        
-        # Only load .env and build from env on root Config instance (not nested ones)
-        if is_root:
-            # Always load .env first with override=True so .env values take precedence
-            # In production (Render/etc), env vars are injected directly, so .env won't exist.
-            # load_dotenv() safely returns False if .env doesn't exist (no error raised).
-            load_dotenv(override=True)
-            
-            # Build nested structure from environment variables
-            env_data = self._build_from_env()
-            env_data.update(data)
-            data = env_data
-        
-        # Recursively convert nested dicts, but keep as dicts for Pydantic
-        # We'll set Config instances after initialization
-        def convert_dict(v: Any) -> Any:
-            if isinstance(v, dict):
-                return {k: convert_dict(val) for k, val in v.items()}
-            return v
-        
-        processed_data = {k: convert_dict(v) for k, v in data.items()}
-        super().__init__(**processed_data)
-        
-        # Recursively convert all nested dicts to Config instances after Pydantic initialization
-        def set_nested_configs(obj: 'Config') -> None:
-            for key, value in self._get_all_attrs(obj).items():
-                if isinstance(value, dict) and not key.startswith('_'):
-                    nested_config = obj.__class__(**value)
-                    object.__setattr__(obj, key, nested_config)
-                    set_nested_configs(nested_config)
-        
-        set_nested_configs(self)
-        
-        # Debug: Print final config object structure (only for root instance)
-        if is_root:
-            pass  # Debug logging removed
-        def config_to_dict(obj: Any) -> Any:
-            """Recursively convert Config objects to dicts for JSON serialization."""
-            if isinstance(obj, Config):
-                result = {}
-                attrs = obj._get_all_attrs(obj)
-                for key, value in attrs.items():
-                    if not key.startswith('_'):
-                        result[key] = config_to_dict(value)
-                return result
-            elif isinstance(obj, dict):
-                return {k: config_to_dict(v) for k, v in obj.items()}
-            elif isinstance(obj, (list, tuple)):
-                return [config_to_dict(item) for item in obj]
-            else:
-                return obj
-        
-        def mask_sensitive_values(obj: Any) -> Any:
-            """Mask sensitive values in the config dict."""
-            if isinstance(obj, dict):
-                masked = {}
-                for key, value in obj.items():
-                    if isinstance(value, str) and len(value) > 14:
-                        masked[key] = value[:10] + "..." + value[-4:]
-                    elif isinstance(value, (dict, list)):
-                        masked[key] = mask_sensitive_values(value)
-                    else:
-                        masked[key] = value
-                return masked
-            elif isinstance(obj, list):
-                return [mask_sensitive_values(item) for item in obj]
-            else:
-                return obj
-        
-            try:
-                config_dict = config_to_dict(self)
-                masked_dict = mask_sensitive_values(config_dict)
-                print(json.dumps(masked_dict, indent=2, default=str))
-            except Exception as e:
-                print(f"ERROR serializing config: {e}")
-                import traceback
-                traceback.print_exc()
-            print("="*80 + "\n")
-    
-    @staticmethod
-    def _get_all_attrs(obj: 'Config') -> Dict[str, Any]:
-        """Get all attributes from __dict__ and Pydantic extra fields."""
-        attrs = dict(obj.__dict__)
-        if hasattr(obj, '__pydantic_extra__') and obj.__pydantic_extra__:
-            attrs.update(obj.__pydantic_extra__)
-        if hasattr(obj, 'model_extra') and obj.model_extra:
-            attrs.update(obj.model_extra)
-        return attrs
-    
-    @staticmethod
-    def _normalize_key(part: str) -> str:
-        """Normalize key part to lowercase snake_case."""
-        return part.replace("-", "_").lower()
-    
-    @classmethod
-    def _build_from_env(cls) -> Dict[str, Any]:
+    def _build_from_env(self) -> None:
         """Build nested dict structure from environment variables with dot notation."""
-        nested: Dict[str, Any] = {}
-        flat: Dict[str, str] = {}
-        
-        # Sort all environment variables alphabetically to ensure consistent processing order
-        # This ensures GOOGLE.SERVICE_ACCOUNT is processed before GOOGLE.SERVICE_ACCOUNT.SUBJECT
+        # Sort environment variables to ensure consistent processing order
         sorted_env_items = sorted(os.environ.items())
         
         for key, value in sorted_env_items:
             if "." in key:
                 # Build nested structure
-                parts = [cls._normalize_key(p) for p in key.split(".") if p]
+                parts = key.split(".")
                 if len(parts) >= 2:
-                    cur = nested
-                    for seg in parts[:-1]:
-                        # Ensure we have a dict at this level
-                        if seg not in cur:
-                            cur[seg] = {}
-                        elif not isinstance(cur[seg], dict):
-                            # If we encounter a string that looks like JSON, try to parse it
-                            if isinstance(cur[seg], str):
-                                try:
-                                    parsed_json = json.loads(cur[seg])
-                                    if isinstance(parsed_json, dict):
-                                        cur[seg] = parsed_json
-                                    else:
-                                        # Not a dict, can't navigate further, skip this nested path
-                                        break
-                                except (json.JSONDecodeError, TypeError):
-                                    # Not valid JSON, can't navigate further, skip this nested path
-                                    break
-                            else:
-                                # Not a dict or string, can't navigate further, skip this nested path
-                                break
-                        cur = cur[seg]
+                    current = self
+                    
+                    # Navigate/create nested structure
+                    for part in parts[:-1]:
+                        if part not in current:
+                            current[part] = Config._create_nested()
+                        elif not isinstance(current[part], dict):
+                            # Can't navigate further if not a dict
+                            break
+                        current = current[part]
                     else:
-                        # Only set if we successfully navigated the path
+                        # Set the final value
                         final_key = parts[-1]
+                        
                         # Try to parse as JSON if it looks like JSON
-                        try:
-                            parsed_json = json.loads(value)
-                            if isinstance(parsed_json, dict):
-                                cur[final_key] = parsed_json
-                            else:
-                                cur[final_key] = value
-                        except (json.JSONDecodeError, TypeError):
-                            cur[final_key] = value
+                        parsed_value = self._try_parse_json(value)
+                        current[final_key] = parsed_value
             else:
                 # Store flat variables
-                flat[cls._normalize_key(key)] = value
-        
-        # Merge flat variables (flat takes precedence if conflict)
-        nested.update(flat)
+                parsed_value = self._try_parse_json(value)
+                self[key] = parsed_value
+    
+    @staticmethod
+    def _create_nested() -> 'Config':
+        """Create a new nested Config instance."""
+        nested = Config.__new__(Config)
+        dict.__init__(nested)
         return nested
     
+    @staticmethod
+    def _try_parse_json(value: str) -> Any:
+        """Try to parse value as JSON, return original string if not valid JSON."""
+        if not value:
+            return value
+        
+        # Quick check if it looks like JSON
+        if value.startswith(('{', '[')):
+            try:
+                return json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
+        return value
+    
     def __getattr__(self, name: str) -> Any:
-        """Fallback getter with lowercase enforcement."""
+        """Allow attribute-style access: config.GOOGLE instead of config['GOOGLE']"""
         if name.startswith('_'):
             raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
         
-        # Reject uppercase access
-        if name != name.lower():
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'. Use lowercase: '{name.lower()}'")
-        
-        # Try Pydantic's attribute access (handles model_extra/__pydantic_extra__)
         try:
-            return super().__getattribute__(name)
-        except AttributeError:
-            pass
-        
-        # Check Pydantic's extra fields directly
-        attrs = self._get_all_attrs(self)
-        if name in attrs:
-            return attrs[name]
-        
-        # Try lazy loading from environment
-        env_prefix = name + "."
-        matching = {k: v for k, v in os.environ.items() if k.lower().startswith(env_prefix)}
-        if matching:
-            nested_data = self._build_from_env()
-            if name in nested_data:
-                nested_config = self.__class__(**nested_data[name]) if isinstance(nested_data[name], dict) else nested_data[name]
-                object.__setattr__(self, name, nested_config)
-                return nested_config
-        
-        # Try single env var
-        value = os.getenv(name)
-        if value is not None:
-            object.__setattr__(self, name, value)
-            return value
-        
-        return None
+            return self[name]
+        except KeyError:
+            # Try loading from environment
+            value = os.getenv(name)
+            if value is not None:
+                parsed_value = self._try_parse_json(value)
+                self[name] = parsed_value
+                return parsed_value
+            
+            # Return None instead of raising AttributeError for missing config keys
+            return None
     
-    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        """Get config value by dot-notation key."""
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Allow attribute-style setting: config.GOOGLE = {...}"""
+        if name.startswith('_'):
+            super().__setattr__(name, value)
+        else:
+            self[name] = value
+    
+    def get(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
+        """
+        Get config value by dot-notation key or dictionary key.
+        
+        Examples:
+            config.get('GOOGLE.SERVICE_ACCOUNT')
+            config.get('SLACK')
+        """
         if "." not in key:
-            return getattr(self, self._normalize_key(key), default) or os.getenv(key, default)
+            return dict.get(self, key, default) or os.getenv(key, default)
         
-        parts = [self._normalize_key(p) for p in key.split(".") if p]
-        cur: Any = self
-        for seg in parts:
-            if not hasattr(cur, seg):
+        parts = key.split(".")
+        current: Any = self
+        
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
                 return os.getenv(key, default)
-            cur = getattr(cur, seg)
-        return cur if isinstance(cur, str) else os.getenv(key, default)
+        
+        return current if current is not None else default
     
+    @property
+    def repo_root(self) -> Path:
+        """Get repository root as a Path object."""
+        repo_root_str = os.getenv('REPO_ROOT')
+        if repo_root_str:
+            return Path(repo_root_str).resolve()
+        
+        # Fallback: detect environment and calculate accordingly
+        current_file = Path(__file__).resolve()
+        
+        # Check if we're in a monorepo structure (local dev)
+        potential_repo_root = current_file.parent.parent.parent
+        if (potential_repo_root / 'pyproject.toml').exists():
+            # Monorepo structure: backend/config/config.py -> ../../../
+            return potential_repo_root
+        
+        # Deployment structure: backend is the root
+        # Navigate up from backend/config/config.py to backend/
+        return current_file.parent.parent
 
 
 # Create global singleton instance
-# This is the single source of truth for configuration
-# Accessible via: from config import config
 config = Config()
 
-# Make it available as a module-level export
 __all__ = ["Config", "config"]

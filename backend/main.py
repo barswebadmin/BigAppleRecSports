@@ -26,7 +26,7 @@ if os.getenv("ENVIRONMENT") == "production":
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routers import shopify, refunds, orders, slack, products
-from backend.config import config
+from config import config
 import logging
 import json
 from pathlib import Path
@@ -43,17 +43,17 @@ logging.basicConfig(
 # Set specific loggers to INFO level to ensure they show up
 logging.getLogger("services.products").setLevel(logging.INFO)
 logging.getLogger("services.shopify").setLevel(logging.INFO)
-logging.getLogger("backend.services").setLevel(logging.INFO)
+logging.getLogger("services").setLevel(logging.INFO)
 
 app = FastAPI(
     title="Big Apple Rec Sports API",
     description="Backend API for Big Apple Rec Sports operations",
     version=version_data["version"],
     docs_url="/docs"
-    if config.environment != "production"
+    if config['ENVIRONMENT'] != "production"
     else None,  # Disable docs in production
     redoc_url="/redoc"
-    if config.environment != "production"
+    if config['ENVIRONMENT'] != "production"
     else None,  # Disable redoc in production
 )
 
@@ -65,7 +65,7 @@ allowed_origins = [
     "http://localhost:8000",  # For local backend development
 ]
 
-if config.environment == "development":
+if config['ENVIRONMENT'] == "development":
     allowed_origins.append("*")
 
 app.add_middleware(
@@ -120,20 +120,20 @@ app.include_router(orders.router)
 app.include_router(products.router)
 app.include_router(slack.router)
 app.include_router(shopify.router)
-app.include_router(refunds.router)
+# app.include_router(refunds.router)
 
 # Include new API routers
-from backend.routers.shopify_api import router as shopify_api_router
-from backend.routers.slack_api import router as slack_api_router
-from backend.routers.google import router as google_router
+from routers.shopify_api import router as shopify_api_router
+from routers.slack_api import router as slack_api_router
+from routers.admin import router as admin_router
 
 app.include_router(shopify_api_router)
 app.include_router(slack_api_router)
-app.include_router(google_router)
-from backend.routers.shopify_api import health_check as shopify_health_check
+app.include_router(admin_router)
+from routers.shopify_api import health_check as shopify_health_check
 
 # Theme template editing
-from backend.routers import theme_templates
+from routers import theme_templates
 app.include_router(theme_templates.router)
 
 
@@ -147,9 +147,9 @@ async def root():
         "full_version": f"{version_data['version']}.{version_data['build']}",
         "codename": version_data["codename"],
         "last_updated": version_data["last_updated"],
-        "environment": config.environment,
+        "environment": config['ENVIRONMENT'],
         "docs_url": "/docs"
-        if config.environment != "production"
+        if config['ENVIRONMENT'] != "production"
         else "Contact admin for documentation",
         "health_check": "/health",
     }
@@ -163,7 +163,7 @@ async def health_check():
         "version": version_data["version"],
         "build": version_data["build"],
         "full_version": f"{version_data['version']}.{version_data['build']}",
-        "environment": config.environment,
+        "environment": config['ENVIRONMENT'],
         "last_updated": version_data["last_updated"],
     }
 
@@ -178,6 +178,6 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        app, host="0.0.0.0", port=8000, reload=config.environment == "development"
+        app, host="0.0.0.0", port=8000, reload=config['ENVIRONMENT'] == "development"
     )
 # Test change

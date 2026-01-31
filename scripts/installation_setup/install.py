@@ -3,30 +3,30 @@
 Installation orchestrator for BARS components.
 
 Orchestrates installation of:
+- root: Monorepo-wide dev tools (ruff, pytest, mypy) in root .venv
 - backend: Backend dependencies in backend/.venv
 - cli: CLI tool via pipx
 - google: Google Apps Scripts dependencies via pnpm
 - lambda: Lambda function dependencies
+- shared_utilities: Shared utilities in shared_utilities/.venv (for IDE/workspace)
 
-When a target is specified, runs local development setup first, then the target.
-When no target is specified, runs all installations.
+When a target is specified, installs root dev tools first, then the target.
+When no target is specified, runs all installations (root + all projects).
 """
 import argparse
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Add installation_setup to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from install_backend import install_backend, InstallResult
+from install_backend import InstallResult, install_backend
 from install_cli import install_cli
 from install_google import install_google
 from install_lambda import install_lambda
-from install_local_dev import install_local_dev
+from install_root import install_root
+from install_shared_utilities import install_shared_utilities
 
 
 def main(argv=None) -> int:
@@ -35,52 +35,66 @@ def main(argv=None) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python scripts/installation_setup/install.py          # Install all components
-  python scripts/installation_setup/install.py backend  # Install backend only
-  python scripts/installation_setup/install.py cli     # Install CLI only
-  python scripts/installation_setup/install.py google   # Install Google Apps Scripts only
-  python scripts/installation_setup/install.py lambda   # Install Lambda functions only
+  python scripts/installation_setup/install.py                    # Install all components (root + projects)
+  python scripts/installation_setup/install.py root               # Install root dev tools only
+  python scripts/installation_setup/install.py backend            # Install backend only (root first)
+  python scripts/installation_setup/install.py cli               # Install CLI only (root first)
+  python scripts/installation_setup/install.py google             # Install Google Apps Scripts only
+  python scripts/installation_setup/install.py lambda             # Install Lambda functions only (root first)
+  python scripts/installation_setup/install.py shared_utilities   # Install shared utilities only (root first)
         """
     )
     parser.add_argument(
         "target",
         nargs="?",
-        choices=["backend", "cli", "google", "lambda"],
+        choices=["root", "backend", "cli", "google", "lambda", "shared_utilities"],
         help="Component to install (default: all)"
     )
     args = parser.parse_args(argv)
 
-    targets = [args.target] if args.target else ["backend", "cli", "google", "lambda"]
+    # Always install root dev tools first (unless installing root itself)
+    if args.target != "root":
+        print("🔧 Installing root monorepo dev tools first...")
+        root_result = install_root()
+        if not root_result.ok:
+            print("  ⚠️  Root dev tools installation had issues, continuing...")
+        print()
+
+    targets = [args.target] if args.target else ["root", "shared_utilities", "backend", "cli", "google", "lambda"]
 
     print(f"📦 Installing dependencies: {', '.join(targets)}")
     print()
 
-    # Run local development setup first if a target is specified
-    # (for local dev, we want direnv/IDE setup before project-specific installs)
-    if args.target:
-        print("🔧 Setting up local development environment...")
-        if not install_local_dev():
-            print("  ⚠️  Local development setup had issues, continuing...")
-        print()
-
     # Map target names to installer functions
-    INSTALLERS = {
+    installers = {
+        "root": install_root,
         "backend": install_backend,
         "cli": install_cli,
         "google": install_google,
         "lambda": install_lambda,
+        "shared_utilities": install_shared_utilities,
     }
 
     results: list[InstallResult] = []
     started = time.time()
 
     if args.target:
-        # Single target: run sequentially
-        results.append(INSTALLERS[args.target]())
+        # Single target: run sequentially (no optimization needed)
+        results.append(installers[args.target]())
     else:
-        # All targets: run sequentially to avoid race conditions with pyproject.toml
+        # All targets: run sequentially with optimization
+        # Track if shared_utilities was installed to avoid redundant installs
+        shared_utilities_installed = False
+        
         for target in targets:
-            results.append(INSTALLERS[target]())
+            if target == "shared_utilities":
+                results.append(installers[target]())
+                shared_utilities_installed = True
+            elif target in ["backend", "cli"] and shared_utilities_installed:
+                # Skip redundant shared_utilities installation
+                results.append(installers[target](skip_shared_utilities=True))
+            else:
+                results.append(installers[target]())
 
     # Sort results by target order
     results.sort(key=lambda r: targets.index(r.name))

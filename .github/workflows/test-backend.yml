@@ -50,4 +50,4 @@ jobs:
 
       - name: Run backend tests
         if: steps.compile.outcome == 'success'
-        run: python scripts/ci/run_script.py scripts.testing.run_tests run_backend_tests
+        run: python backend/tests/run_tests.py

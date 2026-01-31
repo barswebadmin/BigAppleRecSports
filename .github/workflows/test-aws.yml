@@ -47,4 +47,4 @@ jobs:
 
       - name: Run Lambda tests
         if: steps.compile.outcome == 'success'
-        run: python scripts/ci/run_script.py scripts.testing.run_tests run_lambda_tests
+        run: python lambda/functions/tests/run_tests.py

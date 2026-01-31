@@ -221,8 +221,11 @@ def fetch_from_google(project_name: str, temp_dir: Path, project_root: Optional[
     """
     # Auto-detect project_root if not provided
     if project_root is None:
-        script_dir = Path(__file__).parent
-        repo_root = script_dir.parent.parent
+        # Add shared utilities to path for imports
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+        from paths import get_repo_root
+
+        repo_root = get_repo_root()
         project_root = repo_root / "GoogleAppsScripts"
     
     project_dir = project_root / "projects" / project_name

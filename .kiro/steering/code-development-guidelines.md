@@ -1,0 +1,70 @@
+---
+inclusion: always
+---
+**Version**: 1.0  
+**Last Updated**: 2025-09-27
+
+## **Critical Enforcement Rule**
+- Before making any edits, the assistant must explicitly acknowledge compliance with this document in chat:
+  - “Following project code-development-guidelines preflight: structure check, import trace, redundancy scan, and refactor proposal (if cross-cutting).”
+- **Preflight checklist** (must be executed before changes):
+  - File organization compliance: CLI helpers under engine_cli/_core/; commands under engine_cli/commands/; entrypoint thin.
+  - Import tracing and redundancy check: trace target file and imports; reuse/consolidate existing helpers; no new helpers outside _core/.
+  - Refactor proposal first for cross-cutting changes (what/why/impact).
+- **Non-compliance**: If this acknowledgement is not posted, treat any edits as invalid and request a preflight re-run.
+
+## **Scope**
+These rules apply to CLI and service-oriented Python projects. They prioritize:
+- **Separation of concerns**: small, focused modules
+- **Discoverability**: clear, consistent layout
+- **Safe refactors**: avoid duplication; document rationale
+
+## **File Organization Policy**
+- **Prefer small modules** over monoliths. Keep entrypoints minimal and delegate to helpers.
+- **CLI-core helpers** live under an internal core namespace:
+  - `engine_cli/_core/args.py` — argv and flag rewriting
+  - `engine_cli/_core/context.py` — root Click context initialization
+  - `engine_cli/_core/discovery.py` — command auto-discovery/registration
+  - `engine_cli/_core/constants.py` — shared constants (optional)
+- **Generic helpers** live in `engine_cli/utils.py`. Do not put Click wiring here.
+- **Subcommands** live in `engine_cli/commands/*.py`. One top-level Click command per file.
+- **Imports** must be at the top of files. organize by: imports native to the development language first (e.g. json), external imports (libraries) second, then internal imports (from project files) third
+
+**Naming and export clarity**
+- **Explicit imports**; keep public surfaces small (e.g., `__all__` where helpful)
+- **Avoid star imports** and deep nesting that harms discoverability
+
+## **Implementation Behavior**
+- **Implement requested changes**; don’t just provide suggestions
+- **Add new logic** to the correct helper module instead of the entrypoint
+- **Preserve global patterns** (e.g., global render/env flags) rather than re-adding per-command toggles
+
+## **Import Tracing and Redundancy Check (Required Before Changes)**
+Before implementing or refactoring:
+1. **Trace imports**: scan the target file and its imports recursively to identify related helpers and patterns
+2. **Locate existing utilities** with overlapping responsibilities
+3. **Prefer reuse**: enhance existing helpers over creating parallel implementations
+4. **Propose consolidation** if duplication exists (where to move code; deprecation path)
+
+## **Refactor Proposals and Change Safety**
+- **Propose first** for big or cross-cutting changes:
+  - **Plan**: what changes, why, where it lives, migration impact
+  - **Alternatives**: considered options and why the chosen approach wins
+- **Explain updates** to existing functions:
+  - **Rationale**: deduplication, consistency, performance, correctness
+  - **Impact**: callers, behavior changes
+- **Proceed after recommendations**, then implement with concise, high-signal commit messages
+
+## **Testing and Behavior Integrity**
+- **Preserve behavior** unless the user requests change
+- **Add/Update tests** when modifying shared helpers
+- **Run health checks** (doctor/help commands) after CLI changes
+
+## **Developer Ergonomics**
+- **Keep entrypoints thin**: wire options/context, then delegate to helpers
+- **Maintain auto-discovery** for commands; don’t break help/doctor flows
+- **Favor readable names** over comments; when commenting, explain “why,” not “what”
+
+## **Commit Hygiene**
+- **Group related edits** logically; avoid large, mixed commits
+- **Explain refactors** briefly in commit messages (what/why/impact)
