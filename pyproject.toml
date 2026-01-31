@@ -1,76 +1,159 @@
+[project]
+name = "bars-monorepo"
+version = "1.0.0"
+description = "Big Apple Rec Sports - Monorepo Development Tools"
+requires-python = ">=3.11"
+readme = "README.md"
+
+# No runtime dependencies at root level - those go in individual projects
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    # Linting & Formatting
+    "ruff>=0.1.0",
+    
+    # Type Checking
+    "mypy>=1.0.0",
+    
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+    
+    # AWS Mocking (for lambda tests)
+    "moto>=4.0.0",
+    
+    # HTTP Testing
+    "httpx>=0.27.0",
+    
+    # Pre-commit Hooks
+    "pre-commit>=3.0.0",
+]
+
 [build-system]
-requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2"]
+requires = ["setuptools>=45"]
 build-backend = "setuptools.build_meta"
 
-[project]
-name = "bars"
-version = "1.0.0"
-description = "Big Apple Rec Sports - Backend & CLI"
-requires-python = ">=3.11"
-dependencies = [
-    "boto3>=1.42.0",
-    "click>=8.1.7",
-    "click-aliases>=1.0.5",
-    "click-extra>=0.15.0",
-    "click-shell>=2.1",
-    "httpx>=0.27.0",
-    "pydantic>=2.12.0",
-    "questionary>=2.0.0",
-    "rich>=13.7.0",
-    "sgqlc>=17.0",
-    "validator-collection>=1.5.0",
-    "beautifulsoup4==4.12.3",
-    "google-api-python-client==2.154.0",
-    "google-auth==2.37.0",
-    "google-auth-httplib2==0.2.0",
-    "google-auth-oauthlib==1.2.1",
-    "lxml==5.3.0",
-    "python-dateutil==2.9.0",
-    "python-dotenv==1.0.1",
-    "PyYAML==6.0.2",
-    "requests==2.32.3",
-    "slack-bolt==1.20.1",
-    "slack-sdk==3.30.0",
-]
-
-[project.scripts]
-bars = "bars_cli.main:cli"
-
 [tool.setuptools]
-packages = ["bars_cli", "bars_cli.commands", "bars_cli._core"]
+py-modules = []  # Root is not a package, just dev tools
 
-[tool.pyright]
-typeCheckingMode = "basic"
-reportMissingImports = true
-reportMissingModuleSource = "none"
-pythonVersion = "3.11"
-pythonPlatform = "All"
-# Use backend venv for backend files
-venvPath = "backend"
-venv = ".venv"
-# Include pipx venv for scripts and bars_cli (where boto3 is installed)
-extraPaths = ["/Users/jrandazzo/.local/pipx/venvs/bars-cli/lib/python3.11/site-packages"]
-include = ["**/*.py"]
-exclude = ["**/__pycache__", "**/.venv", "**/node_modules", "**/lambda/**"]
+# =============================================================================
+# UV SOURCES CONFIGURATION
+# =============================================================================
+[tool.uv.sources]
+# Centralized local package resolution for monorepo
+bars-shared-utilities = { path = "shared_utilities", editable = true }
 
-executionEnvironments = [
-    # Backend uses its own .venv
-    { root = "backend", pythonVersion = "3.11", pythonPlatform = "All", extraPaths = [] },
-    # Scripts and bars_cli use pipx venv (where boto3 is installed)
-    { root = "scripts", pythonVersion = "3.11", pythonPlatform = "All", extraPaths = ["/Users/jrandazzo/.local/pipx/venvs/bars-cli/lib/python3.11/site-packages"] },
-    { root = "bars_cli", pythonVersion = "3.11", pythonPlatform = "All", extraPaths = ["/Users/jrandazzo/.local/pipx/venvs/bars-cli/lib/python3.11/site-packages"] }
+# =============================================================================
+# RUFF CONFIGURATION (applies to all projects)
+# =============================================================================
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+# Exclude common directories
+exclude = [
+    ".git",
+    ".venv",
+    ".venvs",
+    "__pycache__",
+    "node_modules",
+    ".pytest_cache",
+    ".ruff_cache",
+    "*.egg-info",
 ]
 
-[tool.pyright.diagnosticSeverityOverrides]
-reportMissingImports = "error"
-reportImportCycles = "error"
-reportUnusedImport = "warning"
-reportUndefinedVariable = "error"
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+]
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
 
+# =============================================================================
+# PYTEST CONFIGURATION (monorepo-wide)
+# =============================================================================
 [tool.pytest.ini_options]
-pythonpath = [
-    "backend"
+# Test discovery paths for all projects
+testpaths = [
+    "backend/tests",
+    "backend/routers/tests",
+    "lambda/functions/tests",
+    "bars_cli/tests",
+    "shared_utilities/tests",
 ]
 
-testpaths = ["backend/routers/tests"]
-addopts = "-v --tb=short" 
+# Python path for imports
+pythonpath = [
+    ".",
+    "backend",
+    "lambda/functions",
+    "lambda/layers/bars_common_utils",
+    "bars_cli",
+    "shared_utilities",
+]
+
+# Test execution options
+addopts = [
+    "-v",                    # Verbose output
+    "--tb=short",            # Short traceback format
+    "--strict-markers",      # Strict marker validation
+    "--strict-config",       # Strict config validation
+]
+
+# Test markers
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# =============================================================================
+# COVERAGE CONFIGURATION
+# =============================================================================
+[tool.coverage.run]
+source = [
+    "backend",
+    "lambda/functions",
+    "bars_cli",
+    "shared_utilities",
+]
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+    "*/node_modules/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+# =============================================================================
+# MYPY CONFIGURATION
+# =============================================================================
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradually enable
+ignore_missing_imports = true
+
+# Per-module options
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true

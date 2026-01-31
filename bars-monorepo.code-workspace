@@ -1,0 +1,68 @@
+{
+  "folders": [
+    {
+      "name": "🏠 Root",
+      "path": "."
+    },
+    {
+      "name": "🔧 Backend",
+      "path": "backend"
+    },
+    {
+      "name": "⚡ Lambda",
+      "path": "lambda"
+    },
+    {
+      "name": "🛠️ CLI",
+      "path": "bars_cli"
+    },
+    {
+      "name": "📦 Shared Utilities",
+      "path": "shared_utilities"
+    }
+  ],
+  "settings": {
+    // Global settings for all folders
+    "editor.semanticHighlighting.enabled": true,
+    "workbench.editor.enablePreview": true,
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/.pytest_cache": true,
+      "**/.ruff_cache": true
+    },
+    
+    // Exclude symlinked shared_utilities from search (source of truth is /shared_utilities)
+    "search.exclude": {
+      "**/backend/shared_utilities": true,
+      "**/lambda/functions/*/shared_utilities": true
+    },
+    "files.watcherExclude": {
+      "**/backend/shared_utilities/**": true,
+      "**/lambda/functions/*/shared_utilities/**": true
+    },
+    
+    // Python settings per folder
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.terminal.activateEnvironment": true,
+    
+    // Cursor/Pyright settings
+    "cursorpyright.analysis.typeCheckingMode": "basic",
+    "cursorpyright.analysis.diagnosticMode": "workspace",
+    "cursorpyright.analysis.autoImportCompletions": true,
+    "cursorpyright.analysis.diagnosticSeverityOverrides": {
+      "reportMissingImports": "error",
+      "reportImportCycles": "error",
+      "reportUnusedImport": "warning",
+      "reportUndefinedVariable": "error"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "charliermarsh.ruff"
+    ]
+  }
+}

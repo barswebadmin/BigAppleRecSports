@@ -5,20 +5,18 @@ Takes remote_origin_type (google/aws) and project_name as parameters.
 """
 
 import argparse
-import shutil
 import sys
 import tempfile
 from pathlib import Path
 from typing import Optional
 
-if __package__ is None or __package__ == "":
-    repo_root = Path(__file__).resolve().parents[2]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
 
-from scripts.file_comparison.fetchers import fetch_from_remote, check_credentials
-from scripts.file_comparison.comparison_logic import compare_directories, ComparisonResult
-from scripts.file_comparison.formatters import display_comparison_result
+from .fetchers import fetch_from_remote, check_credentials
+from .comparison_logic import compare_directories, ComparisonResult
+from .formatters import display_comparison_result
 
 
 def compare_project_remote_with_local(
@@ -58,8 +56,7 @@ def compare_project_remote_with_local(
     
     # Auto-detect local_path if not provided
     if local_path is None:
-        script_dir = Path(__file__).parent
-        repo_root = script_dir.parent.parent
+        repo_root = get_repo_root()
         
         if remote_origin_type == "aws":
             local_path = repo_root / "lambda" / "functions" / project_name

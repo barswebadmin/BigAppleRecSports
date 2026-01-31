@@ -1,0 +1,15 @@
+# ============================================================================
+# Lambda Layer - bars_common_utils
+# ============================================================================
+# Dependencies for the shared Lambda layer utilities
+# ============================================================================
+
+# AWS SDK (provided by Lambda runtime, but needed for local development)
+boto3>=1.42.0
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# - boto3 is provided by AWS Lambda runtime, so it's not packaged in the layer
+# - This file is mainly for local development and testing
+# ============================================================================

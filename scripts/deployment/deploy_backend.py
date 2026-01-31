@@ -47,7 +47,11 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
-project_root = Path(__file__).parent.parent.parent
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
+project_root = get_repo_root()
 
 # Add project root to path for imports
 if str(project_root) not in sys.path:

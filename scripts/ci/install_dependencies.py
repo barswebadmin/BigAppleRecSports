@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Install dependencies for CI workflows."""
+"""Install dependencies for CI workflows.
+
+Note: CI uses system Python, not UV venvs. Dependencies are installed globally
+for the CI run. For local development, use UV with per-project venvs.
+"""
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
+project_root = get_repo_root()
 sys.path.insert(0, str(project_root))
 
 from scripts._shared.path_utils import PROJECT_ROOT
@@ -14,24 +21,35 @@ from scripts._shared.path_utils import PROJECT_ROOT
 
 def install_backend_deps():
     """Install backend dependencies including dev dependencies for testing."""
+    backend_dir = PROJECT_ROOT / "backend"
+    
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "-q", "--upgrade", "pip"],
         env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
+    
+    # Install shared_utilities first
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "-r", str(PROJECT_ROOT / "backend" / "requirements.txt")],
+        [sys.executable, "-m", "pip", "install", "-q", "-e", str(PROJECT_ROOT / "shared_utilities")],
         env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
         check=True
     )
-    # Install dev dependencies (testing, linting)
-    requirements_dev = PROJECT_ROOT / "backend" / "requirements-dev.txt"
-    if requirements_dev.exists():
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-q", "-r", str(requirements_dev)],
-            env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
-            check=True
-        )
+    
+    # Install backend dependencies from pyproject.toml
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", "-e", str(backend_dir)],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+        check=True
+    )
+    
+    # Install dev dependencies
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", "-e", f"{backend_dir}[dev]"],
+        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+        check=True
+    )
+    
     # Install rich for CI output formatting
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "-q", "rich"],
@@ -72,7 +90,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python scripts/ci/install_dependencies.py <backend|lambda|deploy>")
         sys.exit(1)
-    
+
     command = sys.argv[1]
     if command == "backend":
         install_backend_deps()
@@ -83,3 +101,4 @@ if __name__ == "__main__":
     else:
         print(f"❌ Unknown command: {command}")
         sys.exit(1)
+

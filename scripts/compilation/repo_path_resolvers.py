@@ -1,24 +1,27 @@
 """Repository path resolution utilities for compilation checks."""
 
+import sys
 from pathlib import Path
 from typing import List
+
+import sys
+from pathlib import Path
+
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
 
 
 def find_repo_root() -> Path:
     """Find the repository root directory by looking for .git."""
-    current = Path.cwd().resolve()
-    while current != current.parent:
-        if (current / '.git').exists():
-            return current
-        current = current.parent
-    return Path.cwd().resolve()
+    return get_repo_root()
 
 
 def find_all_python_files(repo_root: Path) -> List[Path]:
     """Find all Python files in backend/ and lambda/functions/ directories.
     
     Args:
-        repo_root: Repository root directory
+        repo_root: Repository root directory (kept for backward compatibility)
         
     Returns:
         List of Python file paths
@@ -26,17 +29,17 @@ def find_all_python_files(repo_root: Path) -> List[Path]:
     python_files: List[Path] = []
     
     # Check backend/
-    backend_dir = repo_root / "backend"
+    backend_dir = get_backend_root()
     if backend_dir.exists():
         python_files.extend(backend_dir.rglob("*.py"))
     
     # Check lambda/functions/
-    lambda_dir = repo_root / "lambda" / "functions"
+    lambda_dir = get_lambda_root()
     if lambda_dir.exists():
         python_files.extend(lambda_dir.rglob("*.py"))
     
     # Check bars_cli/
-    bars_cli_dir = repo_root / "bars_cli"
+    bars_cli_dir = get_cli_root()
     if bars_cli_dir.exists():
         python_files.extend(bars_cli_dir.rglob("*.py"))
     

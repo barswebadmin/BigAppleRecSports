@@ -160,10 +160,16 @@ deploy_function() {
         cp "$VERSION_FILE" "$TEMP_DIR/"
     fi
     
-    # Copy bars_common_utils if it exists
+    # Copy bars_common_utils if it exists (legacy)
     if [ -d "$FUNCTION_DIR/bars_common_utils" ]; then
         echo "  📋 Copying bars_common_utils..."
         cp -r "$FUNCTION_DIR/bars_common_utils" "$TEMP_DIR/"
+    fi
+    
+    # Copy shared_utilities if it exists (symlinked from repo root)
+    if [ -d "$FUNCTION_DIR/shared_utilities" ]; then
+        echo "  📋 Copying shared_utilities..."
+        cp -r "$FUNCTION_DIR/shared_utilities" "$TEMP_DIR/"
     fi
     
     # Install dependencies if requirements.txt exists
