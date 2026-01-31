@@ -2,7 +2,7 @@ from typing import Optional, Annotated, Literal, TYPE_CHECKING, Any, List
 from dataclasses import dataclass
 from pydantic import PlainSerializer
 
-from backend.shared.model_config import ApiModel
+from shared.model_config import ApiModel
 
 
 class EnumField(str):
@@ -61,7 +61,7 @@ class GroupResource(ApiModel):
     name: str
     description: str  # Can be empty string
     admin_created: bool
-    direct_members_count: str
+    direct_members_count: Optional[str] = "0"  # May not be present on newly created groups
     aliases: Optional[list[str]] = None  # Can be None or empty list
 
 

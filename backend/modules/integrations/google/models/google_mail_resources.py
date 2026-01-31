@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from backend.shared.model_config import ApiModel
+from shared.model_config import ApiModel
 
 
 class EmailMessage(ApiModel):

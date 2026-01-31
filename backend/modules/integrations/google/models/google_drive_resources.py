@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any
-from backend.shared.model_config import ApiModel
+from shared.model_config import ApiModel
 
 
 class SheetRevision(ApiModel):

@@ -14,7 +14,7 @@ from functools import wraps
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
 
-from backend.shared.model_config import ApiModel
+from shared.model_config import ApiModel
 
 logger = logging.getLogger(__name__)
 

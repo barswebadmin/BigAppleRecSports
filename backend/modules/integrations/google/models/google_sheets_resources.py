@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any, List
 from pydantic import Field
 
-from backend.shared.model_config import ApiModel
+from shared.model_config import ApiModel
 
 
 class ValueRange(ApiModel):

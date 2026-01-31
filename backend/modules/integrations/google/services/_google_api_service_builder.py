@@ -5,7 +5,7 @@ import logging
 from googleapiclient.discovery import build, Resource
 from google.oauth2.service_account import Credentials
 
-from backend.config import config
+from config import config
 
 logger = logging.getLogger("GoogleApiServiceBuilder")
 
@@ -60,89 +60,48 @@ def build_google_api_service(service_name: str, version: str, required_scopes: l
     """Build and return the Google API service instance."""
     
     try:
-        # Get service account from config
-        google_service_account = config.google.service_account
+        # Get service account from config (already parsed as dict)
+        google_service_account = config['GOOGLE']['SERVICE_ACCOUNT']
         
-        # Handle different config formats
-        if isinstance(google_service_account, str):
-            # Try to parse as JSON string
-            try:
-                google_service_account = json.loads(google_service_account)
-            except json.JSONDecodeError as json_err:
-                raise ValueError(f"Service account config is a string but not valid JSON: {json_err}") from json_err
-        elif hasattr(google_service_account, 'model_dump'):
-            # Convert Pydantic model to dict
-            google_service_account = google_service_account.model_dump()
-        elif type(google_service_account).__name__ == 'Config':
-            # Convert Config object to dict (check by class name to avoid import issues)
-            # Get all attributes from the Config object
-            attrs = {}
-            if hasattr(google_service_account, '__dict__'):
-                attrs.update({k: v for k, v in google_service_account.__dict__.items() if not k.startswith('_')})
-            if hasattr(google_service_account, '__pydantic_extra__') and google_service_account.__pydantic_extra__:
-                attrs.update(google_service_account.__pydantic_extra__)
-            if hasattr(google_service_account, 'model_extra') and google_service_account.model_extra:
-                attrs.update(google_service_account.model_extra)
-            
-            # Recursively convert nested Config objects
-            def convert_config_to_dict(obj):
-                if type(obj).__name__ == 'Config':
-                    result = {}
-                    if hasattr(obj, '__dict__'):
-                        result.update({k: convert_config_to_dict(v) for k, v in obj.__dict__.items() if not k.startswith('_')})
-                    if hasattr(obj, '__pydantic_extra__') and obj.__pydantic_extra__:
-                        result.update({k: convert_config_to_dict(v) for k, v in obj.__pydantic_extra__.items()})
-                    if hasattr(obj, 'model_extra') and obj.model_extra:
-                        result.update({k: convert_config_to_dict(v) for k, v in obj.model_extra.items()})
-                    return result
-                elif hasattr(obj, 'model_dump'):
-                    return obj.model_dump()
-                return obj
-            
-            google_service_account = convert_config_to_dict(google_service_account)
-        elif hasattr(google_service_account, '__dict__'):
-            # Convert generic object to dict (fallback)
-            google_service_account = {k: v for k, v in google_service_account.__dict__.items() if not k.startswith('_')}
-        
-        # Final validation
+        # Config now returns parsed JSON directly, so it should already be a dict
         if not isinstance(google_service_account, dict):
-            raise TypeError(f"Expected dict from config, got {type(google_service_account)}")
+            raise ValueError(f"Service account config must be a dict, got {type(google_service_account)}")
             
-    except AttributeError as e:
-        logger.error("Config does not have google.service_account: %s", e, exc_info=True)
-        raise ValueError(f"Config does not have google.service_account: {e}") from e
+    except KeyError as e:
+        logger.error("Config does not have GOOGLE.SERVICE_ACCOUNT: %s", e, exc_info=True)
+        raise ValueError(f"Config does not have GOOGLE.SERVICE_ACCOUNT: {e}") from e
     except Exception as e:
         logger.error("Failed to load service account from config: %s", e, exc_info=True)
         raise ValueError(f"Could not load Google service account from config: {e}") from e
     
     # Verify critical fields are present and correct type
-    required_fields = ['type', 'project_id', 'private_key', 'client_email']
+    required_fields = ['type', 'project_id', 'client_email']
     for field in required_fields:
         if field not in google_service_account:
             raise ValueError(f"Missing required field in service account: {field}")
         if not isinstance(google_service_account[field], str):
             raise TypeError(f"Field {field} must be a string, got {type(google_service_account[field])}")
     
-    # Verify private_key has newlines (critical for RSA key format)
+    # Handle private key - should already be in full PEM format
+    if 'private_key' not in google_service_account:
+        raise ValueError("Missing required field in service account: private_key")
+    
     private_key = google_service_account['private_key']
+    
+    # Verify private_key has newlines (critical for RSA key format)
     if not isinstance(private_key, str):
         raise TypeError(f"private_key must be a string, got {type(private_key)}")
     if '\n' not in private_key:
         logger.warning("private_key appears to be missing newlines - this may cause authentication issues")
     
-    # Get subject from nested structure or direct key
+    # Get subject from service account dict
     subject: Optional[str] = None
-    if isinstance(google_service_account, dict):
-        if "subject" in google_service_account:
-            subject_value = google_service_account["subject"]
-            if isinstance(subject_value, str):
-                subject = subject_value
-            elif subject_value is not None:
-                logger.warning("subject is not a string: %s", type(subject_value))
-    
-    # If we have a Config object, check for subject attribute
-    if hasattr(google_service_account, 'subject'):
-        subject = google_service_account.subject
+    if "subject" in google_service_account:
+        subject_value = google_service_account["subject"]
+        if isinstance(subject_value, str):
+            subject = subject_value
+        elif subject_value is not None:
+            logger.warning("subject is not a string: %s", type(subject_value))
     
     # Instantiate credentials using dict from config
     credentials = None

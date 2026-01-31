@@ -11,9 +11,9 @@ from typing import Optional, Dict, Any
 
 from google.oauth2.service_account import Credentials
 
-from backend.modules.integrations.google.services._google_api_service_builder import build_google_api_service
-from backend.modules.integrations.google.base_methods import handle_http_errors
-from backend.modules.integrations.google.models.google_mail_resources import EmailMessage, EmailSearchResult
+from modules.integrations.google.services._google_api_service_builder import build_google_api_service
+from modules.integrations.google.base_methods import handle_http_errors
+from modules.integrations.google.models.google_mail_resources import EmailMessage, EmailSearchResult
 
 
 logger = logging.getLogger(__name__)

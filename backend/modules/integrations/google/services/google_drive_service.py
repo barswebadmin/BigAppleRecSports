@@ -4,10 +4,10 @@ from typing import Optional, List
 import logging
 
 from google.oauth2.service_account import Credentials
-from backend.modules.integrations.google.services._google_api_service_builder import build_google_api_service
+from modules.integrations.google.services._google_api_service_builder import build_google_api_service
 
-from backend.modules.integrations.google.base_methods import handle_http_errors
-from backend.modules.integrations.google.models.google_drive_resources import SheetRevision
+from modules.integrations.google.base_methods import handle_http_errors
+from modules.integrations.google.models.google_drive_resources import SheetRevision
 
 logger = logging.getLogger(__name__)
 

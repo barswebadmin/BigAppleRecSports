@@ -1,287 +1,90 @@
-"""
-Google Request Models
+"""Google API request models."""
 
-Pydantic models for validating and parsing Google API requests.
-These models handle identifier parsing, validation, and return proper validation errors.
-"""
+from typing import Optional
 
-import re
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, validator
-
-from backend.shared.api_models import ValidationAPIError
+from pydantic import BaseModel, Field, field_validator
+from shared_utilities.validators import validators
 
 
-# ============================================================================
-# IDENTIFIER REQUEST MODELS
-# ============================================================================
+class GetGoogleGroupsRequest(BaseModel):
+    """Request model for listing Google Workspace groups."""
 
-class GoogleUserIdentifierRequest(BaseModel):
-    """Request model for Google user identifier parsing and validation."""
-    identifier: str = Field(..., min_length=1, description="User identifier")
-
-    @validator('identifier')
-    def validate_identifier(cls, v):
-        """Validate user identifier."""
-        if not v or not v.strip():
-            raise ValueError("User identifier cannot be empty")
-        return v.strip()
-
-    def parse(self) -> Dict[str, Any]:
-        """
-        Parse the identifier and return service-compatible format.
-        
-        Returns:
-            Dictionary with parsed identifier information
-            
-        Raises:
-            ValidationAPIError: If identifier format is invalid
-        """
-        identifier = self.identifier.strip()
-        
-        try:
-            if '@' in identifier:
-                # Email format - validate it
-                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-                if not re.match(email_pattern, identifier):
-                    raise ValueError("Invalid email format")
-                return {"email": identifier}
-            
-            # Assume it's a Google user ID
-            return {"user_id": identifier}
-        except ValueError as e:
-            raise ValidationAPIError(
-                message=str(e),
-                field_errors={"identifier": [str(e)]}
-            ) from e
+    domain: Optional[str] = Field(
+        default=None,
+        description="Domain name to list groups for"
+    )
+    customer: Optional[str] = Field(
+        default=None,
+        description="Customer ID or 'my_customer' for the current customer"
+    )
+    max_results: int = Field(
+        default=200,
+        ge=1,
+        le=500,
+        description="Maximum number of results to return"
+    )
+    page_token: Optional[str] = Field(
+        default=None,
+        description="Token for pagination"
+    )
+    user_key: Optional[str] = Field(
+        default=None,
+        description="Email or ID of user to get groups for"
+    )
 
 
-class GoogleGroupIdentifierRequest(BaseModel):
-    """Request model for Google group identifier parsing and validation."""
-    identifier: str = Field(..., min_length=1, description="Group identifier")
+class CreateGoogleGroupRequest(BaseModel):
+    """Request model for creating a Google Workspace group."""
 
-    @validator('identifier')
-    def validate_identifier(cls, v):
-        """Validate group identifier."""
-        if not v or not v.strip():
-            raise ValueError("Group identifier cannot be empty")
-        return v.strip()
+    email: str = Field(
+        description="Group email address"
+    )
+    name: str = Field(
+        min_length=1,
+        max_length=75,
+        description="Human-readable name for the group"
+    )
+    description: Optional[str] = Field(
+        default=None,
+        max_length=300,
+        description="Optional description for the group"
+    )
 
-    def parse(self) -> Dict[str, Any]:
-        """
-        Parse the identifier and return service-compatible format.
-        
-        Returns:
-            Dictionary with parsed identifier information
-            
-        Raises:
-            ValidationAPIError: If identifier format is invalid
-        """
-        identifier = self.identifier.strip()
-        
-        try:
-            if '@' in identifier:
-                # Group email format
-                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-                if not re.match(email_pattern, identifier):
-                    raise ValueError("Invalid group email format")
-                return {"group_email": identifier}
-            
-            # Assume it's a group ID
-            return {"group_id": identifier}
-        except ValueError as e:
-            raise ValidationAPIError(
-                message=str(e),
-                field_errors={"identifier": [str(e)]}
-            ) from e
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        """Validate email format and append domain if needed."""
+        if not validators.validate(v, 'email', strict=False):
+            raise ValueError('Invalid email format')
 
+        # Append domain if not present
+        if '@' not in v:
+            v = f"{v}@bigapplerecsports.com"
+        elif not v.endswith('@bigapplerecsports.com'):
+            # For now, only allow our domain
+            raise ValueError('Group email must be in bigapplerecsports.com domain')
 
-class GoogleDriveFileIdentifierRequest(BaseModel):
-    """Request model for Google Drive file identifier parsing and validation."""
-    identifier: str = Field(..., min_length=1, description="File identifier")
+        return v.lower().strip()
 
-    @validator('identifier')
-    def validate_identifier(cls, v):
-        """Validate file identifier."""
-        if not v or not v.strip():
-            raise ValueError("File identifier cannot be empty")
-        return v.strip()
-
-    def parse(self) -> Dict[str, Any]:
-        """
-        Parse the identifier and return service-compatible format.
-        
-        Returns:
-            Dictionary with parsed identifier information
-            
-        Raises:
-            ValidationAPIError: If identifier format is invalid
-        """
-        identifier = self.identifier.strip()
-        
-        try:
-            # Google Drive file IDs are typically alphanumeric strings
-            if re.match(r'^[a-zA-Z0-9_-]+$', identifier):
-                return {"file_id": identifier}
-            
-            # Check if it's a Google Drive URL
-            drive_url_pattern = r'https://drive\.google\.com/.*[?&]id=([a-zA-Z0-9_-]+)'
-            match = re.search(drive_url_pattern, identifier)
-            if match:
-                return {"file_id": match.group(1)}
-            
-            raise ValueError(f"Invalid Google Drive file identifier format: {identifier}")
-        except ValueError as e:
-            raise ValidationAPIError(
-                message=str(e),
-                field_errors={"identifier": [str(e)]}
-            ) from e
-
-
-class GoogleSheetsIdentifierRequest(BaseModel):
-    """Request model for Google Sheets identifier parsing and validation."""
-    identifier: str = Field(..., min_length=1, description="Spreadsheet identifier")
-
-    @validator('identifier')
-    def validate_identifier(cls, v):
-        """Validate spreadsheet identifier."""
-        if not v or not v.strip():
-            raise ValueError("Spreadsheet identifier cannot be empty")
-        return v.strip()
-
-    def parse(self) -> Dict[str, Any]:
-        """
-        Parse the identifier and return service-compatible format.
-        
-        Returns:
-            Dictionary with parsed identifier information
-            
-        Raises:
-            ValidationAPIError: If identifier format is invalid
-        """
-        identifier = self.identifier.strip()
-        
-        try:
-            # Google Sheets IDs are typically alphanumeric strings
-            if re.match(r'^[a-zA-Z0-9_-]+$', identifier):
-                return {"spreadsheet_id": identifier}
-            
-            # Check if it's a Google Sheets URL
-            sheets_url_pattern = r'https://docs\.google\.com/spreadsheets/d/([a-zA-Z0-9_-]+)'
-            match = re.search(sheets_url_pattern, identifier)
-            if match:
-                return {"spreadsheet_id": match.group(1)}
-            
-            raise ValueError(f"Invalid Google Sheets identifier format: {identifier}")
-        except ValueError as e:
-            raise ValidationAPIError(
-                message=str(e),
-                field_errors={"identifier": [str(e)]}
-            ) from e
-
-
-# ============================================================================
-# PAGINATION AND FILTERING REQUEST MODELS
-# ============================================================================
-
-class GooglePaginationRequest(BaseModel):
-    """Request model for Google API pagination parameters."""
-    max_results: Optional[int] = Field(default=100, ge=1, le=500, description="Maximum results per page")
-    page_token: Optional[str] = Field(None, description="Page token for pagination")
-
-    def validate_and_normalize(self) -> tuple[int, Optional[str]]:
-        """
-        Validate and return normalized pagination parameters.
-        
-        Returns:
-            Tuple of (max_results, page_token)
-            
-        Raises:
-            ValidationAPIError: If parameters are invalid
-        """
-        try:
-            max_results = self.max_results or 100
-            
-            if max_results < 1 or max_results > 500:
-                raise ValueError("max_results must be between 1 and 500")
-            
-            return max_results, self.page_token
-        except ValueError as e:
-            raise ValidationAPIError(
-                message=str(e),
-                field_errors={"pagination": [str(e)]}
-            ) from e
-
-
-# ============================================================================
-# GOOGLE-SPECIFIC REQUEST MODELS
-# ============================================================================
-
-class GoogleGroupMemberRequest(BaseModel):
-    """Request model for Google group member operations."""
-    group_email: str = Field(..., description="Group email address")
-    member_email: str = Field(..., description="Member email address")
-    role: Optional[str] = Field(default="MEMBER", description="Member role")
-    
-    @validator('group_email', 'member_email')
-    def validate_email_format(cls, v):
-        """Validate email format."""
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, v):
-            raise ValueError("Invalid email format")
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Validate and clean group name."""
+        v = v.strip()
+        if not v:
+            raise ValueError('Group name cannot be empty')
         return v
-    
-    @validator('role')
-    def validate_role(cls, v):
-        """Validate member role."""
-        valid_roles = ["OWNER", "MANAGER", "MEMBER"]
-        if v not in valid_roles:
-            raise ValueError(f"Role must be one of: {', '.join(valid_roles)}")
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and clean description."""
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
         return v
 
 
-class GoogleSheetsRangeRequest(BaseModel):
-    """Request model for Google Sheets range operations."""
-    spreadsheet_id: str = Field(..., description="Spreadsheet ID")
-    range: str = Field(..., description="A1 notation range")
-    
-    @validator('range')
-    def validate_range_format(cls, v):
-        """Validate A1 notation range format."""
-        # Basic A1 notation validation
-        a1_pattern = r'^[A-Z]+[0-9]+:[A-Z]+[0-9]+$|^[A-Z]+:[A-Z]+$|^[0-9]+:[0-9]+$|^[A-Z]+[0-9]+$'
-        if not re.match(a1_pattern, v):
-            raise ValueError("Invalid A1 notation range format")
-        return v
-
-
-class GoogleDrivePermissionRequest(BaseModel):
-    """Request model for Google Drive permission operations."""
-    file_id: str = Field(..., description="File ID")
-    email: str = Field(..., description="User email")
-    role: str = Field(..., description="Permission role")
-    type: str = Field(default="user", description="Permission type")
-    
-    @validator('email')
-    def validate_email_format(cls, v):
-        """Validate email format."""
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, v):
-            raise ValueError("Invalid email format")
-        return v
-    
-    @validator('role')
-    def validate_role(cls, v):
-        """Validate permission role."""
-        valid_roles = ["owner", "organizer", "fileOrganizer", "writer", "commenter", "reader"]
-        if v not in valid_roles:
-            raise ValueError(f"Role must be one of: {', '.join(valid_roles)}")
-        return v
-    
-    @validator('type')
-    def validate_type(cls, v):
-        """Validate permission type."""
-        valid_types = ["user", "group", "domain", "anyone"]
-        if v not in valid_types:
-            raise ValueError(f"Type must be one of: {', '.join(valid_types)}")
-        return v
+# Aliases for backward compatibility
+GetGroupsRequest = GetGoogleGroupsRequest
