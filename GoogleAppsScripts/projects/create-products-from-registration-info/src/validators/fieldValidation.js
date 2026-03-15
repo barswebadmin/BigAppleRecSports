@@ -7,31 +7,27 @@
  * @requires ../helpers/textUtils.gs
  */
 
-// Import references for editor support
-/// <reference path="../config/constants.js" />
-/// <reference path="../helpers/textUtils.js" />
+import { comprehensiveProductCreateFields, irrelevantFieldsForSport } from '../config/constants.js';
 
 /**
  * Check that all required fields are present and valid
+ * @param {Object} parsed - Parsed product data
+ * @returns {{missing: Array<string>}} Object with missing field names
  */
-function checkRequiredFields_(parsed, targetHeadersRaw) {
+export function checkRequiredFields(parsed) {
+  const requiredFields = [
+    'sportName', 'division', 'season', 'year', 'dayOfPlay',
+    'location', 'leagueStartTime', 'leagueEndTime',
+    'seasonStartDate', 'seasonEndDate', 'openRegistrationStartDateTime',
+    'price', 'totalInventory'
+  ];
+
   const missing = [];
-  const targetHeadersNorm = targetHeadersRaw.map(normalizeHeader_);
-
-  for (const reqHeader of REQUIRED_TARGET_HEADERS) {
-    const reqIdx = targetHeadersNorm.indexOf(normalizeHeader_(reqHeader));
-    // Find the object key we intend to write for this header
-    // (reverse lookup using headerMapping)
-    const objKey = headerMapping[reqHeader];
-    if (reqIdx === -1) continue; // header not present in the target sheet
-
-    const val = parsed[objKey];
-    const isBlank =
-      val === '' ||
-      val == null ||
-      (val instanceof Date && isNaN(val.valueOf())); // invalid date
-
-    if (isBlank) missing.push(reqHeader);
+  for (const field of requiredFields) {
+    const value = getNestedFieldValue(parsed, field);
+    if (isFieldValueEmpty(value)) {
+      missing.push(field);
+    }
   }
 
   return { missing };
@@ -44,7 +40,7 @@ function checkRequiredFields_(parsed, targetHeadersRaw) {
  * @param {Object} parsedData - The parsed product creation data object
  * @returns {Array<string>} Array of field names that are missing/unresolved in the parsed data
  */
-function calculateUnresolvedFieldsForParsedData(parsedData) {
+export function calculateUnresolvedFieldsForParsedData(parsedData) {
   if (!parsedData || typeof parsedData !== 'object') {
     console.warn('calculateUnresolvedFieldsForParsedData: Invalid parsedData provided');
     return [...comprehensiveProductCreateFields]; // All fields unresolved if no data
@@ -91,7 +87,7 @@ function calculateUnresolvedFieldsForParsedData(parsedData) {
  * @param {string} fieldName - The field name to retrieve
  * @returns {*} The field value, or undefined if not found
  */
-function getNestedFieldValue(parsedData, fieldName) {
+export function getNestedFieldValue(parsedData, fieldName) {
   // Check flat fields first
   if (parsedData.hasOwnProperty(fieldName)) {
     return parsedData[fieldName];
@@ -119,7 +115,7 @@ function getNestedFieldValue(parsedData, fieldName) {
  * @param {*} value - The value to check
  * @returns {boolean} True if the value should be considered empty/unresolved
  */
-function isFieldValueEmpty(value) {
+export function isFieldValueEmpty(value) {
   // Null or undefined
   if (value == null) {
     return true;

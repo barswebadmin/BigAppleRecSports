@@ -5,50 +5,64 @@
  * @fileoverview Sheet cell mapping and update functionality
  */
 
+import { formatDateForSheet, formatDateTimeForSheet, formatTimeForSheet, formatDateTimeForDisplay } from '../utils/formatting.js';
+
+/**
+ * Stub for go-live request — legacy backend integration not active.
+ * Logs the intent without making an API call.
+ */
+function sendGoLiveRequest(productUrl, goLiveTime) {
+  Logger.log(`[sendGoLiveRequest stub] productUrl=${productUrl}, goLiveTime=${goLiveTime}`);
+  SpreadsheetApp.getUi().alert('Go-Live Scheduled', `Product go-live request logged for: ${productUrl}`, SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
 /**
  * Create a mapping of field keys to their corresponding cell references
  * This allows us to update the original sheet when fields are edited
  */
-function createCellMapping_(sourceSheet, rowNumber, vals) {
+export function createCellMapping(sourceSheet, rowNumber, vals) {
   const mapping = {};
   
   // Map each field to its corresponding cell
   // Note: Some fields may come from multi-field cells or require special handling
   
   // Basic field mappings
-  mapping.sportName = { column: 'A', row: rowNumber, value: vals.A };
-  mapping.dayOfPlay = { column: 'B', row: rowNumber, value: vals.B };
-  mapping.division = { column: 'B', row: rowNumber, value: vals.B };
-  mapping.season = { column: 'B', row: rowNumber, value: vals.B };
-  mapping.year = { column: 'B', row: rowNumber, value: vals.B };
-  mapping.socialOrAdvanced = { column: 'B', row: rowNumber, value: vals.B };
-  mapping.types = { column: 'B', row: rowNumber, value: vals.B };
+  mapping.dayOfPlay = { column: 'A', row: rowNumber, value: vals.A };
+  mapping.division = { column: 'A', row: rowNumber, value: vals.A };
+  mapping.levelOfPlay = { column: 'A', row: rowNumber, value: vals.A };
+  mapping.teamAssignment = { column: 'A', row: rowNumber, value: vals.A };
+  mapping.types = { column: 'A', row: rowNumber, value: vals.A };
   
-  // League details (column C contains multiple fields)
-  mapping.sportSubCategory = { column: 'C', row: rowNumber, value: vals.C };
-  mapping.totalInventory = { column: 'C', row: rowNumber, value: vals.C };
-  mapping.numberVetSpotsToReleaseAtGoLive = { column: 'C', row: rowNumber, value: vals.C };
+  // League details (column B contains multiple fields)
+  mapping.totalInventory = { column: 'B', row: rowNumber, value: vals.B };
+  mapping.numberVetSpotsToReleaseAtGoLive = { column: 'B', row: rowNumber, value: vals.B };
   
   // Season dates
-  mapping.seasonStartDate = { column: 'D', row: rowNumber, value: vals.D };
-  mapping.seasonEndDate = { column: 'E', row: rowNumber, value: vals.E };
+  mapping.seasonStartDate = { column: 'C', row: rowNumber, value: vals.C };
+  mapping.seasonEndDate = { column: 'D', row: rowNumber, value: vals.D };
   
   // Price
-  mapping.price = { column: 'F', row: rowNumber, value: vals.F };
+  mapping.price = { column: 'E', row: rowNumber, value: vals.E };
   
-  // Play times (column G contains multiple fields)
-  mapping.leagueStartTime = { column: 'G', row: rowNumber, value: vals.G };
-  mapping.leagueEndTime = { column: 'G', row: rowNumber, value: vals.G };
-  mapping.alternativeStartTime = { column: 'G', row: rowNumber, value: vals.G };
-  mapping.alternativeEndTime = { column: 'G', row: rowNumber, value: vals.G };
+  // Play times (column F contains multiple fields)
+  mapping.leagueStartTime = { column: 'F', row: rowNumber, value: vals.F };
+  mapping.leagueEndTime = { column: 'F', row: rowNumber, value: vals.F };
+  mapping.alternativeStartTime = { column: 'F', row: rowNumber, value: vals.F };
+  mapping.alternativeEndTime = { column: 'F', row: rowNumber, value: vals.F };
   
   // Location
-  mapping.location = { column: 'H', row: rowNumber, value: vals.H };
+  mapping.location = { column: 'G', row: rowNumber, value: vals.G };
+  
+  // League Contact Email
+  mapping.leagueContactEmail = { column: 'H', row: rowNumber, value: vals.H };
+  
+  // Vet Status Determined By
+  mapping.vetStatusDeterminedBy = { column: 'I', row: rowNumber, value: vals.I };
   
   // Registration dates
-  mapping.earlyRegistrationStartDateTime = { column: 'M', row: rowNumber, value: vals.M };
-  mapping.vetRegistrationStartDateTime = { column: 'N', row: rowNumber, value: vals.N };
-  mapping.openRegistrationStartDateTime = { column: 'O', row: rowNumber, value: vals.O };
+  mapping.vetRegistrationStartDateTime = { column: 'L', row: rowNumber, value: vals.L };
+  mapping.tnbWtnbRegistrationStartDateTime = { column: 'M', row: rowNumber, value: vals.M };
+  mapping.openRegistrationStartDateTime = { column: 'N', row: rowNumber, value: vals.N };
   
   return mapping;
 }
@@ -56,7 +70,7 @@ function createCellMapping_(sourceSheet, rowNumber, vals) {
 /**
  * Update the corresponding cell in the source sheet when a field is edited
  */
-function updateCellInSourceSheet_(fieldKey, newValue, cellMapping, sourceSheet, rowNumber) {
+export function updateCellInSourceSheet(fieldKey, newValue, cellMapping, sourceSheet, rowNumber) {
   try {
     const cellInfo = cellMapping[fieldKey];
     if (!cellInfo) {
@@ -75,20 +89,20 @@ function updateCellInSourceSheet_(fieldKey, newValue, cellMapping, sourceSheet, 
     if (fieldKey === 'seasonStartDate' || fieldKey === 'seasonEndDate') {
       // Convert Date object to MM/DD/YYYY format for display
       if (newValue instanceof Date) {
-        cellValue = formatDateForSheet_(newValue);
+        cellValue = formatDateForSheet(newValue);
       }
     } else if (fieldKey === 'vetRegistrationStartDateTime' || 
-               fieldKey === 'earlyRegistrationStartDateTime' || 
+               fieldKey === 'tnbWtnbRegistrationStartDateTime' || 
                fieldKey === 'openRegistrationStartDateTime') {
       // Convert Date object to MM/DD/YYYY HH:MM AM/PM format for display
       if (newValue instanceof Date) {
-        cellValue = formatDateTimeForSheet_(newValue);
+        cellValue = formatDateTimeForSheet(newValue);
       }
     } else if (fieldKey === 'leagueStartTime' || fieldKey === 'leagueEndTime' ||
                fieldKey === 'alternativeStartTime' || fieldKey === 'alternativeEndTime') {
       // Convert time to HH:MM AM/PM format
       if (newValue instanceof Date) {
-        cellValue = formatTimeForSheet_(newValue);
+        cellValue = formatTimeForSheet(newValue);
       }
     }
     
@@ -102,14 +116,11 @@ function updateCellInSourceSheet_(fieldKey, newValue, cellMapping, sourceSheet, 
 }
 
 /**
- * Write product creation results to columns Q-U
- * Q: Product URL
- * R: Vet Registration Variant Id  
- * S: Early Registration Variant Id
- * T: Open Registration Variant Id
- * U: Waitlist Registration Variant Id
+ * Write product creation results by finding columns by header name in row 1.
+ * Looks up: "Product URL", "Vet Registration Variant ID", "Early Registration Variant ID",
+ *           "Open Registration Variant ID", "Waitlist Registration Variant ID"
  */
-function writeProductCreationResults_(sourceSheet, rowNumber, result) {
+export function writeProductCreationResults(sourceSheet, rowNumber, result) {
   try {
     if (!result.success || !result.data) {
       Logger.log('No successful result data to write to sheet');
@@ -117,41 +128,36 @@ function writeProductCreationResults_(sourceSheet, rowNumber, result) {
     }
 
     const data = result.data;
-    const updates = [];
 
-    // Column Q: Product URL
-    if (data.productUrl) {
-      updates.push({ column: 'Q', value: data.productUrl });
+    // Output columns (Product URL, variant IDs) live in row 1 of the sheet.
+    // Row 2 contains the data-input headers; row 1 has the result/output headers.
+    const lastCol = sourceSheet.getLastColumn();
+    const headers = sourceSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    const colIndex = (name) => {
+      const idx = headers.findIndex(h => h.toString().trim() === name);
+      if (idx === -1) {
+        Logger.log(`⚠️ Column "${name}" not found in header row`);
+        return -1;
+      }
+      return idx + 1; // 1-based
+    };
+
+    const writes = [
+      { name: 'Product URL',                    value: data.productUrl },
+      { name: 'Vet Registration Variant ID',    value: data.veteranVariantGid },
+      { name: 'Early Registration Variant ID',  value: data.earlyVariantGid },
+      { name: 'Open Registration Variant ID',   value: data.openVariantGid },
+      { name: 'Waitlist Registration Variant ID', value: data.waitlistVariantGid },
+    ];
+
+    for (const { name, value } of writes) {
+      if (!value) continue;
+      const col = colIndex(name);
+      if (col === -1) continue;
+      sourceSheet.getRange(rowNumber, col).setValue(value);
+      Logger.log(`Updated "${name}" (col ${col}) row ${rowNumber}: ${value}`);
     }
-
-    // Column R: Vet Registration Variant Id
-    if (data.veteranVariantGid) {
-      updates.push({ column: 'R', value: data.veteranVariantGid });
-    }
-
-    // Column S: Early Registration Variant Id
-    if (data.earlyVariantGid) {
-      updates.push({ column: 'S', value: data.earlyVariantGid });
-    }
-
-    // Column T: Open Registration Variant Id
-    if (data.openVariantGid) {
-      updates.push({ column: 'T', value: data.openVariantGid });
-    }
-
-    // Column U: Waitlist Registration Variant Id
-    if (data.waitlistVariantGid) {
-      updates.push({ column: 'U', value: data.waitlistVariantGid });
-    }
-
-    // Write all updates to the sheet
-    for (const update of updates) {
-      const cellRef = `${update.column}${rowNumber}`;
-      sourceSheet.getRange(cellRef).setValue(update.value);
-      Logger.log(`Updated cell ${cellRef} with value: ${update.value}`);
-    }
-
-    Logger.log(`Successfully wrote ${updates.length} values to row ${rowNumber}`);
 
   } catch (error) {
     Logger.log(`Error writing product creation results: ${error.message}`);
@@ -162,7 +168,7 @@ function writeProductCreationResults_(sourceSheet, rowNumber, result) {
  * Handle checkbox validation for column P (go-live checkbox)
  * This function should be called from an onEdit trigger
  */
-function handleGoLiveCheckboxEdit_(e) {
+export function handleGoLiveCheckboxEdit(e) {
   const ui = SpreadsheetApp.getUi();
   
   try {
@@ -203,10 +209,10 @@ function handleGoLiveCheckboxEdit_(e) {
     
     if (vetRegistrationDate) {
       goLiveTime = vetRegistrationDate;
-      goLiveTimeDisplay = formatDateTimeForDisplay_(vetRegistrationDate);
+      goLiveTimeDisplay = formatDateTimeForDisplay(vetRegistrationDate);
     } else if (earlyRegistrationDate) {
       goLiveTime = earlyRegistrationDate;
-      goLiveTimeDisplay = formatDateTimeForDisplay_(earlyRegistrationDate);
+      goLiveTimeDisplay = formatDateTimeForDisplay(earlyRegistrationDate);
     } else {
       // Uncheck the checkbox and show error
       range.setValue(false);
@@ -223,7 +229,7 @@ function handleGoLiveCheckboxEdit_(e) {
     
     if (confirmResponse === ui.Button.OK) {
       // Send go-live request to backend
-      sendGoLiveRequest_(productUrl, goLiveTime);
+      sendGoLiveRequest(productUrl, goLiveTime);
     } else {
       // Uncheck the checkbox if user cancelled
       range.setValue(false);

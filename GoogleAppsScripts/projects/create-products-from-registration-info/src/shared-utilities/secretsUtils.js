@@ -8,7 +8,7 @@
  * @param {string} key
  * @returns {string}
  */
-function getSecret(key) {
+export function getSecret(key) {
   const value = PropertiesService.getScriptProperties().getProperty(key);
   if (!value) {
     throw new Error(`Secret '${key}' not found. Ensure it's set in Script Properties.`);

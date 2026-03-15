@@ -63,14 +63,14 @@ run_test "Main entry point exists" \
 run_test "parseSourceRowEnhanced_ function exists" \
     "grep -q 'function parseSourceRowEnhanced_' '$PROJECT_DIR/src/parsers/_rowParser.gs'"
 
-run_test "parseColBLeagueBasicInfo_ function exists" \
-    "grep -q 'function parseColBLeagueBasicInfo_' '$PROJECT_DIR/src/parsers/parseColBLeagueBasicInfo_.gs'"
+run_test "parseLeagueBasicInfo_ function exists" \
+    "grep -q 'function parseLeagueBasicInfo_' '$PROJECT_DIR/src/parsers/parseLeagueBasicInfo_.gs'"
 
-run_test "parseColGLeagueTimes_ function exists" \
-    "grep -q 'function parseColGLeagueTimes_' '$PROJECT_DIR/src/parsers/parseColGLeagueTimes_.gs'"
+run_test "parseLeagueTimes_ function exists" \
+    "grep -q 'function parseLeagueTimes_' '$PROJECT_DIR/src/parsers/parseLeagueTimes_.gs'"
 
-run_test "parseColFPrice_ function exists" \
-    "grep -q 'function parseColFPrice_' '$PROJECT_DIR/src/parsers/parseColFPrice_.gs'"
+run_test "parsePrice_ function exists" \
+    "grep -q 'function parsePrice_' '$PROJECT_DIR/src/parsers/parsePrice_.gs'"
 
 run_test "parseDateFlexibleDateOnly_ function exists" \
     "grep -q 'parseDateFlexibleDateOnly_' '$PROJECT_DIR/src/helpers/dateParsers.gs'"
@@ -109,11 +109,11 @@ run_test "parseFlexible_ function exists" \
     "grep -q 'parseFlexible_' '$PROJECT_DIR/src/helpers/dateParsers.gs'"
 
 # Test 8: Location and price parsing
-run_test "parseColHLocation_ function exists" \
-    "grep -q 'function parseColHLocation_' '$PROJECT_DIR/src/parsers/parseColHLocation_.gs'"
+run_test "parseLocation_ function exists" \
+    "grep -q 'function parseLocation_' '$PROJECT_DIR/src/parsers/parseLocation_.gs'"
 
 run_test "Price parsing handles currency symbols" \
-    "grep -A 5 'function parseColFPrice_' '$PROJECT_DIR/src/parsers/parseColFPrice_.gs' | grep -q '\\$\\|parseFloat'"
+    "grep -A 5 'function parsePrice_' '$PROJECT_DIR/src/parsers/parsePrice_.gs' | grep -q '\\$\\|parseFloat'"
 
 # Test 9: Notes and special date parsing
 
@@ -137,17 +137,17 @@ run_test "Menu includes product creation functionality" \
 
 # Test 13: Time parsing functionality
 run_test "Time parsing handles multiple session formats" \
-    "grep -A 10 'parseColGLeagueTimes_' '$PROJECT_DIR/src/parsers/parseColGLeagueTimes_.gs' | grep -q 'league\\|alternative\\|Start\\|End'"
+    "grep -A 10 'parseLeagueTimes_' '$PROJECT_DIR/src/parsers/parseLeagueTimes_.gs' | grep -q 'league\\|alternative\\|Start\\|End'"
 
 run_test "Time parsing creates proper Date objects" \
-    "grep -q 'parseTimeRange_\\|formatTime_' '$PROJECT_DIR/src/parsers/parseColGLeagueTimes_.gs'"
+    "grep -q 'parseTimeRange_\\|formatTime_' '$PROJECT_DIR/src/parsers/parseLeagueTimes_.gs'"
 
 # Test 14: Division and sport category parsing
-run_test "parseColBLeagueBasicInfo extracts division information" \
-    "grep -A 30 'function parseColBLeagueBasicInfo_' '$PROJECT_DIR/src/parsers/parseColBLeagueBasicInfo_.gs' | grep -q 'division'"
+run_test "parseLeagueBasicInfo extracts division information" \
+    "grep -A 30 'function parseLeagueBasicInfo_' '$PROJECT_DIR/src/parsers/parseLeagueBasicInfo_.gs' | grep -q 'division'"
 
-run_test "parseColBLeagueBasicInfo handles sport sub-categories" \
-    "grep -q 'sportSubCategory\\|socialOrAdvanced' '$PROJECT_DIR/src/parsers/parseColBLeagueBasicInfo_.gs'"
+run_test "parseLeagueBasicInfo handles level of play and team assignment" \
+    "grep -q 'levelOfPlay\\|teamAssignment' '$PROJECT_DIR/src/parsers/parseLeagueBasicInfo_.gs'"
 
 # Test 15: Product creation and validation functions
 run_test "sendProductInfoToBackendForCreation function exists" \

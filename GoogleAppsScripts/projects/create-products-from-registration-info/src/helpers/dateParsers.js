@@ -14,7 +14,7 @@
  * @param {string} dateStr - Date string to parse (e.g., "October 15", "10/15")
  * @returns {number} Current year or next year if the date has already passed this year
  */
-function calculateYearIfNotProvided(dateStr) {
+export function calculateYearIfNotProvided(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') {
     return new Date().getFullYear();
   }
@@ -38,7 +38,7 @@ function calculateYearIfNotProvided(dateStr) {
     const textMatch = cleanStr.match(/^([a-zA-Z]+)\s+(\d{1,2})/);
     if (textMatch) {
       const [, monthName, dayStr] = textMatch;
-      month = parseMonthName_(monthName);
+      month = parseMonthName(monthName);
       day = parseInt(dayStr);
     }
   }
@@ -67,9 +67,9 @@ function calculateYearIfNotProvided(dateStr) {
  * @param {string} fieldName - Name of field being parsed (for unresolved tracking)
  * @returns {Date|string} Parsed Date object or empty string if invalid
  */
-function parseDateFlexibleDateOnly_(s, unresolved, fieldName) {
+export function parseDateFlexibleDateOnly(s, unresolved, fieldName) {
   // Accepts "10-19-2025", "9/25/25", "October 12" (assume year = current; if passed already, next year)
-  const d = parseFlexible_(s, { assumeDateOnly: true });
+  const d = parseFlexible(s, { assumeDateOnly: true });
   if (!d) {
     // Date not found - leave fieldName in unresolved array (if provided)
     return '';
@@ -94,14 +94,14 @@ function parseDateFlexibleDateOnly_(s, unresolved, fieldName) {
  * @param {string} fieldName - Name of field being parsed
  * @returns {Date|string} Parsed Date object or empty string if invalid
  */
-function parseDateFlexibleDateTime_(s, fallbackTimeDateOnly, unresolved, fieldName) {
+export function parseDateFlexibleDateTime(s, fallbackTimeDateOnly, unresolved, fieldName) {
   // Enhanced to handle formats like "Sept 16th 7PM", "Weds, Sept. 3rd, 6pm", "8/29/25 @ 7pm"
   if (!s || !s.trim()) return '';
 
   const cleanInput = s.trim();
 
   // Try enhanced parsing first for new formats
-  const enhancedResult = parseEnhancedDateTime_(cleanInput);
+  const enhancedResult = parseEnhancedDateTime(cleanInput);
   if (enhancedResult) {
     // Successfully found datetime - remove from unresolved (if fieldName provided)
     if (fieldName && unresolved) {
@@ -112,10 +112,10 @@ function parseDateFlexibleDateTime_(s, fallbackTimeDateOnly, unresolved, fieldNa
   }
 
   // Fall back to original parsing logic
-  const d = parseFlexible_(s, { assumeDateTime: true });
+  const d = parseFlexible(s, { assumeDateTime: true });
   if (!d) {
     // If it's only a date, use sport start time as the time-of-day
-    const maybeDate = parseFlexible_(s, { assumeDateOnly: true });
+    const maybeDate = parseFlexible(s, { assumeDateOnly: true });
     if (maybeDate && fallbackTimeDateOnly instanceof Date) {
       maybeDate.setHours(fallbackTimeDateOnly.getHours(), fallbackTimeDateOnly.getMinutes(), 0, 0);
 
@@ -146,7 +146,7 @@ function parseDateFlexibleDateTime_(s, fallbackTimeDateOnly, unresolved, fieldNa
  * @param {boolean} useUTC - Whether to return UTC timestamp at 4:00 AM
  * @returns {Date|null} Parsed Date object or null if invalid
  */
-function parseFlexibleDate_(dateStr, useUTC = false) {
+export function parseFlexibleDate(dateStr, useUTC = false) {
   if (!dateStr || typeof dateStr !== 'string') {
     return null;
   }
@@ -156,7 +156,7 @@ function parseFlexibleDate_(dateStr, useUTC = false) {
     return null;
   }
 
-  Logger.log(`parseFlexibleDate_ input: "${dateStr}" (type: ${typeof dateStr}), cleanStr: "${cleanStr}", useUTC: ${useUTC}`);
+  Logger.log(`parseFlexibleDate input: "${dateStr}" (type: ${typeof dateStr}), cleanStr: "${cleanStr}", useUTC: ${useUTC}`);
 
   // Handle various date formats
   try {
@@ -164,11 +164,11 @@ function parseFlexibleDate_(dateStr, useUTC = false) {
     const numericMatch = cleanStr.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
     if (numericMatch) {
       const [, month, day, year] = numericMatch;
-      const normalizedYear = normalizeYear_(parseInt(year));
+      const normalizedYear = normalizeYear(parseInt(year));
       Logger.log(`numericMatch found: month=${month}, day=${day}, year=${year}, normalizedYear=${normalizedYear}`);
       if (useUTC) {
-        const result = createUTCDate_(parseInt(month), parseInt(day), normalizedYear);
-        Logger.log(`createUTCDate_ result: ${result}, toISOString: ${result.toISOString()}`);
+        const result = createUTCDate(parseInt(month), parseInt(day), normalizedYear);
+        Logger.log(`createUTCDate result: ${result}, toISOString: ${result.toISOString()}`);
         return result;
       } else {
         const result = new Date(normalizedYear, parseInt(month) - 1, parseInt(day));
@@ -192,8 +192,8 @@ function parseFlexibleDate_(dateStr, useUTC = false) {
       
       Logger.log(`mmddMatch found: month=${month}, day=${day}, targetYear=${targetYear}`);
       if (useUTC) {
-        const result = createUTCDate_(parseInt(month), parseInt(day), targetYear);
-        Logger.log(`createUTCDate_ (MM/DD) result: ${result}, toISOString: ${result.toISOString()}`);
+        const result = createUTCDate(parseInt(month), parseInt(day), targetYear);
+        Logger.log(`createUTCDate (MM/DD) result: ${result}, toISOString: ${result.toISOString()}`);
         return result;
       } else {
         const result = new Date(targetYear, parseInt(month) - 1, parseInt(day));
@@ -206,13 +206,13 @@ function parseFlexibleDate_(dateStr, useUTC = false) {
     const textMatch = cleanStr.match(/^([a-zA-Z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\s*$/);
     if (textMatch) {
       const [, monthName, day] = textMatch;
-      const month = parseMonthName_(monthName);
+      const month = parseMonthName(monthName);
       if (month) {
         // Use calculateYearIfNotProvided for consistent year logic
         const targetYear = calculateYearIfNotProvided(cleanStr);
 
         if (useUTC) {
-          return createUTCDate_(month, parseInt(day), targetYear);
+          return createUTCDate(month, parseInt(day), targetYear);
         } else {
           return new Date(targetYear, month - 1, parseInt(day));
         }
@@ -247,7 +247,7 @@ function parseFlexibleDate_(dateStr, useUTC = false) {
  * @param {Object} opts - Options object
  * @returns {Date|null} Parsed date or null
  */
-function parseFlexible_(raw, opts) {
+export function parseFlexible(raw, opts) {
   if (!raw) return null;
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -258,7 +258,7 @@ function parseFlexible_(raw, opts) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  input = stripWeekdays_(input);
+  input = stripWeekdays(input);
 
   // Remove periods after month abbreviations and extra commas
   input = input.replace(/\b(january|february|march|april|may|june|july|august|september|october|november|december|sept|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.?\s*,?\s*/gi, '$1 ');
@@ -284,7 +284,7 @@ function parseFlexible_(raw, opts) {
     let year = parseInt(m[3]);
     const timeStr = m[4];
 
-    year = normalizeYear_(year);
+    year = normalizeYear(year);
 
     if (timeStr && opts.assumeDateTime) {
       // Parse time component
@@ -312,7 +312,7 @@ function parseFlexible_(raw, opts) {
     let year = m[3] ? parseInt(m[3]) : calculateYearIfNotProvided(input);
     const timeStr = m[4];
 
-    const month = parseMonthName_(monthName);
+    const month = parseMonthName(monthName);
     if (!month) return null;
 
     if (timeStr && opts.assumeDateTime) {
@@ -341,7 +341,7 @@ function parseFlexible_(raw, opts) {
  * @param {string} input - Input string
  * @returns {string} String with weekdays removed
  */
-function stripWeekdays_(input) {
+export function stripWeekdays(input) {
   return input.replace(/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun),?\s+/i, '');
 }
 
@@ -350,7 +350,7 @@ function stripWeekdays_(input) {
  * @param {number} year - 2 or 4 digit year
  * @returns {number} 4-digit year
  */
-function normalizeYear_(year) {
+export function normalizeYear(year) {
   if (year < 100) {
     // Assume years 00-30 are 2000s, 31-99 are 1900s
     return year <= 30 ? 2000 + year : 1900 + year;
@@ -363,7 +363,7 @@ function normalizeYear_(year) {
  * @param {string} input - Input string to parse
  * @returns {Date|null} Parsed Date object in UTC or null if parsing failed
  */
-function parseEnhancedDateTime_(input) {
+export function parseEnhancedDateTime(input) {
   if (!input || typeof input !== 'string') return null;
 
   // Clean input: remove weekday names, extra punctuation, normalize spacing
@@ -411,7 +411,7 @@ function parseEnhancedDateTime_(input) {
   if (slashMatch) {
     month = parseInt(slashMatch[1]);
     day = parseInt(slashMatch[2]);
-    year = normalizeYear_(parseInt(slashMatch[3]));
+    year = normalizeYear(parseInt(slashMatch[3]));
   } else {
     // Try month name formats: "Sept 16th", "September 16", etc.
     const monthNames = {
@@ -502,7 +502,7 @@ function parseEnhancedDateTime_(input) {
  * @param {string} monthName - Month name (full or abbreviated)
  * @returns {number|null} Month number (1-12) or null if invalid
  */
-function parseMonthName_(monthName) {
+export function parseMonthName(monthName) {
   const months = {
     'january': 1, 'jan': 1,
     'february': 2, 'feb': 2,
@@ -529,7 +529,7 @@ function parseMonthName_(monthName) {
  * @param {number} year - Full year
  * @returns {Date} UTC Date object
  */
-function createUTCDate_(month, day, year) {
+export function createUTCDate(month, day, year) {
   // Create date at 4:00 AM UTC on the same calendar day
   // During DST this represents 00:00 ET for that date; in winter it's 23:00 previous day ET
   return new Date(Date.UTC(year, month - 1, day, 4, 0, 0));

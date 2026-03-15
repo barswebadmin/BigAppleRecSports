@@ -53,7 +53,7 @@ const files = [
   'parsers/dateParser.js',
   'parsers/timeParser.js',
   'parsers/priceParser.js',
-  'parsers/parseColBLeagueBasicInfo_.js',
+  'parsers/parseLeagueBasicInfo.js',
   'parsers/_rowParser.js',
   'core/portedFromProductCreateSheet/createShopifyProduct.js'
 ];
@@ -85,7 +85,7 @@ try {
   };
 
   const unresolved = [];
-  const parsed = vm.runInContext('parseSourceRowEnhanced_(testData, unresolved)',
+  const parsed = vm.runInContext('parseSourceRowEnhanced(testData, unresolved)',
     Object.assign(context, { testData: pickleballData, unresolved }));
 
   const productData = vm.runInContext('convertToProductCreationFormat_(parsed, 14)',
@@ -114,7 +114,7 @@ try {
   }
 
   // Check validation
-  const validation = vm.runInContext('validateRequiredFields_(productData)',
+  const validation = vm.runInContext('validateRequiredFields(productData)',
     Object.assign(context, { productData }));
   console.log(`  Validation valid: ${validation.isValid} ${validation.isValid ? '✅' : '❌'}`);
 
@@ -123,8 +123,8 @@ try {
 
   // Check TBD display in confirmation if validation is valid
   let tbdDisplayCorrect = true;
-  if (validation.isValid && 'buildConfirmationDisplay_' in context) {
-    const display = vm.runInContext('buildConfirmationDisplay_(productData)',
+  if (validation.isValid && 'buildConfirmationDisplay' in context) {
+    const display = vm.runInContext('buildConfirmationDisplay(productData)',
       Object.assign(context, { productData }));
 
     const hasTBDOpening = display.includes('Opening Party Date: TBD');
@@ -166,7 +166,7 @@ try {
   };
 
   const unresolved = [];
-  const parsed = vm.runInContext('parseSourceRowEnhanced_(testData, unresolved)',
+  const parsed = vm.runInContext('parseSourceRowEnhanced(testData, unresolved)',
     Object.assign(context, { testData: dodgeballData, unresolved }));
 
   console.log(`  Registration parsing results:`);
@@ -193,7 +193,7 @@ try {
   }
 
   // Validation should fail due to missing total inventory
-  const validation = vm.runInContext('validateRequiredFields_(productData)',
+  const validation = vm.runInContext('validateRequiredFields(productData)',
     Object.assign(context, { productData }));
   const shouldFail = !validation.isValid && validation.missingFields.includes('Total Inventory');
   console.log(`  Should fail validation: ${shouldFail} ${shouldFail ? '✅' : '❌'}`);
@@ -230,7 +230,7 @@ try {
   };
 
   const unresolved = [];
-  const parsed = vm.runInContext('parseSourceRowEnhanced_(testData, unresolved)',
+  const parsed = vm.runInContext('parseSourceRowEnhanced(testData, unresolved)',
     Object.assign(context, { testData: bowlingData, unresolved }));
 
   const productData = vm.runInContext('convertToProductCreationFormat_(parsed, 5)',
@@ -254,7 +254,7 @@ try {
   }
 
   // Check that bowling doesn't show social/advanced in confirmation
-  const display = vm.runInContext('buildConfirmationDisplay_(productData)',
+  const display = vm.runInContext('buildConfirmationDisplay(productData)',
     Object.assign(context, { productData }));
   const hiddenFields = !display.includes('Social or Advanced:') && !display.includes('New Player Orientation:');
   console.log(`  Hides Social/Advanced and Orientation for bowling: ${hiddenFields ? '✅' : '❌'}`);

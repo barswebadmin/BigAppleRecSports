@@ -6,86 +6,94 @@
  * @requires ../config/constants.gs
  * @requires ../helpers/normalizers.gs
  * @requires ../helpers/textUtils.gs
- * @requires parseColBLeagueBasicInfo_.gs
- * @requires parseColCLeagueDetails_.gs
- * @requires parseColDESeasonDates_.gs
+ * @requires parseLeagueBasicInfo.gs
+ * @requires parseLeagueDetails.gs
+ * @requires parseSeasonDates.gs
  * @requires timeParser.gs
  * @requires ../helpers/dateParsers.gs
- * @requires parseColFPrice_.gs
- * @requires parseColHLocation_.gs
- * @requires parseColMNORegistrationDates_.gs
+ * @requires parsePrice.gs
+ * @requires parseLocation.gs
+ * @requires parseRegistrationDates.gs
  */
 
-// Import references for editor support
-/// <reference path="../config/constants.js" />
-/// <reference path="../helpers/normalizers.js" />
-/// <reference path="../helpers/textUtils.js" />
-/// <reference path="parseColBLeagueBasicInfo_.js" />
-/// <reference path="parseColCLeagueDetails_.js" />
-/// <reference path="parseColDESeasonDates.js" />
-/// <reference path="../helpers/dateParsers.js" />
-/// <reference path="parseColFPrice_.js" />
-/// <reference path="parseColGLeagueTimes_.js" />
-/// <reference path="parseColHLocation_.js" />
-/// <reference path="parseColMNORegistrationDates_.js" />
+import { parseLeagueBasicInfo } from './parseLeagueBasicInfo.js';
+import { parseLeagueDetails } from './parseLeagueDetails.js';
+import { parseSeasonDates } from './parseSeasonDates.js';
+import { parsePrice } from './parsePrice.js';
+import { parseLeagueTimes } from './parseLeagueTimes.js';
+import { parseLocation } from './parseLocation.js';
+import { parseRegistrationDates } from './parseRegistrationDates.js';
 
 
 /**
  * Parse a complete source row into structured data
- * @param {Object} v - Raw values object with columns A-O
- * @param {string} v.A - Sport name
- * @param {string} v.B - Day and flags
- * @param {string} v.C - Notes and details
- * @param {string} v.D - Season start date
- * @param {string} v.E - Season end date
- * @param {string} v.F - Price
- * @param {string} v.G - Times
- * @param {string} v.H - Location
- * @param {string} v.M - Veteran registration
- * @param {string} v.N - Early registration
- * @param {string} v.O - Open registration
+ * Headers are expected on row 2, data starts on row 3
+ * 
+ * Column Headers (A-N):
+ * A: DAY OF WEEK Type of Play/League
+ * B: League Details
+ * C: Season Start Date
+ * D: Season End Date
+ * E: Price
+ * F: League Play Time(s)
+ * G: Location (Field / Court / Lane)
+ * H: League Contact Email(s)
+ * I: How Vet Status is Determined
+ * J: Additional Information?
+ * K: Sport Wide-specific questions you want during registration:
+ * L: Vet Register
+ * M: WTNB/BIPOC/TNB Register
+ * N: Open Register
+ * 
+ * @param {Object} v - Raw values object with columns A-N
+ * @param {string} v.A - Day of Week and Type of Play/League
+ * @param {string} v.B - League Details
+ * @param {string} v.C - Season Start Date
+ * @param {string} v.D - Season End Date
+ * @param {string} v.E - Price
+ * @param {string} v.F - League Play Time(s)
+ * @param {string} v.G - Location (Field / Court / Lane)
+ * @param {string} v.L - Vet Register
+ * @param {string} v.M - WTNB/BIPOC/TNB Register
+ * @param {string} v.N - Open Register
  * @returns {{parsed: Object, unresolved: Array<string>}} Parsed data object and unresolved fields array
  */
-function parseSourceRowEnhanced_(v) {
+export function parseSourceRowEnhanced(v, sportNameOverride) {
 
   const productCreateData = {};
 
-  const sportName = normalizeSport_(capitalize(v.A.trim(), true));
+  // Sport name comes from the sheet tab name (passed in from parseRowDataForProductCreation)
+  // Falls back to 'Kickball' if not provided
+  const sportName = sportNameOverride || 'Kickball';
   productCreateData.sportName = sportName;
 
-  const { dayOfPlay, division, sportSubCategory, socialOrAdvanced, types } =
-  parseColBLeagueBasicInfo_(v.B, sportName);
+  const { dayOfPlay, division, levelOfPlay, teamAssignment, dodgeballBallType } =
+  parseLeagueBasicInfo(v.A, sportName);
 
   productCreateData.dayOfPlay = dayOfPlay;
   productCreateData.division = division;
-  productCreateData.sportSubCategory = sportSubCategory;
-  productCreateData.socialOrAdvanced = socialOrAdvanced;
-  productCreateData.types = types;
+  productCreateData.levelOfPlay = levelOfPlay;
+  productCreateData.teamAssignment = teamAssignment;
+  productCreateData.dodgeballBallType = dodgeballBallType;
 
-  // Column C parsing (league details, etc.)
-  const { closingPartyDate, offDates, tournamentDate, totalInventory, typesHint } = parseColCLeagueDetails_(v.C);
-
-  // Set additional variables for the parsed structure
-  const newPlayerOrientationDateTime = null; // TODO: Implement orientation parsing
-  const scoutNightDateTime = null; // TODO: Implement scout night parsing
-  const openingPartyDate = null; // TODO: Implement opening party parsing
-  const rainDate = null; // TODO: Implement rain date parsing
+  // Column B parsing (league details, etc.)
+  const { totalWeeks, newPlayerOrientationDateTime, scoutNightDateTime, openingPartyDate, rainDate, closingPartyDate, offDates, totalInventory, gameDuration } = parseLeagueDetails(v.B);
 
 
-  // Season dates (D/E)
+  // Season dates (C/D)
   const { season, year, seasonStartDate, seasonEndDate } =
-    parseColDESeasonDates_(v.D, v.E);
+    parseSeasonDates(v.C, v.D);
   productCreateData.season = season;
   productCreateData.year = year;
   productCreateData.seasonStartDate = seasonStartDate;
   productCreateData.seasonEndDate = seasonEndDate;
 
-  // Price (F) numeric
-  const { price } = parseColFPrice_(v.F);
+  // Price (E) numeric
+  const { price } = parsePrice(v.E);
   productCreateData.price = price;
 
-  // Time range (G)
-  const { leagueStartTime, leagueEndTime, alternativeStartTime, alternativeEndTime } = parseColGLeagueTimes_(v.G);
+  // Time range (F)
+  const { leagueStartTime, leagueEndTime, alternativeStartTime, alternativeEndTime } = parseLeagueTimes(v.F);
   productCreateData.leagueStartTime = leagueStartTime;
   productCreateData.leagueEndTime = leagueEndTime;
   productCreateData.alternativeStartTime = alternativeStartTime;
@@ -93,30 +101,40 @@ function parseSourceRowEnhanced_(v) {
 
 
 
-  // Location (H) parsed
-  const { location } = parseColHLocation_(v.H, sportName);
-  productCreateData.location = location;
+  // Location (G) parsed - returns {raw, formatted} object
+  const locationResult = parseLocation(v.G, sportName);
+  productCreateData.location = locationResult.location;
 
-  // Registration windows (M/N/O) -> Date objects with seconds
+  // League Contact Email(s) (H) - raw email string
+  const leagueContactEmail = v.H ? v.H.trim() : null;
+  productCreateData.leagueContactEmail = leagueContactEmail;
 
-  const {earlyRegistrationStartDateTime, vetRegistrationStartDateTime, openRegistrationStartDateTime, numberVetSpotsToReleaseAtGoLive} = parseColMNORegistrationDates_(v.M, v.N, v.O, totalInventory);
+  // How Vet Status is Determined (I) - string to use in vet registration description
+  const vetStatusDeterminedBy = v.I ? v.I.trim() : 'most recent season';
+  productCreateData.vetStatusDeterminedBy = vetStatusDeterminedBy;
+
+  // Registration windows (L/M/N) -> Date objects with seconds
+
+  const {vetRegistrationStartDateTime, tnbWtnbRegistrationStartDateTime, openRegistrationStartDateTime} = parseRegistrationDates(v.L, v.M, v.N, totalInventory);
 
 
   const parsed = {
-    sportName,
-    division,
-    season,
-    year,
-    dayOfPlay,
-    location,
+    sportName: productCreateData.sportName,
+    division: productCreateData.division,
+    season: productCreateData.season,
+    year: productCreateData.year,
+    dayOfPlay: productCreateData.dayOfPlay,
+    location: productCreateData.location,
+    leagueContactEmail: productCreateData.leagueContactEmail,
+    vetStatusDeterminedBy: productCreateData.vetStatusDeterminedBy,
     optionalLeagueInfo: {
-      socialOrAdvanced,
-      sportSubCategory,
-      types: Array.isArray(types) && types.length ? types : (typesHint || [])
+      levelOfPlay: productCreateData.levelOfPlay,
+      teamAssignment: productCreateData.teamAssignment,
+      dodgeballBallType: productCreateData.dodgeballBallType
     },
     importantDates: {
-      seasonStartDate,
-      seasonEndDate,
+      seasonStartDate: productCreateData.seasonStartDate,
+      seasonEndDate: productCreateData.seasonEndDate,
       offDates,
       newPlayerOrientationDateTime,
       scoutNightDateTime,
@@ -124,17 +142,18 @@ function parseSourceRowEnhanced_(v) {
       rainDate,
       closingPartyDate,
       vetRegistrationStartDateTime,
-      earlyRegistrationStartDateTime,
+      tnbWtnbRegistrationStartDateTime,
       openRegistrationStartDateTime
     },
-    leagueStartTime,
-    leagueEndTime,
-    alternativeStartTime,
-    alternativeEndTime,
+    leagueStartTime: productCreateData.leagueStartTime,
+    leagueEndTime: productCreateData.leagueEndTime,
+    alternativeStartTime: productCreateData.alternativeStartTime,
+    alternativeEndTime: productCreateData.alternativeEndTime,
+    gameDuration,
     inventoryInfo: {
-      price,
+      price: productCreateData.price,
       totalInventory,
-      numberVetSpotsToReleaseAtGoLive
+      totalWeeks
     }
   };
 

@@ -1,7 +1,7 @@
 /**
  * Display instructions for the Parse Registration Info script
  */
-function showInstructions() {
+export function showInstructions() {
   SpreadsheetApp.getUi().alert(
     "📊 BARS Sport Registration Parser\n\n" +
     "📋 What this script does:\n" +

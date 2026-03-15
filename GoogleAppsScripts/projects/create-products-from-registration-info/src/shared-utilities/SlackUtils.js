@@ -11,7 +11,7 @@
  * @param {string} purpose - Purpose of the token (defaults to 'general')
  * @returns {string} - Slack bot token
  */
-function getSlackBotToken(purpose = 'general') {
+export function getSlackBotToken(purpose = 'general') {
   const tokenMap = {
     'refunds': 'SLACK_BOT_TOKEN_REFUNDS',
     'leadership': 'SLACK_BOT_TOKEN_LEADERSHIP',
@@ -42,7 +42,7 @@ function getSlackBotToken(purpose = 'general') {
  * Get Slack refunds channel configuration (MODE-aware for process-refunds-exchanges)
  * @returns {Object} - Channel configuration {name, channelId, bearerToken}
  */
-function getSlackRefundsChannel() {
+export function getSlackRefundsChannel() {
   // Check if MODE is defined (for process-refunds-exchanges project)
   if (typeof MODE !== 'undefined') {
     return MODE.includes('prod') ?
@@ -71,7 +71,7 @@ function getSlackRefundsChannel() {
  * Get joe-test channel configuration
  * @returns {Object} - Channel configuration
  */
-function getJoeTestChannel() {
+export function getJoeTestChannel() {
   try {
     const channelId = PropertiesService.getScriptProperties().getProperty('SLACK_CHANNEL_JOE_TEST');
     const bearerToken = getSlackBotToken('waitlist');
@@ -148,7 +148,7 @@ const getSlackGroupId = productTitle => {
  * @param {Object} message - Message object {text, blocks}
  * @returns {Object} - Response from Slack API
  */
-function sendSlackMessage(destination, message) {
+export function sendSlackMessage(destination, message) {
   if (!destination || !destination.channelId || !destination.bearerToken) {
     Logger.log("❌ Invalid Slack destination configuration");
     return { success: false, error: "Invalid destination configuration" };
@@ -198,7 +198,7 @@ function sendSlackMessage(destination, message) {
  * @param {Object} updatedPayload - Updated message payload
  * @returns {Object} - Response object {ok, data?, error?}
  */
-function updateSlackMessage(destination, updatedPayload) {
+export function updateSlackMessage(destination, updatedPayload) {
   const slackApiUrl = "https://slack.com/api/chat.update";
 
   const options = {
@@ -457,7 +457,7 @@ const createRestockInventoryButtons = ({ orderId, refundAmount, formattedOrderNu
  * @param {string} reason - Validation failure reason
  * @param {string} productHandle - Product handle that was checked
  */
-function sendWaitlistValidationError(league, email, reason, productHandle) {
+export function sendWaitlistValidationError(league, email, reason, productHandle) {
   try {
     const channel = getJoeTestChannel();
     if (!channel) {

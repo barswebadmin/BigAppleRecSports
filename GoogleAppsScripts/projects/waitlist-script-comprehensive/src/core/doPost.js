@@ -1,6 +1,5 @@
 import { DEBUG_EMAIL } from '../config/constants';
 import { handleCheckWaitlistPosition } from '../handlers/checkWaitlistPosition';
-import { handleIncomingPostRequest } from '../helpers/handleIncomingPostRequest';
 
 /**
  * Main POST endpoint router
@@ -99,7 +98,7 @@ function doPost(e) {
     
     try {
       Logger.log(`🔍 [${timestamp}] Determining request type...`);
-      const requestType = determineRequestType(e, payload);
+      const requestType = determineRequestType(payload);
       requestContext.requestType = requestType;
       Logger.log(`✅ [${timestamp}] Detected request type: ${requestType}`);
     } catch (typeError) {
@@ -143,23 +142,6 @@ function doPost(e) {
     let result;
     try {
       switch (requestContext.requestType) {
-        case 'SHOPIFY_WEBHOOK':
-          Logger.log(`🔀 [${timestamp}] Shopify webhooks not yet implemented`);
-          return createErrorResponse({
-            status: 'error',
-            message: 'Shopify webhooks not yet implemented',
-            hint: 'This endpoint currently supports: add product requests and check waitlist requests'
-          });
-        
-        case 'ADD_PRODUCT': {
-          Logger.log(`🔀 [${timestamp}] Routing to: Add Product To Form Handler`);
-          requestContext.handlerCalled = 'handleIncomingPostRequest';
-          Logger.log(`   Calling handler with payload keys: ${Object.keys(payload).join(', ')}`);
-          result = handleIncomingPostRequest(payload);
-          Logger.log(`✅ [${timestamp}] Handler completed successfully`);
-          return createSuccessResponse(result);
-        }
-        
         case 'CHECK_WAITLIST':
           Logger.log(`🔀 [${timestamp}] Routing to: Check Waitlist Position Handler`);
           requestContext.handlerCalled = 'handleCheckWaitlistPosition';
@@ -174,20 +156,12 @@ function doPost(e) {
           return createErrorResponse({
             status: 'error',
             message: 'Unrecognized request type',
-            hint: 'Expected: Shopify webhook, add product request, or check waitlist request',
+            hint: 'Expected: check waitlist request with email and league fields',
             providedFields: Object.keys(payload),
-            examples: {
-              addProduct: {
-                productUrl: 'https://example.com/products/handle',
-                sport: 'Kickball',
-                day: 'Sunday',
-                division: 'Open'
-              },
-              checkWaitlist: {
-                email: 'user@example.com',
-                league: 'Kickball - Sunday - Open Division',
-                productUrl: 'https://example.com/products/handle'
-              }
+            example: {
+              email: 'user@example.com',
+              league: 'Kickball - Sunday - Open Division',
+              productUrl: 'https://example.com/products/handle'
             }
           });
       }
@@ -290,42 +264,11 @@ function doPost(e) {
 }
 
 /**
- * Determine request type based on payload and headers
- * @param {Object} e - Request event object
+ * Determine request type based on payload
  * @param {Object} payload - Parsed request payload
- * @returns {string} - Request type: 'SHOPIFY_WEBHOOK', 'ADD_PRODUCT', 'CHECK_WAITLIST', or 'UNKNOWN'
+ * @returns {string} - Request type: 'CHECK_WAITLIST' or 'UNKNOWN'
  */
 function determineRequestType(e, payload) {
-  // Check for Shopify webhook
-  const headers = e?.parameter || {};
-  const hasShopifyHeaders = !!(
-    headers['X-Shopify-Hmac-SHA256'] ||
-    headers['X-Shopify-Topic'] ||
-    headers['X-Shopify-Shop-Domain']
-  );
-  const hasShopifyPayloadStructure = !!(
-    payload.id &&
-    payload.title &&
-    payload.handle &&
-    payload.variants
-  );
-  if (hasShopifyHeaders || hasShopifyPayloadStructure) {
-    return 'SHOPIFY_WEBHOOK';
-  }
-  
-  // Check for add product request
-  const hasProductUrl = Object.hasOwn(payload, 'productUrl') && payload.productUrl;
-  const hasAtLeastOneField = !!(
-    payload.sport ||
-    payload.day ||
-    payload.division ||
-    payload.otherIdentifier
-  );
-  if (hasProductUrl && hasAtLeastOneField) {
-    return 'ADD_PRODUCT';
-  }
-  
-  // Check for waitlist position check
   if (payload.email && payload.league) {
     return 'CHECK_WAITLIST';
   }

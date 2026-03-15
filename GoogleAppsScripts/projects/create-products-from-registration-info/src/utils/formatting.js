@@ -6,10 +6,12 @@
  * @requires ../helpers/formatValidators.gs
  */
 
+import { formatDateMdYY, formatDateTimeMdYYhm } from '../helpers/formatValidators.js';
+
 /**
  * Helper function to format values for display with specific formatting rules
  */
-function formatValue(value, label, formatType = 'default') {
+export function formatValue(value, label, formatType = 'default') {
   // Handle TBD values specially first, before checking for empty
   if (value === 'TBD' || (typeof value === 'string' && value.trim().toUpperCase() === 'TBD')) {
     return `${label}: TBD`;
@@ -41,13 +43,13 @@ function formatValue(value, label, formatType = 'default') {
       return `${label}: ${value}`;
     case 'datetime':
       if (value instanceof Date) {
-        return `${label}: ${formatDateTimeMdYYhm_(value)}`;
+        return `${label}: ${formatDateTimeMdYYhm(value)}`;
       } else if (typeof value === 'string' && value.trim()) {
         // Try to parse ISO date strings
         if (value.includes('T') && (value.includes('Z') || value.includes('+'))) {
           try {
             const dateObj = new Date(value);
-            return `${label}: ${formatDateTimeMdYYhm_(dateObj)}`;
+            return `${label}: ${formatDateTimeMdYYhm(dateObj)}`;
           } catch {
             return `${label}: ${value}`;
           }
@@ -57,13 +59,13 @@ function formatValue(value, label, formatType = 'default') {
       return `${label}: [Not Found]`;
     case 'date':
       if (value instanceof Date) {
-        return `${label}: ${formatDateMdYY_(value)}`;
+        return `${label}: ${formatDateMdYY(value)}`;
       } else if (typeof value === 'string' && value.trim()) {
         // Try to parse ISO date strings
         if (value.includes('T') && (value.includes('Z') || value.includes('+'))) {
           try {
             const dateObj = new Date(value);
-            return `${label}: ${formatDateMdYY_(dateObj)}`;
+            return `${label}: ${formatDateMdYY(dateObj)}`;
           } catch {
             return `${label}: ${value}`;
           }
@@ -82,7 +84,7 @@ function formatValue(value, label, formatType = 'default') {
 /**
  * Format date for sheet display (MM/DD/YYYY)
  */
-function formatDateForSheet_(date) {
+export function formatDateForSheet(date) {
   if (!(date instanceof Date)) return date;
   const month = date.getMonth() + 1;
   const day = date.getDate();
@@ -93,7 +95,7 @@ function formatDateForSheet_(date) {
 /**
  * Format datetime for sheet display (MM/DD/YYYY HH:MM AM/PM)
  */
-function formatDateTimeForSheet_(date) {
+export function formatDateTimeForSheet(date) {
   if (!(date instanceof Date)) return date;
   const month = date.getMonth() + 1;
   const day = date.getDate();
@@ -109,7 +111,7 @@ function formatDateTimeForSheet_(date) {
 /**
  * Format time for sheet display (HH:MM AM/PM)
  */
-function formatTimeForSheet_(date) {
+export function formatTimeForSheet(date) {
   if (!(date instanceof Date)) return date;
   const hours = date.getHours();
   const minutes = date.getMinutes();
@@ -122,7 +124,7 @@ function formatTimeForSheet_(date) {
 /**
  * Format datetime for display (M/d/yy at H:mm AM/PM)
  */
-function formatDateTimeForDisplay_(date) {
+export function formatDateTimeForDisplay(date) {
   if (!(date instanceof Date)) return date;
   
   const month = date.getMonth() + 1;
@@ -140,7 +142,7 @@ function formatDateTimeForDisplay_(date) {
 /**
  * Format time for display
  */
-function formatTimeForDisplay_(value) {
+export function formatTimeForDisplay(value) {
   if (value instanceof Date) {
     return value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   } else if (typeof value === 'string' && value.includes(':')) {

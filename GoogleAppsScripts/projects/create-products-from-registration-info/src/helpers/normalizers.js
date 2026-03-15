@@ -7,16 +7,15 @@
  * @requires textUtils.gs
  */
 
-// Import references for editor support
-/// <reference path="../config/constants.js" />
-/// <reference path="textUtils.js" />
+import { capitalize } from './textUtils.js';
+import { productFieldEnums } from '../config/constants.js';
 
 /**
  * Normalize sport name to canonical form
  */
 
 // biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
-function normalizeSport_(s) {
+export function normalizeSport(s) {
   const IN = (s || '').trim();
   if (!IN) return '';
 
@@ -37,7 +36,7 @@ function normalizeSport_(s) {
  */
 
 // biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
-function  normalizeDay_(dayRaw) {
+export function  normalizeDay(dayRaw) {
   const day = (dayRaw || '').trim();
   if (!day) return '';
 
@@ -60,7 +59,7 @@ function  normalizeDay_(dayRaw) {
  */
 
 // biome-ignore lint/correctness/noUnusedVariables: <this is called in the flow from menu item click>
-function  deriveSeasonYearFromDate_(d) {
+export function  deriveSeasonYearFromDate(d) {
   if (!(d instanceof Date) || Number.isNaN(d)) return { season: '', year: '' };
   const month = d.getMonth()+1;
   const year = d.getFullYear();
@@ -79,7 +78,7 @@ function  deriveSeasonYearFromDate_(d) {
  */
 
 // biome-ignore lint/correctness/noUnusedVariables: <used in createShopifyProduct flow>
-function validProductCreateRequest_(data) {
+export function validProductCreateRequest(data) {
   const IN = data || {};
   const out = JSON.parse(JSON.stringify(IN)); // shallow clone for GAS
 
@@ -105,13 +104,13 @@ function validProductCreateRequest_(data) {
   if (out.alternativeEndTime != null && out.regularSeasonBasicDetails.alternativeEndTime == null) out.regularSeasonBasicDetails.alternativeEndTime = out.alternativeEndTime;
 
   // OptionalLeagueInfo
-  if (out.socialOrAdvanced != null && out.optionalLeagueInfo.socialOrAdvanced == null) out.optionalLeagueInfo.socialOrAdvanced = out.socialOrAdvanced;
-  if (out.sportSubCategory != null && out.optionalLeagueInfo.sportSubCategory == null) out.optionalLeagueInfo.sportSubCategory = out.sportSubCategory;
-  if (out.types != null && out.optionalLeagueInfo.types == null) out.optionalLeagueInfo.types = out.types;
+  if (out.levelOfPlay != null && out.optionalLeagueInfo.levelOfPlay == null) out.optionalLeagueInfo.levelOfPlay = out.levelOfPlay;
+  if (out.teamAssignment != null && out.optionalLeagueInfo.teamAssignment == null) out.optionalLeagueInfo.teamAssignment = out.teamAssignment;
+  if (out.dodgeballBallType != null && out.optionalLeagueInfo.dodgeballBallType == null) out.optionalLeagueInfo.dodgeballBallType = out.dodgeballBallType;
 
   // ImportantDates
   const dateKeys = [
-    'seasonStartDate','seasonEndDate','vetRegistrationStartDateTime','earlyRegistrationStartDateTime','openRegistrationStartDateTime',
+    'seasonStartDate','seasonEndDate','vetRegistrationStartDateTime','tnbWtnbRegistrationStartDateTime','openRegistrationStartDateTime',
     'newPlayerOrientationDateTime','scoutNightDateTime','openingPartyDate','rainDate','closingPartyDate','offDates'
   ];
   for (let i = 0; i < dateKeys.length; i++) {
@@ -122,7 +121,7 @@ function validProductCreateRequest_(data) {
   // InventoryInfo
   if (out.price != null && out.inventoryInfo.price == null) out.inventoryInfo.price = out.price;
   if (out.totalInventory != null && out.inventoryInfo.totalInventory == null) out.inventoryInfo.totalInventory = out.totalInventory;
-  if (out.numberVetSpotsToReleaseAtGoLive != null && out.inventoryInfo.numberVetSpotsToReleaseAtGoLive == null) out.inventoryInfo.numberVetSpotsToReleaseAtGoLive = out.numberVetSpotsToReleaseAtGoLive;
+  if (out.totalWeeks != null && out.inventoryInfo.totalWeeks == null) out.inventoryInfo.totalWeeks = out.totalWeeks;
 
   // Minimal shape validation (frontend preflight)
   const missing = [];
@@ -154,10 +153,10 @@ function validProductCreateRequest_(data) {
 
 /**
  * Canonicalize product data into backend-like nested shape for display only.
- * Same field moves as validProductCreateRequest_ but without validation/throws.
+ * Same field moves as validProductCreateRequest but without validation/throws.
  */
 // biome-ignore lint/correctness/noUnusedVariables: <used for display before confirm>
-function canonicalizeForDisplay_(data) {
+export function canonicalizeForDisplay(data) {
   const IN = data || {};
   const out = JSON.parse(JSON.stringify(IN));
 
@@ -178,12 +177,12 @@ function canonicalizeForDisplay_(data) {
   if (out.alternativeStartTime != null && out.regularSeasonBasicDetails.alternativeStartTime == null) out.regularSeasonBasicDetails.alternativeStartTime = out.alternativeStartTime;
   if (out.alternativeEndTime != null && out.regularSeasonBasicDetails.alternativeEndTime == null) out.regularSeasonBasicDetails.alternativeEndTime = out.alternativeEndTime;
 
-  if (out.socialOrAdvanced != null && out.optionalLeagueInfo.socialOrAdvanced == null) out.optionalLeagueInfo.socialOrAdvanced = out.socialOrAdvanced;
-  if (out.sportSubCategory != null && out.optionalLeagueInfo.sportSubCategory == null) out.optionalLeagueInfo.sportSubCategory = out.sportSubCategory;
-  if (out.types != null && out.optionalLeagueInfo.types == null) out.optionalLeagueInfo.types = out.types;
+  if (out.levelOfPlay != null && out.optionalLeagueInfo.levelOfPlay == null) out.optionalLeagueInfo.levelOfPlay = out.levelOfPlay;
+  if (out.teamAssignment != null && out.optionalLeagueInfo.teamAssignment == null) out.optionalLeagueInfo.teamAssignment = out.teamAssignment;
+  if (out.dodgeballBallType != null && out.optionalLeagueInfo.dodgeballBallType == null) out.optionalLeagueInfo.dodgeballBallType = out.dodgeballBallType;
 
   const dateKeys = [
-    'seasonStartDate','seasonEndDate','vetRegistrationStartDateTime','earlyRegistrationStartDateTime','openRegistrationStartDateTime',
+    'seasonStartDate','seasonEndDate','vetRegistrationStartDateTime','tnbWtnbRegistrationStartDateTime','openRegistrationStartDateTime',
     'newPlayerOrientationDateTime','scoutNightDateTime','openingPartyDate','rainDate','closingPartyDate','offDates'
   ];
   for (let i = 0; i < dateKeys.length; i++) {
@@ -193,7 +192,7 @@ function canonicalizeForDisplay_(data) {
 
   if (out.price != null && out.inventoryInfo.price == null) out.inventoryInfo.price = out.price;
   if (out.totalInventory != null && out.inventoryInfo.totalInventory == null) out.inventoryInfo.totalInventory = out.totalInventory;
-  if (out.numberVetSpotsToReleaseAtGoLive != null && out.inventoryInfo.numberVetSpotsToReleaseAtGoLive == null) out.inventoryInfo.numberVetSpotsToReleaseAtGoLive = out.numberVetSpotsToReleaseAtGoLive;
+  if (out.totalWeeks != null && out.inventoryInfo.totalWeeks == null) out.inventoryInfo.totalWeeks = out.totalWeeks;
 
   return out;
 }

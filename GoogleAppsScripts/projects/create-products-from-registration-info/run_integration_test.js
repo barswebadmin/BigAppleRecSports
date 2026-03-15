@@ -149,7 +149,7 @@ try {
   const parsers = [
     'timeParser.js',
     'priceParser.js',
-    'parseColBLeagueDetails.js',
+    'parseLeagueDetails.js',
     'parseRowC.js',
     'parseSeasonDates.js',
     '_rowParser.js'  // Main parser last

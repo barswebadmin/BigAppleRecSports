@@ -3,5 +3,5 @@
  * Delegates to shared GAS esbuild tool
  */
 
-require('../../../../scripts/deployment/google/build.js');
+require('../../../scripts/deployment/google/build.js');
 

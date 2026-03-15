@@ -43,13 +43,13 @@ loadGasFile('helpers/formatValidators.js');
 loadGasFile('helpers/normalizers.js');
 loadGasFile('helpers/textUtils.js');
 loadGasFile('parsers/_rowParser.js');
-loadGasFile('parsers/parseColBLeagueBasicInfo_.js');
-loadGasFile('parsers/parseColCLeagueDetails_.js');
-loadGasFile('parsers/parseColDESeasonDates.js');
-loadGasFile('parsers/parseColFPrice_.js');
-loadGasFile('parsers/parseColGLeagueTimes_.js');
-loadGasFile('parsers/parseColMNORegistrationDates_.js');
-loadGasFile('parsers/parseColHLocation_.js');
+loadGasFile('parsers/parseLeagueBasicInfo.js');
+loadGasFile('parsers/parseLeagueDetails.js');
+loadGasFile('parsers/parseSeasonDates.js');
+loadGasFile('parsers/parsePrice.js');
+loadGasFile('parsers/parseLeagueTimes.js');
+loadGasFile('parsers/parseRegistrationDates.js');
+loadGasFile('parsers/parseLocation.js');
 // dateUtils moved to top-level GoogleAppsScripts/shared-utilities in repo root
 // For the consolidated runner, we can skip this or load the shared utils if needed
 const sharedUtilsPath = path.resolve(__dirname, '../../shared-utilities/dateUtils.js');

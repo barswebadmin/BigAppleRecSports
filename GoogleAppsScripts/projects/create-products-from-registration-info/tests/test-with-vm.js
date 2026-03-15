@@ -53,7 +53,7 @@ const files = [
   'parsers/dateParser.js',
   'parsers/timeParser.js',
   'parsers/priceParser.js',
-  'parsers/parseColBLeagueBasicInfo_.js',
+  'parsers/parseLeagueBasicInfo.js',
   'parsers/_rowParser.js',
   'core/portedFromProductCreateSheet/createShopifyProduct.js'
 ];
@@ -62,11 +62,11 @@ console.log('📦 Loading GAS files...');
 files.forEach(loadGasFile);
 
 console.log('\n🧪 Testing function availability...');
-console.log('parseSourceRowEnhanced_ available:', 'parseSourceRowEnhanced_' in context);
+console.log('parseSourceRowEnhanced available:', 'parseSourceRowEnhanced' in context);
 console.log('convertToProductCreationFormat_ available:', 'convertToProductCreationFormat_' in context);
-console.log('validateRequiredFields_ available:', 'validateRequiredFields_' in context);
+console.log('validateRequiredFields available:', 'validateRequiredFields' in context);
 
-if ('parseSourceRowEnhanced_' in context) {
+if ('parseSourceRowEnhanced' in context) {
   console.log('\n✅ Running comprehensive tests...');
 
   // Test 1: Pickleball
@@ -91,7 +91,7 @@ if ('parseSourceRowEnhanced_' in context) {
     };
 
     const unresolved = [];
-    const parsed = vm.runInContext('parseSourceRowEnhanced_(testData, unresolved)',
+    const parsed = vm.runInContext('parseSourceRowEnhanced(testData, unresolved)',
       Object.assign(context, { testData, unresolved }));
 
     console.log('📊 Parsed result keys:', Object.keys(parsed));
@@ -131,13 +131,13 @@ if ('parseSourceRowEnhanced_' in context) {
         console.log(`  ${key}: Expected "${expected}", Got "${actual}" ${match ? '✅' : '❌'}`);
       }
 
-      if ('validateRequiredFields_' in context) {
-        const validation = vm.runInContext('validateRequiredFields_(productData)',
+      if ('validateRequiredFields' in context) {
+        const validation = vm.runInContext('validateRequiredFields(productData)',
           Object.assign(context, { productData }));
         console.log('🔍 Validation:', validation);
 
-        if (validation.isValid && 'buildConfirmationDisplay_' in context) {
-          const display = vm.runInContext('buildConfirmationDisplay_(productData)',
+        if (validation.isValid && 'buildConfirmationDisplay' in context) {
+          const display = vm.runInContext('buildConfirmationDisplay(productData)',
             Object.assign(context, { productData }));
           console.log('📝 Display preview (first 300 chars):');
           console.log(display.substring(0, 300) + '...');
@@ -181,7 +181,7 @@ if ('parseSourceRowEnhanced_' in context) {
     };
 
     const unresolved = [];
-    const parsed = vm.runInContext('parseSourceRowEnhanced_(testData, unresolved)',
+    const parsed = vm.runInContext('parseSourceRowEnhanced(testData, unresolved)',
       Object.assign(context, { testData, unresolved }));
 
     console.log('📊 Dodgeball parsed:', {
@@ -195,14 +195,14 @@ if ('parseSourceRowEnhanced_' in context) {
       const productData = vm.runInContext('convertToProductCreationFormat_(parsed, 14)',
         Object.assign(context, { parsed }));
 
-      const validation = vm.runInContext('validateRequiredFields_(productData)',
+      const validation = vm.runInContext('validateRequiredFields(productData)',
         Object.assign(context, { productData }));
 
       console.log('🔍 Validation should be invalid:', validation);
       console.log('🔍 Missing fields:', validation.missingFields);
 
-      if (!validation.isValid && 'buildErrorDisplay_' in context) {
-        const errorDisplay = vm.runInContext('buildErrorDisplay_(productData, validation.missingFields)',
+      if (!validation.isValid && 'buildErrorDisplay' in context) {
+        const errorDisplay = vm.runInContext('buildErrorDisplay(productData, validation.missingFields)',
           Object.assign(context, { productData, validation }));
 
         console.log('📝 Error display checks:');
@@ -219,7 +219,7 @@ if ('parseSourceRowEnhanced_' in context) {
   }
 
 } else {
-  console.log('❌ parseSourceRowEnhanced_ not available - cannot run tests');
+  console.log('❌ parseSourceRowEnhanced not available - cannot run tests');
 }
 
 console.log('\n🎯 Testing completed!');

@@ -40,7 +40,7 @@ loadGasFile('config/constants.js');
 loadGasFile('helpers/textUtils.js');
 loadGasFile('helpers/normalizers.js');
 loadGasFile('parsers/dateParser.js');
-loadGasFile('parsers/parseColBLeagueBasicInfo_.js');
+loadGasFile('parsers/parseLeagueBasicInfo.js');
 loadGasFile('parsers/_rowParser.js');
 loadGasFile('core/portedFromProductCreateSheet/createShopifyProduct.js');
 
@@ -68,7 +68,7 @@ try {
   };
 
   const unresolved = [];
-  const parsed = parseSourceRowEnhanced_(testData, unresolved);
+  const parsed = parseSourceRowEnhanced(testData, unresolved);
   const productData = convertToProductCreationFormat_(parsed, 14);
 
   console.log('📊 Parsed Data:', {
@@ -92,14 +92,14 @@ try {
   });
 
   // Test validation
-  const validation = validateRequiredFields_(productData);
+  const validation = validateRequiredFields(productData);
   console.log('✅ Validation:', validation);
 
   if (validation.isValid) {
-    const display = buildConfirmationDisplay_(productData);
+    const display = buildConfirmationDisplay(productData);
     console.log('📝 Confirmation Display (first 200 chars):', display.substring(0, 200) + '...');
   } else {
-    const errorDisplay = buildErrorDisplay_(productData, validation.missingFields);
+    const errorDisplay = buildErrorDisplay(productData, validation.missingFields);
     console.log('❌ Error Display (first 200 chars):', errorDisplay.substring(0, 200) + '...');
   }
 
@@ -132,7 +132,7 @@ try {
   };
 
   const unresolved = [];
-  const parsed = parseSourceRowEnhanced_(testData, unresolved);
+  const parsed = parseSourceRowEnhanced(testData, unresolved);
   const productData = convertToProductCreationFormat_(parsed, 8);
 
   console.log('📊 Parsed Data:', {
@@ -144,7 +144,7 @@ try {
     totalInventory: parsed.totalInventory
   });
 
-  const validation = validateRequiredFields_(productData);
+  const validation = validateRequiredFields(productData);
   console.log('✅ Validation:', validation);
 
   console.log('✅ Kickball test completed\n');
@@ -175,7 +175,7 @@ try {
   };
 
   const unresolved = [];
-  const parsed = parseSourceRowEnhanced_(testData, unresolved);
+  const parsed = parseSourceRowEnhanced(testData, unresolved);
   const productData = convertToProductCreationFormat_(parsed, 5);
 
   console.log('📊 Parsed Data:', {
@@ -187,10 +187,10 @@ try {
     totalInventory: parsed.totalInventory
   });
 
-  const validation = validateRequiredFields_(productData);
+  const validation = validateRequiredFields(productData);
   console.log('✅ Validation:', validation);
 
-  const display = buildConfirmationDisplay_(productData);
+  const display = buildConfirmationDisplay(productData);
   console.log('📝 Should NOT show Social/Advanced for bowling:', !display.includes('Social or Advanced:'));
   console.log('📝 Should show alternative times:', display.includes('Alternative Start Time:'));
 
@@ -223,7 +223,7 @@ try {
   };
 
   const unresolved = [];
-  const parsed = parseSourceRowEnhanced_(testData, unresolved);
+  const parsed = parseSourceRowEnhanced(testData, unresolved);
   const productData = convertToProductCreationFormat_(parsed, 14);
 
   console.log('📊 Parsed Data:', {
@@ -235,11 +235,11 @@ try {
     totalInventory: parsed.totalInventory
   });
 
-  const validation = validateRequiredFields_(productData);
+  const validation = validateRequiredFields(productData);
   console.log('✅ Validation:', validation);
 
   if (!validation.isValid) {
-    const errorDisplay = buildErrorDisplay_(productData, validation.missingFields);
+    const errorDisplay = buildErrorDisplay(productData, validation.missingFields);
     console.log('📝 Should show Sport Sub-Category for dodgeball:', errorDisplay.includes('Sport Sub-Category:'));
     console.log('📝 Should show [Not Found] for missing inventory:', errorDisplay.includes('Total Inventory: [Not Found]'));
     console.log('📝 Error starts with "Cannot":', errorDisplay.startsWith('Cannot'));
@@ -304,7 +304,7 @@ try {
   };
   
   // Test the function
-  writeProductCreationResults_(mockSheet, 5, mockResult);
+  writeProductCreationResults(mockSheet, 5, mockResult);
   console.log('✅ Backend response handling test completed\n');
 } catch (error) {
   console.log('❌ Backend response handling test failed:', error.message);

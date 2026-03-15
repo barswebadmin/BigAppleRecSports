@@ -5,11 +5,19 @@
   "private": true,
   "packageManager": "pnpm@10.16.0",
   "scripts": {
-    "build": "node ../../scripts/deployment/google/build.js",
-    "clean": "bash -c 'if [ -z \"$1\" ]; then echo \"❌ Usage: pnpm clean <project-name>\"; exit 1; fi; PROJECT=\"$1\"; if [ ! -d \"projects/$PROJECT\" ]; then echo \"❌ Project not found: $PROJECT\"; exit 1; fi; bash ../../scripts/deployment/google/clean.sh \"projects/$PROJECT\"' --"
+    "build": "node ../scripts/deployment/google/build.js",
+    "clean": "bash -c 'if [ -z \"$1\" ]; then echo \"❌ Usage: pnpm clean <project-name>\"; exit 1; fi; PROJECT=\"$1\"; if [ ! -d \"projects/$PROJECT\" ]; then echo \"❌ Project not found: $PROJECT\"; exit 1; fi; bash ../scripts/deployment/google/clean.sh \"projects/$PROJECT\"' --",
+    "test": "echo 'Run specific project tests with: pnpm test:create-products or pnpm test:process-refunds'",
+    "test:create-products": "cd projects/create-products-from-registration-info/tests && node test-runner.mjs",
+    "test:process-refunds": "cd projects/process-refunds-exchanges/tests && node test_form_submission.js"
   },
   "devDependencies": {
     "esbuild": "^0.27.2",
-    "@types/google-apps-script": "^2.0.1"
+    "@types/google-apps-script": "^2.0.1",
+    "assert": "^2.0.0",
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "nodemon": "^3.0.1",
+    "nyc": "^15.1.0"
   }
 }

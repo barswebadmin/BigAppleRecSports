@@ -8,7 +8,7 @@
  * @param {string} text - Text to split
  * @returns {Array<string>} Array of lines - if single line, returns [text], if multiple lines, returns split array
  */
-function splitLines_(text) {
+export function splitLines(text) {
   if (!text) return [];
 
   // Check if text contains line breaks
@@ -63,14 +63,14 @@ function _editDistance(a, b) {
 /**
  * Normalize header text for fuzzy matching
  */
-function normalizeHeader_(header) {
+export function normalizeHeader(header) {
   return (header || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 /**
  * Create a unique key for sport/day/division combinations
  */
-function makeKey_(sport, day, division) {
+export function makeKey(sport, day, division) {
   return `${sport}|${day}|${division || ''}`.toLowerCase();
 }
 
@@ -82,7 +82,7 @@ function makeKey_(sport, day, division) {
  * @param {boolean} [titleCase=false]
  * @returns {string}
  */
-function capitalize(str, titleCase) {
+export function capitalize(str, titleCase) {
   const text = (str || '').toString();
   if (!text) return '';
   const lower = text.toLowerCase();
@@ -95,7 +95,7 @@ function capitalize(str, titleCase) {
 /**
  * Extract player count from details text
  */
-function extractPlayersFromDetails_(details, unresolved) {
+export function extractPlayersFromDetails(details, unresolved) {
   const text = (details || '').replace(/\s+/g, ' ');
 
   // 1) Range like "350-364 players" → take max

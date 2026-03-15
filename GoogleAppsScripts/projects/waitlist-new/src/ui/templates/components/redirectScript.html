@@ -1,0 +1,7 @@
+function redirectToJoin() {
+  // Redirect to the same page without email to show join form
+  const url = new URL(window.location.href);
+  url.searchParams.delete('email');
+  url.searchParams.delete('customerId');
+  window.location.href = url.toString();
+}

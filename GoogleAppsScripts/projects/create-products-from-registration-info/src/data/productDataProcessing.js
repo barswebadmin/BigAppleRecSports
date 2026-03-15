@@ -9,41 +9,44 @@
  * @requires ../helpers/formatValidators.gs
  */
 
+import { parseSourceRowEnhanced } from '../parsers/_rowParser.js';
+import { createCellMapping } from '../sheet/cellMapping.js';
+import { formatDateMdYY, formatDateTimeMdYYhm, isTime12h, isDateTimeAllowed, isDateMMDDYYYY } from '../helpers/formatValidators.js';
+import { formatTimeForDisplay } from '../utils/formatting.js';
+import { productFieldEnums, irrelevantFieldsForSport } from '../config/constants.js';
+import { normalizeSport } from '../helpers/normalizers.js';
+
 /**
  * Parse row data for product creation
  */
-function parseRowDataForProductCreation_(sourceSheet, rowNumber) {
+export function parseRowDataForProductCreation(sourceSheet, rowNumber) {
   try {
-    // Read source row columns A..O (same as migration logic)
-    function getFilledDownA_(sheet, row, stopAtRow = 4) {
-      for (let r = row; r >= stopAtRow; r--) {
-        const v = sheet.getRange(r, 1).getDisplayValue().trim();
-        if (v) return v;
-      }
-      return '';
-    }
-
-    const rowValues = sourceSheet.getRange(rowNumber, 1, 1, 21).getDisplayValues()[0]; // Read A to U columns
+    // Read source row columns A..N
+    const rowValues = sourceSheet.getRange(rowNumber, 1, 1, 14).getDisplayValues()[0]; // Read A to N columns
     const vals = {
-      A: getFilledDownA_(sourceSheet, rowNumber), // Sport (merged)
-      B: (rowValues[1] || '').toString(), // Day + flags
-      C: (rowValues[2] || '').toString(), // League details
-      D: (rowValues[3] || '').toString(), // Season start
-      E: (rowValues[4] || '').toString(), // Season end
-      F: (rowValues[5] || '').toString(), // Price
-      G: (rowValues[6] || '').toString(), // Play times
-      H: (rowValues[7] || '').toString(), // Location
-      // Use correct column mapping (parser expects M=early, N=vet, O=open)
-      M: (rowValues[12] || '').toString(), // Early registration (WTNB/BIPOC/TNB register)
-      N: (rowValues[13] || '').toString(), // Vet register
-      O: (rowValues[14] || '').toString(), // Open register
+      A: (rowValues[0] || '').toString(), // Day of Week Type of Play/League
+      B: (rowValues[1] || '').toString(), // League Details
+      C: (rowValues[2] || '').toString(), // Season Start Date
+      D: (rowValues[3] || '').toString(), // Season End Date
+      E: (rowValues[4] || '').toString(), // Price
+      F: (rowValues[5] || '').toString(), // League Play Time(s)
+      G: (rowValues[6] || '').toString(), // Location (Field / Court / Lane)
+      H: (rowValues[7] || '').toString(), // League Contact Email(s)
+      I: (rowValues[8] || '').toString(), // How Vet Status is Determined
+      L: (rowValues[11] || '').toString(), // Vet Register
+      M: (rowValues[12] || '').toString(), // WTNB/BIPOC/TNB Register
+      N: (rowValues[13] || '').toString(), // Open Register
     };
 
+    // Derive sport name from the sheet tab name, normalized to canonical form (e.g. "KICKBALL" → "Kickball")
+    const rawSheetName = sourceSheet.getName().trim();
+    const sheetName = normalizeSport(rawSheetName) || rawSheetName;
+
     // Parse using existing logic
-    const parsed = parseSourceRowEnhanced_(vals);
+    const parsed = parseSourceRowEnhanced(vals, sheetName);
 
     // Create cell mapping for field updates
-    const cellMapping = createCellMapping_(sourceSheet, rowNumber, vals);
+    const cellMapping = createCellMapping(sourceSheet, rowNumber, vals);
 
     Logger.log(`Parsed product data: ${JSON.stringify(parsed, null, 2)}`);
     Logger.log(`Cell mapping: ${JSON.stringify(cellMapping, null, 2)}`);
@@ -55,8 +58,8 @@ function parseRowDataForProductCreation_(sourceSheet, rowNumber) {
       rowNumber: rowNumber
     };
 
-  } catch (error) {
-    Logger.log(`Error parsing row data: ${error}`);
+  } catch (_error) {
+    Logger.log(`Error parsing row data: ${_error}`);
     return null;
   }
 }
@@ -64,7 +67,7 @@ function parseRowDataForProductCreation_(sourceSheet, rowNumber) {
 /**
  * Validate required fields for product creation
  */
-function validateRequiredFields_(productData) {
+export function validateRequiredFields(productData) {
   const requiredFields = [
     'sportName',
     'year',
@@ -83,7 +86,7 @@ function validateRequiredFields_(productData) {
   const missingFields = [];
   
   for (const field of requiredFields) {
-    const value = getNestedValue_(productData, field);
+    const value = getNestedValue(productData, field);
     if (value === null || value === undefined || value === '') {
       missingFields.push(field);
     }
@@ -98,7 +101,7 @@ function validateRequiredFields_(productData) {
 /**
  * Get nested value from object using dot notation
  */
-function getNestedValue_(obj, path) {
+export function getNestedValue(obj, path) {
   return path.split('.').reduce((current, key) => {
     return current && current[key] !== undefined ? current[key] : null;
   }, obj);
@@ -106,13 +109,20 @@ function getNestedValue_(obj, path) {
 
 /**
  * Flatten product data for display and editing
+ * Treats {raw, formatted} shaped objects as leaf values (returns the formatted string)
  */
-function flattenProductData_(obj, result = {}) {
+export function flattenProductData(obj, result = {}) {
   for (const key in obj) {
-    if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key]) && !(obj[key] instanceof Date)) {
-      flattenProductData_(obj[key], result);
+    const val = obj[key];
+    if (val !== null && typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+      // Treat {raw, formatted} objects as leaf values — use formatted for display
+      if ('formatted' in val && 'raw' in val) {
+        result[key] = val.formatted;
+      } else {
+        flattenProductData(val, result);
+      }
     } else {
-      result[key] = obj[key];
+      result[key] = val;
     }
   }
   return result;
@@ -121,10 +131,10 @@ function flattenProductData_(obj, result = {}) {
 /**
  * Get numbered list of editable fields
  */
-function getEditableFieldsList_(productData) {
-  const flat = flattenProductData_(productData);
+export function getEditableFieldsList(productData) {
+  const flat = flattenProductData(productData);
   const sportName = flat.sportName;
-  let editableFields = getEditableFieldsMeta_(sportName);
+  let editableFields = getEditableFieldsMeta(sportName);
 
   // Filter out numberVetSpotsToReleaseAtGoLive if it's not truthy or equals totalInventory
   editableFields = editableFields.filter(field => {
@@ -139,7 +149,14 @@ function getEditableFieldsList_(productData) {
   const fields = [];
   for (let i = 0; i < editableFields.length; i++) {
     const field = editableFields[i];
-    const value = flat[field.key];
+    // offDatesCommaSeparated is the display key but data is stored as offDates array
+    let value = flat[field.key];
+    if (field.key === 'offDatesCommaSeparated' && (value === null || value === undefined)) {
+      const offDatesArr = flat.offDates;
+      if (Array.isArray(offDatesArr) && offDatesArr.length > 0) {
+        value = offDatesArr.map(d => formatDateMdYY(d)).filter(Boolean).join(', ');
+      }
+    }
     let displayValue;
 
     // Handle TBD values specially
@@ -150,11 +167,11 @@ function getEditableFieldsList_(productData) {
     } else if (field.format === 'price' && value) {
       displayValue = `$${value}`;
     } else if (field.format === 'date') {
-      displayValue = formatDateMdYY_(value) || '[Not Found]';
+      displayValue = formatDateMdYY(value) || '[Not Found]';
     } else if (field.format === 'datetime') {
-      displayValue = formatDateTimeMdYYhm_(value) || '[Not Found]';
+      displayValue = formatDateTimeMdYYhm(value) || '[Not Found]';
     } else if (field.format === 'time') {
-      displayValue = formatTimeForDisplay_(value) || '[Not Found]';
+      displayValue = formatTimeForDisplay(value) || '[Not Found]';
     } else {
       displayValue = value;
     }
@@ -170,20 +187,20 @@ function getEditableFieldsList_(productData) {
  * Each item: { key, name, format? }
  * format: 'date' | 'datetime' | 'time' | 'price' | undefined
  */
-function getEditableFieldsMeta_(sportName) {
+export function getEditableFieldsMeta(sportName) {
   // Core ordered list (indexes are used by UI section slicing)
   const meta = [
     // === BASIC INFO === (0..6)
     { key: 'sportName', name: 'Sport' },
     { key: 'dayOfPlay', name: 'Day' },
-    { key: 'sportSubCategory', name: 'Sport Sub-Category' },
     { key: 'division', name: 'Division' },
     { key: 'season', name: 'Season' },
     { key: 'year', name: 'Year' },
-    { key: 'socialOrAdvanced', name: 'Social or Advanced' },
+    { key: 'levelOfPlay', name: 'Level of Play' },
+    { key: 'teamAssignment', name: 'Team Assignment' },
+    { key: 'dodgeballBallType', name: 'Dodgeball Ball Type' },
 
     // === DATES & TIMES (and Types first to preserve legacy slicing) === (7..15)
-    { key: 'types', name: 'Type(s)' },
     { key: 'newPlayerOrientationDateTime', name: 'New Player Orientation Date/Time', format: 'datetime' },
     { key: 'scoutNightDateTime', name: 'Scout Night Date/Time', format: 'datetime' },
     { key: 'openingPartyDate', name: 'Opening Party Date', format: 'date' },
@@ -200,29 +217,32 @@ function getEditableFieldsMeta_(sportName) {
     // === LOCATION & PRICING === (19..21)
     { key: 'leagueStartTime', name: 'Sport Start Time', format: 'time' },
     { key: 'leagueEndTime', name: 'Sport End Time', format: 'time' },
+    { key: 'gameDuration', name: 'Game Duration' },
     { key: 'location', name: 'Location' },
     { key: 'price', name: 'Price', format: 'price' },
+    { key: 'leagueContactEmail', name: 'League Contact Email' },
+    { key: 'vetStatusDeterminedBy', name: 'Vet Status Determined By' },
 
     // === REGISTRATION WINDOWS === (22..)
     { key: 'vetRegistrationStartDateTime', name: 'Veteran Registration Start Date/Time', format: 'datetime' },
-    { key: 'earlyRegistrationStartDateTime', name: 'Early Registration Start Date/Time', format: 'datetime' },
+    { key: 'tnbWtnbRegistrationStartDateTime', name: 'WTNB/BIPOC/TNB Registration Start Date/Time', format: 'datetime' },
     { key: 'openRegistrationStartDateTime', name: 'Open Registration Start Date/Time', format: 'datetime' },
     { key: 'totalInventory', name: 'Total Inventory' },
-    { key: 'numberVetSpotsToReleaseAtGoLive', name: 'Number of Vet Spots Held' }
+    { key: 'totalWeeks', name: 'Total Weeks' }
   ];
 
   // Filter out irrelevant fields for the given sport
-  const irrelevant = (typeof irrelevantFieldsForSport !== 'undefined' && irrelevantFieldsForSport[sportName]) || [];
+  const irrelevant = irrelevantFieldsForSport[sportName] || [];
   return meta.filter(f => irrelevant.indexOf(f.key) === -1);
 }
 
 /**
  * Update field value in product data
  */
-function updateFieldValue_(productData, fieldNumber, newValue) {
-  const flat = flattenProductData_(productData);
+export function updateFieldValue(productData, fieldNumber, newValue) {
+  const flat = flattenProductData(productData);
   const sportName = flat.sportName;
-  const meta = getEditableFieldsMeta_(sportName);
+  const meta = getEditableFieldsMeta(sportName);
   const field = meta[fieldNumber - 1];
   
   if (!field) {
@@ -233,13 +253,13 @@ function updateFieldValue_(productData, fieldNumber, newValue) {
   flat[field.key] = newValue;
   
   // Reconstruct the nested structure
-  return reconstructNestedStructure_(flat);
+  return reconstructNestedStructure(flat);
 }
 
 /**
  * Reconstruct nested structure from flattened data
  */
-function reconstructNestedStructure_(flatData) {
+export function reconstructNestedStructure(flatData) {
   const result = {};
   
   // Basic fields
@@ -250,7 +270,10 @@ function reconstructNestedStructure_(flatData) {
   result.location = flatData.location;
   result.price = flatData.price;
   result.totalInventory = flatData.totalInventory;
-  result.numberVetSpotsToReleaseAtGoLive = flatData.numberVetSpotsToReleaseAtGoLive;
+  result.totalWeeks = flatData.totalWeeks;
+  result.leagueContactEmail = flatData.leagueContactEmail;
+  result.vetStatusDeterminedBy = flatData.vetStatusDeterminedBy;
+  result.gameDuration = flatData.gameDuration;
   
   // Regular season basic details
   result.regularSeasonBasicDetails = {
@@ -261,17 +284,15 @@ function reconstructNestedStructure_(flatData) {
     location: flatData.location,
     leagueStartTime: flatData.leagueStartTime,
     leagueEndTime: flatData.leagueEndTime,
-    sportSubCategory: flatData.sportSubCategory,
-    socialOrAdvanced: flatData.socialOrAdvanced,
     alternativeStartTime: flatData.alternativeStartTime,
     alternativeEndTime: flatData.alternativeEndTime
   };
   
   // Optional league info
   result.optionalLeagueInfo = {
-    socialOrAdvanced: flatData.socialOrAdvanced,
-    sportSubCategory: flatData.sportSubCategory,
-    types: flatData.types ? flatData.types.split(',').map(t => t.trim()) : []
+    levelOfPlay: flatData.levelOfPlay,
+    teamAssignment: flatData.teamAssignment,
+    dodgeballBallType: flatData.dodgeballBallType
   };
   
   // Important dates
@@ -279,7 +300,7 @@ function reconstructNestedStructure_(flatData) {
     seasonStartDate: flatData.seasonStartDate,
     seasonEndDate: flatData.seasonEndDate,
     vetRegistrationStartDateTime: flatData.vetRegistrationStartDateTime,
-    earlyRegistrationStartDateTime: flatData.earlyRegistrationStartDateTime,
+    tnbWtnbRegistrationStartDateTime: flatData.tnbWtnbRegistrationStartDateTime,
     openRegistrationStartDateTime: flatData.openRegistrationStartDateTime,
     newPlayerOrientationDateTime: flatData.newPlayerOrientationDateTime,
     scoutNightDateTime: flatData.scoutNightDateTime,
@@ -293,7 +314,7 @@ function reconstructNestedStructure_(flatData) {
   result.inventoryInfo = {
     price: flatData.price,
     totalInventory: flatData.totalInventory,
-    numberVetSpotsToReleaseAtGoLive: flatData.numberVetSpotsToReleaseAtGoLive
+    totalWeeks: flatData.totalWeeks
   };
   
   return result;
@@ -302,7 +323,7 @@ function reconstructNestedStructure_(flatData) {
 /**
  * Get enum options for a field, considering sport-specific options
  */
-function getEnumOptionsForField_(fieldKey, sportName) {
+export function getEnumOptionsForField(fieldKey, sportName) {
   if (!fieldKey || !productFieldEnums[fieldKey]) {
     return null;
   }
@@ -326,8 +347,8 @@ function getEnumOptionsForField_(fieldKey, sportName) {
  * Validate enum field value, ignoring case, whitespace, and special characters
  * Handles comma-separated values for multi-value fields like 'types'
  */
-function validateEnumValue_(fieldKey, value, sportName) {
-  const enumOptions = getEnumOptionsForField_(fieldKey, sportName);
+export function validateEnumValue(fieldKey, value, sportName) {
+  const enumOptions = getEnumOptionsForField(fieldKey, sportName);
   if (!enumOptions) {
     return { valid: true }; // No enum to validate against
   }
@@ -381,10 +402,9 @@ function validateEnumValue_(fieldKey, value, sportName) {
 /**
  * Validate field input with type-specific validation
  */
-function validateFieldInput_(fieldKey, value, productData) {
+export function validateFieldInput(fieldKey, value, productData) {
   try {
     const str = String(value || '').trim();
-    const lower = str.toLowerCase();
 
     // Basic numeric validations
     if (fieldKey === 'price') {
@@ -404,9 +424,9 @@ function validateFieldInput_(fieldKey, value, productData) {
     }
 
     // Enum validations using the centralized enum system
-    const flat = flattenProductData_(productData);
+    const flat = flattenProductData(productData);
     const sportName = flat.sportName;
-    const enumValidation = validateEnumValue_(fieldKey, str, sportName);
+    const enumValidation = validateEnumValue(fieldKey, str, sportName);
     if (!enumValidation.valid) {
       return { ok: false, message: enumValidation.message };
     }
@@ -417,17 +437,17 @@ function validateFieldInput_(fieldKey, value, productData) {
     // Time validations
     if (fieldKey === 'leagueStartTime' || fieldKey === 'leagueEndTime' || fieldKey === 'alternativeStartTime' || fieldKey === 'alternativeEndTime') {
       if (str.toUpperCase() === 'TBD') return { ok: true, normalizedValue: 'TBD' };
-      if (typeof isTime12h_ === 'function' && !isTime12h_(str)) {
+      if (!isTime12h(str)) {
         return { ok: false, message: 'Time must be in the format HH:MM AM/PM (e.g., 8:00 PM).' };
       }
       return { ok: true };
     }
 
     // Datetime validations
-    if (fieldKey === 'vetRegistrationStartDateTime' || fieldKey === 'earlyRegistrationStartDateTime' || fieldKey === 'openRegistrationStartDateTime' || fieldKey === 'newPlayerOrientationDateTime' || fieldKey === 'scoutNightDateTime') {
+    if (fieldKey === 'vetRegistrationStartDateTime' || fieldKey === 'tnbWtnbRegistrationStartDateTime' || fieldKey === 'openRegistrationStartDateTime' || fieldKey === 'newPlayerOrientationDateTime' || fieldKey === 'scoutNightDateTime') {
       if (str.toUpperCase() === 'TBD') return { ok: true, normalizedValue: 'TBD' };
       if (str === '') return { ok: true, normalizedValue: null };
-      if (typeof isDateTimeAllowed_ === 'function' && !isDateTimeAllowed_(str)) {
+      if (!isDateTimeAllowed(str)) {
         return { ok: false, message: 'Date/Time must be in MM/DD/YYYY HH:MM AM/PM format or ISO 8601 format.' };
       }
       return { ok: true };
@@ -437,7 +457,7 @@ function validateFieldInput_(fieldKey, value, productData) {
     if (fieldKey === 'seasonStartDate' || fieldKey === 'seasonEndDate' || fieldKey === 'openingPartyDate' || fieldKey === 'closingPartyDate' || fieldKey === 'rainDate') {
       if (str.toUpperCase() === 'TBD') return { ok: true, normalizedValue: 'TBD' };
       if (str === '') return { ok: true, normalizedValue: null };
-      if (typeof isDateMMDDYYYY_ === 'function' && !isDateMMDDYYYY_(str)) {
+      if (!isDateMMDDYYYY(str)) {
         return { ok: false, message: 'Date must be in MM/DD/YYYY format.' };
       }
       return { ok: true };

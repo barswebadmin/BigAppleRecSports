@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><?= this.title ?></title>
+  <?= this.styles ?>
+</head>
+<body>
+  <div class="container">
+    <h1><?= this.heading ?></h1>
+    <?= this.content ?>
+  </div>
+
+  <script>
+    <?= this.autoResizeScript || '' ?>
+    <?= this.domHelper || '' ?>
+    <?= this.formHandlerScript || '' ?>
+    <?= this.scripts || '' ?>
+  </script>
+</body>
+</html>

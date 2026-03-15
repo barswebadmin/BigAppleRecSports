@@ -11,7 +11,7 @@
  * Get the active sheet from the active spreadsheet
  * @returns {Sheet} Active sheet
  */
-function getSheet() {
+export function getSheet() {
   return SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 }
 
@@ -19,7 +19,7 @@ function getSheet() {
  * Get all data from the active sheet
  * @returns {Array<Array>} 2D array of sheet data
  */
-function getSheetData() {
+export function getSheetData() {
   return getSheet().getDataRange().getValues();
 }
 
@@ -27,7 +27,7 @@ function getSheetData() {
  * Get headers from the active sheet (first row)
  * @returns {Array} Array of header strings
  */
-function getSheetHeaders() {
+export function getSheetHeaders() {
   const data = getSheetData();
   return data[0];
 }
@@ -37,7 +37,7 @@ function getSheetHeaders() {
  * @param {string} sheetId - Google Sheets ID
  * @returns {Spreadsheet} Spreadsheet object
  */
-function getSheetById(sheetId) {
+export function getSheetById(sheetId) {
   return SpreadsheetApp.openById(sheetId);
 }
 
@@ -47,7 +47,7 @@ function getSheetById(sheetId) {
  * @param {string} sheetName - Optional sheet name (defaults to first sheet)
  * @returns {Array<Array>} 2D array of sheet data
  */
-function getSheetDataById(sheetId, sheetName = null) {
+export function getSheetDataById(sheetId, sheetName = null) {
   const spreadsheet = SpreadsheetApp.openById(sheetId);
   const sheet = sheetName ? spreadsheet.getSheetByName(sheetName) : spreadsheet.getSheets()[0];
   return sheet.getDataRange().getValues();
@@ -63,7 +63,7 @@ function getSheetDataById(sheetId, sheetName = null) {
  * @param {Array} sheetHeaders - Headers array
  * @returns {Object} Parsed row data object
  */
-function parseRowData(rowObject, sheetHeaders) {
+export function parseRowData(rowObject, sheetHeaders) {
   const rowData = {};
 
   sheetHeaders.forEach((header, i) => {
@@ -97,7 +97,7 @@ function parseRowData(rowObject, sheetHeaders) {
  * @param {Function} normalizeFunc - Optional normalization function
  * @returns {Array|null} Row data or null if not found
  */
-function findRowByColumnValue(data, columnName, searchValue, normalizeFunc = null) {
+export function findRowByColumnValue(data, columnName, searchValue, normalizeFunc = null) {
   if (!data || data.length === 0) return null;
 
   const headers = data[0];
@@ -127,7 +127,7 @@ function findRowByColumnValue(data, columnName, searchValue, normalizeFunc = nul
  * @param {string} rawOrderNumber - Order number to search for
  * @returns {Object|null} Parsed request data or null if not found
  */
-function getRequestDetailsFromOrderNumber(rawOrderNumber) {
+export function getRequestDetailsFromOrderNumber(rawOrderNumber) {
   const data = getSheetData();
   const sheetHeaders = getSheetHeaders();
 
@@ -169,7 +169,7 @@ function getRequestDetailsFromOrderNumber(rawOrderNumber) {
  * @param {number} rowNumber - Row number (1-based)
  * @returns {string} Direct link to the row
  */
-function getSheetRowLink(sheetId, sheetGid, rowNumber) {
+export function getSheetRowLink(sheetId, sheetGid, rowNumber) {
   return `https://docs.google.com/spreadsheets/d/${sheetId}/edit#gid=${sheetGid}&range=A${rowNumber}`;
 }
 
@@ -180,7 +180,7 @@ function getSheetRowLink(sheetId, sheetGid, rowNumber) {
  * @param {string} sheetGid - Sheet GID
  * @returns {string} Link to the row or empty string if not found
  */
-function getRowLink(orderNumber, sheetId = null, sheetGid = null) {
+export function getRowLink(orderNumber, sheetId = null, sheetGid = null) {
   const data = getSheetData();
   const sheetHeaders = getSheetHeaders();
 
@@ -218,7 +218,7 @@ function getRowLink(orderNumber, sheetId = null, sheetGid = null) {
  * @param {string} rawOrderNumber - Order number to mark as processed
  * @returns {boolean} Success status
  */
-function markOrderAsProcessed(rawOrderNumber) {
+export function markOrderAsProcessed(rawOrderNumber) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const data = sheet.getDataRange().getValues();
@@ -273,7 +273,7 @@ function markOrderAsProcessed(rawOrderNumber) {
  * @param {any} value - Value to set
  * @returns {boolean} Success status
  */
-function updateCellValue(row, col, value) {
+export function updateCellValue(row, col, value) {
   try {
     const sheet = getSheet();
     sheet.getRange(row, col).setValue(value);
@@ -289,7 +289,7 @@ function updateCellValue(row, col, value) {
  * @param {Array} rowData - Array of values to append
  * @returns {boolean} Success status
  */
-function appendRowToSheet(rowData) {
+export function appendRowToSheet(rowData) {
   try {
     const sheet = getSheet();
     sheet.appendRow(rowData);

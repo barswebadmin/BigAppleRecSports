@@ -33,16 +33,16 @@ loadGasFile('config/constants.js');
 loadGasFile('helpers/textUtils.js');
 loadGasFile('helpers/normalizers.js');
 loadGasFile('parsers/dateParser.js');
-loadGasFile('parsers/parseColBLeagueDetails_.js');
+loadGasFile('parsers/parseLeagueDetails.js');
 loadGasFile('parsers/notesParser.js');
 loadGasFile('parsers/_rowParser.js');
 
 console.log('\n🧪 Testing function availability...');
-console.log('parseSourceRowEnhanced_ defined?', typeof parseSourceRowEnhanced_ !== 'undefined');
-console.log('normalizeSport_ defined?', typeof normalizeSport_ !== 'undefined');
+console.log('parseSourceRowEnhanced defined?', typeof parseSourceRowEnhanced !== 'undefined');
+console.log('normalizeSport defined?', typeof normalizeSport !== 'undefined');
 console.log('parseTimeRangeBothSessions_ defined?', typeof parseTimeRangeBothSessions_ !== 'undefined');
 
-if (typeof parseSourceRowEnhanced_ !== 'undefined') {
+if (typeof parseSourceRowEnhanced !== 'undefined') {
   console.log('\n✅ Basic function test...');
   try {
     const testData = {
@@ -60,7 +60,7 @@ if (typeof parseSourceRowEnhanced_ !== 'undefined') {
     };
 
     const unresolved = [];
-    const result = parseSourceRowEnhanced_(testData, unresolved);
+    const result = parseSourceRowEnhanced(testData, unresolved);
     console.log('✅ Parse result:', {
       sportName: result.sportName,
       dayOfPlay: result.dayOfPlay,

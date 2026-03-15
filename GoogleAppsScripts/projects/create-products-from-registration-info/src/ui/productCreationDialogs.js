@@ -8,19 +8,23 @@
  * @requires ../helpers/normalizers.gs
  */
 
+import { canonicalizeForDisplay } from '../helpers/normalizers.js';
+import { flattenProductData, getEditableFieldsList, getEditableFieldsMeta, getEnumOptionsForField, validateFieldInput, updateFieldValue } from '../data/productDataProcessing.js';
+import { updateCellInSourceSheet } from '../sheet/cellMapping.js';
+
 /**
  * Show confirmation dialog with editable fields
  */
-function showProductCreationConfirmationDialog_(productData, unresolvedFields, cellMapping, sourceSheet, rowNumber) {
+export function showProductCreationConfirmationDialog(productData, unresolvedFields, cellMapping, sourceSheet, rowNumber) {
   const ui = SpreadsheetApp.getUi();
 
-  Logger.log(`showProductCreationConfirmationDialog_ called with productData: ${JSON.stringify(productData, null, 2)}`);
+  Logger.log(`showProductCreationConfirmationDialog called with productData: ${JSON.stringify(productData, null, 2)}`);
   Logger.log(`Unresolved fields: ${JSON.stringify(unresolvedFields)}`);
 
   while (true) {
     // Check if there are unresolved fields and ask user for confirmation
     if (unresolvedFields && unresolvedFields.length > 0) {
-      const errorDisplay = buildErrorDisplay_(productData, unresolvedFields);
+      const errorDisplay = buildErrorDisplay(productData, unresolvedFields);
       const alertResult = ui.alert(
         '🛍️ Create Shopify Product - Missing Required Fields',
         errorDisplay,
@@ -31,58 +35,26 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields, c
         return null; // User cancelled
       }
 
-      // Collect typed action
-      const promptResult = ui.prompt(
-        'Next Step',
-        'Type "update" to edit fields or "cancel" to abort:',
-        ui.ButtonSet.OK_CANCEL
-      );
-      if (promptResult.getSelectedButton() !== ui.Button.OK) {
-        return null; // Cancel/close
-      }
-      const userAction = (promptResult.getResponseText() || '').trim().toLowerCase();
-      if (userAction === 'cancel') {
-        return null;
-      } else if (userAction === 'update') {
-        productData = showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber);
-        if (!productData) return null; // User cancelled editing
-        continue; // Re-validate
-      } else {
-        ui.alert('Invalid Input', 'Please type "update" or "cancel"', ui.ButtonSet.OK);
-        continue;
-      }
+      // Go straight to edit flow
+      productData = showFieldEditingFlow(productData, cellMapping, sourceSheet, rowNumber);
+      if (!productData) return null;
+      continue;
     }
 
-    // All required fields present - text-based confirmation
-    const confirmationDisplay = buildConfirmationDisplay_(productData);
+    // All required fields present - show confirmation and proceed directly on OK
+    const confirmationDisplay = buildConfirmationDisplay(productData);
     const alertResult = ui.alert(
       '🛍️ Create Shopify Product - All Parsed Fields',
       confirmationDisplay,
       ui.ButtonSet.OK_CANCEL
     );
 
-    if (alertResult === ui.Button.CANCEL) {
-      return null; // User cancelled
-    }
-
-    // Collect typed action
-    const promptResult = ui.prompt(
-      'Next Step',
-      'Type "create" to proceed or "update" to edit fields:',
-      ui.ButtonSet.OK_CANCEL
-    );
-    if (promptResult.getSelectedButton() !== ui.Button.OK) {
-      return null; // Cancel/close
-    }
-    const userAction = (promptResult.getResponseText() || '').trim().toLowerCase();
-    if (userAction === 'create') {
+    if (alertResult === ui.Button.OK) {
       return productData; // Ready to create
-    } else if (userAction === 'update') {
-      productData = showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber);
-      if (!productData) return null; // User cancelled editing
-      continue; // Re-validate and show confirmation again
     } else {
-      ui.alert('Invalid Input', 'Please type "create" or "update"', ui.ButtonSet.OK);
+      // Cancel — offer edit flow
+      productData = showFieldEditingFlow(productData, cellMapping, sourceSheet, rowNumber);
+      if (!productData) return null;
       continue;
     }
   }
@@ -91,13 +63,13 @@ function showProductCreationConfirmationDialog_(productData, unresolvedFields, c
 /**
  * Show field editing flow
  */
-function showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber) {
+export function showFieldEditingFlow(productData, cellMapping, sourceSheet, rowNumber) {
   const ui = SpreadsheetApp.getUi();
 
   while (true) {
     // Re-canonicalize to ensure keys are in expected nested places, then flatten for display
-    const canonical = canonicalizeForDisplay_(productData);
-    const editableFields = getEditableFieldsList_(canonical);
+    const canonical = canonicalizeForDisplay(productData);
+    const editableFields = getEditableFieldsList(canonical);
 
     const fieldListText = editableFields.map((field, index) => `${index + 1}. ${field}`).join('\n');
 
@@ -123,15 +95,15 @@ function showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber)
     }
 
     // Get current field info
-    const flat = flattenProductData_(canonical);
+    const flat = flattenProductData(canonical);
     const sportName = flat.sportName;
-    const meta = getEditableFieldsMeta_(sportName);
+    const meta = getEditableFieldsMeta(sportName);
     const fieldName = meta[fieldNumber - 1] ? meta[fieldNumber - 1].name : `Field #${fieldNumber}`;
     const currentValue = editableFields[fieldNumber - 1].split(': ').slice(1).join(': ');
     const fieldKey = meta[fieldNumber - 1] ? meta[fieldNumber - 1].key : null;
 
     // Get enum options for this field
-    const enumOptions = getEnumOptionsForField_(fieldKey, sportName);
+    const enumOptions = getEnumOptionsForField(fieldKey, sportName);
     let enumText = '';
     if (enumOptions) {
       enumText = `\n\nValid options:\n${enumOptions.join('\n')}`;
@@ -164,20 +136,19 @@ function showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber)
     const newValue = (newValueRaw != null ? newValueRaw.trim() : '');
     if (newValue) {
       try {
-        // Validate input before applying
-        const fieldKey = meta[fieldNumber - 1] ? meta[fieldNumber - 1].key : undefined;
-        const v = validateFieldInput_(fieldKey, newValue, canonical);
+        // Validate input before applying (fieldKey already declared above)
+        const v = validateFieldInput(fieldKey, newValue, canonical);
         if (!v.ok) {
           ui.alert('Invalid Value', v.message || 'The value is not allowed for this field.', ui.ButtonSet.OK);
           continue;
         }
         const normalizedValue = v.normalizedValue != null ? v.normalizedValue : newValue;
         // Apply update on canonical object and continue loop
-        const updated = updateFieldValue_(canonical, fieldNumber, normalizedValue);
-        productData = canonicalizeForDisplay_(updated);
+        const updated = updateFieldValue(canonical, fieldNumber, normalizedValue);
+        productData = canonicalizeForDisplay(updated);
         
         // Update the corresponding cell in the source sheet
-        updateCellInSourceSheet_(fieldKey, normalizedValue, cellMapping, sourceSheet, rowNumber);
+        updateCellInSourceSheet(fieldKey, normalizedValue, cellMapping, sourceSheet, rowNumber);
       } catch (error) {
         ui.alert('Error', `Failed to update field: ${error.message}`, ui.ButtonSet.OK);
       }
@@ -188,13 +159,12 @@ function showFieldEditingFlow_(productData, cellMapping, sourceSheet, rowNumber)
 /**
  * Build error display for missing required fields
  */
-function buildErrorDisplay_(productData, missingFields) {
-  const flat = flattenProductData_(productData);
-  const editableFields = getEditableFieldsList_(productData);
+export function buildErrorDisplay(productData, _missingFields) {
+  const editableFields = getEditableFieldsList(productData);
   
   let display = 'Cannot create product - the following required fields are missing:\n\n';
   display += editableFields.map((field, index) => `${index + 1}. ${field}`).join('\n');
-  display += '\n\nType "update" to edit fields or "cancel" to abort.';
+  display += '\n\nClick OK to edit fields, or Cancel to abort.';
   
   return display;
 }
@@ -202,9 +172,8 @@ function buildErrorDisplay_(productData, missingFields) {
 /**
  * Build confirmation display for all parsed fields
  */
-function buildConfirmationDisplay_(productData) {
-  const flat = flattenProductData_(productData);
-  const editableFields = getEditableFieldsList_(productData);
+export function buildConfirmationDisplay(productData) {
+  const editableFields = getEditableFieldsList(productData);
   
   let display = '=== BASIC INFO ===\n';
   display += editableFields.slice(0, 7).join('\n');
@@ -216,7 +185,7 @@ function buildConfirmationDisplay_(productData) {
   display += editableFields.slice(19, 22).join('\n');
   display += '\n\n=== REGISTRATION WINDOWS ===\n';
   display += editableFields.slice(22).join('\n');
-  display += '\n\nCreate this product in Shopify with the above parsed data?\n\nType "create" to proceed or "update" to edit fields:';
+  display += '\n\nCreate this product in Shopify with the above parsed data?';
   
   return display;
 }
@@ -224,9 +193,9 @@ function buildConfirmationDisplay_(productData) {
 /**
  * Build unresolved fields message
  */
-function buildUnresolvedFieldsMessage_(unresolvedFields) {
+export function buildUnresolvedFieldsMessage(unresolvedFields) {
   return unresolvedFields.map(field => {
-    const formattedName = formatFieldNameForUser_(field);
+    const formattedName = formatFieldNameForUser(field);
     return `• ${formattedName}`;
   }).join('\n');
 }
@@ -234,7 +203,7 @@ function buildUnresolvedFieldsMessage_(unresolvedFields) {
 /**
  * Format field name for user display
  */
-function formatFieldNameForUser_(fieldName) {
+export function formatFieldNameForUser(fieldName) {
   // Convert camelCase to Title Case
   return fieldName
     .replace(/([A-Z])/g, ' $1')

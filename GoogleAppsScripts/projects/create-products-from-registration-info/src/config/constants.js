@@ -7,7 +7,7 @@
 /***** COMPREHENSIVE PRODUCT CREATE FIELDS *****/
 // All possible fields that can be tracked during product creation parsing
 // Based on expected_product_json_payload.js structure
-const comprehensiveProductCreateFields = [
+export const comprehensiveProductCreateFields = [
   // Top-level required fields
   "sportName",
   "division",
@@ -15,23 +15,22 @@ const comprehensiveProductCreateFields = [
   "year",
   "dayOfPlay",
   "location",
+  "leagueContactEmail",
+  "vetStatusDeterminedBy",
 
   // Optional league info nested fields
-  "sportSubCategory",
-  "socialOrAdvanced",
-  "types",
+  "levelOfPlay",
+  "teamAssignment",
+  "dodgeballBallType",
 
   // Important dates nested fields
-  "newPlayerOrientationDateTime",
-  "scoutNightDateTime",
   "openingPartyDate",
   "seasonStartDate",
   "seasonEndDate",
-  "offDates",
   "rainDate",
   "closingPartyDate",
   "vetRegistrationStartDateTime",
-  "earlyRegistrationStartDateTime",
+  "tnbWtnbRegistrationStartDateTime",
   "openRegistrationStartDateTime",
 
   // Time fields
@@ -39,19 +38,20 @@ const comprehensiveProductCreateFields = [
   "leagueEndTime",
   "alternativeStartTime",
   "alternativeEndTime",
+  "gameDuration",
 
   // Inventory info nested fields
   "price",
   "totalInventory",
-  "numberVetSpotsToReleaseAtGoLive"
+  "totalWeeks"
 ];
 
 /***** SPORT-SPECIFIC IRRELEVANT FIELDS *****/
 // Fields that will never be present for specific sports
 // These should be excluded from validation checks for the productCreateData
-const irrelevantFieldsForSport = {
+export const irrelevantFieldsForSport = {
   "Kickball": [
-    "sportSubCategory",
+    "dodgeballBallType",
     "alternativeStartTime",
     "alternativeEndTime",
     "openingPartyDate"
@@ -64,15 +64,14 @@ const irrelevantFieldsForSport = {
     "openingPartyDate"
   ],
   "Bowling": [
-    "sportSubCategory",
-    "socialOrAdvanced",
+    "dodgeballBallType",
     "newPlayerOrientationDateTime",
     "scoutNightDateTime",
     "openingPartyDate",
     "rainDate"
   ],
   "Pickleball": [
-    "sportSubCategory",
+    "dodgeballBallType",
     "newPlayerOrientationDateTime",
     "scoutNightDateTime",
     "rainDate",
@@ -85,7 +84,7 @@ const irrelevantFieldsForSport = {
 /***** PRODUCT FIELD ENUMS *****/
 // Comprehensive enum values for all product fields
 // Sport-specific enums use nested objects with sport names as keys
-const productFieldEnums = {
+export const productFieldEnums = {
   "sportName": ["Dodgeball", "Kickball", "Bowling", "Pickleball"],
   "division": ["WTNB+", "Open"],
   "season": ["Fall", "Winter", "Summer", "Spring"],
@@ -113,7 +112,7 @@ const productFieldEnums = {
       "Bowlero Chelsea Piers (60 Chelsea Piers)"
     ]
   },
-  "sportSubCategory": ["Big Ball", "Small Ball", "Foam"],
-  "socialOrAdvanced": ["Social", "Advanced", "Mixed Social/Advanced", "Competitive/Advanced", "Intermediate/Advanced"],
-  "types": ["Draft", "Randomized Teams", "Buddy Sign-up", "Sign up with a newbie (randomized otherwise)"]
+  "dodgeballBallType": ["Big Ball", "Small Ball", "Foam"],
+  "levelOfPlay": ["Social", "Advanced", "Mixed Social/Advanced", "Competitive/Advanced", "Intermediate/Advanced"],
+  "teamAssignment": ["randomized", "randomizedWithBuddy", "draft", "ladder", "none"]
 };
