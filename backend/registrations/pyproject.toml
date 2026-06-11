@@ -16,6 +16,7 @@ dependencies = [
     "polars>=1.38.1",
     "python-dotenv>=1.0.0",
     "uvicorn[standard]>=0.30.0",
+    "pydantic-extra-types>=2.11.2",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +32,7 @@ dev = [
 [tool.pytest.ini_options]
 addopts = "-s -q --tb=line"
 asyncio_mode = "auto"
+pythonpath = ["."]
 
 [tool.pyright]
 venvPath = "."
@@ -38,4 +40,4 @@ venv = ".venv"
 pythonVersion = "3.14"
 
 [tool.uv.sources]
-shopify-client = { workspace = true }
+shopify-client = { path = "../../lib/clients/shopify", editable = true }
