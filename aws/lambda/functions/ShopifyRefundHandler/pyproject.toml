@@ -1,0 +1,39 @@
+[project]
+name = "shopify-refund-handler"
+version = "0.1.0"
+description = "Big Apple Rec Sports - Refund request handler. Receives webhooks from Google Sheets, fetches Shopify order, validates email/name against order line-item attributes, returns refund estimate."
+requires-python = ">=3.14"
+dependencies = [
+    "aws-lambda-powertools>=2.30.0",
+]
+
+[build-system]
+requires = ["setuptools>=45"]
+build-backend = "setuptools.build_meta"
+
+[tool.deploy]
+# Runtime deps come from layers; do not bundle into the function zip.
+# shopify_client and registrations are local source symlinks resolved on deploy
+# (see scripts/deploy rsync -aL).
+#
+# Layers match what ShopifyProductUpdates uses (proven working with the same
+# shopify_client). The aspirational ``lib-httpx`` / ``lib-pydantic`` layers
+# referenced in earlier drafts aren't actually published — only ``bars-common-utils``,
+# ``google-apis``, ``http-clients``, ``shared-utilities-deps``, and ``slack`` exist
+# in the account today. Re-point when the lib-* layers get published.
+skip-deps = true
+runtime = "python3.14"
+handler = "main.lambda_handler"
+role = "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c"
+timeout = 30
+memory-size = 256
+architectures = ["arm64"]
+layers = [
+    "arn:aws:lambda:us-east-1:084375563770:layer:bars-common-utils:22",
+    "arn:aws:lambda:us-east-1:084375563770:layer:shared-utilities-deps:2",
+    # http-clients provides httpx + httpx-retries. shared-utilities-deps has
+    # httpx but NOT httpx-retries, which shopify_client.client imports for its
+    # retry middleware — without this layer the lambda 502s at import time.
+    # Pin the version explicitly; bump when http-clients is republished.
+    "arn:aws:lambda:us-east-1:084375563770:layer:http-clients:1",
+]

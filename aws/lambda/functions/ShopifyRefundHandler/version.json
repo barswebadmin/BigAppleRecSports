@@ -1,0 +1,28 @@
+{
+  "version": "0.0.4",
+  "build": 4,
+  "last_updated": "2026-06-14",
+  "codename": "Shopify Refund Handler",
+  "version_history": [
+    {
+      "version": "0.0.4",
+      "date": "2026-06-14",
+      "description": "Rebuild registrations Deno app with unified clients and restored workflows"
+    },
+    {
+      "version": "0.0.3",
+      "date": "2026-06-13",
+      "description": "Rebuild registrations Deno app with unified clients and restored workflows"
+    },
+    {
+      "version": "0.0.2",
+      "date": "2026-06-13",
+      "description": "Rebuild registrations Deno app with unified clients and restored workflows"
+    },
+    {
+      "version": "0.0.1",
+      "date": "2026-06-13",
+      "description": "Initial deployment \u2014 receives GAS refund-form webhooks, validates email/name against Shopify order metadata, computes refund estimate."
+    }
+  ]
+}
