@@ -1,0 +1,26 @@
+# This directory is the source-of-truth for shopify_gql.
+# It is NOT a Python package by itself — there is no [build-system] or [project] section.
+# Packaging for Lambda runtime happens in aws/lambda/layers/lib/shopify-client-py/, which
+# copies these files into a `shopify_gql/` namespace inside the layer's python/ dir.
+#
+# This file exists only to hold ariadne-codegen configuration so `uv run ariadne-codegen`
+# (run from this directory) can find its settings.
+
+[tool.ariadne-codegen]
+schema_path = "schema/admin_2026-07.graphql"
+queries_path = "operations"
+target_package_name = "generated"
+target_package_path = "."
+client_name = "ShopifyAdminSyncClient"
+include_comments = "stable"
+async_client = false
+# Only emit enums/inputs actually referenced by operations in ``operations/``.
+# Without these the files balloon to thousands of unused types from the schema.
+include_all_enums = false
+include_all_inputs = false
+plugins = [
+    "ariadne_codegen.contrib.shorter_results.ShorterResultsPlugin",
+    # Don't re-export every symbol into the package __init__ — keeps __init__.py
+    # tiny and forces callers to import from specific modules (clearer call sites).
+    "ariadne_codegen.contrib.no_reimports.NoReimportsPlugin",
+]

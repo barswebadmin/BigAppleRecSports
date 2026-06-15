@@ -1,0 +1,24 @@
+mutation ProductVariantsBulkUpdate(
+  $productId: ID!
+  $variants: [ProductVariantsBulkInput!]!
+) {
+  productVariantsBulkUpdate(
+    productId: $productId
+    variants: $variants
+    allowPartialUpdates: false
+  ) {
+    productVariants {
+      id
+      title
+      price
+      compareAtPrice
+      inventoryPolicy
+      updatedAt
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

@@ -1,0 +1,71 @@
+query FindOrders(
+  $query: String!
+  $first: Int! = 10
+  $after: String
+  $lineItemsFirst: Int! = 50
+) {
+  orders(query: $query, first: $first, after: $after) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    nodes {
+      id
+      name
+      email
+      createdAt
+      cancelledAt
+      displayFinancialStatus
+      customer {
+        id
+        email
+        firstName
+        lastName
+        displayName
+      }
+      totalPriceSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+      refunds {
+        id
+        createdAt
+        totalRefundedSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+      }
+      transactions(first: 50) {
+        id
+        kind
+        status
+        gateway
+        parentTransaction {
+          id
+        }
+      }
+      lineItems(first: $lineItemsFirst) {
+        nodes {
+          id
+          name
+          quantity
+          customAttributes {
+            key
+            value
+          }
+          product {
+            id
+            title
+            handle
+            tags
+            descriptionHtml
+          }
+        }
+      }
+    }
+  }
+}

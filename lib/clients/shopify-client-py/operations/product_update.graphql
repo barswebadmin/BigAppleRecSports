@@ -1,0 +1,21 @@
+mutation ProductUpdate(
+  $product: ProductUpdateInput
+  $media: [CreateMediaInput!]
+  $identifier: ProductUpdateIdentifiers
+) {
+  productUpdate(product: $product, media: $media, identifier: $identifier) {
+    product {
+      id
+      title
+      handle
+      status
+      tags
+      vendor
+      updatedAt
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
