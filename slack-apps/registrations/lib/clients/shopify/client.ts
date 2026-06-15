@@ -5,7 +5,12 @@
  * `gqlClassified<T>()` returns a typed discriminated union matching Python's
  * `parse_shopify_response` semantics (FORBIDDEN / BAD_REQUEST / UNPROCESSABLE_ENTITY /
  * NOT_ACCEPTABLE / NO_CONTENT / OK / UNEXPECTED_ERROR).
+ *
+ * Requests are split into `buildGqlRequest()` (pure, returns a PreparedRequest)
+ * and `executeRaw()` (sends it). Dry-run callers use the builder only.
  */
+
+import type { PreparedRequest } from "../prepared_request.ts";
 
 export type ShopifyResponseKind =
     | "OK"
@@ -108,14 +113,42 @@ export class ShopifyClient {
         this.token = token;
     }
 
+    /** Build (but do not send) a GraphQL request with the exact bytes that will go out. */
+    buildGqlRequest(
+        label: string,
+        query: string,
+        variables: Record<string, unknown>,
+    ): PreparedRequest {
+        return {
+            label,
+            method: "POST",
+            url: this.url,
+            headers: {
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": this.token,
+            },
+            body: JSON.stringify({ query, variables }),
+        };
+    }
+
+    /** Send a PreparedRequest and return the parsed response body. */
+    async executeRaw(req: PreparedRequest): Promise<ShopifyResponseBody> {
+        const res = await fetch(req.url, {
+            method: req.method,
+            headers: req.headers,
+            body: req.body,
+        });
+        return await res.json() as ShopifyResponseBody;
+    }
+
     async gql<T>(
         query: string,
         variables: Record<string, unknown>,
     ): Promise<{ data: T | null; errors: string[] }> {
-        const body = await this.post(query, variables);
+        const body = await this.executeRaw(this.buildGqlRequest("gql", query, variables));
         const topErrors = body.errors?.map((e) => e.message) ?? [];
-        console.log("[shopify:gql] errors:", topErrors.length);
         if (topErrors.length > 0 && body.data == null) {
+            console.log("[shopify:gql] errors:", topErrors.join(", "));
             return { data: null, errors: topErrors };
         }
         return { data: (body.data ?? null) as T | null, errors: [] };
@@ -125,25 +158,10 @@ export class ShopifyClient {
         query: string,
         variables: Record<string, unknown>,
     ): Promise<ShopifyResponse<T>> {
-        const body = await this.post(query, variables);
+        const body = await this.executeRaw(this.buildGqlRequest("gqlClassified", query, variables));
         const result = parseShopifyResponse<T>(body);
         console.log("[shopify:gqlClassified]", result.kind);
         return result;
-    }
-
-    private async post(
-        query: string,
-        variables: Record<string, unknown>,
-    ): Promise<ShopifyResponseBody> {
-        const res = await fetch(this.url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-Shopify-Access-Token": this.token,
-            },
-            body: JSON.stringify({ query, variables }),
-        });
-        return await res.json() as ShopifyResponseBody;
     }
 }
 

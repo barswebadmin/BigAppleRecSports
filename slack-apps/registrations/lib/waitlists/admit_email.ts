@@ -21,16 +21,10 @@ export interface AdmitEmailRecipient {
 }
 
 export function buildSubject(league: League): string {
-    const subject = `Big Apple ${capitalize(league.sport)} - A Spot Is Available for You`;
-    log("buildSubject", { sport: league.sport, subject });
-    return subject;
+    return `Big Apple ${capitalize(league.sport)} - A Spot Is Available for You`;
 }
 
 export function buildWaitlistAdmitEmailBody(firstName: string, league: League): string[] {
-    log("buildWaitlistAdmitEmailBody", {
-        firstName,
-        league: `${league.sport}.${league.day}.${league.division}`,
-    });
     const leagueLabel = `${capitalize(league.day)} ${capitalize(league.sport)} (${
         formatDivision(league.division)
     })`;
@@ -50,11 +44,10 @@ export function buildWaitlistAdmitEmail(
     recipient: AdmitEmailRecipient,
     league: League,
 ): EmailMessage {
-    log("buildWaitlistAdmitEmail", {
-        to: recipient.emailAddress,
-        firstName: recipient.firstName,
-        league: `${league.sport}.${league.day}.${league.division}`,
-    });
+    log(
+        "buildWaitlistAdmitEmail",
+        `${recipient.emailAddress} · ${league.sport}.${league.day}.${league.division}`,
+    );
     return {
         to: recipient.emailAddress,
         subject: buildSubject(league),

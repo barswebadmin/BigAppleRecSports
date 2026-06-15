@@ -1,7 +1,7 @@
 // ── Season ──────────────────────────────────────────────────────────
 
 export const CURRENT_YEAR = 2026;
-export const CURRENT_SEASON = "spring";
+export const CURRENT_SEASON = "summer";
 
 export type Season = "winter" | "spring" | "summer" | "fall";
 export const ALL_SEASONS: Season[] = ["winter", "spring", "summer", "fall"];
@@ -14,6 +14,54 @@ export const BARS_URLS = {
     admin_api: "https://09fe59-3/admin/api/2025-01/graphql.json",
 };
 
+/** Shopify admin customer page from a customer GID (`gid://shopify/Customer/<n>`) or numeric id. */
+export function shopifyCustomerAdminUrl(idOrGid: string | number): string {
+    const numeric = String(idOrGid).split("/").pop();
+    return `${BARS_URLS.admin_ui}/customers/${numeric}`;
+}
+
+/** Storefront product page from a product handle. */
+export function productPageUrl(handle: string): string {
+    return `${BARS_URLS.website}/products/${handle}`;
+}
+
+// ── Slack UI helpers ────────────────────────────────────────────────
+
+/**
+ * Default hyperlink display text reused across workflows. Keep link copy here
+ * so it stays consistent everywhere (and the emoji is changed in one place).
+ */
+export const SLACK_LINK_TEXT = {
+    googleSheets: ":paperclip: Open in Google Sheets",
+    shopifyCustomer: "Shopify profile",
+    productPage: "product page",
+} as const;
+
+/** Slack mrkdwn hyperlink: `<url|text>`. */
+export function slackLink(text: string, url: string): string {
+    return `<${url}|${text}>`;
+}
+
+/** Mention a Slack member with a leading label, e.g. `Processed by <@U123>`. */
+export function tagSlackMember(userId: string, prefix = "Processed by"): string {
+    return `${prefix} <@${userId}>`;
+}
+
+/** Weekday ordering for league sorting (Mon first … Sun last), not alphabetical. */
+export const WEEKDAY_ORDER = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+];
+
+export function compareWeekday(a: string, b: string): number {
+    return WEEKDAY_ORDER.indexOf(a.toLowerCase()) - WEEKDAY_ORDER.indexOf(b.toLowerCase());
+}
+
 // ── Gmail ───────────────────────────────────────────────────────────
 
 export const DEFAULT_GMAIL_SENDER = {
@@ -21,13 +69,41 @@ export const DEFAULT_GMAIL_SENDER = {
     email_address: "web@bigapplerecsports.com",
 };
 
+// ── Refunds ─────────────────────────────────────────────────────────
+
+// Test channel — used when a request is flagged isTest.
+export const REFUND_TEST_CHANNEL = "#joe-test";
+
+// Live destination for refund review messages (POC: all leagues land here).
+export const REFUND_REVIEW_CHANNEL = "#exec-leadership-2026";
+
+// ShopifyRefundHandler Lambda function URL — receives the approve/process POST
+// when a reviewer confirms a refund in the modal. Auth is NONE, so treat the
+// URL as semi-secret. The matching domain must be in manifest outgoingDomains.
+export const REFUND_PROCESS_URL =
+    "https://7wfkjr4jk5hbchf23venzdm3te0yaouc.lambda-url.us-east-1.on.aws/";
+export const REFUND_PROCESS_DOMAIN = "7wfkjr4jk5hbchf23venzdm3te0yaouc.lambda-url.us-east-1.on.aws";
+
+// TESTING: force every refund review into #joe-test regardless of payload.
+// Set to false to restore live routing (isTest → #joe-test, else exec channel).
+const FORCE_TEST_CHANNEL = true;
+
+/**
+ * Route a refund review message. Test requests go to `#joe-test`; everything
+ * else lands in the exec leadership channel for now.
+ */
+export function resolveRefundChannel(opts: { isTest?: boolean }): string {
+    if (FORCE_TEST_CHANNEL) return REFUND_TEST_CHANNEL;
+    return opts.isTest ? REFUND_TEST_CHANNEL : REFUND_REVIEW_CHANNEL;
+}
+
 // ── Google Sheets ───────────────────────────────────────────────────
 
 export const GOOGLE_SHEETS = {
     waitlists: {
-        spreadsheet_id: "1KcHgBHyeLmL3MQjbkB5CJUNFXbYMrtqZFqOsVnL0id0",
-        tab_name: "Form Responses",
-        tab_id: "309697269",
+        spreadsheet_id: "1QgyHDN9EcxqefEJCDozfLZ7QKVxSbOaW28WOET9PYEE",
+        tab_name: "Form Responses 1",
+        tab_id: "2072632661",
     },
     refund_requests: {
         spreadsheet_id: "11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw",
@@ -50,6 +126,14 @@ export const ACTION_OPTIONS = [
 export const DROPDOWN_CAPTURE_CONFIG = {
     actionIdPrefix: "action_r",
     noneValues: ["none", "skip"],
+};
+
+// Per-player opt-in checkbox under each dropdown. Unticked by default, so the
+// default action is "tag only, no email" — admitting tags the customer in
+// Shopify but only sends the notification email when this box is checked. The
+// label embeds the player's email and is built per-row in the modal.
+export const CHECKBOX_CAPTURE_CONFIG = {
+    actionIdPrefix: "email_r",
 };
 
 // ── Leagues ─────────────────────────────────────────────────────────

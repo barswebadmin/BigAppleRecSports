@@ -11,9 +11,41 @@ const SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://mail.go
 
 const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 
+/**
+ * A sheet/tab handle. `id` is the numeric sheetId (the `gid` in the URL).
+ *
+ * Keep `id` even though the values API addresses ranges by name: the sheetId is
+ * stable across tab renames, and the structural `spreadsheets.batchUpdate` API
+ * (formatting, insert/delete rows, conditional formatting, protected ranges,
+ * sort/filter) references sheets by sheetId — never by name. It's also what
+ * builds the tab deep-link URL. See docs/reference/libraries/google-sheets-api.md.
+ */
 export interface SheetTab {
     name: string;
     id: string;
+}
+
+/**
+ * A single cell write. `row` is 1-based (matches A1 + the parser's rowNumber);
+ * `col` is 0-based (matches `findColumn` and the structural API's GridRange,
+ * whose indexes are all zero-based). The 0-based index is the canonical column
+ * form; `columnToLetter` adapts it to A1 only at the values-API boundary.
+ */
+export interface CellUpdate {
+    row: number;
+    col: number;
+    value: string;
+}
+
+/** 0-based column index → A1 letter (0→A, 25→Z, 26→AA). */
+export function columnToLetter(index: number): string {
+    let n = index;
+    let letter = "";
+    do {
+        letter = String.fromCodePoint(65 + (n % 26)) + letter;
+        n = Math.floor(n / 26) - 1;
+    } while (n >= 0);
+    return letter;
 }
 
 export class GoogleClient {
@@ -80,23 +112,31 @@ export class GoogleClient {
         return { url: this.spreadsheetUrl(spreadsheetId, tab), values: allRows };
     }
 
-    /** Write values starting at a cell (RAW input mode). */
-    async updateSpreadsheet(
+    /**
+     * Write any number of individual cells in a single `values:batchUpdate`
+     * request (RAW input mode). Callers pass row/col indices; the A1 ranges are
+     * built here so column-letter math stays in one place. No-op for an empty list.
+     */
+    async updateCells(
         spreadsheetId: string,
-        tab: SheetTab,
-        cell: string,
-        values: string[][],
-    ): Promise<{ url: string }> {
-        const range = encodeURIComponent(`'${tab.name}'!${cell}`);
-        const url = `${SHEETS_BASE}/${spreadsheetId}/values/${range}?valueInputOption=RAW`;
+        tabName: string,
+        updates: CellUpdate[],
+    ): Promise<void> {
+        if (updates.length === 0) return;
+        const url = `${SHEETS_BASE}/${spreadsheetId}/values:batchUpdate`;
         const headers = await this.getRequestHeaders();
+        const data = updates.map((u) => ({
+            range: `'${tabName}'!${columnToLetter(u.col)}${u.row}`,
+            values: [[u.value]],
+        }));
         const res = await fetch(url, {
-            method: "PUT",
+            method: "POST",
             headers: { ...headers, "Content-Type": "application/json" },
-            body: JSON.stringify({ values }),
+            body: JSON.stringify({ valueInputOption: "RAW", data }),
         });
-        if (!res.ok) throw new Error(`Sheets PUT failed (${res.status}): ${await res.text()}`);
-        return { url: this.spreadsheetUrl(spreadsheetId, tab) };
+        if (!res.ok) {
+            throw new Error(`Sheets batchUpdate failed (${res.status}): ${await res.text()}`);
+        }
     }
 
     private spreadsheetUrl(spreadsheetId: string, tab: SheetTab): string {

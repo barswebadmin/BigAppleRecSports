@@ -24,7 +24,7 @@ function parseDivision(raw: string): string {
     return raw.trim().slice(0, 4).toLowerCase();
 }
 
-function findColumn(headers: string[], keyword: string): number {
+export function findColumn(headers: string[], keyword: string): number {
     const lower = keyword.toLowerCase();
     return headers.findIndex((h) => h.toLowerCase().includes(lower));
 }

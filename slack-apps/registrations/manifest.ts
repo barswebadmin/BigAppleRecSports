@@ -3,7 +3,8 @@ import ProcessWaitlistSignupsWorkflow from "./workflows/process_waitlist_signups
 import ReceiveWaitlistOrderWorkflow from "./workflows/receive_waitlist_signup.ts";
 import HandleRefundRequestWorkflow from "./workflows/handle_refund_request.ts";
 import GetShopifyOrdersWorkflow from "./workflows/get_shopify_orders_workflow.ts";
-import CheckWaitlistWorkflow from "./workflows/check_waitlist.ts";
+import DryRunWaitlistWorkflow from "./workflows/dry_run_waitlist.ts";
+import EvaluateRefundRequestWorkflow from "./workflows/evaluate_refund_request.ts";
 import { RefundRequestType } from "./types/refund_request.ts";
 
 export default Manifest({
@@ -15,7 +16,8 @@ export default Manifest({
         ReceiveWaitlistOrderWorkflow,
         HandleRefundRequestWorkflow,
         GetShopifyOrdersWorkflow,
-        CheckWaitlistWorkflow,
+        DryRunWaitlistWorkflow,
+        EvaluateRefundRequestWorkflow,
     ],
     outgoingDomains: [
         "www.googleapis.com",
@@ -23,6 +25,7 @@ export default Manifest({
         "gmail.googleapis.com",
         "oauth2.googleapis.com",
         "09fe59-3.myshopify.com",
+        "7wfkjr4jk5hbchf23venzdm3te0yaouc.lambda-url.us-east-1.on.aws",
     ],
     types: [RefundRequestType],
     botScopes: ["commands", "chat:write", "chat:write.public"],

@@ -23,14 +23,19 @@ const selectionStep = ProcessWaitlistWorkflow.addStep(GetLeagueWaitlistSelection
     channel_id: ProcessWaitlistWorkflow.inputs.channel_id,
 });
 
-// Step 2: Fetch waitlist data + show entries + handle actions
+// Step 2: Fetch waitlist data, show entries, handle the admit/remove actions,
+// and post the result message. Emits actions_json for the sheet write below.
 const actionsStep = ProcessWaitlistWorkflow.addStep(HandleWaitlistActionsFunction, {
     interactivity: selectionStep.outputs.interactivity,
     channel_id: ProcessWaitlistWorkflow.inputs.channel_id,
     selected_league: selectionStep.outputs.selected_league,
 });
 
-// Step 3: Update spreadsheet status column for each action
+// Step 3: Persist the Status column. Kept as its own step (vs. folding into
+// step 2) for the audit/retry/decoupling benefits of a discrete write stage.
+// Its progress title ("Finishing up") reads truthfully whether the run admitted
+// rows or was cancelled (no actions → the function no-ops), so it's never the
+// misleading "Saving updates…" toast on cancel.
 ProcessWaitlistWorkflow.addStep(UpdateWaitlistSpreadsheetFunction, {
     actions_json: actionsStep.outputs.actions_json,
 });

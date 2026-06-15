@@ -29,12 +29,14 @@ export const PRODUCT_FIELDS = `
     variants(first: 10) { nodes { id title } }
 `;
 
-export const PRODUCT_BY_ID_QUERY = `
-    query getProduct($id: ID!) {
-        product(id: $id) { ${PRODUCT_FIELDS} }
+export const PRODUCT_BY_HANDLE_QUERY = `
+    query getProductByHandle($query: String!) {
+        products(first: 2, query: $query) {
+            nodes { ${PRODUCT_FIELDS} }
+        }
     }
 `;
 
-export interface ProductByIdResponse {
-    product: ShopifyProduct | null;
+export interface ProductsSearchResponse {
+    products: { nodes: ShopifyProduct[] };
 }

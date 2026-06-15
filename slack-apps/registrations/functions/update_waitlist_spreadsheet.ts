@@ -1,10 +1,12 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import { getOrCreateGoogleClient } from "../lib/clients/google/client.ts";
-import { GOOGLE_SHEETS } from "../config.ts";
+import { columnToLetter, getOrCreateGoogleClient } from "../lib/clients/google/client.ts";
+import {
+    resolveStatusColumnIndex,
+    WAITLIST_SPREADSHEET_ID,
+    WAITLIST_TAB,
+} from "../lib/waitlists/sheet_service.ts";
 
-const SHEET = GOOGLE_SHEETS.waitlists;
-
-function formatStatusTimestamp(): string {
+export function formatStatusTimestamp(): string {
     const now = new Date();
     const month = now.getMonth() + 1;
     const day = now.getDate();
@@ -15,10 +17,10 @@ function formatStatusTimestamp(): string {
     return `${month}/${day} at ${hours}:${minutes} ${ampm}`;
 }
 
-function statusText(type: string, timestamp: string): string {
+export function statusText(type: string, timestamp: string): string {
     switch (type) {
         case "admit":
-            return `Contacted on ${timestamp}`;
+            return `Admitted on ${timestamp}`;
         case "remove":
             return `Cancelled on ${timestamp}`;
         case "order":
@@ -30,7 +32,10 @@ function statusText(type: string, timestamp: string): string {
 
 export const UpdateWaitlistSpreadsheetFunction = DefineFunction({
     callback_id: "update_waitlist_spreadsheet",
-    title: "Update Waitlist Spreadsheet",
+    // Neutral, truthful in both cases: on admit/remove it records the Status
+    // write; on a cancelled run (empty actions_json) it no-ops. Avoids the
+    // misleading "Saving updates…" progress toast when nothing was processed.
+    title: "Finishing up",
     source_file: "functions/update_waitlist_spreadsheet.ts",
     input_parameters: {
         properties: {
@@ -55,19 +60,24 @@ export default SlackFunction(UpdateWaitlistSpreadsheetFunction, async ({ inputs,
     try {
         const google = getOrCreateGoogleClient(env);
         const timestamp = formatStatusTimestamp();
+        // Locate the Status column by header name once, so writes land in the right
+        // cell regardless of the sheet's column order.
+        const statusCol = await resolveStatusColumnIndex(env);
+
+        const updates = actions.map((action) => ({
+            row: Number(action.rowNumber),
+            col: statusCol,
+            value: statusText(action.type, timestamp),
+        }));
+
+        await google.updateCells(WAITLIST_SPREADSHEET_ID, WAITLIST_TAB.name, updates);
 
         for (const action of actions) {
-            const status = statusText(action.type, timestamp);
-
-            await google.updateSpreadsheet(
-                SHEET.spreadsheet_id,
-                { name: SHEET.tab_name, id: SHEET.tab_id },
-                `J${action.rowNumber}`,
-                [[status]],
-            );
-
+            const cell = `${columnToLetter(statusCol)}${action.rowNumber}`;
             console.log(
-                `[update_sheet] row ${action.rowNumber}: "${status}" (${action.firstName} ${action.emailAddress})`,
+                `[update_sheet] ${cell}: "${
+                    statusText(action.type, timestamp)
+                }" (${action.firstName} ${action.emailAddress})`,
             );
         }
     } catch (err) {

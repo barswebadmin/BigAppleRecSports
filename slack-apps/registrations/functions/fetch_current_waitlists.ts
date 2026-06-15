@@ -1,9 +1,5 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import { getOrCreateGoogleClient } from "../lib/clients/google/client.ts";
-import { GOOGLE_SHEETS } from "../config.ts";
-import { parseWaitlistRows } from "../lib/waitlists/handlers/sheet_parser.ts";
-
-const SHEET = GOOGLE_SHEETS.waitlists;
+import { fetchWaitlists } from "../lib/waitlists/sheet_service.ts";
 
 export const FetchCurrentWaitlistsFunction = DefineFunction({
     callback_id: "fetch_current_waitlists",
@@ -23,15 +19,7 @@ export const FetchCurrentWaitlistsFunction = DefineFunction({
 
 export default SlackFunction(FetchCurrentWaitlistsFunction, async ({ env }) => {
     try {
-        const google = getOrCreateGoogleClient(env);
-
-        const { url, values } = await google.getSpreadsheet(
-            SHEET.spreadsheet_id,
-            { name: SHEET.tab_name, id: SHEET.tab_id },
-            "A1:J",
-        );
-
-        const waitlists = parseWaitlistRows(values, url);
+        const waitlists = await fetchWaitlists(env);
 
         // Summary
         const leagueKeys = Object.keys(waitlists.leagues);

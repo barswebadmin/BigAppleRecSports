@@ -4,13 +4,8 @@
 
 import type { League } from "../../types/league.ts";
 import type { EmailLookupEntry, WaitlistEntry } from "./handlers/waitlist_entry_types.ts";
-import {
-    buildLoginUrl,
-    capitalize,
-    formatDivision,
-    formatProductHandle,
-    normalizePhone,
-} from "../../utils/formatters.ts";
+import { capitalize, formatLeagueLabelShort } from "../../utils/formatters.ts";
+import { SLACK_LINK_TEXT, slackLink, tagSlackMember } from "../../config.ts";
 
 /** Tracks per-entry success/failure across processing steps. Posted as the summary message. */
 export interface ActionResult {
@@ -23,25 +18,64 @@ export interface ActionResult {
     league?: League;
     shopifyOk: boolean;
     emailOk: boolean;
+    /** True only when a notification email was actually sent (the per-row box was ticked). */
+    emailed: boolean;
     shopifyError?: string;
     emailError?: string;
+    /** Links resolved during processing, used to build the channel message bullets. */
+    customerAdminUrl?: string;
+    productUrl?: string;
+}
+
+const SHORT_MONTHS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+];
+
+/**
+ * Reformat a sheet timestamp (`M/D/YYYY H:MM:SS`, 24h) to `Mon D, h:mm AM/PM`
+ * (e.g. `Jun 13, 11:45 PM`). Parsed by regex (not `Date`) to avoid timezone
+ * shifts. Falls back to the raw string if it doesn't match.
+ */
+export function formatSubmittedTimestamp(raw: string): string {
+    const m = /^(\d{1,2})\/(\d{1,2})\/\d{2,4}\s+(\d{1,2}):(\d{2})/.exec(raw.trim());
+    if (!m) return raw;
+    const month = SHORT_MONTHS[Number(m[1]) - 1] ?? m[1];
+    const day = Number(m[2]);
+    const hour24 = Number(m[3]);
+    const minute = m[4];
+    const ampm = hour24 >= 12 ? "PM" : "AM";
+    const hour12 = hour24 % 12 || 12;
+    return `${month} ${day}, ${hour12}:${minute} ${ampm}`;
+}
+
+/** Bold name line for a waitlist entry: `#{position}: *First Last* (pronouns)`. */
+export function formatEntryTitle(entry: WaitlistEntry): string {
+    const pronouns = entry.pronouns ? ` (${entry.pronouns})` : "";
+    return `#${entry.position}: *${entry.firstName} ${entry.lastName}*${pronouns}`;
 }
 
 /**
- * Modal label for a waitlist entry: name, gender/pronouns, submission date,
- * status, and positions on any other league waitlists (from the byEmail lookup).
+ * Small lines shown beneath an entry: submission time and any other waitlists
+ * the same email appears on (from the byEmail lookup). Rendered as a context
+ * block by the modal, so they read as de-emphasized footnotes.
  */
-export function formatEntryLabel(
+export function formatEntryContextLines(
     entry: WaitlistEntry,
     currentLeagueKey: string,
     byEmail: Record<string, EmailLookupEntry[]>,
-): string {
-    const gp = [entry.gender, entry.pronouns].filter(Boolean).join(", ");
-    const nameLine = `:bust_in_silhouette: *${entry.firstName} ${entry.lastName}*${
-        gp ? ` (${gp})` : ""
-    }`;
-    const lines = [nameLine, `Submitted on ${entry.createdAt}`];
-    if (entry.status) lines.push(`Status: ${entry.status}`);
+): string[] {
+    const lines = [`Submitted: ${formatSubmittedTimestamp(entry.createdAt)}`];
 
     const others = (byEmail[entry.emailAddress.toLowerCase()] ?? []).filter(
         (e) => e.leagueKey !== currentLeagueKey,
@@ -49,50 +83,84 @@ export function formatEntryLabel(
     if (others.length > 0) {
         const otherLeagues = others
             .map((e) => {
-                const [sport, day, div] = e.leagueKey.split("|");
-                const label = `${capitalize(day)} ${div === "wtnb" ? "WTNB+" : "Open"} ${
-                    capitalize(sport)
-                }`;
-                return `${label} (#${e.entry.position}/${e.total})`;
+                const [sport, day, division] = e.leagueKey.split("|");
+                return `${
+                    formatLeagueLabelShort({ sport, day, division } as League)
+                } (#${e.entry.position}/${e.total})`;
             })
             .join(", ");
-        lines.push(`:information_source: Also on other waitlists: ${otherLeagues}`);
+        lines.push(`_*Note: also waitlisted for ${otherLeagues}*_`);
     }
+    return lines;
+}
+
+/** Read-only label for an already-contacted entry (no dropdown shown). */
+export function formatReadOnlyEntry(
+    entry: WaitlistEntry,
+    currentLeagueKey: string,
+    byEmail: Record<string, EmailLookupEntry[]>,
+): string {
+    const lines = [
+        formatEntryTitle(entry),
+        ...formatEntryContextLines(entry, currentLeagueKey, byEmail),
+    ];
+    if (entry.status) lines.push(`:white_check_mark: _${entry.status}_`);
     return lines.join("\n");
 }
 
-/** One line of the channel summary message, with failure warnings and an SMS suggestion. */
-export function formatActionResult(r: ActionResult): string {
-    const verb = r.type === "admit" ? "Admitted" : "Removed";
-    const allOk = r.shopifyOk && r.emailOk;
-    const icon = allOk ? "\u2705" : "\u26A0\uFE0F";
-    let line = `${icon} ${verb} *${r.name}* (${r.email})`;
-
-    if (r.type === "admit" && r.emailOk) {
-        line += ` \u2014 emailed`;
-        const smsPhone = r.phone ? normalizePhone(r.phone) : null;
-        if (smsPhone && r.league) {
-            const lg = r.league;
-            const leagueLabel = `${capitalize(lg.day)} ${capitalize(lg.sport)} (${
-                formatDivision(lg.division)
-            })`;
-            const loginUrl = buildLoginUrl(formatProductHandle(lg));
-            const smsBody = encodeURIComponent(
-                `Hi ${r.firstName}, we had a spot open up in ${leagueLabel}. Attaching a link to login and register directly (also sent to your email). If you're no longer interested, let us know so we can offer it to someone else! ${loginUrl}`,
-            );
-            line +=
-                ` (Phone Number was provided - consider <sms://${smsPhone}?&body=${smsBody}|texting them as well for faster processing>)`;
-        }
-    }
-
+/**
+ * One bullet per processed player: name (linked to their Shopify customer when
+ * known) plus a terse outcome. Intentionally minimal — the dry-run preview is
+ * where full request detail belongs.
+ */
+export function formatActionBullet(r: ActionResult): string {
+    const namePart = r.customerAdminUrl ? slackLink(r.name, r.customerAdminUrl) : `*${r.name}*`;
     if (!r.shopifyOk) {
-        line +=
-            `\n\u274C Shopify tag update could not be completed. Please update manually and reach out to the player.`;
+        return `${namePart} — :x: Shopify update failed${
+            r.shopifyError ? ` (${r.shopifyError})` : ""
+        }; update the tag manually`;
     }
-    if (!r.emailOk && r.shopifyOk) {
-        line += `\n\u26A0\uFE0F Email could not be sent${
-            r.emailError ? `: ${r.emailError}` : ""
-        }. Please reach out manually.`;
-    }
-    return line;
+    if (r.type === "remove") return `${namePart} — removed from the waitlist`;
+    const note = !r.emailOk
+        ? "tagged, :warning: email failed"
+        : r.emailed
+        ? "emailed"
+        : "tagged, no email";
+    return `${namePart} — pulled off the waitlist _(${note})_`;
+}
+
+/**
+ * One consolidated channel message for a real (non-dry-run) run. The workflow
+ * handles a single league at a time, so the league link, processor, sheet link,
+ * and remaining count appear once; each processed player is a bullet.
+ */
+export function buildWaitlistResultMessage(
+    results: ActionResult[],
+    opts: { processedBy?: string; remaining: number; sheetUrl: string },
+): { text: string; blocks: Record<string, unknown>[] } {
+    const lg = results[0]?.league;
+    const leagueText = lg
+        ? `${capitalize(lg.day)} ${capitalize(lg.sport)} (${
+            lg.division === "wtnb" ? "WTNB+" : "Open"
+        })`
+        : "this league";
+    const productUrl = results[0]?.productUrl;
+    const leaguePart = productUrl ? slackLink(leagueText, productUrl) : `*${leagueText}*`;
+
+    const headerLines = [`*Waitlist updated — ${leaguePart}*`];
+    const meta: string[] = [];
+    if (opts.processedBy) meta.push(tagSlackMember(opts.processedBy));
+    meta.push(`${Math.max(0, opts.remaining)} still on the waitlist`);
+    headerLines.push(meta.join("  ·  "));
+    headerLines.push(slackLink(SLACK_LINK_TEXT.googleSheets, opts.sheetUrl));
+
+    const bulletLines = results.map((r) => `•  ${formatActionBullet(r)}`);
+
+    return {
+        text: [...headerLines, "", ...bulletLines].join("\n"),
+        blocks: [
+            { type: "section", text: { type: "mrkdwn", text: headerLines.join("\n") } },
+            { type: "section", text: { type: "mrkdwn", text: bulletLines.join("\n") } },
+        ],
+    };
 }
