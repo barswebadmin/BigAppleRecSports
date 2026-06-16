@@ -1,18 +1,17 @@
 """POC: gql DSL client using pre-pickled Shopify schema."""
 
 import os
-import dotenv
 import pickle
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
-from pathlib import Path
-
-from gql import Client
-from gql.transport.httpx import HTTPXTransport
-from gql.dsl import DSLFragment, DSLQuery, DSLMutation, DSLSchema, dsl_gql, DSLType, DSLExecutable, DSLSelector, GraphQLRequest, DSLVariableDefinitions, DSLVariable, DSLSelectable
-
+import dotenv
 from autoregistry import Registry
+from gql import Client
+from gql.dsl import DSLQuery, DSLSchema, DSLSelector, DSLType, DSLVariableDefinitions, GraphQLRequest, dsl_gql
+from gql.transport.httpx import HTTPXTransport
+from graphql import GraphQLSchema
 
 
 
@@ -24,9 +23,6 @@ EMAIL = "jdazz87@gmail.com"
 # ------------------------------------------
 
 PICKLE_PATH = Path(__file__).parent / "2026-07.graphql.pickle"
-SCHEMA_CACHE = None
-
-
 
 
 def parse_pickle(path: Path):
@@ -35,35 +31,31 @@ def parse_pickle(path: Path):
         return pickle.load(f)
 
 
-
-
 class ShopifyClient:
     """Shopify Admin GraphQL client."""
+
+    schema_cache: GraphQLSchema | None = None
+
+    @classmethod
+    def load_schema(cls) -> GraphQLSchema:
+        if cls.schema_cache is None:
+            cls.schema_cache = parse_pickle(PICKLE_PATH)
+        return cls.schema_cache
 
     def __init__(
         self,
         *,
-        store_id: int = os.environ["SHOPIFY__STORE_ID"],
-        api_version: str = os.environ["SHOPIFY__API_VERSION"],
-        token: str = os.environ["SHOPIFY__TOKEN__ADMIN"]
+        store_id: str = os.environ.get("SHOPIFY__STORE_ID"),
+        api_version: str = os.environ.get("SHOPIFY__API_VERSION"),
+        token: str = os.environ.get("SHOPIFY__TOKEN__ADMIN"),
     ):
-        global SCHEMA_CACHE
-        if SCHEMA_CACHE is None:
-            SCHEMA_CACHE = parse_pickle(PICKLE_PATH)
-
-        self.gql_schema = SCHEMA_CACHE
-        self.dsl_schema = DSLSchema(SCHEMA_CACHE)
+        self.gql_schema = self.load_schema()
+        self.dsl_schema = DSLSchema(self.gql_schema)
         transport = HTTPXTransport(
             url=f"https://{store_id}.myshopify.com/admin/api/{api_version}/graphql.json",
             headers={"X-Shopify-Access-Token": token},
         )
         self.client = Client(schema=self.gql_schema, transport=transport)
-
-
-    def load_schema(self):
-        global SCHEMA_CACHE
-        SCHEMA_CACHE = parse_pickle(PICKLE_PATH)
-        return DSLSchema(SCHEMA_CACHE)
 
 
     def to_query(self, query_name: str) -> DSLQuery:
@@ -135,28 +127,64 @@ class ShopifySchema:
     query_name: str
     resource_name: str
     connection_name: str
-    client: ShopifyClient | None = ShopifyClient()
+    default_return_fields: list[str]
+    client: ShopifyClient | None = None
 
+    def __post_init__(self):
+        if self.client is None:
+            self.client = ShopifyClient()
 
-    def get(self, *, variables: dict[str, Any], returns: list[str]):
-        return self.client.query(self.query_name, self.resource_name, self.connection_name, variables, returns)
-
-
-
-
-# class Customers(ShopifySchema):
-#     query_name = "customers"
-#     resource_name = "Customer"
-#     connection_name = "CustomerConnection"
-
-#     def get(self, *, variables: dict[str, Any], returns: list[str]):
-#         return self.client.query(self.query_name, self.resource_name, self.connection_name, variables, returns)
-
-
-shopify["customers"] = ShopifySchema(query_name="customers", resource_name="Customer", connection_name="CustomerConnection")
+    def get(self, *, variables: dict[str, Any], returns: list[str] | None = None):
+        fields = returns if returns is not None else self.default_return_fields
+        return self.client.query(self.query_name, self.resource_name, self.connection_name, variables, fields)
 
 
 
+
+shopify["customers"] = ShopifySchema(
+    query_name="customers",
+    resource_name="Customer",
+    connection_name="CustomerConnection",
+    default_return_fields=[
+        "id",
+        "email",
+        "firstName",
+        "lastName",
+        "phone",
+        "createdAt",
+        "updatedAt",
+        "numberOfOrders",
+        "amountSpent",
+        "note",
+        "tags",
+        "verifiedEmail",
+        "state",
+    ],
+)
+
+shopify["orders"] = ShopifySchema(
+    query_name="orders",
+    resource_name="Order",
+    connection_name="OrderConnection",
+    default_return_fields=[
+        "id",
+        "name",
+        "email",
+        "createdAt",
+        "updatedAt",
+        "displayFinancialStatus",
+        "displayFulfillmentStatus",
+        "cancelledAt",
+        "cancelReason",
+        "note",
+        "tags",
+        "totalPriceSet",
+        "subtotalPriceSet",
+        "totalTaxSet",
+        "totalDiscountsSet",
+        "totalRefundedSet",
+    ],
+)
 
 
 
@@ -173,5 +201,12 @@ shopify["customers"] = ShopifySchema(query_name="customers", resource_name="Cust
 
 
 if __name__ == "__main__":
-    customer = shopify["customers"].get(variables={"query": "email:jdazz87@gmail.com", "first": 1}, returns=["id", "email"])
-    print(customer)
+    customer = shopify["customers"].get(
+        variables={"query": "email:jdazz87@gmail.com", "first": 1},
+    )
+    print("Customer:", customer)
+
+    orders = shopify["orders"].get(
+        variables={"query": "email:jdazz87@gmail.com", "first": 5},
+    )
+    print("Orders:", orders)
