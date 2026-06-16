@@ -1,0 +1,36 @@
+[project]
+name = "bars-scripts"
+version = "1.0.0"
+description = "Big Apple Rec Sports - Scripts"
+requires-python = ">=3.14"
+dependencies = [
+    "bars-shared-utilities",
+    "shopify-client",
+    "beautifulsoup4>=4.12.0",
+    "boto3>=1.34.0",
+    "httpx>=0.27.0",
+    "polars>=1.0.0",
+    "pydantic>=2.12.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.32.3",
+    "rich>=13.7.0",
+]
+
+[project.optional-dependencies]
+codegen = [
+    "datamodel-code-generator>=0.25.0",
+    "pydantic>=2.12.0",
+    "sgqlc>=17.0",
+]
+shopify = [
+    "requests>=2.32.3",
+    "sgqlc>=17.0",
+]
+secrets = [
+    "rich>=13.7.0",
+]
+
+[tool.uv.sources]
+bars-shared-utilities = { workspace = true }
+shopify-client = { workspace = true }

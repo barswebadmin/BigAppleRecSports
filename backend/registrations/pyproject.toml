@@ -40,4 +40,5 @@ venv = ".venv"
 pythonVersion = "3.14"
 
 [tool.uv.sources]
-shopify-client = { path = "../../lib/clients/shopify", editable = true }
+# Not a workspace member (sibling backend/pyproject.toml prevents discovery).
+shopify-client = { path = "../../lib/clients/shopify-client" }
