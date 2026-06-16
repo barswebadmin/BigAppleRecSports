@@ -4,12 +4,13 @@
  */
 
 import { importPKCS8, SignJWT } from "jose";
+import { DEFAULT_GMAIL_SENDER, GOOGLE_API } from "../../../config.ts";
 
-const TOKEN_URL = "https://oauth2.googleapis.com/token";
-const SUBJECT = "web@bigapplerecsports.com";
-const SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://mail.google.com/"];
+const TOKEN_URL = GOOGLE_API.oauth_token_url;
+const SUBJECT = DEFAULT_GMAIL_SENDER.email_address;
+const SCOPES = GOOGLE_API.scopes;
 
-const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
+const SHEETS_BASE = GOOGLE_API.sheets_base;
 
 /**
  * A sheet/tab handle. `id` is the numeric sheetId (the `gid` in the URL).

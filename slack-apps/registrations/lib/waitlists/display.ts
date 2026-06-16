@@ -3,8 +3,9 @@
  */
 
 import type { League } from "../../types/league.ts";
+import { parseLeagueKey } from "./league_key.ts";
 import type { EmailLookupEntry, WaitlistEntry } from "./handlers/waitlist_entry_types.ts";
-import { capitalize, formatLeagueLabelShort } from "../../utils/formatters.ts";
+import { capitalize, formatDivisionLabel, formatLeagueLabelShort } from "../../utils/formatters.ts";
 import { SLACK_LINK_TEXT, slackLink, tagSlackMember } from "../../config.ts";
 
 /** Tracks per-entry success/failure across processing steps. Posted as the summary message. */
@@ -83,9 +84,9 @@ export function formatEntryContextLines(
     if (others.length > 0) {
         const otherLeagues = others
             .map((e) => {
-                const [sport, day, division] = e.leagueKey.split("|");
+                const league = parseLeagueKey(e.leagueKey);
                 return `${
-                    formatLeagueLabelShort({ sport, day, division } as League)
+                    formatLeagueLabelShort(league as League)
                 } (#${e.entry.position}/${e.total})`;
             })
             .join(", ");
@@ -130,6 +131,57 @@ export function formatActionBullet(r: ActionResult): string {
 }
 
 /**
+ * Confirmation modal pushed when the reviewer clicks Submit. Lists only the
+ * first/last names being admitted/removed so they can verify before the
+ * (irreversible) run. One builder for both modes — only the title and a context
+ * note differ; submitting runs the exact same downstream logic (dry-run preview
+ * or real execution), so there's no separate confirm path to maintain.
+ */
+export function buildWaitlistConfirmModal(args: {
+    callbackId: string;
+    admitNames: string[];
+    removeNames: string[];
+    dry: boolean;
+    metadata: string;
+}): Record<string, unknown> {
+    const blocks: Record<string, unknown>[] = [
+        { type: "section", text: { type: "mrkdwn", text: "*Please confirm these changes:*" } },
+    ];
+
+    const group = (label: string, names: string[]) => {
+        if (names.length === 0) return;
+        const bullets = names.map((n) => `•  ${n}`).join("\n");
+        blocks.push({
+            type: "section",
+            text: { type: "mrkdwn", text: `*${label}* (${names.length})\n${bullets}` },
+        });
+    };
+    group("Admit", args.admitNames);
+    group("Remove", args.removeNames);
+
+    if (args.dry) {
+        blocks.push({
+            type: "context",
+            elements: [{
+                type: "mrkdwn",
+                text:
+                    ":test_tube: *DRY RUN* — nothing will be sent. Submitting posts a preview of the exact requests.",
+            }],
+        });
+    }
+
+    return {
+        type: "modal",
+        callback_id: args.callbackId,
+        private_metadata: args.metadata,
+        title: { type: "plain_text", text: args.dry ? "Confirm (DRY RUN)" : "Confirm changes" },
+        submit: { type: "plain_text", text: "Confirm" },
+        close: { type: "plain_text", text: "Cancel" },
+        blocks,
+    };
+}
+
+/**
  * One consolidated channel message for a real (non-dry-run) run. The workflow
  * handles a single league at a time, so the league link, processor, sheet link,
  * and remaining count appear once; each processed player is a bullet.
@@ -140,9 +192,7 @@ export function buildWaitlistResultMessage(
 ): { text: string; blocks: Record<string, unknown>[] } {
     const lg = results[0]?.league;
     const leagueText = lg
-        ? `${capitalize(lg.day)} ${capitalize(lg.sport)} (${
-            lg.division === "wtnb" ? "WTNB+" : "Open"
-        })`
+        ? `${capitalize(lg.day)} ${capitalize(lg.sport)} (${formatDivisionLabel(lg.division)})`
         : "this league";
     const productUrl = results[0]?.productUrl;
     const leaguePart = productUrl ? slackLink(leagueText, productUrl) : `*${leagueText}*`;

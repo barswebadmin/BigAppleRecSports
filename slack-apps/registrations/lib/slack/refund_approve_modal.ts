@@ -4,6 +4,9 @@
  * POSTs the decision to the Lambda. Pure view builder — no Slack API calls.
  */
 
+import { formatMoney } from "../../utils/formatters.ts";
+import { context, plainText } from "./blocks.ts";
+
 export const APPROVE_MODAL_CALLBACK_ID = "approve_refund_modal";
 export const AMOUNT_BLOCK_ID = "amount_block";
 export const AMOUNT_ACTION_ID = "amount_input";
@@ -33,28 +36,22 @@ export function buildApproveModal(args: {
         REFUND_TYPE_OPTIONS[0];
 
     const refundableNote = args.refundable !== null
-        ? `Refundable balance: $${args.refundable.toFixed(2)}`
+        ? `Refundable balance: ${formatMoney(args.refundable)}`
         : "Refundable balance unknown";
 
     return {
         type: "modal",
         callback_id: APPROVE_MODAL_CALLBACK_ID,
         private_metadata: JSON.stringify(args.meta),
-        title: { type: "plain_text", text: "Approve Refund" },
-        submit: { type: "plain_text", text: "Confirm & Process" },
-        close: { type: "plain_text", text: "Cancel" },
+        title: plainText("Approve Refund"),
+        submit: plainText("Confirm & Process"),
+        close: plainText("Cancel"),
         blocks: [
-            {
-                type: "context",
-                elements: [{
-                    type: "mrkdwn",
-                    text: `Order *${args.orderNumber}* · ${refundableNote}`,
-                }],
-            },
+            context(`Order *${args.orderNumber}* · ${refundableNote}`),
             {
                 type: "input",
                 block_id: AMOUNT_BLOCK_ID,
-                label: { type: "plain_text", text: "Amount (USD)" },
+                label: plainText("Amount (USD)"),
                 element: {
                     type: "plain_text_input",
                     action_id: AMOUNT_ACTION_ID,
@@ -64,16 +61,16 @@ export function buildApproveModal(args: {
             {
                 type: "input",
                 block_id: TYPE_BLOCK_ID,
-                label: { type: "plain_text", text: "Refund type" },
+                label: plainText("Refund type"),
                 element: {
                     type: "static_select",
                     action_id: TYPE_ACTION_ID,
                     initial_option: {
-                        text: { type: "plain_text", text: initialType.label },
+                        text: plainText(initialType.label),
                         value: initialType.value,
                     },
                     options: REFUND_TYPE_OPTIONS.map((o) => ({
-                        text: { type: "plain_text", text: o.label },
+                        text: plainText(o.label),
                         value: o.value,
                     })),
                 },

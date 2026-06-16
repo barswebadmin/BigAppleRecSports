@@ -1,14 +1,11 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
+import { buildLeagueKey, parseLeagueKey } from "../lib/waitlists/league_key.ts";
 import { compareWeekday, CURRENT_LEAGUES, slackLink } from "../config.ts";
-import { capitalize } from "../utils/formatters.ts";
+import { capitalize, formatDivisionLabel } from "../utils/formatters.ts";
 import { getDefaultLeagueForChannel } from "../config.ts";
 import { waitlistSheetUrl } from "../lib/waitlists/sheet_service.ts";
 
 const CALLBACK_ID = "league_waitlist_selection";
-
-function formatDivisionLabel(div: string): string {
-    return div === "wtnb" ? "WTNB+" : "Open";
-}
 
 function buildLeagueOptions(): { text: string; value: string }[] {
     // Sort by sport (A→Z), then day of week (Mon→Sun, not alphabetical), then
@@ -24,7 +21,7 @@ function buildLeagueOptions(): { text: string; value: string }[] {
             text: `${capitalize(lg.sport)} - ${capitalize(lg.day)} - ${
                 formatDivisionLabel(lg.division)
             } Division`,
-            value: `${lg.sport}|${lg.day}|${lg.division}`,
+            value: buildLeagueKey(lg.sport, lg.day, lg.division),
         }));
 }
 
@@ -112,7 +109,7 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, view, client }) => 
     const leagueValue = view.state?.values?.league_block?.league_select?.selected_option?.value ??
         "";
 
-    const [sport, day, div] = leagueValue.split("|");
+    const { sport, day, division: div } = parseLeagueKey(leagueValue);
     const display = leagueValue
         ? `${capitalize(sport)} - ${capitalize(day)} - ${formatDivisionLabel(div)}`
         : "(none)";

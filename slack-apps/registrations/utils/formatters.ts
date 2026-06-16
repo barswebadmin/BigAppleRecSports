@@ -1,13 +1,16 @@
 import type { League } from "../types/league.ts";
-
-const STORE_BASE = "https://www.bigapplerecsports.com";
+import { BARS_URLS, ORG_DOMAIN } from "../config.ts";
 
 export function buildLoginUrl(productHandle: string): string {
-    return `${STORE_BASE}/customer_authentication/login?return_to=%2Fproducts%2F${productHandle}`;
+    return `${BARS_URLS.website}/customer_authentication/login?return_to=%2Fproducts%2F${productHandle}`;
 }
 
 export function formatDivision(division: string): string {
     return division.toLowerCase() === "wtnb" ? "WTNB+ Division" : "Open Division";
+}
+
+export function formatDivisionLabel(division: string): string {
+    return division.toLowerCase() === "wtnb" ? "WTNB+" : "Open";
 }
 
 export function formatDivisionShort(division: string): string {
@@ -30,8 +33,16 @@ export function capitalize(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+export function titlecase(s: string): string {
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+export function formatMoney(n: number | null | undefined): string {
+    return n === null || n === undefined ? "—" : `$${n.toFixed(2)}`;
+}
+
 export function formatSportLeadershipEmailAddress(league: League): string {
-    return `${league.sport}.${league.day}.${league.division}@bigapplerecsports.com`;
+    return `${league.sport}.${league.day}.${league.division}@${ORG_DOMAIN}`;
 }
 
 export function formatSportLeadershipEmailSenderName(league: League): string {

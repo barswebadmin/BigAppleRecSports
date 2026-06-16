@@ -4,6 +4,7 @@
  * Row 0 is the header row; data starts at row 1.
  */
 
+import { buildLeagueKey } from "../league_key.ts";
 import type {
     EmailLookupEntry,
     LeagueWaitlist,
@@ -18,10 +19,6 @@ function isActive(status: string | undefined): boolean {
     if (!status) return true;
     const norm = status.toLowerCase();
     return !INACTIVE_KEYWORDS.some((k) => norm.includes(k));
-}
-
-function parseDivision(raw: string): string {
-    return raw.trim().slice(0, 4).toLowerCase();
 }
 
 export function findColumn(headers: string[], keyword: string): number {
@@ -60,17 +57,17 @@ export function parseWaitlistRows(rows: string[][], spreadsheetUrl: string): Lea
         const parts = leagueRaw.split("-").map((s) => s.trim());
         if (parts.length < 3) continue;
 
-        const sport = parts[0].toLowerCase();
-        const day = parts[1].toLowerCase();
-        const division = parseDivision(parts[2]);
-        const leagueKey = `${sport}|${day}|${division}`;
+        const sport = parts[0];
+        const day = parts[1];
+        const division = parts[2];
+        const leagueKey = buildLeagueKey(sport, day, division);
 
         const entry: Omit<WaitlistEntry, "position"> = {
             rowNumber: i + 1,
             createdAt: col(row, c.createdAt),
-            sport,
-            day,
-            division,
+            sport: sport.trim().toLowerCase(),
+            day: day.trim().toLowerCase(),
+            division: division.trim().slice(0, 4).toLowerCase(),
             firstName: col(row, c.firstName),
             lastName: col(row, c.lastName),
             emailAddress: col(row, c.emailAddress).toLowerCase(),

@@ -6,8 +6,8 @@
 
 import { BARS_URLS } from "../../config.ts";
 import type { RefundEstimate, RefundEvaluationPayload } from "../../types/evaluation_payload.ts";
-
-type Block = Record<string, unknown>;
+import { formatMoney } from "../../utils/formatters.ts";
+import { type Block, context, divider, header, plainText, section } from "./blocks.ts";
 
 /** Final reviewer decision; when present the card renders a status line and
  * drops the action buttons (used after Approve/Deny). */
@@ -16,20 +16,13 @@ export interface RefundDecision {
     by: string; // Slack user id
     amount?: number;
     refundType?: string;
+    /** True when the approval only previewed payloads (didn't send to the Lambda). */
+    dryRun?: boolean;
 }
 
 export const APPROVE_ACTION_ID = "approve_refund";
 export const DENY_ACTION_ID = "deny_refund";
 
-const plainText = (text: string) => ({ type: "plain_text" as const, text });
-const mrkdwn = (text: string): Block => ({ type: "section", text: { type: "mrkdwn", text } });
-const divider = (): Block => ({ type: "divider" });
-
-function money(n: number | null | undefined): string {
-    return n === null || n === undefined ? "—" : `$${n.toFixed(2)}`;
-}
-
-/** Clamp free-text (e.g. requester notes) so it can't dominate the card. */
 function truncate(text: string, max: number): string {
     const t = text.trim();
     return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
@@ -54,7 +47,7 @@ function productLink(p: RefundEvaluationPayload): string {
 }
 
 function formatLeague(p: RefundEvaluationPayload): string {
-    const parts = [p.sport, p.day, p.division].filter(Boolean);
+    const parts = [p.sport, p.season, p.day, p.division].filter(Boolean);
     return parts.length ? parts.join(" · ") : "—";
 }
 
@@ -62,7 +55,7 @@ function estimateLine(label: string, est: RefundEstimate | null): string {
     if (!est) return `*${label}*\n—`;
     const pct = est.percentage !== null ? ` (${est.percentage}%)` : "";
     const fee = est.has_processing_fee ? " _(incl. processing fee)_" : "";
-    return `*${label}*\n${money(est.amount)}${pct}${fee}`;
+    return `*${label}*\n${formatMoney(est.amount)}${pct}${fee}`;
 }
 
 export function buildRefundEvalBlocks(
@@ -71,19 +64,16 @@ export function buildRefundEvalBlocks(
 ): Block[] {
     const blocks: Block[] = [];
 
-    blocks.push({
-        type: "header",
-        text: plainText(`Refund Request — ${p.first_name} ${p.last_name}`),
-    });
+    blocks.push(header(`Refund Request — ${p.first_name} ${p.last_name}`));
 
     // Order not found → short-circuit card
     if (!p.order_found) {
-        blocks.push(mrkdwn(
+        blocks.push(section(
             `:x: *Order not found* for \`${p.order_number}\`\n` +
-                `Requested by ${p.email_address} (${p.refund_or_credit})`,
+                `Requested by ${p.email_address} (${p.refund_type})`,
         ));
         if (p.error) {
-            blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: p.error }] });
+            blocks.push(context(p.error));
         }
         return blocks;
     }
@@ -100,26 +90,28 @@ export function buildRefundEvalBlocks(
             field("Order", orderLink(p)),
             field("Product", productLink(p)),
             field("League", formatLeague(p)),
-            field("Requested", p.refund_or_credit),
+            field("Requested", p.refund_type),
             field("Email", p.email_address),
-            field("Order Total", money(p.order_total)),
-            field("Refundable Balance", money(p.refundable_balance)),
-            field("Already Refunded", money(p.total_refunded)),
+            field("Order Total", formatMoney(p.order_total)),
+            field("Refundable Balance", formatMoney(p.refundable_balance)),
+            field("Already Refunded", formatMoney(p.total_refunded)),
         ],
     });
 
-    if (p.notes) blocks.push(mrkdwn(`*Notes*\n${truncate(p.notes, 280)}`));
+    if (p.notes) blocks.push(section(`*Notes*\n${truncate(p.notes, 280)}`));
 
     blocks.push(divider());
 
     // Validation / warnings
     if (p.validation_passed && p.warnings.length === 0) {
-        blocks.push(mrkdwn(":white_check_mark: *Validation passed* — no warnings"));
+        blocks.push(section(":white_check_mark: *Validation passed* — no warnings"));
     } else {
         blocks.push(
-            mrkdwn(`:warning: *${p.warnings.length} warning${p.warnings.length === 1 ? "" : "s"}*`),
+            section(
+                `:warning: *${p.warnings.length} warning${p.warnings.length === 1 ? "" : "s"}*`,
+            ),
         );
-        for (const w of p.warnings) blocks.push(mrkdwn(`• ${w}`));
+        for (const w of p.warnings) blocks.push(section(`• ${w}`));
     }
 
     // Estimates
@@ -141,18 +133,12 @@ export function buildRefundEvalBlocks(
         ? `Season start: ${p.season_start_date}`
         : ":warning: Season dates not found on product";
     const weekResolved = p.season_week_resolved ? ` · Submitted ${p.season_week_resolved}` : "";
-    blocks.push({
-        type: "context",
-        elements: [{ type: "mrkdwn", text: `${seasonStart}${weekResolved}` }],
-    });
+    blocks.push(context(`${seasonStart}${weekResolved}`));
 
     // Decision footer: once approved/denied, show the outcome and drop buttons.
     if (decision) {
         blocks.push(divider());
-        blocks.push({
-            type: "context",
-            elements: [{ type: "mrkdwn", text: decisionLine(decision) }],
-        });
+        blocks.push(context(decisionLine(decision)));
         return blocks;
     }
 
@@ -185,7 +171,8 @@ function decisionLine(d: RefundDecision): string {
     if (d.status === "denied") {
         return `:no_entry: *Denied* by <@${d.by}>`;
     }
-    const amt = d.amount !== undefined ? ` ${money(d.amount)}` : "";
+    const amt = d.amount !== undefined ? ` ${formatMoney(d.amount)}` : "";
     const via = d.refundType ? ` via ${d.refundType}` : "";
-    return `:white_check_mark: *Approved* by <@${d.by}> —${amt}${via} · sent to Lambda`;
+    const where = d.dryRun ? "preview posted to test channel (dry run)" : "sent to Lambda";
+    return `:white_check_mark: *Approved* by <@${d.by}> —${amt}${via} · ${where}`;
 }

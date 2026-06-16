@@ -20,21 +20,35 @@ export interface RefundEstimate {
     message: string | null;
 }
 
+/**
+ * An order payment transaction, mirroring `find_orders.graphql`'s `transactions`
+ * selection. The eval already fetches these; echoing them on the payload lets the
+ * approval pass parent transaction ids down to `refundCreate` without a re-fetch.
+ */
+export interface RefundTransaction {
+    id: string;
+    kind: string; // SALE | CAPTURE | AUTHORIZATION | REFUND | ...
+    status: string; // SUCCESS | PENDING | ...
+    gateway: string | null;
+    parent_id: string | null; // parentTransaction.id
+}
+
 /** Mirror of `RefundResponse.to_json()` + echoed request fields. */
 export interface RefundEvaluationPayload {
     // When true, the review message routes to the test channel instead of the
     // league channel. Lets the Lambda (or a manual post) exercise the flow safely.
-    isTest?: boolean;
+    is_test?: boolean;
 
     // ── Echoed from the original request (Lambda adds these) ───────────────
     email_address: string;
     first_name: string;
     last_name: string;
-    refund_or_credit: string; // "refund" | "credit"
+    refund_type: string; // "refund_to_original" | "store_credit"
     notes?: string | null;
 
-    // ── League (Lambda resolves from the order's product) ────────────────--
+    // ── League identity (Lambda resolves from the order's product) ───────
     sport: string | null;
+    season: string | null;
     day: string | null;
     division: string | null;
 
@@ -69,6 +83,11 @@ export interface RefundEvaluationPayload {
     // ── Estimates (both ladders) ─────────────────────────────────────────--
     estimated_refund_to_original: RefundEstimate | null;
     estimated_store_credit: RefundEstimate | null;
+
+    // Order payment transactions (Lambda echoes from its order fetch). Passed
+    // back down on approval so refundCreate is built without re-querying Shopify.
+    transactions?: RefundTransaction[];
+    currency_code?: string | null;
 
     error?: string | null;
 }

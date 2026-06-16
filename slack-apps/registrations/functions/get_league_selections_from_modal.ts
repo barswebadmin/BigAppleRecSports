@@ -13,6 +13,7 @@ import {
 } from "../lib/leagues/selection_state.ts";
 import { ALL_SEASONS, getDaysForSport } from "../config.ts";
 import { capitalize } from "../utils/formatters.ts";
+import { plainText } from "../lib/slack/blocks.ts";
 
 const CALLBACK_ID = "shopify_orders_modal";
 const SPORTS = ["bowling", "dodgeball", "kickball", "pickleball"];
@@ -21,8 +22,6 @@ interface Option {
     text: { type: "plain_text"; text: string };
     value: string;
 }
-
-const plainText = (text: string) => ({ type: "plain_text" as const, text });
 
 const toOptions = (items: { label: string; value: string }[]): Option[] =>
     items.map((i) => ({ text: plainText(i.label), value: i.value }));

@@ -5,6 +5,7 @@ import {
     WAITLIST_SPREADSHEET_ID,
     WAITLIST_TAB,
 } from "../lib/waitlists/sheet_service.ts";
+import type { WaitlistAction } from "../lib/waitlists/waitlist_action.ts";
 
 export function formatStatusTimestamp(): string {
     const now = new Date();
@@ -45,13 +46,6 @@ export const UpdateWaitlistSpreadsheetFunction = DefineFunction({
     },
     output_parameters: { properties: {}, required: [] },
 });
-
-interface WaitlistAction {
-    type: "admit" | "remove" | "order";
-    rowNumber: string;
-    firstName: string;
-    emailAddress: string;
-}
 
 export default SlackFunction(UpdateWaitlistSpreadsheetFunction, async ({ inputs, env }) => {
     const actions = JSON.parse(inputs.actions_json) as WaitlistAction[];

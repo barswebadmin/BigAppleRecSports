@@ -1,17 +1,67 @@
 // ── Season ──────────────────────────────────────────────────────────
 
+import { buildLeagueKey } from "./lib/waitlists/league_key.ts";
+
 export const CURRENT_YEAR = 2026;
 export const CURRENT_SEASON = "summer";
 
 export type Season = "winter" | "spring" | "summer" | "fall";
 export const ALL_SEASONS: Season[] = ["winter", "spring", "summer", "fall"];
 
+// ── Environment ─────────────────────────────────────────────────────
+
+export type Env = "test" | "prod";
+
+/** Read an env var, tolerating runtimes where env access is unavailable. */
+function readEnv(key: string): string | undefined {
+    try {
+        return Deno.env.get(key) ?? undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function envOr(key: string, fallback: string): string {
+    return readEnv(key) ?? fallback;
+}
+
+/**
+ * The single deployment switch. `ENV=prod` routes refund reviews to the live
+ * channel and lets the irreversible Shopify calls fire; any other value
+ * (default) keeps the app test-only. This is the one input that flips routing.
+ */
+export const ENV: Env = readEnv("ENV") === "prod" ? "prod" : "test";
+
+// ── Store identity ──────────────────────────────────────────────────
+
+/** One source of truth for the Shopify store; every store URL/domain derives from it. */
+export const STORE = {
+    id: envOr("SHOPIFY_STORE_ID", "09fe59-3"),
+    api_version: envOr("SHOPIFY_API_VERSION", "2025-01"),
+};
+
+export const STORE_MYSHOPIFY_DOMAIN = `${STORE.id}.myshopify.com`;
+
 // ── URLs ────────────────────────────────────────────────────────────
 
+/** Organization domain (no scheme/subdomain). Website + email addresses derive from it. */
+export const ORG_DOMAIN = envOr("ORG_DOMAIN", "bigapplerecsports.com");
+
 export const BARS_URLS = {
-    website: "https://www.bigapplerecsports.com",
-    admin_ui: "https://admin.shopify.com/store/09fe59-3",
-    admin_api: "https://09fe59-3/admin/api/2025-01/graphql.json",
+    website: envOr("BARS_WEBSITE_URL", `https://www.${ORG_DOMAIN}`),
+    admin_ui: `https://admin.shopify.com/store/${STORE.id}`,
+    admin_api: `https://${STORE.id}/admin/api/${STORE.api_version}/graphql.json`,
+};
+
+/** Google API endpoints. Their hosts are mirrored in OUTGOING_DOMAINS for the manifest. */
+export const GOOGLE_API = {
+    oauth_token_url: "https://oauth2.googleapis.com/token",
+    sheets_base: "https://sheets.googleapis.com/v4/spreadsheets",
+    gmail_base: "https://gmail.googleapis.com/gmail/v1",
+    scopes: [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://mail.google.com/",
+    ],
 };
 
 /** Shopify admin customer page from a customer GID (`gid://shopify/Customer/<n>`) or numeric id. */
@@ -66,51 +116,101 @@ export function compareWeekday(a: string, b: string): number {
 
 export const DEFAULT_GMAIL_SENDER = {
     name: "Big Apple Rec Sports",
-    email_address: "web@bigapplerecsports.com",
+    email_address: `web@${ORG_DOMAIN}`,
 };
 
 // ── Refunds ─────────────────────────────────────────────────────────
 
-// Test channel — used when a request is flagged isTest.
-export const REFUND_TEST_CHANNEL = "#joe-test";
+export const REFUND_TEST_CHANNEL = envOr("REFUND_TEST_CHANNEL", "#joe-test");
+export const REFUND_REVIEW_CHANNEL = envOr("REFUND_REVIEW_CHANNEL", "#exec-leadership-2026");
 
-// Live destination for refund review messages (POC: all leagues land here).
-export const REFUND_REVIEW_CHANNEL = "#exec-leadership-2026";
+// ShopifyRefundHandler Lambda Function URL — receives the approve/process POST
+// when a reviewer confirms a refund. Auth is NONE, so treat the URL as
+// semi-secret. Its host (derived below) must be in OUTGOING_DOMAINS.
+export const REFUND_PROCESS_URL = envOr(
+    "REFUND_PROCESS_URL",
+    "https://7wfkjr4jk5hbchf23venzdm3te0yaouc.lambda-url.us-east-1.on.aws/",
+);
+export const REFUND_PROCESS_DOMAIN = new URL(REFUND_PROCESS_URL).host;
 
-// ShopifyRefundHandler Lambda function URL — receives the approve/process POST
-// when a reviewer confirms a refund in the modal. Auth is NONE, so treat the
-// URL as semi-secret. The matching domain must be in manifest outgoingDomains.
-export const REFUND_PROCESS_URL =
-    "https://7wfkjr4jk5hbchf23venzdm3te0yaouc.lambda-url.us-east-1.on.aws/";
-export const REFUND_PROCESS_DOMAIN = "7wfkjr4jk5hbchf23venzdm3te0yaouc.lambda-url.us-east-1.on.aws";
-
-// TESTING: force every refund review into #joe-test regardless of payload.
-// Set to false to restore live routing (isTest → #joe-test, else exec channel).
-const FORCE_TEST_CHANNEL = true;
+// In non-prod, approving a refund POSTs the cancel/refund payloads to the test
+// channel as a preview instead of hitting the Lambda — letting us validate the
+// irreversible Shopify calls before they fire. `ENV=prod` (or an explicit
+// `REFUND_DRY_RUN` override) sends them for real.
+export const REFUND_DRY_RUN = (readEnv("REFUND_DRY_RUN") ?? String(ENV !== "prod")) === "true";
 
 /**
- * Route a refund review message. Test requests go to `#joe-test`; everything
- * else lands in the exec leadership channel for now.
+ * Route a refund review message. In test mode everything stays in the test
+ * channel; in prod only requests explicitly flagged `is_test` divert there.
  */
-export function resolveRefundChannel(opts: { isTest?: boolean }): string {
-    if (FORCE_TEST_CHANNEL) return REFUND_TEST_CHANNEL;
-    return opts.isTest ? REFUND_TEST_CHANNEL : REFUND_REVIEW_CHANNEL;
+export function resolveRefundChannel(opts: { is_test?: boolean }): string {
+    const useTest = ENV === "test" || opts.is_test === true;
+    return useTest ? REFUND_TEST_CHANNEL : REFUND_REVIEW_CHANNEL;
 }
 
-// ── Google Sheets ───────────────────────────────────────────────────
+// ── Manifest allowlist ──────────────────────────────────────────────
 
-export const GOOGLE_SHEETS = {
-    waitlists: {
-        spreadsheet_id: "1QgyHDN9EcxqefEJCDozfLZ7QKVxSbOaW28WOET9PYEE",
-        tab_name: "Form Responses 1",
-        tab_id: "2072632661",
+/** Every external host the app calls. Single source for `manifest.outgoingDomains`. */
+export const OUTGOING_DOMAINS = [
+    "www.googleapis.com",
+    "sheets.googleapis.com",
+    "gmail.googleapis.com",
+    "oauth2.googleapis.com",
+    STORE_MYSHOPIFY_DOMAIN,
+    REFUND_PROCESS_DOMAIN,
+];
+
+// ── Workflows (sheet · channels · league source) ────────────────────
+
+export type WorkflowName = "waitlist" | "refund";
+
+export interface SheetRef {
+    spreadsheet_id: string;
+    tab_name: string;
+    tab_id: string;
+}
+
+export interface WorkflowConfig {
+    sheet: SheetRef;
+    /** Where the workflow's Slack channel is resolved from. */
+    channels:
+        | { source: "per_league" }
+        | { source: "static"; test: string; review: string };
+    /** Where league identity comes from. */
+    leagueSource: "config" | "shopify";
+}
+
+export const WORKFLOWS: Record<WorkflowName, WorkflowConfig> = {
+    waitlist: {
+        sheet: {
+            spreadsheet_id: envOr(
+                "WAITLIST_SHEET_ID",
+                "1QgyHDN9EcxqefEJCDozfLZ7QKVxSbOaW28WOET9PYEE",
+            ),
+            tab_name: "Form Responses 1",
+            tab_id: "2072632661",
+        },
+        channels: { source: "per_league" },
+        leagueSource: "config",
     },
-    refund_requests: {
-        spreadsheet_id: "11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw",
-        tab_name: "Refund_Requests",
-        tab_id: "1435845892",
+    refund: {
+        sheet: {
+            spreadsheet_id: envOr(
+                "REFUND_SHEET_ID",
+                "11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw",
+            ),
+            tab_name: "Refund_Requests",
+            tab_id: "1435845892",
+        },
+        channels: { source: "static", test: REFUND_TEST_CHANNEL, review: REFUND_REVIEW_CHANNEL },
+        leagueSource: "shopify",
     },
 };
+
+/** Resolve a workflow's sheet from the single workflow table. */
+export function getWorkflowSheet(workflow: WorkflowName): SheetRef {
+    return WORKFLOWS[workflow].sheet;
+}
 
 // ── Waitlist UI ─────────────────────────────────────────────────────
 
@@ -418,7 +518,7 @@ const LEAGUE_DATA: LeagueConfig[] = [
 export const CURRENT_LEAGUES: LeagueConfig[] = LEAGUE_DATA;
 
 const CHANNEL_TO_LEAGUE = new Map(
-    LEAGUE_DATA.map((lg) => [lg.channelId, `${lg.sport}|${lg.day}|${lg.division}`]),
+    LEAGUE_DATA.map((lg) => [lg.channelId, buildLeagueKey(lg.sport, lg.day, lg.division)]),
 );
 
 export function getDefaultLeagueForChannel(channelId: string): string | undefined {

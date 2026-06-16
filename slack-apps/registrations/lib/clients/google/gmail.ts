@@ -5,8 +5,9 @@
 import type { GoogleClient } from "./client.ts";
 import type { EmailMessage } from "./types/email_message.ts";
 import type { PreparedRequest } from "../prepared_request.ts";
+import { GOOGLE_API } from "../../../config.ts";
 
-const BASE = "https://gmail.googleapis.com/gmail/v1";
+const BASE = GOOGLE_API.gmail_base;
 const log = (fn: string, ...args: unknown[]) => console.log(`[gmail:${fn}]`, ...args);
 
 const FALLBACK_SIGNATURE = `

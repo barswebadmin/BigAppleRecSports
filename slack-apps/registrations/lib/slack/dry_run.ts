@@ -1,25 +1,22 @@
 /**
- * Dry-run rendering: turn planned actions into Slack blocks that describe the
- * exact requests the real run would send (method/URL/headers with credentials
- * masked, request bodies, and decoded email/sheet details). No I/O.
+ * Dry-run preview: turn planned actions into Slack blocks describing the exact
+ * requests the real run would send (method/URL/headers with credentials masked,
+ * bodies, decoded email/sheet details), plus a posting helper that ships one
+ * channel message per preview. Domain-agnostic — any flow that builds a
+ * `PreparedRequest` can preview it via `requestStep` before executing.
  */
 
-import { maskHeaders } from "../clients/prepared_request.ts";
-
-type Block = Record<string, unknown>;
+import { maskHeaders, type PreparedRequest } from "../clients/prepared_request.ts";
+import type { SlackAPIClient } from "deno-slack-api/types.ts";
+import { type Block, context, divider, header, section } from "./blocks.ts";
+import { formatDiagnostic } from "./diagnostics.ts";
+import { titlecase } from "../../utils/formatters.ts";
 
 // Slack section text caps at 3000 chars; chunk long bodies under it. Cap the
 // number of chunks per field so one request can't exceed Slack's 50-block /
 // message-size limit (anything past the cap is truncated with a note).
 const MAX_TEXT = 2900;
 const MAX_CHUNKS = 8;
-
-const section = (text: string): Block => ({ type: "section", text: { type: "mrkdwn", text } });
-const heading = (text: string): Block => ({
-    type: "header",
-    text: { type: "plain_text", text: text.slice(0, 150), emoji: true },
-});
-const divider = (): Block => ({ type: "divider" });
 
 function codeBlocks(content: string): Block[] {
     const blocks: Block[] = [];
@@ -29,13 +26,9 @@ function codeBlocks(content: string): Block[] {
         blocks.push(section("```" + shown.slice(i, i + MAX_TEXT) + "```"));
     }
     if (content.length > limit) {
-        blocks.push({
-            type: "context",
-            elements: [{
-                type: "mrkdwn",
-                text: `_…truncated for display (${content.length.toLocaleString()} chars total)._`,
-            }],
-        });
+        blocks.push(context(
+            `_…truncated for display (${content.length.toLocaleString()} chars total)._`,
+        ));
     }
     return blocks;
 }
@@ -74,11 +67,11 @@ export type DryRunStep =
         existingValue: string;
         insertedValue: string;
     }
+    // Generic, domain-agnostic request preview. Any flow holding a PreparedRequest
+    // can render it (see `requestStep`) — used by refunds to show the exact,
+    // irreversible Shopify call before it's sent.
+    | { kind: "request"; label: string; request: RequestAttrs; body?: string }
     | { kind: "note"; title?: string; note: string };
-
-function titlecase(s: string): string {
-    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-}
 
 export interface Bullet {
     label: string;
@@ -90,8 +83,8 @@ export interface Bullet {
  * formatted. Optional bold heading line above the bullets. Reusable across all
  * dry-run sections.
  */
-function bulletList(bullets: Bullet[], heading?: string): string {
-    const lines = heading ? [`*${heading}*`] : [];
+function bulletList(bullets: Bullet[], headingLine?: string): string {
+    const lines = headingLine ? [`*${headingLine}*`] : [];
     for (const b of bullets) lines.push(`• *${b.label}:* \`${b.value}\``);
     return lines.join("\n");
 }
@@ -108,7 +101,7 @@ function requestBullets(req: RequestAttrs): string {
 function renderStep(blocks: Block[], step: DryRunStep): void {
     switch (step.kind) {
         case "shopify_customer": {
-            blocks.push(heading("Update Shopify Customer Profile"));
+            blocks.push(header("Update Shopify Customer Profile"));
             blocks.push(section(
                 `*Previous tags:* \`${
                     step.previousTags.length ? step.previousTags.join(", ") : "(none)"
@@ -125,7 +118,7 @@ function renderStep(blocks: Block[], step: DryRunStep): void {
         }
         case "email": {
             blocks.push(
-                heading("Send email notification (decoded - http request sends raw bytes)"),
+                header("Send email notification (decoded - http request sends raw bytes)"),
             );
             blocks.push(section(requestBullets(step.request)));
             blocks.push(section(bulletList([
@@ -140,7 +133,7 @@ function renderStep(blocks: Block[], step: DryRunStep): void {
             break;
         }
         case "sheet": {
-            blocks.push(heading("Update row in waitlist spreadsheet"));
+            blocks.push(header("Update row in waitlist spreadsheet"));
             blocks.push(section(bulletList([
                 { label: "Google sheets URL", value: step.sheetUrl },
                 { label: "Tab name", value: step.tabName },
@@ -151,8 +144,15 @@ function renderStep(blocks: Block[], step: DryRunStep): void {
             ])));
             break;
         }
+        case "request": {
+            blocks.push(header(step.label));
+            blocks.push(section(requestBullets(step.request)));
+            blocks.push(section("*Body:*"));
+            if (step.body) blocks.push(...codeBlocks(step.body));
+            break;
+        }
         case "note": {
-            if (step.title) blocks.push(heading(step.title));
+            if (step.title) blocks.push(header(step.title));
             blocks.push(section(step.note));
             break;
         }
@@ -170,4 +170,57 @@ export function buildDryRunMessage(
         renderStep(blocks, step);
     }
     return { text: headerLine, blocks };
+}
+
+/** Adapt any PreparedRequest into a generic request step. Uses `displayBody` for
+ * the shown body when present (e.g. a decoded email instead of a base64 blob);
+ * the wire `body` is what the real executor sends. */
+export function requestStep(req: PreparedRequest): DryRunStep {
+    return {
+        kind: "request",
+        label: req.label,
+        request: { method: req.method, url: req.url, headers: req.headers },
+        body: req.displayBody ?? req.body,
+    };
+}
+
+export interface DryRunPreview {
+    /** Header line (markdown) shown as the first block of the message. */
+    header: string;
+    /** Short plain label used only in the failure fallback (e.g. who/what). */
+    label?: string;
+    steps: DryRunStep[];
+}
+
+/**
+ * Post one channel message per preview — kept one-per-message so a multi-item
+ * run can't exceed Slack's per-message block limit. On a post failure, ships a
+ * terse fallback so the operator knows a preview was dropped, and invokes
+ * `onError` for detailed logging. Returns false if any message failed.
+ */
+export async function postDryRunPreviews(
+    client: SlackAPIClient,
+    channel: string,
+    previews: DryRunPreview[],
+    onError?: (preview: DryRunPreview, error: string) => void,
+): Promise<boolean> {
+    let allOk = true;
+    for (const preview of previews) {
+        const { text, blocks } = buildDryRunMessage(preview.header, preview.steps);
+        const res = await client.chat.postMessage({ channel, text, blocks });
+        if (!res.ok) {
+            allOk = false;
+            const error = String(res.error);
+            onError?.(preview, error);
+            const fallback = formatDiagnostic(
+                "warn",
+                `Dry-run preview${
+                    preview.label ? ` for ${preview.label}` : ""
+                } couldn't be rendered`,
+                `Error: \`${error}\`. Check the run logs.`,
+            );
+            await client.chat.postMessage({ channel, ...fallback });
+        }
+    }
+    return allOk;
 }

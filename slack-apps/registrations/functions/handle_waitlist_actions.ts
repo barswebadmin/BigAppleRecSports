@@ -15,7 +15,7 @@ import {
     productPageUrl,
     shopifyCustomerAdminUrl,
 } from "../config.ts";
-import { capitalize, formatProductHandle } from "../utils/formatters.ts";
+import { capitalize, formatDivisionLabel, formatProductHandle } from "../utils/formatters.ts";
 import { columnToLetter, getOrCreateGoogleClient } from "../lib/clients/google/client.ts";
 import { buildSendEmailRequest, executeSendEmail } from "../lib/clients/google/gmail.ts";
 import type { EmailMessage } from "../lib/clients/google/types/email_message.ts";
@@ -29,14 +29,17 @@ import type {
     LeagueWaitlists,
     WaitlistEntry,
 } from "../lib/waitlists/handlers/waitlist_entry_types.ts";
+import type { WaitlistAction } from "../lib/waitlists/waitlist_action.ts";
 import { buildWaitlistAdmitEmail } from "../lib/waitlists/admit_email.ts";
 import {
     type ActionResult,
+    buildWaitlistConfirmModal,
     buildWaitlistResultMessage,
     formatEntryContextLines,
     formatEntryTitle,
     formatReadOnlyEntry,
 } from "../lib/waitlists/display.ts";
+import type { SlackAPIClient } from "deno-slack-api/types.ts";
 import { createShopifyClient } from "../lib/clients/shopify/client.ts";
 import {
     type CustomerTagPlan,
@@ -45,11 +48,14 @@ import {
 } from "../lib/clients/shopify/customer_ops.ts";
 import { findProductByHandle } from "../lib/clients/shopify/product_ops.ts";
 import type { PreparedRequest } from "../lib/clients/prepared_request.ts";
-import { buildDryRunMessage, type DryRunStep } from "../lib/slack/dry_run.ts";
+import { type DryRunStep, postDryRunPreviews } from "../lib/slack/dry_run.ts";
 import { formatStatusTimestamp, statusText } from "./update_waitlist_spreadsheet.ts";
 import type { League } from "../types/league.ts";
+import { leagueFromKey, parseLeagueKey } from "../lib/waitlists/league_key.ts";
 
 const CALLBACK_ID = "handle_waitlist_actions";
+/** Pushed confirmation step; carries the captured state in its private_metadata. */
+const CONFIRM_CALLBACK_ID = "confirm_waitlist_actions";
 
 const log = (fn: string, ...args: unknown[]) => console.log(`[waitlist_actions:${fn}]`, ...args);
 
@@ -70,10 +76,6 @@ interface ModalState {
     dry?: boolean;
 }
 
-function formatDivisionLabel(div: string): string {
-    return div === "wtnb" ? "WTNB+" : "Open";
-}
-
 /** 2-letter sport codes for the space-constrained (24-char) modal title. */
 const SPORT_ABBR: Record<string, string> = {
     kickball: "KB",
@@ -86,11 +88,6 @@ function isContacted(entry: WaitlistEntry): boolean {
     if (!entry.status) return false;
     const norm = entry.status.toLowerCase();
     return ContactedStatuses.some((k) => norm.includes(k));
-}
-
-function toLeague(leagueKey: string): League {
-    const [sport, day, division] = leagueKey.split("|");
-    return { year: CURRENT_YEAR, season: CURRENT_SEASON, sport, day, division };
 }
 
 /** League for a sheet entry: year/season from config, sport/day/division from the sheet. */
@@ -108,7 +105,7 @@ function buildListView(waitlists: LeagueWaitlists, state: ModalState): Record<st
     const league = waitlists.leagues[state.league];
     const entries = league?.entries ?? [];
     const total = league?.total ?? 0;
-    const [sport, day, div] = state.league.split("|");
+    const { sport, day, division: div } = parseLeagueKey(state.league);
     const dayLabel = capitalize(day);
     const sportLabel = capitalize(sport);
     const divLabel = formatDivisionLabel(div);
@@ -255,6 +252,23 @@ handler.addBlockActionsHandler(/^(next|prev)_page$/, async ({ action, body, clie
 // one fires a block action with no view change, so just ack it (no-op).
 handler.addBlockActionsHandler(/^email_r/, () => {});
 
+// Selection options that mean an actual action (vs "No Changes").
+function actionableSelections(state: ModalState): [string, string][] {
+    return Object.entries(state.sel ?? {}).filter(
+        ([, type]) => type === "admit" || type === "remove",
+    ) as [string, string][];
+}
+
+// deno-lint-ignore no-explicit-any
+function executionId(body: any): string | undefined {
+    return body.function_data?.execution_id;
+}
+
+// Step 1 submit: capture selections, then push a confirmation step. The reviewer
+// can edit (native back chevron), Cancel (handled by the list view's close
+// handler), or Confirm to run. No selections → nothing to confirm; complete the
+// step cleanly. The full captured state rides in the confirm modal's
+// private_metadata so the confirm handler reads it without any dropdowns.
 handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, client, env }) => {
     const state = extractModalState<ModalState>(body);
     captureDropdownSelections(
@@ -270,12 +284,58 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, client, env }) => {
         CHECKBOX_CAPTURE_CONFIG,
     );
 
-    const selections = Object.entries(state.sel ?? {}).filter(
-        ([, type]) => type === "admit" || type === "remove",
-    );
+    const selections = actionableSelections(state);
+    if (selections.length === 0) {
+        const execId = executionId(body);
+        if (execId) {
+            await client.functions.completeSuccess({
+                function_execution_id: execId,
+                outputs: { actions_json: "[]" },
+            });
+        }
+        return;
+    }
 
+    // Resolve first/last names (only) for the confirmation modal.
+    const waitlists = await fetchWaitlists(env);
+    const byRow = new Map<number, WaitlistEntry>();
+    for (const lw of Object.values(waitlists.leagues)) {
+        for (const e of lw.entries) byRow.set(e.rowNumber, e);
+    }
+    const fullName = (rowStr: string) => {
+        const e = byRow.get(Number(rowStr));
+        return `${e?.firstName ?? ""} ${e?.lastName ?? ""}`.trim() || `Row ${rowStr}`;
+    };
+
+    return {
+        response_action: "push",
+        view: buildWaitlistConfirmModal({
+            callbackId: CONFIRM_CALLBACK_ID,
+            admitNames: selections.filter(([, t]) => t === "admit").map(([r]) => fullName(r)),
+            removeNames: selections.filter(([, t]) => t === "remove").map(([r]) => fullName(r)),
+            dry: state.dry === true,
+            metadata: JSON.stringify(state),
+        }),
+    };
+});
+
+// Step 2 submit (confirmation): run the captured selections. Same path for
+// dry-run (preview) and real execution — the only branch is inside.
+handler.addViewSubmissionHandler(CONFIRM_CALLBACK_ID, async ({ body, client, env }) => {
+    const state = extractModalState<ModalState>(body);
+    await processSelections(state, body, client, env);
+});
+
+// Exported for Stage 8 dry-run regression tests — drives the confirm-submit path
+// in-process without SDK modal wiring.
+export async function processSelections(
+    state: ModalState,
     // deno-lint-ignore no-explicit-any
-    const execId = (body as any).function_data?.execution_id;
+    body: any,
+    client: SlackAPIClient,
+    env: Record<string, string>,
+): Promise<void> {
+    const execId = executionId(body);
     const complete = (actionsJson: string) =>
         execId
             ? client.functions.completeSuccess({
@@ -284,6 +344,7 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, client, env }) => {
             })
             : Promise.resolve();
 
+    const selections = actionableSelections(state);
     if (selections.length === 0) {
         await complete("[]");
         return;
@@ -291,8 +352,8 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, client, env }) => {
 
     log("submit", { selections: selections.map(([row, type]) => `${type}:${row}`) });
 
-    const [sport, day, division] = state.league.split("|");
-    const league = toLeague(state.league);
+    const { sport, day, division } = parseLeagueKey(state.league);
+    const league = leagueFromKey(state.league);
 
     // Fresh fetch: selections reference sheet row numbers, so resolve against current data.
     //
@@ -333,7 +394,7 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, client, env }) => {
         ),
     );
 
-    const outputActions = processed.map((p) => ({
+    const outputActions: WaitlistAction[] = processed.map((p) => ({
         type: p.result.type,
         rowNumber: String(p.result.rowNumber),
         firstName: p.result.firstName,
@@ -352,24 +413,20 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, client, env }) => {
 
     if (state.dry) {
         const statusCol = columnToLetter(statusColIdx);
-        for (const p of processed) {
-            const header = `:test_tube: *DRY RUN* — would *${
-                p.type === "admit" ? "Admit" : "Remove"
-            }* ${p.result.name} (${p.result.email || "no email"}) · email box: ${
-                p.shouldEmail ? "ON" : "off"
-            }`;
-            const { text, blocks } = buildDryRunMessage(header, toDryRunSteps(p, statusCol));
-            const res = await client.chat.postMessage({ channel: state.ch, text, blocks });
-            if (!res.ok) {
-                log("dry_run.post_failed", { row: p.result.rowNumber, error: res.error });
-                await client.chat.postMessage({
-                    channel: state.ch,
-                    text: `:warning: Dry-run preview for ${p.result.name} (${
-                        p.result.email || "no email"
-                    }) couldn't be rendered: \`${res.error}\`. Check the run logs.`,
-                });
-            }
-        }
+        await postDryRunPreviews(
+            client,
+            state.ch,
+            processed.map((p) => ({
+                header: `:test_tube: *DRY RUN* — would *${
+                    p.type === "admit" ? "Admit" : "Remove"
+                }* ${p.result.name} (${p.result.email || "no email"}) · email box: ${
+                    p.shouldEmail ? "ON" : "off"
+                }`,
+                label: `${p.result.name} (${p.result.email || "no email"})`,
+                steps: toDryRunSteps(p, statusCol),
+            })),
+            (preview, error) => log("dry_run.post_failed", { label: preview.label, error }),
+        );
         // No sheet step downstream in dry-run; nothing is written.
         await complete(JSON.stringify(outputActions));
         return;
@@ -391,7 +448,7 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, client, env }) => {
     // The Status column write happens in the next workflow step
     // (UpdateWaitlistSpreadsheet), which consumes this actions_json output.
     await complete(JSON.stringify(outputActions));
-});
+}
 
 interface RowProcessing {
     rowStr: string;
@@ -408,7 +465,8 @@ interface RowProcessing {
     insertedStatus: string;
 }
 
-async function buildRowProcessing(args: {
+// Exported for Stage 8 — builder seam when full handler invocation is awkward.
+export async function buildRowProcessing(args: {
     rowStr: string;
     type: "admit" | "remove";
     entry?: WaitlistEntry;
@@ -521,7 +579,8 @@ function buildEmailCopy(m: EmailMessage): string {
     return m.htmlBodyParts.map(htmlToText).join("\n\n");
 }
 
-function toDryRunSteps(p: RowProcessing, statusCol: string): DryRunStep[] {
+// Exported for Stage 8 — dry-run preview seam.
+export function toDryRunSteps(p: RowProcessing, statusCol: string): DryRunStep[] {
     const steps: DryRunStep[] = [];
     if (p.type === "admit") {
         // Shopify customer create/update (or a note for no-op / no tag resolved).

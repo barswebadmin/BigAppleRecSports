@@ -6,11 +6,11 @@
  */
 
 import { columnToLetter, getOrCreateGoogleClient } from "../clients/google/client.ts";
-import { GOOGLE_SHEETS } from "../../config.ts";
+import { getWorkflowSheet } from "../../config.ts";
 import { findColumn, parseWaitlistRows } from "./handlers/sheet_parser.ts";
 import type { LeagueWaitlists } from "./handlers/waitlist_entry_types.ts";
 
-const SHEET = GOOGLE_SHEETS.waitlists;
+const SHEET = getWorkflowSheet("waitlist");
 export const WAITLIST_SPREADSHEET_ID = SHEET.spreadsheet_id;
 export const WAITLIST_TAB = { name: SHEET.tab_name, id: SHEET.tab_id };
 

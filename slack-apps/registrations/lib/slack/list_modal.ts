@@ -3,6 +3,8 @@
  * No domain imports — all behavior is dictated by ListModalConfig params.
  */
 
+import { type Block, context, divider, header, plainText, section } from "./blocks.ts";
+
 export interface ActionOption {
     label: string;
     value: string;
@@ -54,22 +56,6 @@ export interface ListModalConfig<T> {
     };
 }
 
-type Block = Record<string, unknown>;
-
-const plainText = (text: string, emoji = false) => ({
-    type: "plain_text" as const,
-    text,
-    ...(emoji ? { emoji: true } : {}),
-});
-const mrkdwnSection = (text: string): Block => ({
-    type: "section",
-    text: { type: "mrkdwn", text },
-});
-const contextBlock = (text: string): Block => ({
-    type: "context",
-    elements: [{ type: "mrkdwn", text }],
-});
-
 function toSelectOption(opt: ActionOption) {
     return { text: plainText(opt.label), value: opt.value };
 }
@@ -95,12 +81,12 @@ export function buildModalHeaderBlocks(config: ModalHeaderConfig): Block[] {
     const blocks: Block[] = [];
 
     if (config.headerText) {
-        blocks.push({ type: "header", text: plainText(config.headerText, true) });
+        blocks.push(header(config.headerText));
     }
-    if (config.subText) blocks.push(contextBlock(config.subText));
-    if (config.headerText || config.subText) blocks.push({ type: "divider" });
-    if (config.instructionText) blocks.push(contextBlock(config.instructionText));
-    blocks.push({ type: "divider" });
+    if (config.subText) blocks.push(context(config.subText));
+    if (config.headerText || config.subText) blocks.push(divider());
+    if (config.instructionText) blocks.push(context(config.instructionText));
+    blocks.push(divider());
     return blocks;
 }
 
@@ -109,7 +95,7 @@ export function buildListModal<T>(config: ListModalConfig<T>): Record<string, un
 
     if (config.items.length === 0) {
         // Clean empty state: just the consolidated message, no header/callout/instructions.
-        blocks.push(mrkdwnSection(config.emptyMessage));
+        blocks.push(section(config.emptyMessage));
     } else {
         blocks.push(...buildModalHeaderBlocks({
             headerText: config.headerText,
@@ -122,7 +108,7 @@ export function buildListModal<T>(config: ListModalConfig<T>): Record<string, un
             const showDropdown = config.shouldShowDropdown?.(item) ?? true;
             if (!showDropdown) {
                 blocks.push(
-                    mrkdwnSection((config.formatReadOnlyLabel ?? config.formatItemTitle)(item)),
+                    section((config.formatReadOnlyLabel ?? config.formatItemTitle)(item)),
                 );
                 continue;
             }
@@ -146,7 +132,7 @@ export function buildListModal<T>(config: ListModalConfig<T>): Record<string, un
             });
 
             const contextLines = config.formatItemContextLines?.(item) ?? [];
-            if (contextLines.length > 0) blocks.push(contextBlock(contextLines.join("\n")));
+            if (contextLines.length > 0) blocks.push(context(contextLines.join("\n")));
 
             const checkbox = config.checkbox;
             if (checkbox && (checkbox.shouldShow?.(item) ?? true)) {
