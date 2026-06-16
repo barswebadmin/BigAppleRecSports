@@ -1,2 +1,0 @@
-echo "ENVRC: Setting PYTHONPATH only"
-export PYTHONPATH="$(pwd)/backend:$(pwd)/shared_utilities:${PYTHONPATH}"

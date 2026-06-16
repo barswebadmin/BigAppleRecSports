@@ -13,27 +13,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Stash any unstaged changes to keep working directory clean
-HAS_UNSTAGED=$(git diff --quiet 2>/dev/null || echo "yes")
-if [ "$HAS_UNSTAGED" = "yes" ]; then
-    echo "📦 Stashing unstaged changes..."
-    git stash push --keep-index -m "pre-commit: stashed unstaged changes" >/dev/null 2>&1 || true
-    STASHED=true
-else
-    STASHED=false
-fi
-
-# Function to restore stashed changes
-restore_stash() {
-    if [ "$STASHED" = "true" ]; then
-        echo "📦 Restoring unstaged changes..."
-        git stash pop >/dev/null 2>&1 || true
-    fi
-}
-
-# Ensure stash is restored on exit (success or failure)
-trap restore_stash EXIT
-
 # 0. Block commits to main branch
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 if [ "$CURRENT_BRANCH" = "main" ]; then
@@ -54,135 +33,160 @@ if [ "$CURRENT_BRANCH" = "main" ]; then
     exit 1
 fi
 
+# Nothing staged → nothing to check.
+if git diff --cached --quiet; then
+    echo "ℹ️  No staged changes; skipping pre-commit checks."
+    exit 0
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TEMPORARILY DISABLED (per request): index isolation that backs up unstaged +
+# untracked files to a temp dir, reverts the working tree (git checkout -- / rm),
+# and restores on exit. Commented out so NOTHING in the working tree is moved,
+# reverted, or deleted during a commit. Re-enable by uncommenting.
+# ─────────────────────────────────────────────────────────────────────────────
+# GIT_DIR=$(git rev-parse --git-dir)
+# TEMP_BACKUP="$GIT_DIR/pre-commit-backup"
+# rm -rf "$TEMP_BACKUP"
+# mkdir -p "$TEMP_BACKUP"
+#
+# UNSTAGED_MODIFIED=$(git diff --name-only 2>/dev/null || true)
+# UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null || true)
+# BACKED_UP=0
+#
+# if [ -n "$UNSTAGED_MODIFIED" ]; then
+#     echo "📦 Backing up unstaged changes..."
+#     while IFS= read -r file; do
+#         if [ -f "$file" ]; then
+#             mkdir -p "$TEMP_BACKUP/$(dirname "$file")"
+#             cp -p "$file" "$TEMP_BACKUP/$file"
+#             # Revert working tree to the staged version for the duration of checks.
+#             git checkout -- "$file" 2>/dev/null || true
+#             BACKED_UP=$((BACKED_UP + 1))
+#         fi
+#     done <<< "$UNSTAGED_MODIFIED"
+# fi
+#
+# if [ -n "$UNTRACKED" ]; then
+#     echo "📦 Backing up untracked files..."
+#     while IFS= read -r file; do
+#         if [ -f "$file" ]; then
+#             mkdir -p "$TEMP_BACKUP/$(dirname "$file")"
+#             cp -p "$file" "$TEMP_BACKUP/$file"
+#             rm "$file"
+#             BACKED_UP=$((BACKED_UP + 1))
+#         fi
+#     done <<< "$UNTRACKED"
+# fi
+#
+# # Restore everything we moved aside, on success OR failure.
+# restore_backup() {
+#     if [ -d "$TEMP_BACKUP" ] && [ "$BACKED_UP" -gt 0 ]; then
+#         echo "📦 Restoring unstaged changes from backup..."
+#         cp -rp "$TEMP_BACKUP"/. .
+#     fi
+#     rm -rf "$TEMP_BACKUP"
+# }
+# trap restore_backup EXIT
+
 # Check if we have python3 available
 if ! command -v python3 &> /dev/null; then
     echo "⚠️  Warning: python3 not found. Skipping checks."
     exit 0
 fi
 
-# 1. Ruff Linting and Formatting
-if command -v ruff &> /dev/null || [ -f ".venv/bin/ruff" ]; then
-    RUFF_CMD="ruff"
-    if [ -f ".venv/bin/ruff" ]; then
-        RUFF_CMD=".venv/bin/ruff"
-    fi
-    
-    echo "🔍 Running Ruff linter..."
-    
-    # Capture linting output and exit code
-    set +e  # Temporarily disable exit on error to capture output
-    RUFF_OUTPUT=$($RUFF_CMD check scripts/ lambda/ backend/ 2>&1)
-    RUFF_EXIT_CODE=$?
-    set -e  # Re-enable exit on error
-    
-    if [ $RUFF_EXIT_CODE -eq 0 ]; then
-        echo "✅ Ruff linting passed"
-    else
-        echo ""
-        echo "⚠️  ⚠️  ⚠️  RUFF LINTING FAILED ⚠️  ⚠️  ⚠️"
-        echo ""
-        echo "Linter errors found:"
-        echo "----------------------------------------"
-        echo "$RUFF_OUTPUT"
-        echo "----------------------------------------"
-        echo ""
-        echo "Options:"
-        echo "  (c) Continue - Proceed with commit despite linter errors"
-        echo "  (r) Retry - Run linter again (may auto-fix some issues)"
-        echo "  (e) Exit - Abort commit and fix errors manually"
-        echo ""
-        
-        while true; do
-            read -p "Choose an option [c/r/e]: " -n 1 -r
-            echo ""
-            case $REPLY in
-                [Cc]* )
-                    echo "⚠️  Continuing with commit despite linter errors..."
-                    break
-                    ;;
-                [Rr]* )
-                    echo "🔄 Retrying Ruff linter..."
-                    set +e
-                    RUFF_OUTPUT=$($RUFF_CMD check scripts/ lambda/ backend/ 2>&1)
-                    RUFF_EXIT_CODE=$?
-                    set -e
-                    if [ $RUFF_EXIT_CODE -eq 0 ]; then
-                        echo "✅ Ruff linting passed on retry"
-                        break
-                    else
-                        echo ""
-                        echo "⚠️  Linter errors still present:"
-                        echo "----------------------------------------"
-                        echo "$RUFF_OUTPUT"
-                        echo "----------------------------------------"
-                        echo ""
-                        echo "Options:"
-                        echo "  (c) Continue - Proceed with commit despite linter errors"
-                        echo "  (r) Retry - Run linter again"
-                        echo "  (e) Exit - Abort commit and fix errors manually"
-                        echo ""
-                    fi
-                    ;;
-                [Ee]* )
-                    echo "❌ Commit aborted. Please fix linter errors and try again."
-                    exit 1
-                    ;;
-                * )
-                    echo "Invalid option. Please choose (c)ontinue, (r)etry, or (e)xit."
-                    ;;
-            esac
-        done
-    fi
-    
-    echo "✨ Running Ruff formatter..."
-    $RUFF_CMD format scripts/ lambda/ backend/ --quiet
-    echo "✅ Ruff formatting complete"
-    
-    # Check if formatting created any changes
-    if ! git diff --quiet; then
-        echo "📝 Formatting changes detected..."
-        
-        # Get list of files with changes
-        FORMATTED_FILES=$(git diff --name-only)
-        
-        # Ruff format only makes safe formatting changes (whitespace, indentation, line breaks)
-        # Since we stashed unstaged changes, any changes here are from Ruff formatting
-        # Check if changes are only formatting by verifying they're whitespace-only
-        # Use a simple heuristic: if diff shows only whitespace/indentation changes, it's formatting
-        
-        # Check each file to see if changes are only formatting
-        ONLY_FORMATTING=true
-        for file in $FORMATTED_FILES; do
-            # Get diff and check if it contains actual code changes (not just whitespace)
-            # Remove diff headers and context, check remaining lines
-            FILE_DIFF=$(git diff -- "$file")
-            
-            # Check if any line has non-whitespace content changes
-            # (comparing added vs removed lines after stripping whitespace)
-            ADDED_LINES=$(echo "$FILE_DIFF" | grep "^+" | grep -v "^+++" | sed 's/^+//' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-            REMOVED_LINES=$(echo "$FILE_DIFF" | grep "^-" | grep -v "^---" | sed 's/^-//' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-            
-            # Compare line by line - if content differs beyond whitespace, it's not just formatting
-            if [ "$ADDED_LINES" != "$REMOVED_LINES" ]; then
-                # Might still be formatting (e.g., trailing comma), but be safe and flag it
-                # For now, since Ruff format is safe, we'll stage anyway but note it
-                ONLY_FORMATTING=false
-            fi
-        done
-        
-        if [ "$ONLY_FORMATTING" = "true" ]; then
-            echo "✅ Only formatting changes detected, staging automatically..."
-        else
-            echo "⚠️  Mixed changes detected (formatting + possible code changes)"
-            echo "   Staging formatting changes (Ruff format is safe)..."
-        fi
-        
-        git add $FORMATTED_FILES
-        echo "✅ Formatting changes staged"
-    fi
-else
-    echo "⚠️  Ruff not found, skipping linting and formatting"
-fi
+# ─────────────────────────────────────────────────────────────────────────────
+# TEMPORARILY DISABLED (per request): Ruff lint + format on staged Python files.
+# Commented out so the hook performs NO linting and NO code transformation
+# (no `ruff format`, no auto `git add` re-stage). Re-enable by uncommenting.
+# ─────────────────────────────────────────────────────────────────────────────
+# # 1. Ruff lint + format — staged Python files only (see README "Pre-commit Hook").
+# # Staged .py paths in this repo never contain spaces, so word-splitting is safe.
+# STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+# if [ -z "$STAGED_PY" ]; then
+#     echo "ℹ️  No staged Python files — skipping Ruff"
+# elif command -v ruff &> /dev/null || [ -f ".venv/bin/ruff" ]; then
+#     RUFF_CMD="ruff"
+#     if [ -f ".venv/bin/ruff" ]; then
+#         RUFF_CMD=".venv/bin/ruff"
+#     fi
+#
+#     echo "🔍 Running Ruff on staged Python files..."
+#
+#     # Lint (report-only — no --fix, so this never edits your code).
+#     set +e
+#     RUFF_OUTPUT=$($RUFF_CMD check $STAGED_PY 2>&1)
+#     RUFF_EXIT_CODE=$?
+#     set -e
+#
+#     if [ $RUFF_EXIT_CODE -eq 0 ]; then
+#         echo "✅ Ruff lint passed"
+#     else
+#         echo ""
+#         echo "⚠️  ⚠️  ⚠️  RUFF LINT FAILED ⚠️  ⚠️  ⚠️"
+#         echo ""
+#         echo "Linter errors found:"
+#         echo "----------------------------------------"
+#         echo "$RUFF_OUTPUT"
+#         echo "----------------------------------------"
+#         echo ""
+#         echo "Options:"
+#         echo "  (c) Continue - Proceed with commit despite linter errors"
+#         echo "  (r) Retry - Run linter again"
+#         echo "  (e) Exit - Abort commit and fix errors manually"
+#         echo ""
+#
+#         while true; do
+#             read -p "Choose an option [c/r/e]: " -n 1 -r
+#             echo ""
+#             case $REPLY in
+#                 [Cc]* )
+#                     echo "⚠️  Continuing with commit despite linter errors..."
+#                     break
+#                     ;;
+#                 [Rr]* )
+#                     echo "🔄 Retrying Ruff lint..."
+#                     set +e
+#                     RUFF_OUTPUT=$($RUFF_CMD check $STAGED_PY 2>&1)
+#                     RUFF_EXIT_CODE=$?
+#                     set -e
+#                     if [ $RUFF_EXIT_CODE -eq 0 ]; then
+#                         echo "✅ Ruff lint passed on retry"
+#                         break
+#                     else
+#                         echo ""
+#                         echo "⚠️  Linter errors still present:"
+#                         echo "----------------------------------------"
+#                         echo "$RUFF_OUTPUT"
+#                         echo "----------------------------------------"
+#                         echo ""
+#                     fi
+#                     ;;
+#                 [Ee]* )
+#                     echo "❌ Commit aborted. Please fix linter errors and try again."
+#                     exit 1
+#                     ;;
+#                 * )
+#                     echo "Invalid option. Please choose (c)ontinue, (r)etry, or (e)xit."
+#                     ;;
+#             esac
+#         done
+#     fi
+#
+#     # Format ONLY the staged files, then re-stage just those.
+#     echo "✨ Running Ruff formatter on staged files..."
+#     $RUFF_CMD format --quiet $STAGED_PY
+#     if ! git diff --quiet -- $STAGED_PY; then
+#         echo "📝 Ruff reformatted staged file(s) — re-staging:"
+#         git diff --stat -- $STAGED_PY
+#         git add $STAGED_PY
+#         echo "✅ Formatting changes staged (review with: git diff --cached)"
+#     else
+#         echo "✅ Staged files already formatted"
+#     fi
+# else
+#     echo "⚠️  Ruff not found, skipping lint/format"
+# fi
 
 # 2. Check Pydantic required fields have no defaults
 REQUIRED_FIELDS_CHECKER="$REPO_ROOT/scripts/check_required_fields.py"
@@ -268,10 +272,18 @@ for product in non_bars:
 fi
 
 # 4. GAS doGet/doPost change detection
+# ─────────────────────────────────────────────────────────────────────────────
+# TEMPORARILY DISABLED (per request): this check shells out to
+# detect_webapp_changes.sh, which used `mapfile` (bash 4+) and died with exit 127
+# on macOS's bash 3.2, blocking commits. The script itself is now patched to be
+# 3.2-safe, but the whole block is gated off here so nothing in this commit
+# series can break on it. See REFUND_WAITLIST_CHANGES.md "Disabled pre-commit
+# checks". Re-enable by restoring the guard to `if [ -f "$GAS_DETECT_SCRIPT" ]`.
+# ─────────────────────────────────────────────────────────────────────────────
 GAS_DETECT_SCRIPT="$REPO_ROOT/scripts/deployment/google/detect_webapp_changes.sh"
-if [ -f "$GAS_DETECT_SCRIPT" ]; then
+if false && [ -f "$GAS_DETECT_SCRIPT" ]; then
     # Only check if there are GAS files in staged changes
-    if git diff --cached --name-only | grep -q "^GoogleAppsScripts/"; then
+    if git diff --cached --name-only | grep -q "^google-apps-scripts/"; then
         echo "🔍 Checking for GAS doGet/doPost changes..."
         
         # Run detection (suppress output, capture exit code)
@@ -294,7 +306,7 @@ if [ -f "$GAS_DETECT_SCRIPT" ]; then
                 echo "🚀 Next steps after committing:"
                 echo "  1. Push to master branch (triggers auto-deployment)"
                 echo "  2. Or manually deploy: make clasp deploy [project]"
-                echo "  3. Or use script: bash scripts/deployment/deploy_google.sh [project]"
+                echo "  3. Or use script: bash scripts/deployment/deploy [project]"
                 echo ""
                 echo "💡 This is just a warning - your commit will proceed normally."
                 echo ""

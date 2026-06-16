@@ -34,7 +34,7 @@ on:
   # push:
   #   branches: [main]
   #   paths:
-  #     - 'GoogleAppsScripts/projects/**'
+  #     - 'google-apps-scripts/projects/**'
   #     - '.github/workflows/deploy-google.yml'
 
 jobs:
@@ -52,6 +52,24 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Get Python version
         id: python-version
         run: echo "version=$(python scripts/ci/get_python_version.py)" >> $GITHUB_OUTPUT
@@ -61,14 +79,13 @@ jobs:
         with:
           python-version: ${{ steps.python-version.outputs.version }}
 
-      - name: Install npm dependencies
+      - name: Install dependencies
         run: |
-          cd GoogleAppsScripts
-          npm install
+          cd google-apps-scripts
+          pnpm install --frozen-lockfile
 
       - name: Install clasp
-        run: |
-          npm install -g @google/clasp
+        run: pnpm dlx @google/clasp --version || pnpm add -g @google/clasp
 
       - name: Set up clasp authentication
         env:
@@ -102,7 +119,7 @@ jobs:
       #   if: github.event_name == 'push'
       #   id: auto-config
       #   run: |
-      #     CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- GoogleAppsScripts/projects/ || echo "")
+      #     CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- google-apps-scripts/projects/ || echo "")
       #     
       #     if [ -z "$CHANGED_FILES" ]; then
       #       echo "⏭️ No GAS project changes detected"
@@ -111,7 +128,7 @@ jobs:
       #     fi
       #     
       #     # Extract unique project names from changed files
-      #     CHANGED_PROJECTS=$(echo "$CHANGED_FILES" | grep -oE 'GoogleAppsScripts/projects/([^/]+)' | cut -d/ -f3 | sort -u)
+      #     CHANGED_PROJECTS=$(echo "$CHANGED_FILES" | grep -oE 'google-apps-scripts/projects/([^/]+)' | cut -d/ -f3 | sort -u)
       #     
       #     if [ -z "$CHANGED_PROJECTS" ]; then
       #       echo "⏭️ No GAS project changes detected"
@@ -146,7 +163,7 @@ jobs:
             exit 1
           fi
           
-          PROJECT_DIR="GoogleAppsScripts/projects/$PROJECT"
+          PROJECT_DIR="google-apps-scripts/projects/$PROJECT"
           
           if [ ! -d "$PROJECT_DIR" ]; then
             echo "❌ Project directory not found: $PROJECT_DIR"
@@ -163,10 +180,10 @@ jobs:
           
           if [ "$ACTION" = "push" ]; then
             echo "📤 Pushing code to Google Apps Script..."
-                  bash scripts/deployment/push_google.sh "$PROJECT"
+                  bash scripts/deployment/push "$PROJECT"
           elif [ "$ACTION" = "deploy" ]; then
             echo "🚀 Pushing and deploying to Google Apps Script..."
-                  bash scripts/deployment/deploy_google.sh "$PROJECT"
+                  bash scripts/deployment/deploy "$PROJECT"
           else
             echo "❌ Unknown action: $ACTION"
             exit 1

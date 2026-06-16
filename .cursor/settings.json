@@ -23,5 +23,10 @@
     "**/.pytest_cache/**": true
   },
   "search.useIgnoreFiles": true,
-  "search.useGlobalIgnoreFiles": true
+  "search.useGlobalIgnoreFiles": true,
+  "plugins": {
+    "shopify-plugin": {
+      "enabled": true
+    }
+  }
 }

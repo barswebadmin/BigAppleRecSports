@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'GoogleAppsScripts/**'
+      - 'google-apps-scripts/**'
       - '.github/workflows/test-google.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'GoogleAppsScripts/**'
+      - 'google-apps-scripts/**'
       - '.github/workflows/test-google.yml'
     types: [opened, synchronize, reopened]
 
@@ -41,10 +41,28 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install npm dependencies
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        shell: bash
         run: |
-          cd GoogleAppsScripts
-          npm install
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: |
+          cd google-apps-scripts
+          pnpm install --frozen-lockfile
 
       - name: Compile Google Apps Scripts
         id: compile
@@ -52,4 +70,4 @@ jobs:
 
       - name: Run GAS tests
         if: steps.compile.outcome == 'success'
-        run: bash GoogleAppsScripts/tests/run_tests.sh
+        run: bash google-apps-scripts/tests/run_tests.sh

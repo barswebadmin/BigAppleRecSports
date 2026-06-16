@@ -128,7 +128,7 @@ ERROR_TYPES = {
 # Install Pyright globally or in project
 npm install -g pyright
 # OR
-pip install pyright
+uv tool install pyright
 ```
 
 #### Configuration Files
