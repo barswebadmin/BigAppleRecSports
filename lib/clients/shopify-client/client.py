@@ -3,6 +3,7 @@
 import os
 import dotenv
 import pickle
+from dataclasses import dataclass
 from typing import Any
 
 from pathlib import Path
@@ -129,6 +130,7 @@ class ShopifyClient:
 
 shopify = Registry()
 
+@dataclass
 class ShopifySchema:
     query_name: str
     resource_name: str
@@ -142,16 +144,16 @@ class ShopifySchema:
 
 
 
-class Customers(ShopifySchema):
-    query_name = "customers"
-    resource_name = "Customer"
-    connection_name = "CustomerConnection"
+# class Customers(ShopifySchema):
+#     query_name = "customers"
+#     resource_name = "Customer"
+#     connection_name = "CustomerConnection"
 
-    def get(self, *, variables: dict[str, Any], returns: list[str]):
-        return self.client.query(self.query_name, self.resource_name, self.connection_name, variables, returns)
+#     def get(self, *, variables: dict[str, Any], returns: list[str]):
+#         return self.client.query(self.query_name, self.resource_name, self.connection_name, variables, returns)
 
 
-shopify["customers"] = Customers()
+shopify["customers"] = ShopifySchema(query_name="customers", resource_name="Customer", connection_name="CustomerConnection")
 
 
 
