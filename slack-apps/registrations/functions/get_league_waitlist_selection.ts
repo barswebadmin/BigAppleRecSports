@@ -1,16 +1,23 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import { buildLeagueKey, parseLeagueKey } from "../lib/waitlists/league_key.ts";
-import { compareWeekday, CURRENT_LEAGUES, slackLink } from "../config.ts";
-import { capitalize, formatDivisionLabel } from "../utils/formatters.ts";
-import { getDefaultLeagueForChannel } from "../config.ts";
-import { waitlistSheetUrl } from "../lib/waitlists/sheet_service.ts";
+import { buildLeagueKey, parseLeagueKey } from "../domain/league/key.ts";
+import {
+    compareWeekday,
+    CURRENT_LEAGUES,
+    getDefaultLeagueForChannel,
+} from "../domain/league/catalog.ts";
+import { slackLink } from "../config/slack.ts";
+import { formatDivisionLabel } from "../domain/league/format.ts";
+import { capitalize } from "../shared/text/strings.ts";
+import { executionId } from "../shared/slack/workflow.ts";
+import { waitlistSheetUrl } from "../domain/waitlist/sheet.ts";
 
 const CALLBACK_ID = "league_waitlist_selection";
 
-function buildLeagueOptions(): { text: string; value: string }[] {
-    // Sort by sport (A→Z), then day of week (Mon→Sun, not alphabetical), then
-    // division reverse-alphabetical (wtnb before open).
-    return CURRENT_LEAGUES
+/** League dropdown options sorted by sport (A→Z), then weekday (Mon→Sun, not
+ *  alphabetical), then division reverse-alphabetical (wtnb before open). Built
+ *  once at module load — `CURRENT_LEAGUES` is static for the season. */
+const LEAGUE_OPTIONS: { text: { type: "plain_text"; text: string }; value: string }[] =
+    CURRENT_LEAGUES
         .slice()
         .sort((a, b) =>
             a.sport.localeCompare(b.sport) ||
@@ -18,12 +25,14 @@ function buildLeagueOptions(): { text: string; value: string }[] {
             b.division.localeCompare(a.division)
         )
         .map((lg) => ({
-            text: `${capitalize(lg.sport)} - ${capitalize(lg.day)} - ${
-                formatDivisionLabel(lg.division)
-            } Division`,
+            text: {
+                type: "plain_text" as const,
+                text: `${capitalize(lg.sport)} - ${capitalize(lg.day)} - ${
+                    formatDivisionLabel(lg.division)
+                } Division`,
+            },
             value: buildLeagueKey(lg.sport, lg.day, lg.division),
         }));
-}
 
 export const GetLeagueWaitlistSelectionFunction = DefineFunction({
     callback_id: "get_league_waitlist_selection",
@@ -46,21 +55,18 @@ export const GetLeagueWaitlistSelectionFunction = DefineFunction({
 });
 
 const handler = SlackFunction(GetLeagueWaitlistSelectionFunction, async ({ inputs, client }) => {
-    const options = buildLeagueOptions().map((o) => ({
-        text: { type: "plain_text" as const, text: o.text },
-        value: o.value,
-    }));
-
     const defaultValue = getDefaultLeagueForChannel(inputs.channel_id);
-    const initialOption = defaultValue ? options.find((o) => o.value === defaultValue) : undefined;
+    const initialOption = defaultValue
+        ? LEAGUE_OPTIONS.find((o) => o.value === defaultValue)
+        : undefined;
 
-    const selectElement: Record<string, unknown> = {
+    const selectElement = {
         type: "static_select",
         action_id: "league_select",
         placeholder: { type: "plain_text", text: "Select a league..." },
-        options,
+        options: LEAGUE_OPTIONS,
+        ...(initialOption ? { initial_option: initialOption } : {}),
     };
-    if (initialOption) selectElement.initial_option = initialOption;
 
     const openRes = await client.views.open({
         interactivity_pointer: inputs.interactivity.interactivity_pointer,
@@ -115,8 +121,7 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, view, client }) => 
         : "(none)";
     console.log(`[${CALLBACK_ID}] selected: ${display}`);
 
-    // deno-lint-ignore no-explicit-any
-    const execId = (body as any).function_data?.execution_id;
+    const execId = executionId(body);
     if (execId) {
         await client.functions.completeSuccess({
             function_execution_id: execId,
@@ -127,7 +132,5 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, view, client }) => 
         });
     }
 });
-
-handler.addViewClosedHandler(CALLBACK_ID, () => {});
 
 export default handler;

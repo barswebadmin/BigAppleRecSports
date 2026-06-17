@@ -1,4 +1,11 @@
+/** League-selection modal for the orders-export workflow.
+ *
+ *  Thin handler. The state machine lives in `domain/league/selection_state.ts`;
+ *  this file is the modal view + SDK wiring. */
+
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
+import type { SlackAPIClient } from "deno-slack-api/types.ts";
+
 import {
     captureCheckboxes,
     currentDays,
@@ -10,13 +17,22 @@ import {
     setSport,
     setYear,
     stateToLeagues,
-} from "../lib/leagues/selection_state.ts";
-import { ALL_SEASONS, getDaysForSport } from "../config.ts";
-import { capitalize } from "../utils/formatters.ts";
-import { plainText } from "../lib/slack/blocks.ts";
+} from "../domain/league/selection_state.ts";
+import { ALL_SEASONS, getDaysForSport } from "../domain/league/catalog.ts";
+import { capitalize } from "../shared/text/strings.ts";
+import { plainText } from "../shared/slack/blocks.ts";
+import { executionId } from "../shared/slack/workflow.ts";
+
+// ────────────────────────────────────────────────────────────────────────────
+// Constants
+// ────────────────────────────────────────────────────────────────────────────
 
 const CALLBACK_ID = "shopify_orders_modal";
 const SPORTS = ["bowling", "dodgeball", "kickball", "pickleball"];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Modal view + small option helpers
+// ────────────────────────────────────────────────────────────────────────────
 
 interface Option {
     text: { type: "plain_text"; text: string };
@@ -139,7 +155,9 @@ function buildView(state: LeagueSelectionState): Record<string, unknown> {
     };
 }
 
-// ── Read current checkbox values from view.state.values ─────────────
+// ────────────────────────────────────────────────────────────────────────────
+// Read current checkbox values from view.state.values
+// ────────────────────────────────────────────────────────────────────────────
 
 interface ViewValues {
     [blockId: string]: {
@@ -161,6 +179,32 @@ function readCheckboxes(values: ViewValues): { wtnb: string[]; open: string[] } 
         ),
     };
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Shared block-action plumbing
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Snapshot the visible-page checkbox ticks into the persisted state, apply the
+ *  selector's mutation, then re-render the modal. Used by every dropdown
+ *  (year/season/sport) — same dance, different mutation. */
+async function applyMutationAndRerender(
+    // deno-lint-ignore no-explicit-any
+    body: any,
+    client: SlackAPIClient,
+    mutate: (s: LeagueSelectionState) => LeagueSelectionState,
+): Promise<void> {
+    const state = parseMetadata(body.view.private_metadata || "{}");
+    const { wtnb, open } = readCheckboxes(body.view.state?.values ?? {});
+    const saved = captureCheckboxes(state, wtnb, open);
+    await client.views.update({
+        view_id: body.view.id,
+        view: buildView(mutate(saved)),
+    });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// SlackFunction definition & handler wiring
+// ────────────────────────────────────────────────────────────────────────────
 
 export const GetLeagueSelectionsFunction = DefineFunction({
     callback_id: "get_league_selections",
@@ -189,34 +233,18 @@ const handler = SlackFunction(GetLeagueSelectionsFunction, async ({ inputs, clie
 });
 
 handler.addBlockActionsHandler("year_select", async ({ body, client }) => {
-    const state = parseMetadata(body.view.private_metadata || "{}");
-    const { wtnb, open } = readCheckboxes(body.view.state?.values ?? {});
-    const saved = captureCheckboxes(state, wtnb, open);
     const year = parseInt(body.actions[0].selected_option.value, 10);
-    await client.views.update({
-        view_id: body.view.id,
-        view: buildView(setYear(saved, year)),
-    });
+    await applyMutationAndRerender(body, client, (s) => setYear(s, year));
 });
 
 handler.addBlockActionsHandler("season_select", async ({ body, client }) => {
-    const state = parseMetadata(body.view.private_metadata || "{}");
-    const { wtnb, open } = readCheckboxes(body.view.state?.values ?? {});
-    const saved = captureCheckboxes(state, wtnb, open);
-    await client.views.update({
-        view_id: body.view.id,
-        view: buildView(setSeason(saved, body.actions[0].selected_option.value)),
-    });
+    const season = body.actions[0].selected_option.value;
+    await applyMutationAndRerender(body, client, (s) => setSeason(s, season));
 });
 
 handler.addBlockActionsHandler("sport_select", async ({ body, client }) => {
-    const state = parseMetadata(body.view.private_metadata || "{}");
-    const { wtnb, open } = readCheckboxes(body.view.state?.values ?? {});
-    const saved = captureCheckboxes(state, wtnb, open);
-    await client.views.update({
-        view_id: body.view.id,
-        view: buildView(setSport(saved, body.actions[0].selected_option.value)),
-    });
+    const sport = body.actions[0].selected_option.value;
+    await applyMutationAndRerender(body, client, (s) => setSport(s, sport));
 });
 
 handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, view, client }) => {
@@ -226,8 +254,7 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, view, client }) => 
     const leagues = stateToLeagues(final);
     console.log("[get_league_selections] submit:", JSON.stringify(leagues, null, 2));
 
-    // deno-lint-ignore no-explicit-any
-    const execId = (body as any).function_data?.execution_id;
+    const execId = executionId(body);
     if (execId) {
         await client.functions.completeSuccess({
             function_execution_id: execId,

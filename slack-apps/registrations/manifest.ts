@@ -4,7 +4,7 @@ import ReceiveWaitlistOrderWorkflow from "./workflows/receive_waitlist_signup.ts
 import GetShopifyOrdersWorkflow from "./workflows/get_shopify_orders_workflow.ts";
 import DryRunWaitlistWorkflow from "./workflows/dry_run_waitlist.ts";
 import EvaluateRefundRequestWorkflow from "./workflows/evaluate_refund_request.ts";
-import { OUTGOING_DOMAINS } from "./config.ts";
+import { OUTGOING_DOMAINS } from "./config/refunds.ts";
 
 export default Manifest({
     name: "Registrations",
