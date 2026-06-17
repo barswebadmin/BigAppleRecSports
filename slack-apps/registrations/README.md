@@ -1,183 +1,113 @@
-# Deno Starter Template
+# `registrations` — Slack app
 
-This is a scaffolded Deno template used to build out Slack apps using the Slack CLI.
+Run-on-Slack (Deno) app that powers BARS registration workflows:
 
-**Guide Outline**:
+- **Waitlist signups** — webhook → resolve order → write Status column
+- **Waitlist admit/remove** — admin modal → Shopify tag + admit email + Status write
+- **Refund evaluation** — Lambda posts evaluation card → admin approves/denies → Lambda runs the
+  refund
+- **Shopify orders export** — modal collects league selections for a downstream Lambda
 
-- [Setup](#setup)
-  - [Install the Slack CLI](#install-the-slack-cli)
-  - [Clone the Template](#clone-the-template)
-- [Running Your Project Locally](#running-your-project-locally)
-- [Creating Triggers](#creating-triggers)
-- [Datastores](#datastores)
-- [Testing](#testing)
-- [Deploying Your App](#deploying-your-app)
-- [Viewing Activity Logs](#viewing-activity-logs)
-- [Project Structure](#project-structure)
-- [Resources](#resources)
+Deploy and operate per `.claude/skills/slack-app-deploy/SKILL.md`.
 
 ---
 
-## Setup
+## Directory layout
 
-Before getting started, first make sure you have a development workspace where you have permission
-to install apps. **Please note that the features in this project require that the workspace be part
-of [a Slack paid plan](https://slack.com/pricing).**
-
-### Install the Slack CLI
-
-To use this template, you need to install and configure the Slack CLI. Step-by-step instructions can
-be found in our [Quickstart Guide](https://api.slack.com/automation/quickstart).
-
-### Clone the Template
-
-Start by cloning this repository:
-
-```zsh
-# Clone this project onto your machine
-$ slack create my-app -t slack-samples/deno-starter-template
-
-# Change into the project directory
-$ cd my-app
+```
+config/        constants & env access; no I/O, no Slack/Shopify SDKs
+domain/        league/, waitlist/, refund/ — pure domain logic + I/O modules
+  league/        league type, key, format, catalog, selection_state
+  waitlist/      types, parse, sheet, planning, execution, dry-run, modal,
+                 display, admit email, status write, resolve, debug
+  refund/        types, eval_blocks, approve_modal, lambda_requests,
+                 orchestrator
+shared/        cross-cutting helpers used by domain/ and functions/
+  slack/         blocks, modal_state, list_modal, dry_run, diagnostics,
+                 workflow (executionId, processorUserId, completers)
+  google/        client, gmail, email_message
+  http/          prepared_request (request capture for dry-run previews)
+  text/          strings, phone, date
+functions/     Slack workflow handlers — thin SDK wiring around domain/
+workflows/     SDK workflow declarations
+triggers/      SDK trigger declarations
+tests/         hermetic regression tests (no network)
+  refund/        eval-block render + Lambda request shape
+  waitlist/      dry-run end-to-end + order-resolution
+legacy/        quarantined Shopify direct-post code — do not refactor
+manifest.ts    app manifest (functions/workflows/scopes/datastores)
 ```
 
-## Running Your Project Locally
+### Dependency rules
 
-While building your app, you can see your changes appear in your workspace in real-time with
-`slack run`. You'll know an app is the development version if the name has the string `(local)`
-appended.
+- `config/` imports nothing from this app.
+- `shared/` may import `config/`. May not import `domain/` or `functions/`.
+- `domain/` may import `config/` and `shared/`. May not import `functions/`.
+- `functions/` may import all of the above. Handlers should be thin (~30–100 lines) — orchestration
+  & SDK glue only.
+- `legacy/` is opaque. Nothing new imports from it; it imports nothing back.
 
-```zsh
-# Run app locally
-$ slack run
+### Above-the-fold convention
 
-Connected, awaiting events
+Inside partially-refactored files, refactored code sits at the top of the file under a banner;
+not-yet-refactored holdovers sit below under a second banner. Drop the markers once everything's
+hoisted.
+
+```ts
+// ─── refactored ──────────────────────────────────────────────────────────
+// new and relocated code (top-down by call-graph order)
+
+// ─── pending (to be hoisted or deleted) ─────────────────────────────────
+// unrefactored holdovers
 ```
 
-To stop running locally, press `<CTRL> + C` to end the process.
+---
 
-## Creating Triggers
+## Local workflow
 
-[Triggers](https://api.slack.com/automation/triggers) are what cause workflows to run. These
-triggers can be invoked by a user, or automatically as a response to an event within Slack.
-
-When you `run` or `deploy` your project for the first time, the CLI will prompt you to create a
-trigger if one is found in the `triggers/` directory. For any subsequent triggers added to the
-application, each must be
-[manually added using the `trigger create` command](#manual-trigger-creation).
-
-When creating triggers, you must select the workspace and environment that you'd like to create the
-trigger in. Each workspace can have a local development version (denoted by `(local)`), as well as a
-deployed version. _Triggers created in a local environment will only be available to use when
-running the application locally._
-
-### Link Triggers
-
-A [link trigger](https://api.slack.com/automation/triggers/link) is a type of trigger that generates
-a **Shortcut URL** which, when posted in a channel or added as a bookmark, becomes a link. When
-clicked, the link trigger will run the associated workflow.
-
-Link triggers are _unique to each installed version of your app_. This means that Shortcut URLs will
-be different across each workspace, as well as between [locally run](#running-your-project-locally)
-and [deployed apps](#deploying-your-app).
-
-With link triggers, after selecting a workspace and environment, the output provided will include a
-Shortcut URL. Copy and paste this URL into a channel as a message, or add it as a bookmark in a
-channel of the workspace you selected. Interacting with this link will run the associated workflow.
-
-**Note: triggers won't run the workflow unless the app is either running locally or deployed!**
-
-### Manual Trigger Creation
-
-To manually create a trigger, use the following command:
-
-```zsh
-$ slack trigger create --trigger-def triggers/sample_trigger.ts
+```sh
+deno task verify   # type-check + lint + fmt --check
+deno task test     # hermetic test suite
+deno fmt           # apply formatting (4-space, 100-col)
+slack run          # connect local dev app to a Slack workspace
+slack deploy       # ship the production app (see slack-app-deploy skill)
 ```
 
-## Datastores
+`deno task verify` is the gate — a broken import path can never silently block a deploy. It
+type-checks every TS file under `config/`, `domain/`, `shared/`, `functions/`, `workflows/`,
+`triggers/`, and `legacy/`.
 
-For storing data related to your app, datastores offer secure storage on Slack infrastructure. For
-an example of a datastore, see `datastores/sample_datastore.ts`. The use of a datastore requires the
-`datastore:write`/`datastore:read` scopes to be present in your manifest.
+---
 
-## Testing
+## Workflow → function map
 
-For an example of how to test a function, see `functions/sample_function_test.ts`. Test filenames
-should be suffixed with `_test`.
+| Workflow                      | Functions invoked                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| `process_waitlist_signups`    | `fetch_current_waitlists` → admin modal (`handle_waitlist_actions`) → `update_waitlist_spreadsheet` |
+| `receive_waitlist_signup`     | `fetch_current_waitlists` → `resolve_waitlist_order` → `update_waitlist_spreadsheet`                |
+| `dry_run_waitlist`            | same handler as above; dry-run branch posts previews instead of writes                              |
+| `evaluate_refund_request`     | `post_refund_evaluation` (single function: card → modal → Lambda call)                              |
+| `get_shopify_orders_workflow` | `get_league_selections_from_modal` → downstream Lambda                                              |
 
-Run all tests with `deno test`:
+---
 
-```zsh
-$ deno test
-```
+## Environment
 
-## Deploying Your App
+Local: copy `.env.sample` → `.env`. Reading is centralized in `config/env.ts` — handlers never call
+`Deno.env.get` directly.
 
-Once development is complete, deploy the app to Slack infrastructure using `slack deploy`:
+Production secrets are managed per Slack's hosted env-var system; the same keys are read through
+`config/env.ts`.
 
-```zsh
-$ slack deploy
-```
+---
 
-When deploying for the first time, you'll be prompted to
-[create a new link trigger](#creating-triggers) for the deployed version of your app. When that
-trigger is invoked, the workflow should run just as it did when developing locally (but without
-requiring your server to be running).
+## Conventions
 
-## Viewing Activity Logs
+- **4-space indent, 100-column line width.** Enforced by `deno fmt`.
+- **No barrels.** Import from the file that owns the symbol.
+- **Comments explain _why_, not _what_.** No narration of refactor history.
+- **Mutable dataclasses-equivalent.** Domain types are plain `interface`s; builders return new
+  objects rather than mutating in place.
 
-Activity logs of your application can be viewed live and as they occur with the following command:
-
-```zsh
-$ slack activity --tail
-```
-
-## Project Structure
-
-### `.slack/`
-
-Contains `apps.dev.json` and `apps.json`, which include installation details for development and
-deployed apps.
-
-Contains `hooks.json` used by the CLI to interact with the project's SDK dependencies. It contains
-script hooks that are executed by the CLI and implemented by the SDK.
-
-### `datastores/`
-
-[Datastores](https://api.slack.com/automation/datastores) securely store data for your application
-on Slack infrastructure. Required scopes to use datastores include `datastore:write` and
-`datastore:read`.
-
-### `functions/`
-
-[Functions](https://api.slack.com/automation/functions) are reusable building blocks of automation
-that accept inputs, perform calculations, and provide outputs. Functions can be used independently
-or as steps in workflows.
-
-### `triggers/`
-
-[Triggers](https://api.slack.com/automation/triggers) determine when workflows are run. A trigger
-file describes the scenario in which a workflow should be run, such as a user pressing a button or
-when a specific event occurs.
-
-### `workflows/`
-
-A [workflow](https://api.slack.com/automation/workflows) is a set of steps (functions) that are
-executed in order.
-
-Workflows can be configured to run without user input or they can collect input by beginning with a
-[form](https://api.slack.com/automation/forms) before continuing to the next step.
-
-### `manifest.ts`
-
-The [app manifest](https://api.slack.com/automation/manifest) contains the app's configuration. This
-file defines attributes like app name and description.
-
-## Resources
-
-To learn more about developing automations on Slack, visit the following:
-
-- [Automation Overview](https://api.slack.com/automation)
-- [CLI Quick Reference](https://api.slack.com/automation/cli/quick-reference)
-- [Samples and Templates](https://api.slack.com/automation/samples)
+See `RESTRUCTURE-PLAN.md` for the full restructure history and acceptance criteria each phase was
+held to.

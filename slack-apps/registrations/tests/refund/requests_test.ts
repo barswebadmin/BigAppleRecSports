@@ -3,8 +3,8 @@ import {
     buildCancelOrderRequest,
     buildCreateRefundRequest,
     type OrderActionRef,
-} from "../lib/refunds/lambda_requests.ts";
-import type { RefundTransaction } from "../types/evaluation_payload.ts";
+} from "../../domain/refund/lambda_requests.ts";
+import type { RefundTransaction } from "../../domain/refund/types.ts";
 
 const orderRef: OrderActionRef = {
     orderId: "gid://shopify/Order/456",
@@ -35,16 +35,16 @@ Deno.test("buildCancelOrderRequest produces expected Lambda body", () => {
 
 Deno.test("buildCreateRefundRequest produces expected Lambda body", () => {
     const req = buildCreateRefundRequest(orderRef, {
-        refundType: "refund_to_original",
+        refundType: "original_method",
         amount: 67.5,
         transactions,
     });
     assertEquals(JSON.parse(req.body!), {
         action: "create_refund",
-        idempotency_key: "refund:#1001:refund_to_original:67.50",
+        idempotency_key: "refund:#1001:original_method:67.50",
         order_id: "gid://shopify/Order/456",
         order_number: "#1001",
-        refund_type: "refund_to_original",
+        refund_to: "original_method",
         amount: 67.5,
         transactions,
         approved_by: "U_APPROVER",

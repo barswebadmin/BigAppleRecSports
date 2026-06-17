@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { resolveWaitlistOrder } from "../functions/resolve_waitlist_order.ts";
-import type { LeagueWaitlists } from "../lib/waitlists/handlers/waitlist_entry_types.ts";
+import { resolveWaitlistOrder } from "../../domain/waitlist/resolve.ts";
+import type { LeagueWaitlists } from "../../domain/waitlist/types.ts";
 
 const waitlists: LeagueWaitlists = {
     leagues: {
@@ -10,9 +10,13 @@ const waitlists: LeagueWaitlists = {
                 rowNumber: 5,
                 position: 1,
                 createdAt: "2026-01-01",
-                sport: "kickball",
-                day: "sunday",
-                division: "open",
+                league: {
+                    year: 2026,
+                    season: "Winter",
+                    sport: "kickball",
+                    day: "sunday",
+                    division: "open",
+                },
                 firstName: "Jane",
                 lastName: "Doe",
                 emailAddress: "jane@example.com",
@@ -21,10 +25,11 @@ const waitlists: LeagueWaitlists = {
     },
     byEmail: {},
     url: "https://docs.google.com/spreadsheets/d/test",
+    statusColumnIndex: 9,
 };
 
 const signupBody = {
-    email_address: "jane@example.com",
+    email: "jane@example.com",
     sport: "kickball",
     day: "sunday",
     division: "open",
@@ -32,12 +37,12 @@ const signupBody = {
 };
 
 Deno.test("resolve_waitlist_order matches email to order action", () => {
-    const result = resolveWaitlistOrder({
+    const actions = resolveWaitlistOrder({
         body: JSON.stringify(signupBody),
         waitlists_json: JSON.stringify(waitlists),
     });
 
-    assertEquals(JSON.parse(result.outputs.actions_json), [{
+    assertEquals(actions, [{
         type: "order",
         rowNumber: "5",
         firstName: "Jane",
@@ -46,25 +51,25 @@ Deno.test("resolve_waitlist_order matches email to order action", () => {
 });
 
 Deno.test("resolve_waitlist_order returns empty array for non-matching email", () => {
-    const result = resolveWaitlistOrder({
-        body: JSON.stringify({ ...signupBody, email_address: "nobody@example.com" }),
+    const actions = resolveWaitlistOrder({
+        body: JSON.stringify({ ...signupBody, email: "nobody@example.com" }),
         waitlists_json: JSON.stringify(waitlists),
     });
-    assertEquals(result.outputs.actions_json, "[]");
+    assertEquals(actions, []);
 });
 
 Deno.test("resolve_waitlist_order returns empty array for missing league", () => {
-    const result = resolveWaitlistOrder({
+    const actions = resolveWaitlistOrder({
         body: JSON.stringify({ ...signupBody, sport: "bowling" }),
         waitlists_json: JSON.stringify(waitlists),
     });
-    assertEquals(result.outputs.actions_json, "[]");
+    assertEquals(actions, []);
 });
 
 Deno.test("resolve_waitlist_order returns empty array for invalid body JSON", () => {
-    const result = resolveWaitlistOrder({
+    const actions = resolveWaitlistOrder({
         body: "not-json",
         waitlists_json: JSON.stringify(waitlists),
     });
-    assertEquals(result.outputs.actions_json, "[]");
+    assertEquals(actions, []);
 });

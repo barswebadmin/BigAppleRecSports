@@ -1,14 +1,14 @@
 import { assertEquals, assertExists } from "@std/assert";
-import { processSelections } from "../functions/handle_waitlist_actions.ts";
-import { formatProductHandle } from "../utils/formatters.ts";
-import { leagueFromKey } from "../lib/waitlists/league_key.ts";
+import { processSelections } from "../../functions/handle_waitlist_actions.ts";
+import { formatProductHandle } from "../../domain/league/format.ts";
+import { leagueFromKey } from "../../domain/league/key.ts";
 import {
     buildWaitlistFetchMatchers,
     createMockSlackClient,
     createTestEnv,
     installFetchStub,
     isSheetWrite,
-} from "./harness.ts";
+} from "../harness.ts";
 
 const leagueKey = "kickball|sunday|open";
 const league = leagueFromKey(leagueKey);

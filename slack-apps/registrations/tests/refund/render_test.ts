@@ -1,16 +1,16 @@
 import { assertEquals } from "@std/assert";
-import { REFUND_TEST_CHANNEL } from "../config.ts";
-import { runPostRefundEvaluation } from "../functions/post_refund_evaluation.ts";
-import { buildRefundEvalBlocks } from "../lib/slack/refund_eval_blocks.ts";
-import type { RefundEvaluationPayload } from "../types/evaluation_payload.ts";
-import { createMockSlackClient } from "./harness.ts";
+import { REFUND_TEST_CHANNEL } from "../../config/refunds.ts";
+import { runPostRefundEvaluation } from "../../functions/post_refund_evaluation.ts";
+import { buildRefundEvalBlocks } from "../../domain/refund/eval_blocks.ts";
+import type { RefundEvaluationPayload } from "../../domain/refund/types.ts";
+import { createMockSlackClient } from "../harness.ts";
 
 const samplePayload: RefundEvaluationPayload = {
     is_test: true,
-    email_address: "jane@example.com",
+    email: "jane@example.com",
     first_name: "Jane",
     last_name: "Doe",
-    refund_type: "refund_to_original",
+    refund_to: "original_method",
     sport: "kickball",
     season: "summer",
     day: "sunday",
