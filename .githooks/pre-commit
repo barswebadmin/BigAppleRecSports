@@ -39,56 +39,6 @@ if git diff --cached --quiet; then
     exit 0
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TEMPORARILY DISABLED (per request): index isolation that backs up unstaged +
-# untracked files to a temp dir, reverts the working tree (git checkout -- / rm),
-# and restores on exit. Commented out so NOTHING in the working tree is moved,
-# reverted, or deleted during a commit. Re-enable by uncommenting.
-# ─────────────────────────────────────────────────────────────────────────────
-# GIT_DIR=$(git rev-parse --git-dir)
-# TEMP_BACKUP="$GIT_DIR/pre-commit-backup"
-# rm -rf "$TEMP_BACKUP"
-# mkdir -p "$TEMP_BACKUP"
-#
-# UNSTAGED_MODIFIED=$(git diff --name-only 2>/dev/null || true)
-# UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null || true)
-# BACKED_UP=0
-#
-# if [ -n "$UNSTAGED_MODIFIED" ]; then
-#     echo "📦 Backing up unstaged changes..."
-#     while IFS= read -r file; do
-#         if [ -f "$file" ]; then
-#             mkdir -p "$TEMP_BACKUP/$(dirname "$file")"
-#             cp -p "$file" "$TEMP_BACKUP/$file"
-#             # Revert working tree to the staged version for the duration of checks.
-#             git checkout -- "$file" 2>/dev/null || true
-#             BACKED_UP=$((BACKED_UP + 1))
-#         fi
-#     done <<< "$UNSTAGED_MODIFIED"
-# fi
-#
-# if [ -n "$UNTRACKED" ]; then
-#     echo "📦 Backing up untracked files..."
-#     while IFS= read -r file; do
-#         if [ -f "$file" ]; then
-#             mkdir -p "$TEMP_BACKUP/$(dirname "$file")"
-#             cp -p "$file" "$TEMP_BACKUP/$file"
-#             rm "$file"
-#             BACKED_UP=$((BACKED_UP + 1))
-#         fi
-#     done <<< "$UNTRACKED"
-# fi
-#
-# # Restore everything we moved aside, on success OR failure.
-# restore_backup() {
-#     if [ -d "$TEMP_BACKUP" ] && [ "$BACKED_UP" -gt 0 ]; then
-#         echo "📦 Restoring unstaged changes from backup..."
-#         cp -rp "$TEMP_BACKUP"/. .
-#     fi
-#     rm -rf "$TEMP_BACKUP"
-# }
-# trap restore_backup EXIT
-
 # Check if we have python3 available
 if ! command -v python3 &> /dev/null; then
     echo "⚠️  Warning: python3 not found. Skipping checks."
