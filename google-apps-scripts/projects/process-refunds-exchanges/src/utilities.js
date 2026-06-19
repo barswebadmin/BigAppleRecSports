@@ -16,8 +16,8 @@
  * compare against the "#"-prefixed form. Empty input returns empty string —
  * lets callers fall through to their own missing-value handling.
  *
- * Referenced by processFormSubmit, doPost, utilities, lambdaWebhook,
- * sheetUtils, and SlackUtils — every refund-flow file. Mirrors the mock
+ * Referenced by processFormSubmit, doPost, sendLambdaWebhook, and
+ * sheetUtils. Mirrors the mock
  * in tests/test_form_submission.js so unit tests stay in lockstep.
  *
  * @param {string|number} orderNumber Raw order number (digits or "#1234")

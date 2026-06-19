@@ -1,6 +1,6 @@
 /**
  * ========================================================================
- * LAMBDA WEBHOOK — POST refund request to ShopifyRefundHandler lambda
+ * SEND LAMBDA WEBHOOK — POST refund request to ShopifyRefundHandler lambda
  * ========================================================================
  *
  * Fires alongside the existing backend processing. Reads the lambda's
@@ -15,32 +15,40 @@
  */
 
 /**
+ * Parse a raw timestamp string to ISO 8601. Returns null on bad input or missing value.
+ * Used by processFormSubmit.js and doPost.js (GAS global scope).
+ */
+function tryParseIso(raw) {
+  if (!raw) return null;
+  try { return new Date(raw).toISOString(); } catch (_) { return null; }
+}
+
+/**
  * Build the JSON body the lambda's `RefundRequest` pydantic model expects.
  *
- * Field map ↔ pydantic:
- *   order_number      : str           (with or without leading '#')
- *   email_address     : EmailStr      (must be a valid email)
- *   first_name        : str
- *   last_name         : str
- *   refund_or_credit  : str           ("refund" | "credit")
- *   created_at        : datetime|null (ISO 8601 with Z → TZ-aware UTC)
- *   notes             : str|null
+ * Canonical (snake_case) field map ↔ pydantic:
+ *   action        : "evaluate_refund"  (route discriminator)
+ *   order_number  : str                (with or without leading '#')
+ *   email         : str                (surfaced as a warning if blank/invalid)
+ *   first_name    : str
+ *   last_name     : str
+ *   refund_to     : str                ("original_method" | "store_credit")
+ *   submitted_at  : datetime|null      (ISO 8601 with Z → TZ-aware UTC)
+ *   notes         : str|null
+ *
+ * Callers are responsible for canonicalizing `refundTo` before calling.
  */
-function buildLambdaRefundPayload(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundOrCredit, requestNotes, requestSubmittedAt) {
+function buildLambdaRefundPayload(formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail, refundTo, requestNotes, requestSubmittedAt) {
   return {
-    // The lambda's get_order_by_name normalizes either "1234" or "#1234"; we
-    // send the formatted ("#"-prefixed) version since that's what Shopify's
-    // search-by-name expects.
+    action: 'evaluate_refund',
+    // The lambda normalizes "1234" or "#1234"; send the formatted ("#"-prefixed)
+    // version since that's what Shopify's search-by-name expects.
     order_number: formattedOrderNumber || rawOrderNumber || '',
-    email_address: (requestorEmail || '').trim(),
+    email: (requestorEmail || '').trim(),
     first_name: (requestorName && requestorName.first || '').trim(),
     last_name: (requestorName && requestorName.last || '').trim(),
-    refund_or_credit: refundOrCredit || 'credit',
-    // requestSubmittedAt is already an ISO 8601 string built via
-    // `new Date(...).toISOString()` in processFormSubmit.js — TZ-aware UTC.
-    // The lambda treats a naive string as America/New_York, but Z-suffixed
-    // strings pass through unchanged.
-    created_at: requestSubmittedAt || null,
+    refund_to: refundTo,
+    submitted_at: requestSubmittedAt || null,
     notes: requestNotes || null,
   };
 }
@@ -50,19 +58,13 @@ function buildLambdaRefundPayload(formattedOrderNumber, rawOrderNumber, requesto
  *
  * Pure transport: caller builds the payload (typically via
  * ``buildLambdaRefundPayload`` to match the pydantic ``RefundRequest`` model)
- * and we just POST it. Mirrors the AWS-side ``slack_sink.maybe_post_to_slack``:
- * one function, takes a dict, fires it off.
- *
- * Never throws — logs the outcome and emails DEBUG_EMAIL on failure. The
- * existing backend flow MUST continue to run even if this errors.
+ * and we just POST it. Never throws — logs the outcome and emails DEBUG_EMAIL
+ * on failure so the existing backend flow continues even if this errors.
  *
  * @param {Object} payload - JSON-serializable payload matching RefundRequest
  * @returns {{status: number, body: string} | null}
  */
-function postRefundRequestToLambda(payload) {
-  // Property key is inlined intentionally — no top-level constants in this file.
-  // Read from Script Properties at call time so a property update lands without
-  // needing a redeploy / cold restart of the script.
+function sendLambdaWebhook(payload) {
   const propKey = 'LAMBDA_REFUND_HANDLER_URL';
   const url = PropertiesService.getScriptProperties().getProperty(propKey);
   if (!url) {
@@ -84,7 +86,6 @@ function postRefundRequestToLambda(payload) {
     const body = res.getContentText();
     Logger.log(`📥 Lambda responded ${status}: ${body}`);
 
-    // Non-2xx → log loudly so we notice during early rollout.
     if (status < 200 || status >= 300) {
       Logger.log(`❌ Lambda webhook returned ${status} — backend flow still proceeded`);
       MailApp.sendEmail({
@@ -118,32 +119,21 @@ function postRefundRequestToLambda(payload) {
 }
 
 /**
- * Manual end-to-end test using REAL data from the most recent form submission
- * (last row in the refund-request sheet where column A is non-empty).
+ * Manual end-to-end test using REAL data from the sheet.
  *
- * Picks the same fields ``processFormSubmit`` does — keyword-matched against
- * the form's column headers — so the synthetic payload matches what a real
- * trigger fires. Useful for replaying the latest submission through the
- * lambda without touching the form.
- *
- * Run from the Apps Script editor: select ``testLambdaWebhookFromLastRow``
- * in the function dropdown → Run. Watch the execution log.
+ * Set TEST_ROW_NUMBER to any row you want to replay, then run this function
+ * from the Apps Script editor: select ``testSendLambdaWebhookFromRow`` in the
+ * function dropdown → Run. Watch the execution log.
  */
-function testLambdaWebhookFromLastRow() {
-  const sheet = _findSheetByGid(SHEET_ID, SHEET_GID);
-  const lastRow = _findLastRowWithColA(sheet);
-  if (!lastRow) {
-    Logger.log('⛔ No data rows found — sheet only has a header or is empty');
-    return;
-  }
+function testSendLambdaWebhookFromRow() {
+  const TEST_ROW_NUMBER = 2; // ← set to the row number you want to replay (1 = header)
 
-  const { rowNumber, namedValues, headers, values } = _readRowAsNamedValues(sheet, lastRow);
-  Logger.log(`📋 Replaying row ${rowNumber} (most recent submission with col A populated)`);
+  const sheet = _findSheetByGid(SHEET_ID, SHEET_GID);
+  const { rowNumber, namedValues, headers, values } = _readRowAsNamedValues(sheet, TEST_ROW_NUMBER);
+  Logger.log(`📋 Replaying row ${rowNumber}`);
   Logger.log(`   Headers: ${headers.join(' | ')}`);
   Logger.log(`   Values:  ${values.map((v) => String(v).slice(0, 60)).join(' | ')}`);
 
-  // Field extraction mirrors processFormSubmit.js exactly — same keyword matches,
-  // same normalization. Diverging here would make this test less load-bearing.
   const requestorName = {
     first: _pickFieldByKeyword(namedValues, 'first name'),
     last: _pickFieldByKeyword(namedValues, 'last name'),
@@ -151,60 +141,53 @@ function testLambdaWebhookFromLastRow() {
   const requestorEmail = _pickFieldByKeyword(namedValues, 'email');
   const rawOrderNumber = _pickFieldByKeyword(namedValues, 'order number');
   const refundAnswer = _pickFieldByKeyword(namedValues, 'do you want a refund');
-  const refundOrCredit = refundAnswer.toLowerCase().includes('refund') ? 'refund' : 'credit';
+  const refundTo = refundAnswer.toLowerCase().includes('refund') ? 'original_method' : 'store_credit';
   const requestNotes = _pickFieldByKeyword(namedValues, 'note');
-
-  // Timestamp lives in column A — header is typically "Timestamp" but read it
-  // by position too just in case it's been renamed.
   const tsRaw = _pickFieldByKeyword(namedValues, 'timestamp') || values[0];
-  const submittedAt = tsRaw instanceof Date
-    ? tsRaw.toISOString()
-    : tsRaw ? new Date(tsRaw).toISOString() : new Date().toISOString();
-
+  const submittedAt = tryParseIso(tsRaw) || new Date().toISOString();
   const formattedOrderNumber = normalizeOrderNumber(rawOrderNumber);
 
   Logger.log(`📦 Extracted payload:
    name:       ${requestorName.first} ${requestorName.last}
    email:      ${requestorEmail}
    order:      ${rawOrderNumber} → ${formattedOrderNumber}
-   type:       ${refundOrCredit}
+   type:       ${refundTo}
    notes:      ${requestNotes ? requestNotes.slice(0, 80) : '(none)'}
    submitted:  ${submittedAt}`);
 
-  const result = postRefundRequestToLambda(
+  const result = sendLambdaWebhook(
     buildLambdaRefundPayload(
       formattedOrderNumber, rawOrderNumber, requestorName, requestorEmail,
-      refundOrCredit, requestNotes, submittedAt,
+      refundTo, requestNotes, submittedAt,
     )
   );
   _logLambdaResult(result);
 }
 
 /**
- * Synthetic-payload test — useful for "is the lambda reachable / does its
- * deployed code parse the schema" smoke check without depending on the
- * spreadsheet state. Edit constants to point at any order #.
+ * Synthetic-payload test — smoke check that the lambda is reachable and
+ * parses the schema without depending on the spreadsheet state.
+ * Edit the constants below to point at any real order.
  */
-function testLambdaWebhook() {
+function testSendLambdaWebhook() {
   const TEST_ORDER_NUMBER = '#1234';                            // ← real BARS order
   const TEST_EMAIL = 'joe.randazzo@gendigital.com';             // ← your email
   const TEST_FIRST_NAME = 'Joe';
   const TEST_LAST_NAME = 'Randazzo';
-  const TEST_REFUND_OR_CREDIT = 'credit';                       // "refund" | "credit"
+  const TEST_REFUND_TO = 'store_credit';                        // "original_method" | "store_credit"
 
-  Logger.log('🧪 Running testLambdaWebhook with synthetic payload');
-  const result = postRefundRequestToLambda(
+  Logger.log('🧪 Running testSendLambdaWebhook with synthetic payload');
+  const result = sendLambdaWebhook(
     buildLambdaRefundPayload(
       TEST_ORDER_NUMBER,
       TEST_ORDER_NUMBER.replace(/^#/, ''),
       { first: TEST_FIRST_NAME, last: TEST_LAST_NAME },
       TEST_EMAIL,
-      TEST_REFUND_OR_CREDIT,
+      TEST_REFUND_TO,
       'manual test from Apps Script editor',
       new Date().toISOString(),
     )
   );
-
   _logLambdaResult(result);
 }
 
@@ -217,18 +200,6 @@ function _findSheetByGid(spreadsheetId, gid) {
     throw new Error(`No sheet with gid=${gid} in spreadsheet ${spreadsheetId}`);
   }
   return sheet;
-}
-
-function _findLastRowWithColA(sheet) {
-  // sheet.getLastRow() can over-report (counts trailing blanks left by deletes).
-  // Walk backward from there until column A has a value.
-  let row = sheet.getLastRow();
-  while (row > 1) {
-    const colA = sheet.getRange(row, 1).getValue();
-    if (colA !== '' && colA !== null && colA !== undefined) return row;
-    row--;
-  }
-  return null;
 }
 
 function _readRowAsNamedValues(sheet, rowNumber) {
@@ -263,7 +234,7 @@ function _logLambdaResult(result) {
     Logger.log(`   warnings: ${JSON.stringify(parsed.warnings || [])}`);
     Logger.log(`   sport/day/division: ${parsed.sport} / ${parsed.day} / ${parsed.division}`);
     if (parsed.estimated_refund_to_original) {
-      Logger.log(`   refund_to_original: ${parsed.estimated_refund_to_original.message}`);
+      Logger.log(`   original_method: ${parsed.estimated_refund_to_original.message}`);
     }
     if (parsed.estimated_store_credit) {
       Logger.log(`   store_credit: ${parsed.estimated_store_credit.message}`);

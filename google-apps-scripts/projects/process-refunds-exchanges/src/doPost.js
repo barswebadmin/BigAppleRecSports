@@ -121,57 +121,12 @@ function doPost(e) {
         requestContext.requestType = 'backend_action';
         Logger.log(`🔧 [${timestamp}] Backend action detected: ${jsonData.action}`);
 
-        if (jsonData.action === "send_denial_email") {
-          Logger.log(`📧 [${timestamp}] Processing send_denial_email action...`);
-          try {
-            const result = sendDenialEmail(jsonData);
-            Logger.log(`✅ [${timestamp}] Denial email sent successfully`);
-            return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-          } catch (emailError) {
-            const errorContext = {
-              function: functionName,
-              operation: 'sending_denial_email',
-              action: jsonData.action,
-              error: emailError.message,
-              errorName: emailError.name,
-              stack: emailError.stack
-            };
-            
-            Logger.log(`❌ [${timestamp}] === ERROR sending denial email ===`);
-            Logger.log(`   Operation: Sending denial email`);
-            Logger.log(`   Action: ${jsonData.action}`);
-            Logger.log(`   Error: ${emailError.message}`);
-            Logger.log(`   Stack: ${emailError.stack || 'No stack trace'}`);
-            
-            MailApp.sendEmail({
-              to: DEBUG_EMAIL,
-              subject: `🚨 ${functionName}: Denial Email Error`,
-              htmlBody: `
-                <h2>🚨 Error Sending Denial Email in ${functionName}</h2>
-                <p><strong>Timestamp:</strong> ${timestamp}</p>
-                <p><strong>Action:</strong> ${jsonData.action}</p>
-                <p><strong>Error:</strong> ${emailError.message}</p>
-                <h3>Stack Trace:</h3>
-                <pre>${emailError.stack || 'No stack trace'}</pre>
-              `
-            });
-            
-            return ContentService.createTextOutput(JSON.stringify({
-              success: false,
-              message: `Error sending denial email: ${emailError.message}`,
-              context: errorContext
-            })).setMimeType(ContentService.MimeType.JSON);
-          }
-        } else {
-          const errorMsg = `Unknown action: ${jsonData.action}`;
+        const errorMsg = `Unknown action: ${jsonData.action}`;
           Logger.log(`❌ [${timestamp}] ${errorMsg}`);
-          Logger.log(`   Available actions: send_denial_email`);
           return ContentService.createTextOutput(JSON.stringify({
             success: false,
             message: errorMsg,
-            availableActions: ['send_denial_email']
           })).setMimeType(ContentService.MimeType.JSON);
-        }
       } else {
         Logger.log(`📝 [${timestamp}] JSON parsed but no action field - assuming form submission`);
       }
@@ -183,7 +138,7 @@ function doPost(e) {
 
     // If we get here, this should be a Google Form submission
     requestContext.requestType = 'form_submission';
-    Logger.log(`📝 [${timestamp}] Form submission detected - processing with backend API`);
+    Logger.log(`📝 [${timestamp}] Form submission detected - posting to lambda`);
 
     // Process form submission by calling the existing form handler
     try {
@@ -273,7 +228,7 @@ function doPost(e) {
 
 /**
  * Process Google Form submission (called by doPost)
- * Extracts form data and sends to backend API
+ * Extracts form data and posts to the refund lambda
  */
 function processFormSubmitViaDoPost(e) {
   try {
@@ -293,20 +248,25 @@ function processFormSubmitViaDoPost(e) {
     const requestorEmail = getFieldValueByKeyword("email");
     const rawOrderNumber = getFieldValueByKeyword("order number");
     const refundAnswer = getFieldValueByKeyword("do you want a refund");
-    const refundOrCredit = refundAnswer.toLowerCase().includes("refund") ? "refund" : "credit";
+    // Map the raw form answer to the canonical refund_to at this set-point.
+    const refundType = refundAnswer.toLowerCase().includes("refund") ? "original_method" : "store_credit";
     const requestNotes = getFieldValueByKeyword("note");
+
+    const requestSubmittedAt = tryParseIso(getFieldValueByKeyword("timestamp"));
+    const formattedOrderNumber = normalizeOrderNumber(rawOrderNumber);
 
     Logger.log(`📋 Form submission data extracted for order: ${rawOrderNumber}`);
 
-    // Call the existing backend processing function
-    processWithBackendAPI(
-      normalizeOrderNumber(rawOrderNumber),
-      rawOrderNumber,
-      requestorName,
-      requestorEmail,
-      refundOrCredit,
-      requestNotes,
-      MODE === 'debugApi'
+    sendLambdaWebhook(
+      buildLambdaRefundPayload(
+        formattedOrderNumber,
+        rawOrderNumber,
+        requestorName,
+        requestorEmail,
+        refundType,
+        requestNotes,
+        requestSubmittedAt,
+      )
     );
 
     return ContentService.createTextOutput("Form submitted successfully").setMimeType(ContentService.MimeType.TEXT);

@@ -76,7 +76,8 @@ function parseRefundRowData(rowObject, sheetHeaders) {
     } else if (lowerHeader.includes("order number")) {
       rowData.rawOrderNumber = rowObject[i];
     } else if (lowerHeader.includes("do you want a refund")) {
-      rowData.refundOrCredit = rowObject[i].toLowerCase().includes("refund") ? "refund" : "credit";
+      // Normalize the raw sheet answer to the canonical refund_to on read.
+      rowData.refundType = rowObject[i].toLowerCase().includes("refund") ? "original_method" : "store_credit";
     } else if (lowerHeader.includes("anything else to note")) {
       rowData.requestNotes = rowObject[i];
     } else if (lowerHeader.includes("first name")) {

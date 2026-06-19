@@ -1,37 +1,25 @@
 // =============================================================================
-// PROJECT-SPECIFIC CONFIGURATION AND UTILITIES
-// process-refunds-exchanges specific constants and functions
+// PROJECT-SPECIFIC CONFIGURATION
+// process-refunds-exchanges
+// =============================================================================
+//
+// Environment-specific values live in Script Properties, not in code
+// (Project Settings → Script Properties). Required keys:
+//
+//   SHEET_ID           refund-request spreadsheet id (e.g. 11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw)
+//   SHEET_GID          refund-request tab gid        (e.g. 1435845892)
+//   SHOPIFY_LOGIN_URL  customer login link for emails (e.g. https://shopify.com/55475535966/account)
+//   DEBUG_EMAIL        where error/debug mail is sent (e.g. web@bigapplerecsports.com)
+//   LAMBDA_REFUND_HANDLER_URL  ShopifyRefundHandler Function URL (read in sendLambdaWebhook.js)
+//
+// Read once at script load; the same global names are used across the project's
+// src files (GAS implicit cross-file global scope).
 // =============================================================================
 
-// =============================================================================
-// PROJECT-SPECIFIC CONSTANTS
-// =============================================================================
+const _SCRIPT_PROPS = PropertiesService.getScriptProperties();
 
-const SHEET_ID = "11oXF8a7lZV0349QFVYyxPw8tEokoLJqZDrGDpzPjGtw";
-const SHEET_GID = "1435845892";
-const WAITLIST_RESPONSES_URL = 'https://docs.google.com/spreadsheets/d/1wFoayUoIx1PPOO0TtuS0Jnwb5hoIbgCd_kebMeYNzGQ/edit?resourcekey=&gid=744639660#gid=744639660';
-const SHOPIFY_LOGIN_URL = 'https://shopify.com/55475535966/account';
-const BARS_LOGO_URL = "https://cdn.shopify.com/s/files/1/0554/7553/5966/files/122824_BARS_Logo_Full-Black.png?v=1741951481";
+const SHEET_ID = _SCRIPT_PROPS.getProperty('SHEET_ID');
+const SHEET_GID = _SCRIPT_PROPS.getProperty('SHEET_GID');
+const SHOPIFY_LOGIN_URL = _SCRIPT_PROPS.getProperty('SHOPIFY_LOGIN_URL');
+const DEBUG_EMAIL = _SCRIPT_PROPS.getProperty('DEBUG_EMAIL');
 
-const MODE = 'PROD'; // Options: 'DEVELOPMENT', 'PROD-TEST', 'PROD'
-
-const NGROK_URL = 'https://56d6dd03ac9d.ngrok-free.app';
-const PROD_URL = 'https://bars-backend.onrender.com';
-
-const DEBUG_EMAIL = 'web@bigapplerecsports.com';
-
-// =============================================================================
-// DYNAMIC CONFIGURATION
-// =============================================================================
-
-/**
- * Get API URL based on MODE
- * @returns {string} API URL to use
- */
-function getApiUrl() {
-  if (MODE === 'DEVELOPMENT') {
-    return NGROK_URL;
-  } else {
-    return PROD_URL;
-  }
-}

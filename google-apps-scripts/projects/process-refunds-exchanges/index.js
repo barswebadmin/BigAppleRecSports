@@ -8,4 +8,3 @@
  */
 
 import './src/doPost.js';
-import './src/menu.js';
