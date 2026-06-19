@@ -5,9 +5,17 @@
 import type { GoogleClient } from "./client.ts";
 import type { EmailMessage } from "./email_message.ts";
 import type { PreparedRequest } from "../http/prepared_request.ts";
-import { GOOGLE_API } from "../../config/store.ts";
+import { GOOGLE_API, ORG_DOMAIN } from "../../config/store.ts";
 
 const BASE = GOOGLE_API.gmail_base;
+
+/** Default Gmail send-as identity used by every workflow that emails customers.
+ *  The address derives from the org domain so a domain rename only touches
+ *  config/store.ts; the display name stays a literal until/unless we localize. */
+export const DEFAULT_GMAIL_SENDER = {
+    name: "Big Apple Rec Sports",
+    email_address: `web@${ORG_DOMAIN}`,
+} as const;
 const log = (fn: string, ...args: unknown[]) => console.log(`[gmail:${fn}]`, ...args);
 
 const FALLBACK_SIGNATURE = `

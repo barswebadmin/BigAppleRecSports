@@ -3,6 +3,7 @@
  * No domain imports — all behavior is dictated by ListModalConfig params.
  */
 
+import type { SlackView } from "./message.ts";
 import { type Block, context, divider, header, plainText, section } from "./blocks.ts";
 
 export interface ActionOption {
@@ -56,40 +57,6 @@ export interface ListModalConfig<T> {
     };
 }
 
-function toSelectOption(opt: ActionOption) {
-    return { text: plainText(opt.label), value: opt.value };
-}
-
-/** Text/emoji content for the modal's header region. */
-interface ModalHeaderConfig {
-    headerText?: string;
-    subText?: string;
-    instructionText?: string;
-}
-
-/**
- * Reusable modal-header component: an optional big-bold `header` line (the
- * strongest native "stand out" treatment), an optional smaller sub-line, then
- * the instruction copy, separated by dividers. Composed by buildListModal so
- * every caller (dry-run and real-run) renders the header the same way; only the
- * text differs.
- *
- * Note on Slack limits: modal text can't be colored, underlined, boxed, or
- * resized. `header` blocks render big/bold; `context` blocks render small/gray.
- */
-function buildModalHeaderBlocks(config: ModalHeaderConfig): Block[] {
-    const blocks: Block[] = [];
-
-    if (config.headerText) {
-        blocks.push(header(config.headerText));
-    }
-    if (config.subText) blocks.push(context(config.subText));
-    if (config.headerText || config.subText) blocks.push(divider());
-    if (config.instructionText) blocks.push(context(config.instructionText));
-    blocks.push(divider());
-    return blocks;
-}
-
 /** Either the read-only label or the interactive dropdown (+ optional context
  *  lines + optional checkbox) for a single page item — flat per-item pipeline,
  *  no nested loops in `buildListModal`. */
@@ -99,7 +66,7 @@ function itemToBlocks<T>(item: T, config: ListModalConfig<T>): Block[] {
         return [section((config.formatReadOnlyLabel ?? config.formatItemTitle)(item))];
     }
     const id = String(config.getItemId(item));
-    const options = config.actionOptions.map(toSelectOption);
+    const options = config.actionOptions.map((o) => ({ text: plainText(o.label), value: o.value }));
     const selected = config.existingSelections?.[id];
     const initialOption = selected ? options.find((o) => o.value === selected) : undefined;
     const contextLines = config.formatItemContextLines?.(item) ?? [];
@@ -162,14 +129,24 @@ function paginationBlocks<T>(config: ListModalConfig<T>): Block[] {
     return buttons.length > 0 ? [{ type: "actions", elements: buttons }] : [];
 }
 
-export function buildListModal<T>(config: ListModalConfig<T>): Record<string, unknown> {
+/** Header region (big-bold heading, sub-line, instruction copy, separators).
+ *  Inlined here so the modal's full top-to-bottom block order is visible in
+ *  one place. Slack note: modal text can't be colored/underlined/boxed/resized
+ *  — `header` is big/bold, `context` is small/gray. */
+function headerBlocks(config: ListModalConfig<unknown>): Block[] {
+    const out: Block[] = [];
+    if (config.headerText) out.push(header(config.headerText));
+    if (config.subText) out.push(context(config.subText));
+    if (config.headerText || config.subText) out.push(divider());
+    if (config.instructionText) out.push(context(config.instructionText));
+    out.push(divider());
+    return out;
+}
+
+export function buildListModal<T>(config: ListModalConfig<T>): SlackView {
     const page = config.items.slice(config.offset, config.offset + config.pageSize);
     const bodyBlocks: Block[] = config.items.length === 0 ? [section(config.emptyMessage)] : [
-        ...buildModalHeaderBlocks({
-            headerText: config.headerText,
-            subText: config.subText,
-            instructionText: config.instructionText,
-        }),
+        ...headerBlocks(config as ListModalConfig<unknown>),
         ...page.flatMap((item) => itemToBlocks(item, config)),
         ...paginationBlocks(config),
     ];

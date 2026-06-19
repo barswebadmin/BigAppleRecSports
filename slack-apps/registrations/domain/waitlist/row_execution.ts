@@ -18,7 +18,7 @@ import type { createShopifyClient } from "../../legacy/shopify_client/client.ts"
 import { executeSendEmail } from "../../shared/google/gmail.ts";
 import type { RowProcessing } from "./row_planning.ts";
 
-export async function executeShopifyForRow(
+async function executeShopifyForRow(
     shopify: ReturnType<typeof createShopifyClient>,
     p: RowProcessing,
 ): Promise<void> {
@@ -40,7 +40,7 @@ export async function executeShopifyForRow(
 
 /** Email only when the box was ticked AND Shopify succeeded — the login link
  *  is useless without the tag, so a Shopify failure cancels the email. */
-export async function executeEmailForRow(p: RowProcessing): Promise<void> {
+async function executeEmailForRow(p: RowProcessing): Promise<void> {
     if (!p.emailRequest || !p.result.shopifyOk) return;
     try {
         const emailRes = await executeSendEmail(p.emailRequest);

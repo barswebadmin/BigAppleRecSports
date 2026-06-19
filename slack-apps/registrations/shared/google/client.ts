@@ -4,8 +4,8 @@
  */
 
 import { importPKCS8, SignJWT } from "jose";
-import { DEFAULT_GMAIL_SENDER } from "../../config/slack.ts";
 import { GOOGLE_API } from "../../config/store.ts";
+import { DEFAULT_GMAIL_SENDER } from "./gmail.ts";
 
 const TOKEN_URL = GOOGLE_API.oauth_token_url;
 const SUBJECT = DEFAULT_GMAIL_SENDER.email_address;

@@ -4,7 +4,7 @@
 
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
 
-import type { WaitlistAction } from "../domain/waitlist/action.ts";
+import type { WaitlistAction } from "../domain/waitlist/types.ts";
 import { applyStatusWrites } from "../domain/waitlist/status_write.ts";
 
 export const UpdateWaitlistSpreadsheetFunction = DefineFunction({

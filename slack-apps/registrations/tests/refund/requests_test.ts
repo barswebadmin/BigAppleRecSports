@@ -2,8 +2,8 @@ import { assertEquals } from "@std/assert";
 import {
     buildCancelOrderRequest,
     buildCreateRefundRequest,
-    type OrderActionRef,
-} from "../../domain/refund/lambda_requests.ts";
+} from "../../domain/refund/action_requests.ts";
+import type { OrderActionRef } from "../../domain/refund/types.ts";
 import type { RefundTransaction } from "../../domain/refund/types.ts";
 
 const orderRef: OrderActionRef = {

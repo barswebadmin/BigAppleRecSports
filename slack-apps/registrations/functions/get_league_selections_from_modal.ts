@@ -1,210 +1,30 @@
-/** League-selection modal for the orders-export workflow.
- *
- *  Thin handler. The state machine lives in `domain/league/selection_state.ts`;
- *  this file is the modal view + SDK wiring. */
+/** Workflow boundary for the orders-export league picker. Thin SDK wiring;
+ *  modal shape + option catalogs + state-machine glue live in
+ *  `domain/league/orders_export_modal.ts` and `selection_state.ts`. */
 
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import type { SlackAPIClient } from "deno-slack-api/types.ts";
 
 import {
+    buildOrdersExportModal,
+    CALLBACK_ID,
+    readCheckboxes,
+    SEASON_ACTION_ID,
+    SPORT_ACTION_ID,
+    YEAR_ACTION_ID,
+} from "../views/league/orders_export_modal.ts";
+import {
     captureCheckboxes,
-    currentDays,
     getInitialState,
     type LeagueSelectionState,
     parseMetadata,
-    serializeMetadata,
     setSeason,
     setSport,
     setYear,
     stateToLeagues,
-} from "../domain/league/selection_state.ts";
-import { ALL_SEASONS, getDaysForSport } from "../domain/league/catalog.ts";
-import { capitalize } from "../shared/text/strings.ts";
-import { plainText } from "../shared/slack/blocks.ts";
+} from "../views/league/selection_state.ts";
+import type { Season } from "../domain/league/types.ts";
+import { CURRENT_SEASON, CURRENT_YEAR } from "../config/season.ts";
 import { executionId } from "../shared/slack/workflow.ts";
-
-// ────────────────────────────────────────────────────────────────────────────
-// Constants
-// ────────────────────────────────────────────────────────────────────────────
-
-const CALLBACK_ID = "shopify_orders_modal";
-const SPORTS = ["bowling", "dodgeball", "kickball", "pickleball"];
-
-// ────────────────────────────────────────────────────────────────────────────
-// Modal view + small option helpers
-// ────────────────────────────────────────────────────────────────────────────
-
-interface Option {
-    text: { type: "plain_text"; text: string };
-    value: string;
-}
-
-const toOptions = (items: { label: string; value: string }[]): Option[] =>
-    items.map((i) => ({ text: plainText(i.label), value: i.value }));
-
-const select = (actionId: string, placeholder: string, options: Option[], initial?: Option) => ({
-    type: "static_select" as const,
-    action_id: actionId,
-    placeholder: plainText(placeholder),
-    options,
-    ...(initial ? { initial_option: initial } : {}),
-});
-
-const checkboxes = (actionId: string, options: Option[], initial?: Option[]) => ({
-    type: "checkboxes" as const,
-    action_id: actionId,
-    options,
-    ...(initial?.length ? { initial_options: initial } : {}),
-});
-
-const YEAR_OPTIONS = toOptions(
-    ["2022", "2023", "2024", "2025", "2026"].map((y) => ({ label: y, value: y })),
-);
-const SEASON_OPTIONS = toOptions(ALL_SEASONS.map((s) => ({ label: capitalize(s), value: s })));
-const SPORT_OPTIONS = toOptions(SPORTS.map((s) => ({ label: capitalize(s), value: s })));
-
-function dayOptionsFor(days: string[]): Option[] {
-    return toOptions(days.map((d) => ({ label: capitalize(d), value: d })));
-}
-
-function buildView(state: LeagueSelectionState): Record<string, unknown> {
-    const stored = currentDays(state);
-    const available = getDaysForSport(state.sport);
-    const wtnbOpts = dayOptionsFor(available.wtnb);
-    const openOpts = dayOptionsFor(available.open);
-    const wtnbInitial = wtnbOpts.filter((o) => (stored.wtnb as string[]).includes(o.value));
-    const openInitial = openOpts.filter((o) => (stored.open as string[]).includes(o.value));
-    const comboSuffix = `${state.year}_${state.season}_${state.sport}`;
-
-    return {
-        type: "modal",
-        callback_id: CALLBACK_ID,
-        title: plainText("Select league(s)"),
-        submit: plainText("Done"),
-        private_metadata: serializeMetadata(state),
-        blocks: [
-            {
-                type: "input",
-                block_id: "year_block",
-                label: plainText("Year"),
-                element: select(
-                    "year_select",
-                    "Year",
-                    YEAR_OPTIONS,
-                    YEAR_OPTIONS.find((o) => o.value === String(state.year)),
-                ),
-                dispatch_action: true,
-            },
-            {
-                type: "input",
-                block_id: "season_block",
-                label: plainText("Season"),
-                element: select(
-                    "season_select",
-                    "Season",
-                    SEASON_OPTIONS,
-                    SEASON_OPTIONS.find((o) => o.value === state.season),
-                ),
-                dispatch_action: true,
-            },
-            {
-                type: "input",
-                block_id: "sport_block",
-                label: plainText("Sport"),
-                element: select(
-                    "sport_select",
-                    "Sport",
-                    SPORT_OPTIONS,
-                    SPORT_OPTIONS.find((o) => o.value === state.sport),
-                ),
-                dispatch_action: true,
-            },
-            { type: "divider" },
-            ...(wtnbOpts.length
-                ? [
-                    {
-                        type: "input",
-                        block_id: `wtnb_days_${comboSuffix}`,
-                        label: plainText("WTNB Division"),
-                        element: checkboxes(
-                            "wtnb_days_select",
-                            wtnbOpts,
-                            wtnbInitial.length ? wtnbInitial : undefined,
-                        ),
-                        optional: true,
-                    },
-                ]
-                : []),
-            { type: "divider" },
-            ...(openOpts.length
-                ? [
-                    {
-                        type: "input",
-                        block_id: `open_days_${comboSuffix}`,
-                        label: plainText("Open Division"),
-                        element: checkboxes(
-                            "open_days_select",
-                            openOpts,
-                            openInitial.length ? openInitial : undefined,
-                        ),
-                        optional: true,
-                    },
-                ]
-                : []),
-        ],
-    };
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Read current checkbox values from view.state.values
-// ────────────────────────────────────────────────────────────────────────────
-
-interface ViewValues {
-    [blockId: string]: {
-        [actionId: string]: {
-            selected_options?: { value: string }[];
-        };
-    };
-}
-
-function readCheckboxes(values: ViewValues): { wtnb: string[]; open: string[] } {
-    const wtnbBlock = Object.keys(values).find((k) => k.startsWith("wtnb_days"));
-    const openBlock = Object.keys(values).find((k) => k.startsWith("open_days"));
-    return {
-        wtnb: (wtnbBlock ? (values[wtnbBlock]?.wtnb_days_select?.selected_options ?? []) : []).map(
-            (o) => o.value,
-        ),
-        open: (openBlock ? (values[openBlock]?.open_days_select?.selected_options ?? []) : []).map(
-            (o) => o.value,
-        ),
-    };
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Shared block-action plumbing
-// ────────────────────────────────────────────────────────────────────────────
-
-/** Snapshot the visible-page checkbox ticks into the persisted state, apply the
- *  selector's mutation, then re-render the modal. Used by every dropdown
- *  (year/season/sport) — same dance, different mutation. */
-async function applyMutationAndRerender(
-    // deno-lint-ignore no-explicit-any
-    body: any,
-    client: SlackAPIClient,
-    mutate: (s: LeagueSelectionState) => LeagueSelectionState,
-): Promise<void> {
-    const state = parseMetadata(body.view.private_metadata || "{}");
-    const { wtnb, open } = readCheckboxes(body.view.state?.values ?? {});
-    const saved = captureCheckboxes(state, wtnb, open);
-    await client.views.update({
-        view_id: body.view.id,
-        view: buildView(mutate(saved)),
-    });
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// SlackFunction definition & handler wiring
-// ────────────────────────────────────────────────────────────────────────────
 
 export const GetLeagueSelectionsFunction = DefineFunction({
     callback_id: "get_league_selections",
@@ -227,25 +47,40 @@ export const GetLeagueSelectionsFunction = DefineFunction({
 const handler = SlackFunction(GetLeagueSelectionsFunction, async ({ inputs, client }) => {
     await client.views.open({
         interactivity_pointer: inputs.interactivity.interactivity_pointer,
-        view: buildView(getInitialState()),
+        view: buildOrdersExportModal(getInitialState(CURRENT_YEAR, CURRENT_SEASON)),
     });
     return { completed: false };
 });
 
-handler.addBlockActionsHandler("year_select", async ({ body, client }) => {
-    const year = parseInt(body.actions[0].selected_option.value, 10);
-    await applyMutationAndRerender(body, client, (s) => setYear(s, year));
-});
+/** One row per driver dropdown: the action id the SDK fires, and the state
+ *  mutation to apply with the raw selected value. The handler below is a single
+ *  registration that table-dispatches on `action_id`. */
+const DRIVER_MUTATORS: Record<
+    string,
+    (state: LeagueSelectionState, raw: string) => LeagueSelectionState
+> = {
+    [YEAR_ACTION_ID]: (state, raw) => setYear(state, parseInt(raw, 10)),
+    [SEASON_ACTION_ID]: (state, raw) => setSeason(state, raw as Season),
+    [SPORT_ACTION_ID]: (state, raw) => setSport(state, raw),
+};
 
-handler.addBlockActionsHandler("season_select", async ({ body, client }) => {
-    const season = body.actions[0].selected_option.value;
-    await applyMutationAndRerender(body, client, (s) => setSeason(s, season));
-});
-
-handler.addBlockActionsHandler("sport_select", async ({ body, client }) => {
-    const sport = body.actions[0].selected_option.value;
-    await applyMutationAndRerender(body, client, (s) => setSport(s, sport));
-});
+handler.addBlockActionsHandler(
+    new RegExp(`^(${Object.keys(DRIVER_MUTATORS).join("|")})$`),
+    async ({ action, body, client }) => {
+        const mutate = DRIVER_MUTATORS[action.action_id];
+        if (!mutate) return;
+        // Snapshot the visible page's checkbox ticks into the persisted state,
+        // apply the driver's mutation, then re-render the modal in place.
+        const state = parseMetadata(body.view.private_metadata || "{}");
+        const { wtnb, open } = readCheckboxes(body.view.state?.values ?? {});
+        const saved = captureCheckboxes(state, wtnb, open);
+        const raw = body.actions[0].selected_option.value;
+        await client.views.update({
+            view_id: body.view.id,
+            view: buildOrdersExportModal(mutate(saved, raw)),
+        });
+    },
+);
 
 handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, view, client }) => {
     const state = parseMetadata(view.private_metadata || "{}");

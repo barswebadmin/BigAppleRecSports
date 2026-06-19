@@ -99,6 +99,10 @@ Local: copy `.env.sample` → `.env`. Reading is centralized in `config/env.ts` 
 Production secrets are managed per Slack's hosted env-var system; the same keys are read through
 `config/env.ts`.
 
+**Refund approval modal** (`config/store.ts` via `readEnv`): `REFUND_PRIVILEGED_SLACK_USER_IDS` —
+comma-separated Slack user IDs allowed to exceed the soft refund estimate without the submit label
+switching to "Send to Exec for Approval". Empty/unset means everyone uses the soft-cap label rule.
+
 ---
 
 ## Conventions

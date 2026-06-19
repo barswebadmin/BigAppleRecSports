@@ -1,5 +1,6 @@
 /** Waitlist data model: entry / league waitlist / email lookup index, plus the
- *  status-keyword constants the parser uses (case-insensitive substring match). */
+ *  status-keyword constants the parser uses (case-insensitive substring match)
+ *  and the small pure queries over those types. */
 
 import type { League } from "../league/types.ts";
 
@@ -41,4 +42,16 @@ export interface LeagueWaitlists {
     /** 0-based index of the Status column, resolved by the fetcher in the same
      *  HTTP call as the row data — so writers don't need a second round trip. */
     statusColumnIndex: number;
+}
+
+/** Wire contract for `actions_json` passed between waitlist workflow steps. */
+export interface WaitlistAction {
+    type: "admit" | "remove" | "order";
+    rowNumber: string;
+    firstName: string;
+    lastName?: string;
+    emailAddress: string;
+    sport?: string;
+    day?: string;
+    division?: string;
 }

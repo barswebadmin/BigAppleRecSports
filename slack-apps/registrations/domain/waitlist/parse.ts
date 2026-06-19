@@ -1,8 +1,8 @@
 /** Parse waitlist spreadsheet rows into a `LeagueWaitlists` structure. Pure —
  *  no I/O, no Slack imports. Row 0 is the header; data starts at row 1. */
 
-import { CURRENT_SEASON, CURRENT_YEAR } from "../league/catalog.ts";
-import { buildLeagueKey } from "../league/key.ts";
+import { CURRENT_SEASON, CURRENT_YEAR } from "../../config/season.ts";
+import { buildLeagueKey } from "../league/identity.ts";
 import type { EmailLookupEntry, LeagueWaitlist, LeagueWaitlists, WaitlistEntry } from "./types.ts";
 import { CancelledStatuses, RegisteredStatuses } from "./types.ts";
 
@@ -40,24 +40,21 @@ function col(row: string[], idx: number): string {
     return idx >= 0 ? (row[idx] || "").trim() : "";
 }
 
-/** Field-name → header keyword the parser searches for. The header may carry
- *  extra words ("Email Address (work)") — `findColumn` does a substring match. */
-const COLUMN_KEYWORDS: Record<keyof ColumnIndex, string> = {
-    createdAt: "timestamp",
-    league: "league",
-    firstName: "first name",
-    lastName: "last name",
-    emailAddress: "email address",
-    phoneNumber: "phone number",
-    gender: "gender",
-    pronouns: "pronouns",
-    status: "status",
-};
-
+/** Resolve the `ColumnIndex` from the header row. The header may carry extra
+ *  words ("Email Address (work)") — `findColumn` does a substring match. */
 function buildColumnIndex(headers: string[]): ColumnIndex {
-    return Object.fromEntries(
-        Object.entries(COLUMN_KEYWORDS).map(([field, kw]) => [field, findColumn(headers, kw)]),
-    ) as unknown as ColumnIndex;
+    const at = (keyword: string) => findColumn(headers, keyword);
+    return {
+        createdAt: at("timestamp"),
+        league: at("league"),
+        firstName: at("first name"),
+        lastName: at("last name"),
+        emailAddress: at("email address"),
+        phoneNumber: at("phone number"),
+        gender: at("gender"),
+        pronouns: at("pronouns"),
+        status: at("status"),
+    };
 }
 
 /** Project one sheet row into a `ParsedRow` or `null` (inactive / malformed

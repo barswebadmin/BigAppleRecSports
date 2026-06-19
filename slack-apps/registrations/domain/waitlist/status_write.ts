@@ -4,7 +4,7 @@
  *  call. */
 
 import { columnToLetter, getOrCreateGoogleClient } from "../../shared/google/client.ts";
-import type { WaitlistAction } from "./action.ts";
+import type { WaitlistAction } from "./types.ts";
 import { fetchWaitlists, WAITLIST_SPREADSHEET_ID, WAITLIST_TAB } from "./sheet.ts";
 import { formatStatusTimestamp, statusText } from "./status_format.ts";
 

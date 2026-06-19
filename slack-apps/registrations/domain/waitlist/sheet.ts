@@ -3,11 +3,11 @@
  *  resolved in the same fetch — no second HTTP call from writers. */
 
 import { getOrCreateGoogleClient } from "../../shared/google/client.ts";
-import { getWorkflowSheet } from "../../config/workflows.ts";
+import { WORKFLOWS } from "../../config/workflows.ts";
 import { parseWaitlistRows } from "./parse.ts";
 import type { LeagueWaitlists } from "./types.ts";
 
-const SHEET = getWorkflowSheet("waitlist");
+const SHEET = WORKFLOWS.waitlist.sheet;
 export const WAITLIST_SPREADSHEET_ID = SHEET.spreadsheet_id;
 export const WAITLIST_TAB = { name: SHEET.tab_name, id: SHEET.tab_id };
 
@@ -29,6 +29,30 @@ export async function fetchWaitlists(env: Record<string, string>): Promise<Leagu
         throw new Error(`No "Status" column found in '${WAITLIST_TAB.name}' header row`);
     }
     return parsed;
+}
+
+/** Soft-fail fallback used when a workflow step must always succeed (a thrown
+ *  step strands the run). Mirrors a fresh `LeagueWaitlists` with no rows. */
+const EMPTY_WAITLISTS: LeagueWaitlists = {
+    leagues: {},
+    byEmail: {},
+    url: "",
+    statusColumnIndex: -1,
+};
+
+/** Same as `fetchWaitlists` but converts any thrown error into `EMPTY_WAITLISTS`
+ *  + a `console.error` trace. Use from Slack-function steps where the workflow
+ *  can't recover from a thrown step. */
+export async function fetchWaitlistsOrEmpty(
+    env: Record<string, string>,
+): Promise<LeagueWaitlists> {
+    try {
+        return await fetchWaitlists(env);
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[fetch_waitlists] ${msg}`);
+        return EMPTY_WAITLISTS;
+    }
 }
 
 /** Deep link to the waitlist tab (no specific cell). */

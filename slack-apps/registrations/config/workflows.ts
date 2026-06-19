@@ -1,18 +1,17 @@
 /** Workflow registry: which Google sheet each workflow reads, where its Slack
  *  channels come from, and where league identity is sourced. */
 
-import { envOr } from "./env.ts";
-import { REFUND_REVIEW_CHANNEL, REFUND_TEST_CHANNEL } from "./refunds.ts";
+import { envOr } from "./store.ts";
 
-export type WorkflowName = "waitlist" | "refund";
+type WorkflowName = "waitlist" | "refund";
 
-export interface SheetRef {
+interface SheetRef {
     spreadsheet_id: string;
     tab_name: string;
     tab_id: string;
 }
 
-export interface WorkflowConfig {
+interface WorkflowConfig {
     sheet: SheetRef;
     /** Where the workflow's Slack channel is resolved from. */
     channels:
@@ -44,12 +43,23 @@ export const WORKFLOWS: Record<WorkflowName, WorkflowConfig> = {
             tab_name: "Refund_Requests",
             tab_id: "1435845892",
         },
-        channels: { source: "static", test: REFUND_TEST_CHANNEL, review: REFUND_REVIEW_CHANNEL },
+        channels: {
+            source: "static",
+            test: envOr("REFUND_TEST_CHANNEL", "#joe-test"),
+            review: envOr("REFUND_REVIEW_CHANNEL", "#exec-leadership-2026"),
+        },
         leagueSource: "shopify",
     },
 };
 
-/** Resolve a workflow's sheet from the single workflow table. */
-export function getWorkflowSheet(workflow: WorkflowName): SheetRef {
-    return WORKFLOWS[workflow].sheet;
+/** Resolve a workflow's static test/review channel pair, throwing if the
+ *  workflow is configured for a different routing mode (e.g. `per_league`). */
+export function getStaticChannels(workflow: WorkflowName): { test: string; review: string } {
+    const ch = WORKFLOWS[workflow].channels;
+    if (ch.source !== "static") {
+        throw new Error(
+            `Workflow '${workflow}' is not configured with static channels (source=${ch.source})`,
+        );
+    }
+    return { test: ch.test, review: ch.review };
 }

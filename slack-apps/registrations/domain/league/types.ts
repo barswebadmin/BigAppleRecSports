@@ -1,22 +1,28 @@
-import { DefineType, Schema } from "deno-slack-sdk/mod.ts";
+export type Season = "winter" | "spring" | "summer" | "fall";
+export const ALL_SEASONS: readonly Season[] = ["winter", "spring", "summer", "fall"];
 
-export const LeagueType = DefineType({
-    name: "league",
-    type: Schema.types.object,
-    properties: {
-        year: { type: Schema.types.integer },
-        season: { type: Schema.types.string },
-        sport: { type: Schema.types.string },
-        day: { type: Schema.types.string },
-        division: { type: Schema.types.string },
-    },
-    required: ["year", "season", "sport", "day", "division"],
-});
+export type VariantIds = {
+    veteran: number;
+    early: number;
+    general: number;
+    waitlist: number;
+};
 
-export type League = {
+/** Single source of truth for all league fields. League and LeagueConfig are
+ *  both Pick subsets of this. */
+export interface LeagueFields {
     year: number;
-    season: string;
+    season: Season;
     sport: string;
     day: string;
     division: string;
-};
+    channelId: string;
+    product_id: number;
+    variant_ids: VariantIds;
+}
+
+export type League = Pick<LeagueFields, "year" | "season" | "sport" | "day" | "division">;
+export type LeagueConfig = Pick<
+    LeagueFields,
+    "channelId" | "sport" | "day" | "division" | "product_id" | "variant_ids"
+>;

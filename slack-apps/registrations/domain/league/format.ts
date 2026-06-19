@@ -1,28 +1,19 @@
-/** League-shaped formatters: division labels, product handle, tags, sport
- *  leadership email, league display labels. Three division formatters by
- *  intent — see each JSDoc. */
-
 import type { League } from "./types.ts";
-import { BARS_URLS, ORG_DOMAIN } from "../../config/store.ts";
+import { ORG_DOMAIN } from "../../config/store.ts";
 import { capitalize } from "../../shared/text/strings.ts";
 
-export function buildLoginUrl(productHandle: string): string {
-    return `${BARS_URLS.website}/customer_authentication/login?return_to=%2Fproducts%2F${productHandle}`;
-}
+const DIVISION_LABELS = {
+    prose: { wtnb: "WTNB+ Division", open: "Open Division" },
+    label: { wtnb: "WTNB+", open: "Open" },
+    short: { wtnb: "WTNB", open: "Open" },
+} as const;
 
-/** Full division phrase for prose (email bodies). `WTNB+ Division` / `Open Division`. */
-export function formatDivision(division: string): string {
-    return division.toLowerCase() === "wtnb" ? "WTNB+ Division" : "Open Division";
-}
+export type DivisionStyle = keyof typeof DIVISION_LABELS;
 
-/** Medium label for Slack mrkdwn (modal titles, list rows). `WTNB+` / `Open`. */
-export function formatDivisionLabel(division: string): string {
-    return division.toLowerCase() === "wtnb" ? "WTNB+" : "Open";
-}
-
-/** Short label for compact UI (short league labels, table cells). `WTNB` / `Open`. */
-export function formatDivisionShort(division: string): string {
-    return division.toLowerCase() === "wtnb" ? "WTNB" : "Open";
+/** Format a division string. `prose` = "WTNB+ Division" / "Open Division";
+ *  `label` = "WTNB+" / "Open"; `short` = "WTNB" / "Open". */
+export function formatDivision(division: string, style: DivisionStyle): string {
+    return DIVISION_LABELS[style][division.toLowerCase() === "wtnb" ? "wtnb" : "open"];
 }
 
 export function formatProductHandle(league: League): string {
@@ -33,12 +24,8 @@ export function formatSportLeadershipEmailAddress(league: League): string {
     return `${league.sport}.${league.day}.${league.division}@${ORG_DOMAIN}`;
 }
 
-export function formatSportLeadershipEmailSenderName(league: League): string {
-    return `Big Apple ${capitalize(league.sport)}`;
-}
-
 export function formatLeagueLabelShort(league: League): string {
-    return `${capitalize(league.day)} ${formatDivisionShort(league.division)} ${
+    return `${capitalize(league.day)} ${formatDivision(league.division, "short")} ${
         capitalize(league.sport)
     }`;
 }

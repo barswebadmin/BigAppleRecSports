@@ -1,3 +1,4 @@
+import type { SlackMessage } from "./message.ts";
 import { type Block, context, section } from "./blocks.ts";
 
 const EMOJI = {
@@ -10,7 +11,7 @@ export function formatDiagnostic(
     level: "success" | "warn" | "error",
     summary: string,
     details?: string,
-): { text: string; blocks: Block[] } {
+): SlackMessage {
     const emoji = EMOJI[level];
     const text = `${emoji} ${summary}`;
     const blocks: Block[] = [section(`${emoji} *${summary}*`)];

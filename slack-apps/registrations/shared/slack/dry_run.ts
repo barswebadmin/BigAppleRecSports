@@ -9,6 +9,7 @@
 import { maskHeaders, type PreparedRequest } from "../http/prepared_request.ts";
 import type { SlackAPIClient } from "deno-slack-api/types.ts";
 import { type Block, context, divider, header, section } from "./blocks.ts";
+import type { SlackMessage } from "./message.ts";
 import { formatDiagnostic } from "./diagnostics.ts";
 import { titlecase } from "../text/strings.ts";
 
@@ -172,7 +173,7 @@ function renderStep(blocks: Block[], step: DryRunStep): void {
 function buildDryRunMessage(
     headerLine: string,
     steps: DryRunStep[],
-): { text: string; blocks: Block[] } {
+): SlackMessage {
     const blocks: Block[] = [section(headerLine)];
     for (const step of steps) {
         blocks.push(divider());
@@ -218,30 +219,21 @@ export async function postDryRunPreviews(
 ): Promise<boolean> {
     const outcomes: boolean[] = [];
     for (const preview of previews) {
-        outcomes.push(await postOnePreview(client, channel, preview, onError));
+        const { text, blocks } = buildDryRunMessage(preview.header, preview.steps);
+        const res = await client.chat.postMessage({ channel, text, blocks });
+        if (res.ok) {
+            outcomes.push(true);
+            continue;
+        }
+        const error = String(res.error);
+        onError?.(preview, error);
+        const fallback = formatDiagnostic(
+            "warn",
+            `Dry-run preview${preview.label ? ` for ${preview.label}` : ""} couldn't be rendered`,
+            `Error: \`${error}\`. Check the run logs.`,
+        );
+        await client.chat.postMessage({ channel, ...fallback });
+        outcomes.push(false);
     }
     return outcomes.every((ok) => ok);
-}
-
-/** Post a single preview message; on failure, also post the fallback diagnostic
- *  and invoke `onError`. Returns whether the primary post succeeded. */
-async function postOnePreview(
-    client: SlackAPIClient,
-    channel: string,
-    preview: DryRunPreview,
-    onError?: (preview: DryRunPreview, error: string) => void,
-): Promise<boolean> {
-    const { text, blocks } = buildDryRunMessage(preview.header, preview.steps);
-    const res = await client.chat.postMessage({ channel, text, blocks });
-    if (res.ok) return true;
-
-    const error = String(res.error);
-    onError?.(preview, error);
-    const fallback = formatDiagnostic(
-        "warn",
-        `Dry-run preview${preview.label ? ` for ${preview.label}` : ""} couldn't be rendered`,
-        `Error: \`${error}\`. Check the run logs.`,
-    );
-    await client.chat.postMessage({ channel, ...fallback });
-    return false;
 }

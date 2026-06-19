@@ -14,8 +14,17 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
 import type { SlackAPIClient } from "deno-slack-api/types.ts";
 
-import { CHECKBOX_CAPTURE_CONFIG, DROPDOWN_CAPTURE_CONFIG } from "../config/capture.ts";
-import { ENTRIES_PER_PAGE } from "../config/slack.ts";
+import {
+    ACTION_PREFIX_CHECKBOX,
+    ACTION_PREFIX_DROPDOWN,
+    buildListView,
+    CALLBACK_ID,
+    ENTRIES_PER_PAGE,
+    type ModalState,
+    NO_ACTION_DROPDOWN_VALUES,
+} from "../views/waitlist/list_modal.ts";
+import { buildWaitlistConfirmModal } from "../views/waitlist/confirm_modal.ts";
+import { buildWaitlistResultMessage } from "../views/waitlist/result_message.ts";
 
 import { columnToLetter, getOrCreateGoogleClient } from "../shared/google/client.ts";
 import {
@@ -32,30 +41,23 @@ import {
 
 import { createShopifyClient } from "../legacy/shopify_client/client.ts";
 
-import { leagueFromKey } from "../domain/league/key.ts";
+import { leagueFromKey } from "../domain/league/identity.ts";
 
-import { toWaitlistActions } from "../domain/waitlist/action.ts";
-import { buildListView, type ModalState } from "../domain/waitlist/modal.ts";
-import {
-    buildWaitlistConfirmModal,
-    buildWaitlistResultMessage,
-} from "../domain/waitlist/display.ts";
 import { buildRowProcessing } from "../domain/waitlist/row_planning.ts";
 import { executeRowProcessing } from "../domain/waitlist/row_execution.ts";
 import {
     formatDryRunHeader,
     formatRowLabel,
     toDryRunSteps,
-} from "../domain/waitlist/dry_run_steps.ts";
+} from "../views/waitlist/dry_run_steps.ts";
 import { fetchWaitlists } from "../domain/waitlist/sheet.ts";
 import { formatStatusTimestamp } from "../domain/waitlist/status_format.ts";
-import type { LeagueWaitlists, WaitlistEntry } from "../domain/waitlist/types.ts";
+import type { LeagueWaitlists, WaitlistAction, WaitlistEntry } from "../domain/waitlist/types.ts";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Constants
 // ────────────────────────────────────────────────────────────────────────────
 
-const CALLBACK_ID = "handle_waitlist_actions";
 /** Pushed confirmation step; carries the captured state in its `private_metadata`. */
 const CONFIRM_CALLBACK_ID = "confirm_waitlist_actions";
 
@@ -77,8 +79,13 @@ const log = (fn: string, ...args: unknown[]) => console.log(`[waitlist_actions:$
 // deno-lint-ignore no-explicit-any
 function captureModalStateWithInputs(body: any): ModalState {
     const state = extractModalState<ModalState>(body);
-    state.sel = captureDropdownSelections(body, state.sel, DROPDOWN_CAPTURE_CONFIG);
-    state.email = captureCheckboxSelections(body, state.email, CHECKBOX_CAPTURE_CONFIG);
+    state.sel = captureDropdownSelections(body, state.sel, {
+        actionIdPrefix: ACTION_PREFIX_DROPDOWN,
+        noneValues: NO_ACTION_DROPDOWN_VALUES,
+    });
+    state.email = captureCheckboxSelections(body, state.email, {
+        actionIdPrefix: ACTION_PREFIX_CHECKBOX,
+    });
     return state;
 }
 
@@ -90,11 +97,19 @@ function actionableSelections(state: ModalState): [string, string][] {
 }
 
 function buildRowIndex(waitlists: LeagueWaitlists): Map<number, WaitlistEntry> {
-    const byRow = new Map<number, WaitlistEntry>();
-    for (const lw of Object.values(waitlists.leagues)) {
-        for (const e of lw.entries) byRow.set(e.rowNumber, e);
-    }
-    return byRow;
+    return new Map(
+        Object.values(waitlists.leagues)
+            .flatMap((lw) => lw.entries)
+            .map((e) => [e.rowNumber, e]),
+    );
+}
+
+/** First+last name of the player at a captured sheet row (falls back to the
+ *  row number when the row no longer resolves). Shared by every name-listing
+ *  display the handler hands to a view builder. */
+function resolveFullName(byRow: Map<number, WaitlistEntry>, rowStr: string): string {
+    const e = byRow.get(Number(rowStr));
+    return `${e?.firstName ?? ""} ${e?.lastName ?? ""}`.trim() || `Row ${rowStr}`;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -154,7 +169,19 @@ export async function processSelections(
         ),
     );
 
-    const outputActions = toWaitlistActions(processed, fallbackLeague);
+    const outputActions: WaitlistAction[] = processed.map((p) => {
+        const lg = p.result.league ?? fallbackLeague;
+        return {
+            type: p.result.type,
+            rowNumber: String(p.result.rowNumber),
+            firstName: p.result.firstName,
+            lastName: p.entry?.lastName ?? "",
+            emailAddress: p.result.email,
+            sport: lg.sport,
+            day: lg.day,
+            division: lg.division,
+        };
+    });
 
     if (state.dry) {
         const statusCol = columnToLetter(waitlists.statusColumnIndex);
@@ -176,7 +203,8 @@ export async function processSelections(
 
     const remaining = (waitlists.leagues[state.league]?.total ?? selections.length) -
         processed.length;
-    const { text, blocks } = buildWaitlistResultMessage(processed.map((p) => p.result), {
+    const { text, blocks } = buildWaitlistResultMessage({
+        results: processed.map((p) => p.result),
         processedBy: processorUserId(body),
         remaining,
         sheetUrl: waitlists.url,
@@ -260,20 +288,17 @@ handler.addViewSubmissionHandler(CALLBACK_ID, async ({ body, client, env }) => {
         return;
     }
 
-    // Resolve first/last names (only) for the confirmation modal.
     const waitlists = await fetchWaitlists(env);
     const byRow = buildRowIndex(waitlists);
-    const fullName = (rowStr: string) => {
-        const e = byRow.get(Number(rowStr));
-        return `${e?.firstName ?? ""} ${e?.lastName ?? ""}`.trim() || `Row ${rowStr}`;
-    };
 
     return {
         response_action: "push",
         view: buildWaitlistConfirmModal({
             callbackId: CONFIRM_CALLBACK_ID,
-            admitNames: selections.filter(([, t]) => t === "admit").map(([r]) => fullName(r)),
-            removeNames: selections.filter(([, t]) => t === "remove").map(([r]) => fullName(r)),
+            admitNames: selections.filter(([, t]) => t === "admit")
+                .map(([r]) => resolveFullName(byRow, r)),
+            removeNames: selections.filter(([, t]) => t === "remove")
+                .map(([r]) => resolveFullName(byRow, r)),
             dry: state.dry === true,
             metadata: JSON.stringify(state),
         }),

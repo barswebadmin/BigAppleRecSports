@@ -1,7 +1,7 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { processSelections } from "../../functions/handle_waitlist_actions.ts";
 import { formatProductHandle } from "../../domain/league/format.ts";
-import { leagueFromKey } from "../../domain/league/key.ts";
+import { leagueFromKey } from "../../domain/league/identity.ts";
 import {
     buildWaitlistFetchMatchers,
     createMockSlackClient,

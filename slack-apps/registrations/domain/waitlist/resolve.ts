@@ -2,8 +2,8 @@
  *  project it to the `WaitlistAction[]` wire format the downstream
  *  `update_waitlist_spreadsheet` step consumes. Pure function — no I/O. */
 
-import { buildLeagueKey } from "../league/key.ts";
-import type { WaitlistAction } from "./action.ts";
+import { buildLeagueKey } from "../league/identity.ts";
+import type { WaitlistAction } from "./types.ts";
 import type { LeagueWaitlists } from "./types.ts";
 import type { WaitlistSignupPayload } from "./signup_payload.ts";
 

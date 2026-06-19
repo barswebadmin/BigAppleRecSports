@@ -1,11 +1,34 @@
-/** Shopify store identity + every URL that derives from it. */
+/** Environment helpers + store identity + every URL that derives from it. */
 
-import { envOr } from "./env.ts";
+// ── Environment helpers ───────────────────────────────────────────────────────
+
+/** Read an env var, tolerating runtimes where env access is unavailable. */
+export function readEnv(key: string): string | undefined {
+    try {
+        return Deno.env.get(key) ?? undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+export function envOr(key: string, fallback: string): string {
+    return readEnv(key) ?? fallback;
+}
+
+/**
+ * The single deployment switch. `ENV=prod` routes refund reviews to the live
+ * channel and lets the irreversible Shopify calls fire; any other value
+ * (default) keeps the app test-only.
+ */
+export type Env = "test" | "prod";
+export const ENV: Env = readEnv("ENV") === "prod" ? "prod" : "test";
+
+// ── Store identity ────────────────────────────────────────────────────────────
 
 /** One source of truth for the Shopify store; every store URL/domain derives from it. */
-export const STORE = {
-    id: envOr("SHOPIFY_STORE_ID", "09fe59-3"),
-    api_version: envOr("SHOPIFY_API_VERSION", "2025-01"),
+const STORE = {
+    id: envOr("SHOPIFY__STORE_ID", "09fe59-3"),
+    api_version: envOr("SHOPIFY__API_VERSION", "2026-07"),
 };
 
 export const STORE_MYSHOPIFY_DOMAIN = `${STORE.id}.myshopify.com`;
@@ -19,7 +42,7 @@ export const BARS_URLS = {
     admin_api: `https://${STORE.id}/admin/api/${STORE.api_version}/graphql.json`,
 };
 
-/** Google API endpoints. Their hosts are mirrored in `OUTGOING_DOMAINS` for the manifest. */
+/** Google API endpoints. Canonical source: lib/external_apis.py */
 export const GOOGLE_API = {
     oauth_token_url: "https://oauth2.googleapis.com/token",
     sheets_base: "https://sheets.googleapis.com/v4/spreadsheets",
@@ -28,7 +51,7 @@ export const GOOGLE_API = {
         "https://www.googleapis.com/auth/spreadsheets",
         "https://mail.google.com/",
     ],
-};
+} as const;
 
 /** Shopify admin customer page from a customer GID (`gid://shopify/Customer/<n>`) or numeric id. */
 export function shopifyCustomerAdminUrl(idOrGid: string | number): string {
@@ -39,4 +62,22 @@ export function shopifyCustomerAdminUrl(idOrGid: string | number): string {
 /** Storefront product page from a product handle. */
 export function productPageUrl(handle: string): string {
     return `${BARS_URLS.website}/products/${handle}`;
+}
+
+// ── Lambda endpoints ──────────────────────────────────────────────────────────
+
+/** ShopifyRefundHandler Lambda Function URL. Auth is NONE — treat as semi-secret.
+ *  Its host must be listed in `manifest.ts` outgoingDomains. */
+export const REFUND_PROCESS_URL = envOr(
+    "REFUND_PROCESS_URL",
+    "https://7wfkjr4jk5hbchf23venzdm3te0yaouc.lambda-url.us-east-1.on.aws/",
+);
+export const REFUND_PROCESS_DOMAIN = new URL(REFUND_PROCESS_URL).host;
+
+/** Comma-separated Slack user IDs allowed to exceed the soft refund estimate without exec routing. */
+export function isRefundPrivilegedSlackUser(userId: string): boolean {
+    const raw = readEnv("REFUND_PRIVILEGED_SLACK_USER_IDS");
+    if (!raw?.trim()) return false;
+    const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    return ids.includes(userId);
 }

@@ -4,14 +4,12 @@
 
 import type { League } from "../league/types.ts";
 import type { EmailMessage } from "../../shared/google/email_message.ts";
-import { DEFAULT_GMAIL_SENDER } from "../../config/slack.ts";
+import { DEFAULT_GMAIL_SENDER } from "../../shared/google/gmail.ts";
 import { BARS_URLS, ORG_DOMAIN } from "../../config/store.ts";
 import {
-    buildLoginUrl,
     formatDivision,
     formatProductHandle,
     formatSportLeadershipEmailAddress,
-    formatSportLeadershipEmailSenderName,
 } from "../league/format.ts";
 import { capitalize } from "../../shared/text/strings.ts";
 
@@ -28,9 +26,11 @@ export function buildSubject(league: League): string {
 
 export function buildWaitlistAdmitEmailBody(firstName: string, league: League): string[] {
     const leagueLabel = `${capitalize(league.day)} ${capitalize(league.sport)} (${
-        formatDivision(league.division)
+        formatDivision(league.division, "prose")
     })`;
-    const loginUrl = buildLoginUrl(formatProductHandle(league));
+    const loginUrl = `${BARS_URLS.website}/customer_authentication/login?return_to=%2Fproducts%2F${
+        formatProductHandle(league)
+    }`;
     const replyTo = formatSportLeadershipEmailAddress(league);
 
     return [
@@ -56,7 +56,7 @@ export function buildWaitlistAdmitEmail(
         htmlBodyParts: buildWaitlistAdmitEmailBody(recipient.firstName, league),
         sendAs: {
             emailAddress: DEFAULT_GMAIL_SENDER.email_address,
-            name: formatSportLeadershipEmailSenderName(league),
+            name: `Big Apple ${capitalize(league.sport)}`,
         },
         replyTo: formatSportLeadershipEmailAddress(league),
         cc: formatSportLeadershipEmailAddress(league),

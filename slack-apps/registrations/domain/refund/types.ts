@@ -8,6 +8,18 @@
  * reshaping, and no channel (Slack owns routing).
  */
 
+import type { ActionRef } from "../../shared/action_ref.ts";
+
+export type RefundType = "original_method" | "store_credit";
+
+/** Identity and audit context for a Shopify order action (cancel or refund). */
+export type OrderActionRef = ActionRef<{
+    /** Shopify GID — what `orderCancel` / `refundCreate` take. */
+    orderId: string;
+    /** Display name (e.g. "#1234") — logs, idempotency, human reference. */
+    orderNumber: string;
+}>;
+
 /** Mirror of `_estimate_payload()` in handler.py. */
 export interface RefundEstimate {
     success: boolean;
@@ -45,6 +57,9 @@ export interface RefundEvaluationPayload {
     last_name: string;
     refund_to: string; // "original_method" | "store_credit"
     notes?: string | null;
+
+    /** E.164 phone when the evaluator supplies it (optional). */
+    phone?: string | null;
 
     // ── League identity (Lambda resolves from the order's product) ───────
     sport: string | null;
@@ -90,4 +105,19 @@ export interface RefundEvaluationPayload {
     currency_code?: string | null;
 
     error?: string | null;
+}
+
+/** Final reviewer decision; consumed by the eval card view to render a status
+ *  line and drop the action buttons. Pure data — UI mapping lives in views/. */
+export interface RefundDecision {
+    status: "approved" | "denied";
+    by: string; // Slack user id
+    amount?: number;
+    refundType?: string;
+    /** True when the approval only previewed payloads (didn't send to the Lambda). */
+    dryRun?: boolean;
+    /** Modal action: cancel_refund | cancel_only | refund_only. */
+    approveAction?: string;
+    restock?: string;
+    sendNotification?: boolean;
 }

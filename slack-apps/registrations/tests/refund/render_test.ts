@@ -1,9 +1,11 @@
 import { assertEquals } from "@std/assert";
-import { REFUND_TEST_CHANNEL } from "../../config/refunds.ts";
+import { getStaticChannels } from "../../config/workflows.ts";
 import { runPostRefundEvaluation } from "../../functions/post_refund_evaluation.ts";
-import { buildRefundEvalBlocks } from "../../domain/refund/eval_blocks.ts";
+import { buildRefundEvalBlocks } from "../../views/refund/eval_blocks.ts";
 import type { RefundEvaluationPayload } from "../../domain/refund/types.ts";
 import { createMockSlackClient } from "../harness.ts";
+
+const REFUND_TEST_CHANNEL = getStaticChannels("refund").test;
 
 const samplePayload: RefundEvaluationPayload = {
     is_test: true,

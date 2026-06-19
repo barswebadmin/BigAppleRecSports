@@ -1,24 +1,94 @@
 /** Orchestration for the refund-evaluation review flow. The SDK handler in
  *  `functions/post_refund_evaluation.ts` is thin wiring around these:
  *    - `runPostRefundEvaluation` posts the initial review card
- *    - `handleApproveButton` opens the amount/type modal
+ *    - `handleApproveButton` opens the approval modal
  *    - `handleDenyButton` finalizes a deny without touching the Lambda
+ *    - `handleApproveModalBlockAction` re-renders the modal on action/amount change
  *    - `handleApproveModalSubmit` validates inputs, previews-or-POSTs to the
  *      Lambda, and updates the card. */
 
 import type { SlackAPIClient } from "deno-slack-api/types.ts";
-import { REFUND_DRY_RUN, REFUND_TEST_CHANNEL, resolveRefundChannel } from "../../config/refunds.ts";
+import { ENV, isRefundPrivilegedSlackUser, readEnv } from "../../config/store.ts";
+import { getStaticChannels } from "../../config/workflows.ts";
 import type { PreparedRequest } from "../../shared/http/prepared_request.ts";
+import { resolveChannel } from "../../shared/slack/channel.ts";
 import { postDryRunPreviews, requestStep } from "../../shared/slack/dry_run.ts";
-import { type ApproveModalMeta, buildApproveModal } from "./approve_modal.ts";
-import { buildRefundEvalBlocks, type RefundDecision } from "./eval_blocks.ts";
+import {
+    ACTION_ACTION_ID,
+    ACTION_BLOCK_ID,
+    AMOUNT_ACTION_ID,
+    AMOUNT_BLOCK_ID,
+    type ApproveAction,
+    type ApproveModalMeta,
+    buildApproveModal,
+    extractApproveModalValues,
+    NOTIFY_ACTION_ID,
+    NOTIFY_BLOCK_ID,
+    RESTOCK_ACTION_ID,
+    RESTOCK_BLOCK_ID,
+    type RestockAction,
+} from "../../views/refund/approve_modal.ts";
+import { buildRefundEvalBlocks } from "../../views/refund/eval_blocks.ts";
+import type { RefundDecision } from "./types.ts";
 import {
     buildCancelOrderRequest,
     buildCreateRefundRequest,
-    executeLambdaRequest,
-    type RefundType,
-} from "./lambda_requests.ts";
-import type { RefundEvaluationPayload } from "./types.ts";
+    executeActionRequest,
+} from "./action_requests.ts";
+import type { RefundEvaluationPayload, RefundType } from "./types.ts";
+
+/** Refund-specific safety gate: in non-prod, the approval modal previews the
+ *  exact Lambda requests to the test channel instead of firing them. Operator
+ *  override: `REFUND_DRY_RUN=true|false`. */
+const REFUND_DRY_RUN = (readEnv("REFUND_DRY_RUN") ?? String(ENV !== "prod")) === "true";
+
+const REFUND_CHANNELS = getStaticChannels("refund");
+
+// deno-lint-ignore no-explicit-any
+type ViewStateValues = Record<string, Record<string, any>>;
+
+function defaultRefundAmountString(payload: RefundEvaluationPayload): string {
+    const est = payload.refund_to === "store_credit"
+        ? payload.estimated_store_credit
+        : payload.estimated_refund_to_original;
+    return (est?.amount ?? 0).toFixed(2);
+}
+
+function readModalRebuildState(
+    payload: RefundEvaluationPayload,
+    values: ViewStateValues,
+    userId: string,
+    meta: ApproveModalMeta,
+): Parameters<typeof buildApproveModal>[0] {
+    const action = (values[ACTION_BLOCK_ID]?.[ACTION_ACTION_ID]?.selected_option?.value ??
+        "cancel_refund") as ApproveAction;
+    const rawAmt = values[AMOUNT_BLOCK_ID]?.[AMOUNT_ACTION_ID]?.value as string | undefined;
+    const defaultAmt = defaultRefundAmountString(payload);
+    const currentAmount = rawAmt !== undefined && rawAmt !== "" ? rawAmt : defaultAmt;
+    const restock = (values[RESTOCK_BLOCK_ID]?.[RESTOCK_ACTION_ID]?.selected_option?.value ??
+        "none") as RestockAction;
+    const notifyOpts = values[NOTIFY_BLOCK_ID]?.[NOTIFY_ACTION_ID]?.selected_options as
+        | { value: string }[]
+        | undefined;
+    const selectedNotifyValues = notifyOpts === undefined
+        ? undefined
+        : notifyOpts.map((o) => o.value);
+
+    return {
+        orderNumber: payload.order_number,
+        refundable: payload.refundable_balance,
+        totalPaid: payload.order_total ?? 0,
+        estimatedOriginal: payload.estimated_refund_to_original?.amount ?? 0,
+        estimatedCredit: payload.estimated_store_credit?.amount ?? 0,
+        refundTo: payload.refund_to,
+        action,
+        currentAmount: action === "cancel_only" ? defaultAmt : currentAmount,
+        restock,
+        selectedNotifyValues,
+        isPrivileged: isRefundPrivilegedSlackUser(userId),
+        meta,
+    };
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Payload helpers
@@ -30,14 +100,6 @@ export function parsePayload(raw: unknown): RefundEvaluationPayload | null {
     } catch {
         return null;
     }
-}
-
-/** Pick the estimate that matches the canonical `refund_to`. */
-function pickEstimate(p: RefundEvaluationPayload): { amount: number; refundType: string } {
-    const est = p.refund_to === "store_credit"
-        ? p.estimated_store_credit
-        : p.estimated_refund_to_original;
-    return { amount: est?.amount ?? 0, refundType: p.refund_to };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -58,7 +120,7 @@ export async function runPostRefundEvaluation(
         };
     }
 
-    const channel = resolveRefundChannel({ is_test: payload.is_test });
+    const channel = resolveChannel(REFUND_CHANNELS, { is_test: payload.is_test });
 
     const result = await client.chat.postMessage({
         channel,
@@ -69,8 +131,6 @@ export async function runPostRefundEvaluation(
 
     if (!result.ok) return { error: `chat.postMessage failed: ${result.error}` };
 
-    // Stay open so we can handle the Approve/Deny buttons; the function completes
-    // from the button / modal-submission handlers below.
     return { completed: false };
 }
 
@@ -84,21 +144,48 @@ export async function handleApproveButton(
         channel: string;
         messageTs: string;
         interactivityPointer: string;
+        userId: string;
     },
     client: SlackAPIClient,
 ): Promise<void> {
-    const est = pickEstimate(payload);
-    const meta: ApproveModalMeta = { channel: args.channel, message_ts: args.messageTs };
-
+    const defaultAmt = defaultRefundAmountString(payload);
     await client.views.open({
         interactivity_pointer: args.interactivityPointer,
         view: buildApproveModal({
             orderNumber: payload.order_number,
-            estimatedAmount: est.amount,
-            refundType: est.refundType,
             refundable: payload.refundable_balance,
-            meta,
+            totalPaid: payload.order_total ?? 0,
+            estimatedOriginal: payload.estimated_refund_to_original?.amount ?? 0,
+            estimatedCredit: payload.estimated_store_credit?.amount ?? 0,
+            refundTo: payload.refund_to,
+            action: "cancel_refund",
+            currentAmount: defaultAmt,
+            restock: "none",
+            selectedNotifyValues: undefined,
+            isPrivileged: isRefundPrivilegedSlackUser(args.userId),
+            meta: { channel: args.channel, message_ts: args.messageTs },
         }),
+    });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 2b: Modal block actions → views.update (amount visibility + submit label)
+// ────────────────────────────────────────────────────────────────────────────
+
+export async function handleApproveModalBlockAction(
+    payload: RefundEvaluationPayload,
+    args: {
+        userId: string;
+        viewId: string;
+        values: ViewStateValues;
+        meta: ApproveModalMeta;
+    },
+    client: SlackAPIClient,
+): Promise<void> {
+    const viewArgs = readModalRebuildState(payload, args.values, args.userId, args.meta);
+    await client.views.update({
+        view_id: args.viewId,
+        view: buildApproveModal(viewArgs),
     });
 }
 
@@ -140,83 +227,77 @@ type ModalSubmitErrors = {
     errors: Record<string, string>;
 };
 
-/** Validate the modal's amount + type. Returns the parsed values or a structured
- *  Slack-format error response (for the SDK handler to return as-is). Pure leaf:
- *  no I/O, no SDK calls — every input failure produces a structured Slack reply. */
-function validateModalInputs(
-    rawAmount: string,
-    rawType: string | undefined,
-    payload: RefundEvaluationPayload,
-    amountBlockId: string,
-): { amount: number; refundType: RefundType } | ModalSubmitErrors {
-    const amount = Number.parseFloat(rawAmount);
-    if (!Number.isFinite(amount) || amount < 0) {
-        return {
-            response_action: "errors",
-            errors: { [amountBlockId]: "Enter a valid non-negative dollar amount" },
-        };
-    }
-    if (!payload.order_id) {
-        return {
-            response_action: "errors",
-            errors: { [amountBlockId]: "Evaluation is missing the order id — cannot process" },
-        };
-    }
-    const refundType: RefundType = rawType === "store_credit" ? "store_credit" : "original_method";
-    return { amount, refundType };
-}
-
-/** Build the two-step (cancel + refund) Lambda request batch for an approval.
- *  Pure leaf: payload + approver context in, request batch out. */
-function buildApprovalRequests(
-    payload: RefundEvaluationPayload,
-    approvedBy: string,
-    amount: number,
-    refundType: RefundType,
-): PreparedRequest[] {
-    const orderRef = {
-        orderId: payload.order_id as string,
-        orderNumber: payload.order_number,
-        approvedBy,
-        isTest: payload.is_test === true,
-    };
-    return [
-        buildCancelOrderRequest(orderRef),
-        buildCreateRefundRequest(orderRef, {
-            refundType,
-            amount,
-            transactions: payload.transactions,
-        }),
-    ];
-}
-
 export async function handleApproveModalSubmit(
     payload: RefundEvaluationPayload,
     args: {
         userId: string;
         executionId: string;
         meta: ApproveModalMeta;
-        rawAmount: string;
-        rawType: string | undefined;
-        amountBlockId: string;
+        stateValues: ViewStateValues;
     },
     client: SlackAPIClient,
 ): Promise<ModalSubmitErrors | void> {
-    const validated = validateModalInputs(
-        args.rawAmount,
-        args.rawType,
-        payload,
-        args.amountBlockId,
-    );
-    if ("response_action" in validated) return validated;
+    const modalVals = extractApproveModalValues(args.stateValues);
+    const needsCancel = modalVals.action === "cancel_refund" || modalVals.action === "cancel_only";
+    const needsRefund = modalVals.action === "cancel_refund" || modalVals.action === "refund_only";
+    const totalPaid = payload.order_total ?? 0;
 
-    const { amount, refundType } = validated;
-    const requests = buildApprovalRequests(payload, args.userId, amount, refundType);
+    if (!payload.order_id && (needsCancel || needsRefund)) {
+        return {
+            response_action: "errors",
+            errors: {
+                [AMOUNT_BLOCK_ID]: "Evaluation is missing the order id — cannot process",
+            },
+        };
+    }
+
+    if (needsRefund) {
+        const amount = modalVals.amount;
+        if (amount === null || !Number.isFinite(amount) || amount < 0) {
+            return {
+                response_action: "errors",
+                errors: { [AMOUNT_BLOCK_ID]: "Enter a valid non-negative dollar amount" },
+            };
+        }
+        if (amount > totalPaid) {
+            return {
+                response_action: "errors",
+                errors: {
+                    [AMOUNT_BLOCK_ID]: `Amount cannot exceed total paid (${
+                        totalPaid.toFixed(2)
+                    } USD)`,
+                },
+            };
+        }
+    }
+
+    const refundType: RefundType = payload.refund_to === "store_credit"
+        ? "store_credit"
+        : "original_method";
+
+    const orderRef = {
+        orderId: payload.order_id!,
+        orderNumber: payload.order_number,
+        approvedBy: args.userId,
+        isTest: payload.is_test === true,
+    };
+
+    const requests: PreparedRequest[] = [];
+    if (needsCancel) requests.push(buildCancelOrderRequest(orderRef));
+    if (needsRefund) {
+        requests.push(
+            buildCreateRefundRequest(orderRef, {
+                refundType,
+                amount: modalVals.amount!,
+                transactions: payload.transactions,
+            }),
+        );
+    }
 
     if (REFUND_DRY_RUN) {
         await postDryRunPreviews(
             client,
-            REFUND_TEST_CHANNEL,
+            REFUND_CHANNELS.test,
             requests.map((r) => ({
                 header: `:test_tube: *DRY RUN* — would POST to ShopifyRefundHandler: *${r.label}*`,
                 label: `${payload.order_number} (${payload.first_name} ${payload.last_name})`,
@@ -224,10 +305,8 @@ export async function handleApproveModalSubmit(
             })),
         );
     } else {
-        // Concurrent dispatch with per-request failure log — one failed request
-        // doesn't strand the others in the batch.
         const results = await Promise.all(
-            requests.map(async (r) => ({ req: r, res: await executeLambdaRequest(r) })),
+            requests.map(async (r) => ({ req: r, res: await executeActionRequest(r) })),
         );
         results
             .filter(({ res }) => !res.ok)
@@ -239,9 +318,12 @@ export async function handleApproveModalSubmit(
     const decision: RefundDecision = {
         status: "approved",
         by: args.userId,
-        amount,
-        refundType,
+        amount: needsRefund ? modalVals.amount! : undefined,
+        refundType: needsRefund ? refundType : undefined,
         dryRun: REFUND_DRY_RUN,
+        approveAction: modalVals.action,
+        restock: modalVals.restock,
+        sendNotification: modalVals.sendNotification,
     };
     await client.chat.update({
         channel: args.meta.channel,
