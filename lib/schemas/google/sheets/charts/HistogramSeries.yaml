@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: HistogramSeries
+description: A histogram series containing the series color and data.
+type: object
+properties:
+  data:
+    description: The data for this histogram series.
+    $ref: ChartData
+  barColorStyle:
+    description: The color of the column representing this series in each bucket.
+      This field is optional. If bar_color is also set, this field takes precedence.
+    $ref: ColorStyle
+  barColor:
+    $ref: Color
+    description: 'The color of the column representing this series in each bucket.
+      This field is optional. Deprecated: Use bar_color_style.'
+    deprecated: true

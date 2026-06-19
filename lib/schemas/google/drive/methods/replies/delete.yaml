@@ -1,0 +1,22 @@
+description: Deletes a reply. For more information, see [Manage comments and replies](https://developers.google.com/workspace/drive/api/guides/manage-comments).
+httpMethod: DELETE
+path: files/{fileId}/comments/{commentId}/replies/{replyId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  commentId:
+    description: The ID of the comment.
+    location: path
+    required: true
+    type: string
+  replyId:
+    description: The ID of the reply.
+    location: path
+    required: true
+    type: string

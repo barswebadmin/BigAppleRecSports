@@ -47,28 +47,6 @@ def _log_webhook_request(headers: dict[str, str], body: bytes, *, kind: str) -> 
         logger.info("SHOPIFY_WEBHOOK body_raw=%s", body.decode("utf-8", errors="replace"))
 
 
-@router.post("/orders-create")
-async def handle_orders_create(request: Request):
-    headers = dict(request.headers)
-    topic = _get_shopify_topic(headers)
-    _require_topic(actual=topic, expected="orders/create", kind="orders-create")
-    body = await request.body()
-    _log_webhook_request(headers, body, kind="orders-create")
-    ok = _controller.handle_webhook_order_create(body=body, headers=headers)
-    return {"ok": ok}
-
-
-@router.post("/refunds-create")
-async def handle_refunds_create(request: Request):
-    headers = dict(request.headers)
-    topic = _get_shopify_topic(headers)
-    _require_topic(actual=topic, expected="refunds/create", kind="refunds-create")
-    body = await request.body()
-    _log_webhook_request(headers, body, kind="refunds-create")
-    ok = _controller.handle_webhook_refund_create(body=body, headers=headers)
-    return {"ok": ok}
-
-
 @router.post("/products-update")
 async def handle_products_update(request: Request):
     headers = dict(request.headers)
@@ -77,28 +55,6 @@ async def handle_products_update(request: Request):
     body = await request.body()
     _log_webhook_request(headers, body, kind="products-update")
     ok = _controller.handle_webhook_product_update(body=body, headers=headers)
-    return {"ok": ok}
-
-
-@router.post("/orders-update")
-async def handle_orders_update(request: Request):
-    headers = dict(request.headers)
-    topic = _get_shopify_topic(headers)
-    _require_topic(actual=topic, expected="orders/updated", kind="orders-update")
-    body = await request.body()
-    _log_webhook_request(headers, body, kind="orders-update")
-    ok = _controller.handle_webhook_orders_update(body=body, headers=headers)
-    return {"ok": ok}
-
-
-@router.post("/orders-cancel")
-async def handle_orders_cancel(request: Request):
-    headers = dict(request.headers)
-    topic = _get_shopify_topic(headers)
-    _require_topic(actual=topic, expected="orders/cancelled", kind="orders-cancel")
-    body = await request.body()
-    _log_webhook_request(headers, body, kind="orders-cancel")
-    ok = _controller.handle_webhook_orders_cancel(body=body, headers=headers)
     return {"ok": ok}
 
 

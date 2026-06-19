@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MatchedValueRange
+description: A value range that was matched by one or more data filers.
+type: object
+properties:
+  valueRange:
+    $ref: ValueRange
+    description: The values matched by the DataFilter.
+  dataFilters:
+    description: The DataFilters from the request that matched the range of values.
+    items:
+      $ref: DataFilter
+    type: array

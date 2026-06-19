@@ -1,0 +1,54 @@
+title: "Refund Policy"
+description: "Standalone refund policy referenced by programs via refundPolicyId. Includes both refund percentages and late registration discounts as calculations are tightly coupled."
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      storeCreditIncentive:
+        type: number
+        default: 0.05
+        description: "Additional percentage customers receive by choosing store credit over original payment method refunds (5%)"
+
+      moreThanTwoWeeksBefore:
+        $ref: "#/definitions/RegistrationPriceAdjustment"
+        description: "More than 2 weeks before season starts"
+
+      lessThanTwoWeeksBefore:
+        $ref: "#/definitions/RegistrationPriceAdjustment"
+        description: "Less than 2 weeks before season starts, through day before Week 1"
+
+      duringWeek1:
+        $ref: "#/definitions/RegistrationPriceAdjustment"
+        description: "From start of Week 1 through day before Week 2"
+
+      duringWeek2:
+        $ref: "#/definitions/RegistrationPriceAdjustment"
+        description: "From start of Week 2 through day before Week 3"
+
+      duringWeek3:
+        $ref: "#/definitions/RegistrationPriceAdjustment"
+        description: "From start of Week 3 through day before Week 4"
+
+      duringWeek4:
+        $ref: "#/definitions/RegistrationPriceAdjustment"
+        description: "From start of Week 4 through day before Week 5"
+
+    required: [storeCreditIncentive]
+
+definitions:
+  RegistrationPriceAdjustment:
+    type: object
+    properties:
+      refundPercentage:
+        type: number
+        minimum: 0
+        maximum: 1
+        description: "Total percentage refunded"
+
+      discountPercentage:
+        type: number
+        minimum: 0
+        maximum: 1
+        description: "Discount percentage for future registrations instead of refund"
+
+    required: [refundPercentage, discountPercentage]

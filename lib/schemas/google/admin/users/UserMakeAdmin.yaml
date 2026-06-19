@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserMakeAdmin
+description: ''
+type: object
+properties:
+  status:
+    description: Indicates the administrator status of the user.
+    annotations:
+      required:
+      - directory.users.makeAdmin
+    type: boolean

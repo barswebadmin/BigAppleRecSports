@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateProtectedRangeRequest
+description: Updates an existing protected range with the specified protectedRangeId.
+type: object
+properties:
+  protectedRange:
+    description: The protected range to update with the new properties.
+    $ref: ProtectedRange
+  fields:
+    type: string
+    description: The fields that should be updated. At least one field must be specified.
+      The root `protectedRange` is implied and should not be specified. A single `"*"`
+      can be used as short-hand for listing every field.
+    format: google-fieldmask

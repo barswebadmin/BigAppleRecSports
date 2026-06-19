@@ -1,0 +1,106 @@
+description: Subscribes to changes for a user. For more information, see [Notifications
+  for resource changes](https://developers.google.com/workspace/drive/api/guides/push).
+httpMethod: POST
+path: changes/watch
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.photos.readonly
+- https://www.googleapis.com/auth/drive.readonly
+request:
+  parameterName: resource
+  $ref: Channel
+parameters:
+  driveId:
+    description: The shared drive from which changes will be returned. If specified
+      the change IDs will be reflective of the shared drive; use the combined drive
+      ID and change ID as an identifier.
+    location: query
+    type: string
+  includeCorpusRemovals:
+    description: Whether changes should include the file resource if the file is still
+      accessible by the user at the time of the request, even when a file was removed
+      from the list of changes and there will be no further change entries for this
+      file.
+    default: 'false'
+    location: query
+    type: boolean
+  includeItemsFromAllDrives:
+    description: Whether both My Drive and shared drive items should be included in
+      results.
+    default: 'false'
+    location: query
+    type: boolean
+  includeRemoved:
+    description: Whether to include changes indicating that items have been removed
+      from the list of changes, for example by deletion or loss of access.
+    default: 'true'
+    location: query
+    type: boolean
+  includeTeamDriveItems:
+    description: 'Deprecated: Use `includeItemsFromAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  pageSize:
+    description: The maximum number of changes to return per page.
+    default: '100'
+    minimum: '1'
+    maximum: '1000'
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: The token for continuing a previous list request on the next page.
+      This should be set to the value of 'nextPageToken' from the previous response
+      or to the response from the getStartPageToken method.
+    location: query
+    required: true
+    type: string
+  restrictToMyDrive:
+    description: Whether to restrict the results to changes inside the My Drive hierarchy.
+      This omits changes to files such as those in the Application Data folder or
+      shared files which have not been added to My Drive.
+    default: 'false'
+    location: query
+    type: boolean
+  spaces:
+    description: A comma-separated list of spaces to query within the corpora. Supported
+      values are 'drive' and 'appDataFolder'.
+    default: drive
+    location: query
+    type: string
+  supportsAllDrives:
+    description: Whether the requesting application supports both My Drives and shared
+      drives.
+    default: 'false'
+    location: query
+    type: boolean
+  supportsTeamDrives:
+    description: 'Deprecated: Use `supportsAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  teamDriveId:
+    description: 'Deprecated: Use `driveId` instead.'
+    location: query
+    deprecated: true
+    type: string
+  includePermissionsForView:
+    description: Specifies which additional view's permissions to include in the response.
+      Only 'published' is supported.
+    location: query
+    type: string
+  includeLabels:
+    description: A comma-separated list of IDs of labels to include in the `labelInfo`
+      part of the response.
+    location: query
+    type: string
+response:
+  $ref: Channel

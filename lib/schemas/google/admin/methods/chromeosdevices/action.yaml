@@ -1,0 +1,31 @@
+description: Use [BatchChangeChromeOsDeviceStatus](https://developers.google.com/workspace/admin/directory/reference/rest/v1/customer.devices.chromeos/batchChangeStatus)
+  instead. Takes an action that affects a Chrome OS Device. This includes deprovisioning,
+  disabling, and re-enabling devices. *Warning:* * Deprovisioning a device will stop
+  device policy syncing and remove device-level printers. After a device is deprovisioned,
+  it must be wiped before it can be re-enrolled. * Lost or stolen devices should use
+  the disable action. * Re-enabling a disabled device will consume a device license.
+  If you do not have sufficient licenses available when completing the re-enable action,
+  you will receive an error. For more information about deprovisioning and disabling
+  devices, visit the [help center](https://support.google.com/chrome/a/answer/3523633).
+httpMethod: POST
+path: admin/directory/v1/customer/{customerId}/devices/chromeos/{resourceId}/action
+scopes:
+- https://www.googleapis.com/auth/admin.directory.device.chromeos
+request:
+  $ref: ChromeOsDeviceAction
+parameters:
+  customerId:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's `customerId`. The `customerId` is also returned as part of the
+      [Users resource](https://developers.google.com/workspace/admin/directory/v1/reference/users).
+    location: path
+    required: true
+    type: string
+  resourceId:
+    description: The unique ID of the device. The `resourceId`s are returned in the
+      response from the [chromeosdevices.list](https://developers.google.com/workspace/admin/directory/v1/reference/chromeosdevices/list)
+      method.
+    location: path
+    required: true
+    type: string

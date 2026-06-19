@@ -1,0 +1,16 @@
+description: Adds a photo for the user.
+httpMethod: PUT
+path: admin/directory/v1/users/{userKey}/photos/thumbnail
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+request:
+  $ref: UserPhoto
+parameters:
+  userKey:
+    description: Identifies the user in the API request. The value can be the user's
+      primary email address, alias email address, or unique user ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: UserPhoto

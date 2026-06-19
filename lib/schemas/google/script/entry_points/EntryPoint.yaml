@@ -1,0 +1,27 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: EntryPoint
+description: A configuration that defines how a deployment is accessed externally.
+type: object
+properties:
+  executionApi:
+    description: An entry point specification for Apps Script API execution calls.
+    $ref: GoogleAppsScriptTypeExecutionApiEntryPoint
+  entryPointType:
+    description: The type of the entry point.
+    type: string
+    enumDescriptions:
+    - An unspecified entry point.
+    - A web application entry point.
+    - An API executable entry point.
+    - An Add-On entry point.
+    enum:
+    - ENTRY_POINT_TYPE_UNSPECIFIED
+    - WEB_APP
+    - EXECUTION_API
+    - ADD_ON
+  addOn:
+    $ref: GoogleAppsScriptTypeAddOnEntryPoint
+    description: Add-on properties.
+  webApp:
+    description: An entry point specification for web apps.
+    $ref: GoogleAppsScriptTypeWebAppEntryPoint

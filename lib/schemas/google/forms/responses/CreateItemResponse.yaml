@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CreateItemResponse
+description: The result of creating an item.
+type: object
+properties:
+  questionId:
+    type: array
+    description: The ID of the question created as part of this item, for a question
+      group it lists IDs of all the questions created for this item.
+    items:
+      type: string
+  itemId:
+    type: string
+    description: The ID of the created item.

@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CseIdentity
+description: The client-side encryption (CSE) configuration for the email address
+  of an authenticated user. Gmail uses CSE configurations to save drafts of client-side
+  encrypted email messages, and to sign and send encrypted email messages. For administrators
+  managing identities and keypairs for users in their organization, requests require
+  authorization with a [service account](https://developers.google.com/identity/protocols/OAuth2ServiceAccount)
+  that has [domain-wide delegation authority](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#delegatingauthority)
+  to impersonate users with the `https://www.googleapis.com/auth/gmail.settings.basic`
+  scope. For users managing their own identities and keypairs, requests require [hardware
+  key encryption](https://support.google.com/a/answer/14153163) turned on and configured.
+type: object
+properties:
+  emailAddress:
+    description: The email address for the sending identity. The email address must
+      be the primary email address of the authenticated user.
+    type: string
+  primaryKeyPairId:
+    description: If a key pair is associated, the ID of the key pair, CseKeyPair.
+    type: string
+  signAndEncryptKeyPairs:
+    description: The configuration of a CSE identity that uses different key pairs
+      for signing and encryption.
+    $ref: SignAndEncryptKeyPairs

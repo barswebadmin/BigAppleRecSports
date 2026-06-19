@@ -1,0 +1,25 @@
+description: Clears values from a spreadsheet. The caller must specify the spreadsheet
+  ID and range. Only values are cleared -- all other properties of the cell (such
+  as formatting, data validation, etc..) are kept.
+httpMethod: POST
+path: v4/spreadsheets/{spreadsheetId}/values/{range}:clear
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+request:
+  $ref: ClearValuesRequest
+parameters:
+  spreadsheetId:
+    description: The ID of the spreadsheet to update.
+    required: true
+    location: path
+    type: string
+  range:
+    location: path
+    type: string
+    description: The [A1 notation or R1C1 notation](https://developers.google.com/workspace/sheets/api/guides/concepts#cell)
+      of the values to clear.
+    required: true
+response:
+  $ref: ClearValuesResponse

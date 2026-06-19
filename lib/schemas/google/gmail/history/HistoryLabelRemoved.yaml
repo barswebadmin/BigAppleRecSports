@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: HistoryLabelRemoved
+description: ''
+type: object
+properties:
+  message:
+    $ref: Message
+  labelIds:
+    description: Label IDs removed from the message.
+    type: array
+    items:
+      type: string

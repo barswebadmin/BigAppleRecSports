@@ -1,0 +1,99 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "RefundRequest"
+description: "Business process for requesting refunds - actual financial transaction handled separately in Transaction table"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      requestDetails:
+        type: object
+        properties:
+          requestedAt:
+            $ref: "../primitives/isoDateTime.yaml#/"
+          requestedReason:
+            type: string
+          registrationId:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "registration-details"
+          memberId:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "members"
+          programId:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "RegularSeason"
+          refundPolicyId:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "refund-policies"
+          method:
+            type: string
+            enum: [originalFormOfPayment, storeCredit]
+          estimatedAmount:
+            type: number
+            minimum: 0
+          notes:
+            type: string
+      
+      decisionDetails:
+        type: object
+        properties:
+          result:
+            type: string
+            enum: [approved, denied]
+          decidedAt:
+            $ref: "../primitives/isoDateTime.yaml#/"
+          amountApproved:
+            type: number
+          reason:
+            type: string
+          notes:
+            type: string
+        required: [result, decidedAt]
+
+      refundedDetails:
+        type: object
+        properties:
+          refundedAt:
+            $ref: "../primitives/isoDateTime.yaml#/"
+          refundedBy:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "members"
+          amountRefunded:
+            type: number
+          shopifyRefundId:
+            type: string
+          refundTransactionId:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "transactions"
+        
+
+    
+      
+
+     
+
+      status:
+        type: string
+        enum: [requested, under_review, approved, denied, processed, cancelled]
+        default: requested
+
+    required: [registrationId, memberId, programId, refundPolicyId, requestedAt]
+
+additionalProperties: true

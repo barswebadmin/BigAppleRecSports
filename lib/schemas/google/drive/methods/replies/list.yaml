@@ -1,0 +1,41 @@
+description: Lists a comment's replies. For more information, see [Manage comments
+  and replies](https://developers.google.com/workspace/drive/api/guides/manage-comments).
+httpMethod: GET
+path: files/{fileId}/comments/{commentId}/replies
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  commentId:
+    description: The ID of the comment.
+    location: path
+    required: true
+    type: string
+  includeDeleted:
+    description: Whether to include deleted replies. Deleted replies don't include
+      their original content.
+    default: 'false'
+    location: query
+    type: boolean
+  pageSize:
+    description: The maximum number of replies to return per page.
+    default: '20'
+    minimum: '1'
+    maximum: '100'
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: The token for continuing a previous list request on the next page.
+      This should be set to the value of `nextPageToken` from the previous response.
+    location: query
+    type: string
+response:
+  $ref: ReplyList

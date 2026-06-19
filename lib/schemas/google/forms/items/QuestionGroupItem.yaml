@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: QuestionGroupItem
+description: Defines a question that comprises multiple questions grouped together.
+type: object
+properties:
+  grid:
+    $ref: Grid
+    description: The question group is a grid with rows of multiple choice questions
+      that share the same options. When `grid` is set, all questions in the group
+      must be of kind `row`.
+  questions:
+    type: array
+    items:
+      $ref: Question
+    description: Required. A list of questions that belong in this question group.
+      A question must only belong to one group. The `kind` of the group may affect
+      what types of questions are allowed.
+  image:
+    $ref: Image
+    description: The image displayed within the question group above the specific
+      questions.

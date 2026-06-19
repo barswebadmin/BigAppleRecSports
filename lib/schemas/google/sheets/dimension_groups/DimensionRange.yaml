@@ -1,0 +1,30 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DimensionRange
+description: 'A range along a single dimension on a sheet. All indexes are zero-based.
+  Indexes are half open: the start index is inclusive and the end index is exclusive.
+  Missing indexes indicate the range is unbounded on that side.'
+type: object
+properties:
+  dimension:
+    enumDescriptions:
+    - The default value, do not use.
+    - Operates on the rows of a sheet.
+    - Operates on the columns of a sheet.
+    type: string
+    description: The dimension of the span.
+    enum:
+    - DIMENSION_UNSPECIFIED
+    - ROWS
+    - COLUMNS
+  startIndex:
+    description: The start (inclusive) of the span, or not set if unbounded.
+    format: int32
+    type: integer
+  sheetId:
+    type: integer
+    description: The sheet this span is on.
+    format: int32
+  endIndex:
+    description: The end (exclusive) of the span, or not set if unbounded.
+    format: int32
+    type: integer

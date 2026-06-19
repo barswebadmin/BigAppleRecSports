@@ -1,0 +1,31 @@
+description: Inserts a building.
+httpMethod: POST
+path: admin/directory/v1/customer/{customer}/resources/buildings
+scopes:
+- https://www.googleapis.com/auth/admin.directory.resource.calendar
+request:
+  $ref: Building
+parameters:
+  customer:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's customer ID.
+    location: path
+    required: true
+    type: string
+  coordinatesSource:
+    description: Source from which Building.coordinates are derived.
+    default: SOURCE_UNSPECIFIED
+    location: query
+    type: string
+    enumDescriptions:
+    - Building.coordinates are set to the coordinates included in the request.
+    - Building.coordinates are automatically populated based on the postal address.
+    - Defaults to `RESOLVED_FROM_ADDRESS` if postal address is provided. Otherwise,
+      defaults to `CLIENT_SPECIFIED` if coordinates are provided.
+    enum:
+    - CLIENT_SPECIFIED
+    - RESOLVED_FROM_ADDRESS
+    - SOURCE_UNSPECIFIED
+response:
+  $ref: Building

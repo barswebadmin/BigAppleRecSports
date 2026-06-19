@@ -1,0 +1,19 @@
+description: Gets the current user's Gmail profile.
+httpMethod: GET
+path: gmail/v1/users/{userId}/profile
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.compose
+- https://www.googleapis.com/auth/gmail.metadata
+- https://www.googleapis.com/auth/gmail.modify
+- https://www.googleapis.com/auth/gmail.readonly
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Profile

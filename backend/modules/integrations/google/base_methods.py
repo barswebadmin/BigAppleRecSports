@@ -14,7 +14,7 @@ from functools import wraps
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
 
-from shared.model_config import ApiModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 logger = logging.getLogger(__name__)
 

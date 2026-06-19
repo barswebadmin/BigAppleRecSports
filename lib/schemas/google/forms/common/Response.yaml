@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Response
+description: A single response from an update.
+type: object
+properties:
+  createItem:
+    description: The result of creating an item.
+    $ref: CreateItemResponse

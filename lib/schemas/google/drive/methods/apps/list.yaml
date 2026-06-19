@@ -1,0 +1,30 @@
+description: Lists a user's installed apps. For more information, see [Return user
+  info](https://developers.google.com/workspace/drive/api/guides/user-info).
+httpMethod: GET
+path: apps
+scopes:
+- https://www.googleapis.com/auth/drive.apps.readonly
+parameters:
+  appFilterExtensions:
+    description: A comma-separated list of file extensions to limit returned results.
+      All results within the given app query scope which can open any of the given
+      file extensions are included in the response. If `appFilterMimeTypes` are provided
+      as well, the result is a union of the two resulting app lists.
+    default: ''
+    location: query
+    type: string
+  appFilterMimeTypes:
+    description: A comma-separated list of file extensions to limit returned results.
+      All results within the given app query scope which can open any of the given
+      MIME types will be included in the response. If `appFilterExtensions` are provided
+      as well, the result is a union of the two resulting app lists.
+    default: ''
+    location: query
+    type: string
+  languageCode:
+    description: A language or locale code, as defined by BCP 47, with some extensions
+      from Unicode's LDML format (http://www.unicode.org/reports/tr35/).
+    location: query
+    type: string
+response:
+  $ref: AppList

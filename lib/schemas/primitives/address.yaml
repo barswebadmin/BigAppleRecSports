@@ -1,0 +1,39 @@
+title: "Address"
+description: "Standard address format"
+type: object
+properties:
+  street:
+    type: string
+    examples: ["420 W 26th St", "Grove St & Hudson St"]
+
+  unit:
+    type: string
+    examples: ["Apt 4B", "Suite 200", "Floor 2"]
+
+  city:
+    type: string
+    examples: ["New York", "Brooklyn", "Queens"]
+
+  state:
+    type: string
+    pattern: "^[A-Z]{2}$"
+    examples: ["NY", "NJ", "CT"]
+
+  zip:
+    type: string
+    pattern: "^\\d{5}$"
+    examples: ["10001", "11201", "06830"]
+
+  crossStreets:
+    type: array
+    items:
+      type: string
+    minItems: 2
+    maxItems: 2
+    examples: [["9th Ave", "10th Ave"], ["Houston St", "Prince St"]]
+
+  neighborhood:
+    type: string
+    examples: ["Chelsea", "West Village", "Midtown", "Williamsburg"]
+
+required: [street, neighborhood]

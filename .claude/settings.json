@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post_slack_apps_edit_block_builder_reminder.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

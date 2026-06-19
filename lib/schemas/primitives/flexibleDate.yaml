@@ -1,0 +1,8 @@
+title: "Flexible Date"
+description: "Date that can be either date-only or date-time format"
+oneOf:
+  - $ref: "./isoDateTime.yaml#/"
+  - $ref: "./isoDate.yaml#/"
+examples:
+  - "2024-07-15"
+  - "2024-07-15T19:00:00Z"

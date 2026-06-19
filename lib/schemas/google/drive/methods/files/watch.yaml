@@ -1,0 +1,54 @@
+description: Subscribes to changes to a file. For more information, see [Notifications
+  for resource changes](https://developers.google.com/workspace/drive/api/guides/push).
+httpMethod: POST
+path: files/{fileId}/watch
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.photos.readonly
+- https://www.googleapis.com/auth/drive.readonly
+request:
+  parameterName: resource
+  $ref: Channel
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  supportsAllDrives:
+    description: Whether the requesting application supports both My Drives and shared
+      drives.
+    default: 'false'
+    location: query
+    type: boolean
+  supportsTeamDrives:
+    description: 'Deprecated: Use `supportsAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  acknowledgeAbuse:
+    description: Whether the user is acknowledging the risk of downloading known malware
+      or other abusive files. This is only applicable when the `alt` parameter is
+      set to `media` and the user is the owner of the file or an organizer of the
+      shared drive in which the file resides.
+    default: 'false'
+    location: query
+    type: boolean
+  includePermissionsForView:
+    description: Specifies which additional view's permissions to include in the response.
+      Only `published` is supported.
+    location: query
+    type: string
+  includeLabels:
+    description: A comma-separated list of IDs of labels to include in the `labelInfo`
+      part of the response.
+    location: query
+    type: string
+response:
+  $ref: Channel

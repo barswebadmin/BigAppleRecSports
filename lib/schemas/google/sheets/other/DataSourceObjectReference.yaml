@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataSourceObjectReference
+description: Reference to a data source object.
+type: object
+properties:
+  sheetId:
+    description: References to a DATA_SOURCE sheet.
+    type: string
+  chartId:
+    type: integer
+    description: References to a data source chart.
+    format: int32
+  dataSourceTableAnchorCell:
+    description: References to a DataSourceTable anchored at the cell.
+    $ref: GridCoordinate
+  dataSourcePivotTableAnchorCell:
+    $ref: GridCoordinate
+    description: References to a data source PivotTable anchored at the cell.
+  dataSourceFormulaCell:
+    description: References to a cell containing DataSourceFormula.
+    $ref: GridCoordinate

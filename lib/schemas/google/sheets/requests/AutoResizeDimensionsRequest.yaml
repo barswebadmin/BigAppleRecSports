@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AutoResizeDimensionsRequest
+description: Automatically resizes one or more dimensions based on the contents of
+  the cells in that dimension.
+type: object
+properties:
+  dimensions:
+    description: The dimensions to automatically resize.
+    $ref: DimensionRange
+  dataSourceSheetDimensions:
+    description: The dimensions on a data source sheet to automatically resize.
+    $ref: DataSourceSheetDimensionRange

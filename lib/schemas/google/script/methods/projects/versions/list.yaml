@@ -1,0 +1,25 @@
+description: List the versions of a script project.
+httpMethod: GET
+path: v1/projects/{scriptId}/versions
+scopes:
+- https://www.googleapis.com/auth/script.projects
+- https://www.googleapis.com/auth/script.projects.readonly
+parameters:
+  pageSize:
+    type: integer
+    description: The maximum number of versions on each returned page. Defaults to
+      50.
+    location: query
+    format: int32
+  scriptId:
+    required: true
+    description: The script project's Drive ID.
+    location: path
+    type: string
+  pageToken:
+    description: The token for continuing a previous list request on the next page.
+      This should be set to the value of `nextPageToken` from a previous response.
+    location: query
+    type: string
+response:
+  $ref: ListVersionsResponse

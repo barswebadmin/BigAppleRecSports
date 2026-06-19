@@ -1,0 +1,21 @@
+description: 'Deprecated: Use `drives.get` instead.'
+httpMethod: GET
+path: teamdrives/{teamDriveId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  teamDriveId:
+    description: The ID of the Team Drive
+    location: path
+    required: true
+    type: string
+  useDomainAdminAccess:
+    description: Issue the request as a domain administrator; if set to true, then
+      the requester will be granted access if they are an administrator of the domain
+      to which the Team Drive belongs.
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: TeamDrive

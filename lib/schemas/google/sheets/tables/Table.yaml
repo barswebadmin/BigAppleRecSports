@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Table
+description: A table.
+type: object
+properties:
+  rowsProperties:
+    description: The table rows properties.
+    $ref: TableRowsProperties
+  name:
+    description: The table name. This is unique to all tables in the same spreadsheet.
+    type: string
+  columnProperties:
+    type: array
+    description: The table column properties.
+    items:
+      $ref: TableColumnProperties
+  tableId:
+    description: The id of the table.
+    type: string
+  range:
+    description: The table range.
+    $ref: GridRange

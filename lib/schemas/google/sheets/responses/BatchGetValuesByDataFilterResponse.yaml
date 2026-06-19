@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchGetValuesByDataFilterResponse
+description: The response when retrieving more than one range of values in a spreadsheet
+  selected by DataFilters.
+type: object
+properties:
+  spreadsheetId:
+    description: The ID of the spreadsheet the data was retrieved from.
+    type: string
+  valueRanges:
+    type: array
+    description: The requested values with the list of data filters that matched them.
+    items:
+      $ref: MatchedValueRange

@@ -1,0 +1,774 @@
+#!/bin/bash
+#
+# Unified deployment script
+#
+# Usage:
+#   ./scripts/deploy lambda <function-name> [--skip-diff] [--skip-confirm] [--no-update-description]
+#   ./scripts/deploy lambda --batch <function1> [<function2> ...]
+#   ./scripts/deploy backend
+#   ./scripts/deploy google <project-name>
+#
+# Tab completion (add to ~/.zshrc):
+#   source /path/to/repo/scripts/deployment/deploy-completion.zsh
+#
+
+set -e
+
+# Disable the AWS CLI v2 pager so no `aws` command opens `less` (no hitting 'q' to
+# continue). Output we care about is captured/summarized per-call below.
+export AWS_PAGER=""
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# ── Arg 1: target ─────────────────────────────────────────────────────────────
+
+TARGET="${1:-}"
+
+if [ -z "$TARGET" ]; then
+    echo "❌ Usage: $0 <lambda|backend|google> [args...]"
+    exit 1
+fi
+
+shift
+
+case "$TARGET" in
+    backend)
+        echo "🚧 backend deployment not implemented"
+        exit 1
+        ;;
+    google)
+        # Google Apps Script deployment handled below
+        ;;
+    lambda)
+        ;;
+    *)
+        echo "❌ Unknown target: $TARGET. Must be one of: lambda, backend, google"
+        exit 1
+        ;;
+esac
+
+# ── Google Apps Script deployment ────────────────────────────────────────────
+
+if [ "$TARGET" = "google" ]; then
+    PROJECT_NAME="${1:-}"
+
+    if [ -z "$PROJECT_NAME" ]; then
+        echo "❌ Project name required"
+        echo ""
+        echo "Usage: $0 google <project-name>"
+        echo ""
+        echo "Available projects:"
+        ls "$REPO_ROOT/google-apps-scripts/projects/" | sed 's/^/  /'
+        exit 1
+    fi
+
+    PROJECT_DIR="$REPO_ROOT/google-apps-scripts/projects/$PROJECT_NAME"
+
+    if [ ! -d "$PROJECT_DIR" ]; then
+        echo "❌ Project not found: $PROJECT_DIR"
+        exit 1
+    fi
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚀 Deploying Google Apps Script: $PROJECT_NAME"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    if [ ! -f "$PROJECT_DIR/build.js" ]; then
+        echo "❌ build.js not found in $PROJECT_DIR"
+        exit 1
+    fi
+
+    if [ ! -f "$PROJECT_DIR/.clasp.json" ]; then
+        echo "❌ .clasp.json not found in $PROJECT_DIR"
+        echo "   Run: clasp create --type webapp --title \"$PROJECT_NAME\""
+        exit 1
+    fi
+
+    echo "📁 Directory: $PROJECT_DIR"
+    echo ""
+    echo "🏗️  Building project..."
+
+    # Force clean build directory first
+    if [ -d "$PROJECT_DIR/build" ]; then
+        echo "🧹 Cleaning existing build directory..."
+        rm -rf "$PROJECT_DIR/build"
+    fi
+
+    if ! (cd "$PROJECT_DIR" && node build.js); then
+        echo "❌ Build failed"
+        exit 1
+    fi
+
+    # Verify build output exists and show timestamp
+    if [ -f "$PROJECT_DIR/build/Code.js" ]; then
+        BUILD_TIME=$(grep "Build time:" "$PROJECT_DIR/build/Code.js" | head -1)
+        echo "✅ Build completed: $BUILD_TIME"
+        echo "📊 Build size: $(du -h "$PROJECT_DIR/build/Code.js" | cut -f1)"
+    else
+        echo "❌ Code.js not found after build"
+        exit 1
+    fi
+
+    # Copy build files to deploy_temp directory (required by .clasp.json rootDir)
+    echo "📋 Copying build files to deploy_temp for clasp..."
+    rm -rf "$PROJECT_DIR/deploy_temp"
+    cp -r "$PROJECT_DIR/build" "$PROJECT_DIR/deploy_temp"
+    echo "✅ Files copied to deploy_temp/"
+
+    echo ""
+    echo "☁️  Pushing to Google Apps Script..."
+
+    # Check clasp authentication first
+    if ! (cd "$PROJECT_DIR" && clasp status >/dev/null 2>&1); then
+        echo "❌ clasp not authenticated. Run: clasp login"
+        exit 1
+    fi
+
+    # Show current project info
+    echo "📋 Script info:"
+    (cd "$PROJECT_DIR" && clasp status | head -3)
+
+    # Force push with maximum verbosity
+    (cd "$PROJECT_DIR" && {
+        echo "🔧 Adding force deploy marker to deploy_temp/Code.js..."
+        if [ -f "deploy_temp/Code.js" ]; then
+            # Insert timestamp at the top of Code.js (after header comments)
+            TEMP_FILE=$(mktemp)
+            head -5 "deploy_temp/Code.js" > "$TEMP_FILE"
+            echo "// FORCE_DEPLOY_$(date +%s)_$(date +%N)" >> "$TEMP_FILE"
+            tail -n +6 "deploy_temp/Code.js" >> "$TEMP_FILE"
+            mv "$TEMP_FILE" "deploy_temp/Code.js"
+            echo "✅ Force marker added to deploy_temp/Code.js"
+
+            # Show the new timestamp to verify it's different
+            NEW_BUILD_TIME=$(grep "Build time:" "deploy_temp/Code.js" | head -1)
+            echo "📅 Build timestamp in deploy_temp: $NEW_BUILD_TIME"
+        fi
+
+        echo "📤 Executing clasp push --force..."
+        set -x  # Enable debug output
+        clasp push --force
+        PUSH_EXIT_CODE=$?
+        set +x  # Disable debug output
+
+        if [ $PUSH_EXIT_CODE -eq 0 ]; then
+            echo "✅ clasp push completed successfully"
+        else
+            echo "❌ clasp push failed with exit code: $PUSH_EXIT_CODE"
+            exit 1
+        fi
+    })
+
+    if [ $? -ne 0 ]; then
+        echo "❌ clasp push failed"
+        echo ""
+        echo "Troubleshooting:"
+        echo "  1. Check clasp authentication: clasp login"
+        echo "  2. Verify .clasp.json has correct scriptId"
+        echo "  3. Ensure you have access to the script"
+        # Cleanup build files on failure
+        if [ -d "$PROJECT_DIR/build" ]; then
+            rm -rf "$PROJECT_DIR/build"
+        fi
+        exit 1
+    fi
+
+    echo ""
+    echo "🌐 Managing deployments and creating new version..."
+
+    # Check deployment count and clean up if needed
+    DEPLOYMENT_COUNT=$(cd "$PROJECT_DIR" && clasp deployments | grep -c "^-")
+    echo "📊 Current deployments: $DEPLOYMENT_COUNT"
+
+    if [ "$DEPLOYMENT_COUNT" -ge 20 ]; then
+        echo "🧹 Cleaning up old deployments (keeping HEAD and 5 most recent)..."
+
+        # Get deployments to delete (skip HEAD and first 5 versioned deployments)
+        DEPLOYMENTS_TO_DELETE=$(cd "$PROJECT_DIR" && clasp deployments | grep -v "@HEAD" | tail -n +7 | awk '{print $2}')
+
+        if [ -n "$DEPLOYMENTS_TO_DELETE" ]; then
+            for deployment_id in $DEPLOYMENTS_TO_DELETE; do
+                echo "  🗑️  Deleting old deployment: $deployment_id"
+                (cd "$PROJECT_DIR" && clasp undeploy "$deployment_id" >/dev/null 2>&1) || true
+            done
+        fi
+    fi
+
+    # Generate deployment description with timestamp
+    DEPLOY_DESC="Auto-deploy - $(date '+%Y-%m-%d %H:%M:%S')"
+
+    # Create new deployment and capture the deployment ID
+    echo "🚀 Creating new deployment with description: '$DEPLOY_DESC'"
+
+    set -x  # Enable debug output for deployment
+    DEPLOY_OUTPUT=$(cd "$PROJECT_DIR" && clasp deploy --description "$DEPLOY_DESC" 2>&1)
+    DEPLOY_EXIT_CODE=$?
+    set +x  # Disable debug output
+
+    echo "📤 Deploy command output:"
+    echo "$DEPLOY_OUTPUT"
+    echo ""
+
+    if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
+        # Extract deployment ID from output (format: "- AKfycb... @version")
+        DEPLOYMENT_ID=$(echo "$DEPLOY_OUTPUT" | grep -o 'AKfycb[a-zA-Z0-9_-]\+' | head -1)
+        VERSION_NUM=$(echo "$DEPLOY_OUTPUT" | grep -o '@[0-9]\+' | sed 's/@//' | head -1)
+
+        echo "🔍 Extracted from output:"
+        echo "   Deployment ID: '$DEPLOYMENT_ID'"
+        echo "   Version: '$VERSION_NUM'"
+        echo ""
+
+        if [ -n "$DEPLOYMENT_ID" ] && [ -n "$VERSION_NUM" ]; then
+            # Get script ID for web app URL
+            SCRIPT_ID=$(grep -o '"scriptId": *"[^"]*"' "$PROJECT_DIR/.clasp.json" | cut -d'"' -f4)
+            WEB_APP_URL="https://script.google.com/macros/s/${DEPLOYMENT_ID}/exec"
+
+            echo "✅ New deployment created successfully!"
+            echo ""
+            echo "🌐 **LIVE WEB APP URL:** $WEB_APP_URL"
+            echo "🏷️  **Version:** $VERSION_NUM"
+            echo "🆔 **Deployment ID:** $DEPLOYMENT_ID"
+            echo "🔑 **Script ID:** $SCRIPT_ID"
+        else
+            echo "❌ Could not extract deployment details from clasp output"
+            echo "Raw output was: '$DEPLOY_OUTPUT'"
+            exit 1
+        fi
+
+    else
+        echo "❌ Web app deployment failed"
+        # Cleanup build files on failure
+        if [ -d "$PROJECT_DIR/build" ]; then
+            rm -rf "$PROJECT_DIR/build"
+        fi
+        exit 1
+    fi
+
+    echo ""
+    echo "🧹 Cleaning up build files..."
+    if [ -d "$PROJECT_DIR/build" ]; then
+        rm -rf "$PROJECT_DIR/build"
+        echo "   ✅ Build directory cleaned"
+    fi
+
+    echo ""
+    echo "✅ Successfully deployed $PROJECT_NAME!"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Check clasp deployments for the new URL"
+    echo "  2. Test the new deployment"
+    echo "  3. Update any bookmarks/integrations with new URL"
+
+    exit 0
+fi
+
+# ── Lambda deployment ─────────────────────────────────────────────────────────
+
+AWS_REGION="${AWS_REGION:-us-east-1}"
+
+IS_CI="${CI:-false}"
+if [ -z "${TERM:-}" ] || [ ! -t 0 ]; then
+    IS_CI="true"
+fi
+
+BATCH_MODE=false
+FUNCTIONS=()
+SKIP_DIFF=false
+SKIP_CONFIRM=false
+UPDATE_DESCRIPTION=true
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --batch)
+            BATCH_MODE=true
+            shift
+            ;;
+        --skip-diff)
+            SKIP_DIFF=true
+            shift
+            ;;
+        --skip-confirm)
+            SKIP_CONFIRM=true
+            shift
+            ;;
+        --no-update-description)
+            UPDATE_DESCRIPTION=false
+            shift
+            ;;
+        *)
+            FUNCTIONS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [ "$IS_CI" = "true" ]; then
+    SKIP_DIFF=true
+    SKIP_CONFIRM=true
+    if [ "$UPDATE_DESCRIPTION" = "true" ] && [ -z "${FORCE_UPDATE_DESCRIPTION:-}" ]; then
+        UPDATE_DESCRIPTION=false
+    fi
+fi
+
+if [ "$BATCH_MODE" = "false" ] && [ ${#FUNCTIONS[@]} -eq 0 ]; then
+    echo "❌ Function name required"
+    echo ""
+    echo "Usage:"
+    echo "  $0 lambda <function-name> [--skip-diff] [--skip-confirm] [--no-update-description]"
+    echo "  $0 lambda --batch <function1> [<function2> ...]"
+    echo ""
+    echo "Available functions:"
+    ls "$REPO_ROOT/aws/lambda/functions/" | sed 's/^/  /'
+    exit 1
+fi
+
+if [ "$BATCH_MODE" = "true" ] && [ ${#FUNCTIONS[@]} -eq 0 ]; then
+    echo "❌ At least one function name required in batch mode"
+    exit 1
+fi
+
+# AWS (lambda) deploys need live credentials, so assume the `bars` profile.
+# `assume` is Granted's sourceable script (the same thing the `assume` shell alias
+# runs as `. assume`); sourcing it exports AWS_* into this process so every aws
+# call below is authed. Browser SSO may open if the session is stale.
+#
+# We turn `set -e` OFF around it: Granted's script runs intermediate commands that
+# return nonzero (harmless interactively, where set -e isn't on), and with set -e
+# inherited those would abort the deploy immediately after assuming.
+#
+# NOTE: Manual/interactive runs only — needs a TTY for Granted's SSO flow. CI is
+# skipped via IS_CI. TODO: add a CI credential path (OIDC role / env creds) so
+# this works from GitHub Actions.
+if [ "$TARGET" = "lambda" ] && [ "$IS_CI" != "true" ]; then
+    echo "🔐 Assuming AWS profile 'bars'…"
+    set +e
+    . assume bars
+    set -e
+fi
+
+if ! aws sts get-caller-identity --region "$AWS_REGION" > /dev/null 2>&1; then
+    echo "❌ AWS credentials not configured or expired!"
+    if [ "$IS_CI" != "true" ]; then
+        echo "   Please run: assume bars (or aws configure/aws sso login)"
+    fi
+    exit 1
+fi
+
+deploy_function() {
+    local FUNCTION_NAME="$1"
+    local FUNCTION_DIR="$REPO_ROOT/aws/lambda/functions/$FUNCTION_NAME"
+
+    # tomllib ships with Python 3.11+; prefer that when available
+    local PY
+    PY=$(python3.11 -c "import sys; print(sys.executable)" 2>/dev/null \
+        || python3.12 -c "import sys; print(sys.executable)" 2>/dev/null \
+        || python3.13 -c "import sys; print(sys.executable)" 2>/dev/null \
+        || python3.14 -c "import sys; print(sys.executable)" 2>/dev/null \
+        || python3 -c "import sys; print(sys.executable)" 2>/dev/null \
+        || echo "python3")
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚀 Deploying Lambda function: $FUNCTION_NAME"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    if [ ! -d "$FUNCTION_DIR" ]; then
+        echo "❌ Function directory not found: $FUNCTION_DIR"
+        return 1
+    fi
+
+    if [ ! -f "$FUNCTION_DIR/main.py" ]; then
+        echo "❌ main.py not found in $FUNCTION_DIR"
+        return 1
+    fi
+
+    IS_NEW_FUNCTION=false
+
+    # Detect new functions up front with a direct existence check. The compare
+    # script raises (and writes to stderr) when a function doesn't exist yet, so
+    # we can't rely on grepping its stdout — check here before comparing.
+    if ! aws lambda get-function --function-name "$FUNCTION_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
+        IS_NEW_FUNCTION=true
+        echo "🆕 Function '$FUNCTION_NAME' does not exist in AWS — will create (diff check skipped)."
+        echo ""
+    fi
+
+    if [ "$IS_NEW_FUNCTION" = "false" ] && [ "$SKIP_DIFF" = "false" ]; then
+        COMPARE_SCRIPT="$REPO_ROOT/scripts/file_comparison/compare_project_remote_with_local.py"
+        if [ -f "$COMPARE_SCRIPT" ]; then
+            echo "🔍 Checking for differences with remote..."
+            # NOTE: stderr is NOT redirected so the python script's progress logs
+            # ([compare] / [fetch] lines) stream live to the terminal. Only stdout
+            # — the diff summary — is captured for the "no changes" grep below.
+            # stdin is /dev/null so the compare script's atexit temp-dir cleanup
+            # prompt (input() on a TTY) is skipped — otherwise its prompt text is
+            # swallowed by this command substitution and silently blocks on ENTER.
+            COMPARE_OUTPUT=$(python3 "$COMPARE_SCRIPT" --remote-origin-type aws --project-name "$FUNCTION_NAME" --local-path "$FUNCTION_DIR" < /dev/null || true)
+            echo "$COMPARE_OUTPUT"
+            # Match ONLY the compare script's explicit "no diff" status marker.
+            # Earlier this matched the substring "identical" (case-insensitive),
+            # which also matched the "Identical: <N>" count in the summary stats
+            # — a false-positive that skipped deploys whenever any file matched.
+            if echo "$COMPARE_OUTPUT" | grep -qE "✅ No differences detected|No changes detected"; then
+                echo ""
+                echo "✅ No changes detected - skipping deployment"
+                return 0
+            else
+                echo ""
+                echo "⚠️  Differences detected. Review the output above."
+                echo ""
+            fi
+        else
+            echo "ℹ️  Comparison script not found - skipping diff check"
+        fi
+    fi
+
+    if [ "$SKIP_CONFIRM" = "false" ]; then
+        read -p "� Deploy $FUNCTION_NAME? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "❌ Deployment cancelled"
+            return 0
+        fi
+    fi
+
+    echo "📁 Directory: $FUNCTION_DIR"
+
+    VERSION_FILE="$FUNCTION_DIR/version.json"
+    CURRENT_VERSION=""
+    if [ -f "$VERSION_FILE" ]; then
+        CURRENT_VERSION=$(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['version'])" 2>/dev/null || echo "")
+    fi
+
+    TEMP_DIR=$(mktemp -d)
+    trap "rm -rf $TEMP_DIR" EXIT
+
+    echo "� Creating deployment package..."
+
+    # Stage the function's source tree into TEMP_DIR, following symlinks.
+    # Local-package symlinks (e.g. shopify_gql → lib/clients/shopify-client-py/)
+    # are resolved here so their target files end up in the deployment zip.
+    # Excludes drop dev artifacts (.venv, *.lock, caches), codegen inputs
+    # (operations/, schema/, scripts/, *.graphql), docs (*.md), build artifacts
+    # (*.egg-info), and the project's own pyproject.toml (deps come from
+    # uv export below). shared_utilities is handled separately by the tracer.
+    rsync -aL \
+        --exclude '__pycache__' \
+        --exclude '.venv' --exclude 'venv' --exclude '.env' \
+        --exclude '*.lock' --exclude '.python-version' \
+        --exclude '.ruff_cache' --exclude '.mypy_cache' --exclude '.pytest_cache' \
+        --exclude '.git' --exclude '.DS_Store' \
+        --exclude 'tests' --exclude 'test_*.py' --exclude 'conftest.py' --exclude 'fixtures.py' \
+        --exclude '*.egg-info' \
+        --exclude 'pyproject.toml' --exclude '*.md' --exclude '.gitignore' \
+        --exclude 'operations' --exclude 'schema' --exclude 'scripts' --exclude '*.graphql' \
+        --exclude 'shared_utilities' \
+        "$FUNCTION_DIR/" "$TEMP_DIR/"
+
+    if [ -d "$FUNCTION_DIR/shared_utilities" ] || [ -L "$FUNCTION_DIR/shared_utilities" ]; then
+        SHARED_ROOT=$(cd "$FUNCTION_DIR" && python3 -c "from pathlib import Path; print(Path('shared_utilities').resolve())")
+        echo "  📋 Tracing shared_utilities imports..."
+        python3 "$REPO_ROOT/scripts/deployment/trace_shared_utils.py" \
+            "$FUNCTION_DIR/main.py" \
+            "$SHARED_ROOT" \
+            "$TEMP_DIR"
+    fi
+
+    if [ -f "$FUNCTION_DIR/pyproject.toml" ]; then
+        SKIP_DEPS=$("$PY" -c "
+import tomllib
+with open('$FUNCTION_DIR/pyproject.toml', 'rb') as f:
+    data = tomllib.load(f)
+print(data.get('tool', {}).get('deploy', {}).get('skip-deps', False))
+" 2>/dev/null || echo "False")
+
+        if [ "$SKIP_DEPS" = "True" ]; then
+            echo "  ℹ️  skip-deps=true — dependencies provided by layers"
+        else
+            echo "  📋 Exporting dependencies from pyproject.toml..."
+        PACKAGE_NAME=$("$PY" -c "
+import tomllib
+with open('$FUNCTION_DIR/pyproject.toml', 'rb') as f:
+    print(tomllib.load(f)['project']['name'])
+")
+        EXPORT_ERR=$(mktemp)
+        RAW_REQS=$(cd "$REPO_ROOT/lambda" && uv export \
+            --no-dev \
+            --no-emit-project \
+            --no-emit-workspace \
+            --no-hashes \
+            --no-editable \
+            --format requirements-txt \
+            --package "$PACKAGE_NAME" 2>"$EXPORT_ERR")
+        EXPORT_EXIT=$?
+        if [ $EXPORT_EXIT -ne 0 ]; then
+            echo "❌ uv export failed: $(cat "$EXPORT_ERR")"
+            rm -f "$EXPORT_ERR"
+            return 1
+        fi
+        rm -f "$EXPORT_ERR"
+        EXPORTED_REQS=$(echo "$RAW_REQS" | grep -v '^\.\.' | grep -v '^-e ')
+        if echo "$EXPORTED_REQS" | grep -qv '^\s*#\|^\s*$'; then
+            REQS_FILE=$(mktemp)
+            echo "$EXPORTED_REQS" | grep -v '^\s*#' | grep -v '^\s*$' > "$REQS_FILE"
+            uv pip install -r "$REQS_FILE" \
+                --target "$TEMP_DIR/" \
+                --python-platform aarch64-unknown-linux-gnu \
+                --python 3.14 \
+                --quiet
+            rm -f "$REQS_FILE"
+        else
+            echo "  ℹ️  No external dependencies to install"
+        fi
+        fi
+    fi
+
+    cd "$TEMP_DIR"
+    ZIP_FILE="/tmp/${FUNCTION_NAME}.zip"
+    zip -r "$ZIP_FILE" . -q -x '*/tests/*' '*/__pycache__/*' '*/test_*' '*/conftest.py' '*/fixtures.py'
+    cd - > /dev/null
+
+    echo "  📊 Package size: $(du -h $ZIP_FILE | cut -f1)"
+
+    if [ "$IS_NEW_FUNCTION" = "true" ]; then
+        echo "☁️  Creating new Lambda function..."
+
+        # Read create-function config from [tool.deploy] in pyproject.toml
+        if [ ! -f "$FUNCTION_DIR/pyproject.toml" ]; then
+            echo "❌ Cannot create new function: pyproject.toml missing (need [tool.deploy] config)"
+            rm -f "$ZIP_FILE"
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+
+        CREATE_CONFIG=$("$PY" -c "
+import tomllib, json, sys
+try:
+    with open('$FUNCTION_DIR/pyproject.toml', 'rb') as f:
+        d = tomllib.load(f).get('tool', {}).get('deploy', {})
+    out = {
+        'runtime':       d.get('runtime', 'python3.14'),
+        'handler':       d.get('handler', 'main.lambda_handler'),
+        'role':          d.get('role', ''),
+        'timeout':       str(d.get('timeout', 30)),
+        'memory_size':   str(d.get('memory-size', 128)),
+        'architectures': ' '.join(d.get('architectures', ['arm64'])),
+        'layers':        ' '.join(d.get('layers', [])),
+    }
+    print(json.dumps(out))
+except Exception as e:
+    print(json.dumps({'error': str(e)}), file=sys.stderr)
+    sys.exit(1)
+")
+
+        CF_RUNTIME=$(echo "$CREATE_CONFIG" | "$PY" -c "import json,sys; print(json.load(sys.stdin)['runtime'])")
+        CF_HANDLER=$(echo "$CREATE_CONFIG" | "$PY" -c "import json,sys; print(json.load(sys.stdin)['handler'])")
+        CF_ROLE=$(echo "$CREATE_CONFIG" | "$PY" -c "import json,sys; print(json.load(sys.stdin)['role'])")
+        CF_TIMEOUT=$(echo "$CREATE_CONFIG" | "$PY" -c "import json,sys; print(json.load(sys.stdin)['timeout'])")
+        CF_MEMORY=$(echo "$CREATE_CONFIG" | "$PY" -c "import json,sys; print(json.load(sys.stdin)['memory_size'])")
+        CF_ARCH=$(echo "$CREATE_CONFIG" | "$PY" -c "import json,sys; print(json.load(sys.stdin)['architectures'])")
+        CF_LAYERS=$(echo "$CREATE_CONFIG" | "$PY" -c "import json,sys; print(json.load(sys.stdin)['layers'])")
+
+        if [ -z "$CF_ROLE" ]; then
+            echo "❌ Cannot create new function: 'role' missing from [tool.deploy] in pyproject.toml"
+            rm -f "$ZIP_FILE"
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+
+        CREATE_ARGS=(
+            --function-name "$FUNCTION_NAME"
+            --runtime "$CF_RUNTIME"
+            --handler "$CF_HANDLER"
+            --role "$CF_ROLE"
+            --zip-file "fileb://$ZIP_FILE"
+            --timeout "$CF_TIMEOUT"
+            --memory-size "$CF_MEMORY"
+            --architectures $CF_ARCH
+            --region "$AWS_REGION"
+            --publish
+        )
+        if [ -n "$CF_LAYERS" ]; then
+            CREATE_ARGS+=(--layers $CF_LAYERS)
+        fi
+
+        # Capture output so the function-config JSON isn't dumped on success;
+        # surface it only if the create fails.
+        if ! CREATE_OUTPUT=$(aws lambda create-function "${CREATE_ARGS[@]}" 2>&1); then
+            echo "❌ Failed to create function"
+            echo "$CREATE_OUTPUT"
+            rm -f "$ZIP_FILE"
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+
+        echo "  ⏳ Waiting for function to become active..."
+        aws lambda wait function-active \
+            --function-name "$FUNCTION_NAME" \
+            --region "$AWS_REGION" 2>/dev/null || true
+
+    else
+        if [ "$UPDATE_DESCRIPTION" = "true" ]; then
+            echo "☁️  Updating function configuration..."
+            if [ -n "$CURRENT_VERSION" ]; then
+                DESCRIPTION="Version ${CURRENT_VERSION} - Updated $(date '+%Y-%m-%d %H:%M:%S')"
+            else
+                DESCRIPTION="Updated $(date '+%Y-%m-%d %H:%M:%S')"
+            fi
+            aws lambda update-function-configuration \
+                --function-name "$FUNCTION_NAME" \
+                --description "$DESCRIPTION" \
+                --region "$AWS_REGION" > /dev/null 2>&1 || true
+
+            echo "  ⏳ Waiting for configuration update..."
+            aws lambda wait function-updated \
+                --function-name "$FUNCTION_NAME" \
+                --region "$AWS_REGION" 2>/dev/null || true
+        fi
+
+        echo "☁️  Deploying to AWS Lambda..."
+        # Capture output so the function-config JSON isn't dumped on success;
+        # surface it only if the update fails.
+        if ! UPDATE_OUTPUT=$(aws lambda update-function-code \
+            --function-name "$FUNCTION_NAME" \
+            --zip-file "fileb://$ZIP_FILE" \
+            --region "$AWS_REGION" \
+            --publish 2>&1); then
+            echo "❌ Failed to update function code"
+            echo "$UPDATE_OUTPUT"
+            rm -f "$ZIP_FILE"
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+
+        echo "  ⏳ Waiting for function update to complete..."
+        if ! aws lambda wait function-updated \
+            --function-name "$FUNCTION_NAME" \
+            --region "$AWS_REGION"; then
+            echo "⚠️  Function update wait timed out or failed, but deployment may have succeeded"
+        fi
+    fi
+
+    rm -f "$ZIP_FILE"
+    rm -rf "$TEMP_DIR"
+
+    NEW_VERSION=""
+    if [ -f "$VERSION_FILE" ]; then
+        echo "📈 Incrementing version after successful deployment..."
+
+        BUMP_TYPE="patch"
+        if [ "$IS_CI" = "true" ]; then
+            if git log -1 --pretty=%B | grep -qiE "BREAKING|breaking change|major"; then
+                BUMP_TYPE="major"
+            elif git log -1 --pretty=%B | grep -qiE "feat:|feature:|add:|new:"; then
+                BUMP_TYPE="minor"
+            elif git log -1 --pretty=%B | grep -qiE "fix:|bugfix:|patch:|hotfix:"; then
+                BUMP_TYPE="patch"
+            fi
+        fi
+
+        COMMIT_MESSAGES=$(git log -5 --pretty=%B 2>/dev/null | head -20 || echo "Deployment")
+        if [ -z "$COMMIT_MESSAGES" ]; then
+            COMMIT_MESSAGES="Deployment"
+        fi
+
+        COMMIT_MSG_FILE=$(mktemp)
+        echo "$COMMIT_MESSAGES" > "$COMMIT_MSG_FILE"
+
+        if python3 "$REPO_ROOT/scripts/deployment/version_manager.py" \
+            --lambda-update "$FUNCTION_NAME:$VERSION_FILE:$BUMP_TYPE" \
+            --commit-messages "$(cat "$COMMIT_MSG_FILE")" 2>&1; then
+            NEW_VERSION=$(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['version'])" 2>/dev/null || echo "")
+            if [ -n "$NEW_VERSION" ]; then
+                echo "✅ Version incremented to: $NEW_VERSION"
+            fi
+        else
+            echo "⚠️  Version increment failed, trying to read current version..."
+            NEW_VERSION=$(python3 -c "import json; print(json.load(open('$VERSION_FILE'))['version'])" 2>/dev/null || echo "")
+        fi
+        rm -f "$COMMIT_MSG_FILE"
+
+        if [ "$IS_CI" = "true" ]; then
+            if ! git diff --quiet "$VERSION_FILE" 2>/dev/null; then
+                git add "$VERSION_FILE" || true
+            fi
+        fi
+    else
+        echo "⚠️  version.json not found, skipping version increment"
+    fi
+
+    if [ -n "$NEW_VERSION" ]; then
+        echo "✅ Successfully deployed $FUNCTION_NAME version $NEW_VERSION!"
+    else
+        echo "✅ Successfully deployed $FUNCTION_NAME!"
+    fi
+
+    return 0
+}
+
+# ── Dispatch ──────────────────────────────────────────────────────────────────
+
+EXIT_CODE=0
+DEPLOYED_COUNT=0
+FAILED_COUNT=0
+
+if [ "$BATCH_MODE" = "true" ]; then
+    echo "🚀 Batch deployment mode: ${#FUNCTIONS[@]} function(s)"
+    for FUNC in "${FUNCTIONS[@]}"; do
+        if deploy_function "$FUNC"; then
+            ((DEPLOYED_COUNT++))
+        else
+            ((FAILED_COUNT++))
+            EXIT_CODE=1
+        fi
+    done
+
+    if [ "$IS_CI" = "true" ]; then
+        if ! git diff --cached --quiet --exit-code 2>/dev/null; then
+            echo ""
+            echo "📝 Committing all version increments to merge commit..."
+            if git commit --amend --no-edit 2>/dev/null; then
+                if git push origin main --force-with-lease 2>/dev/null; then
+                    echo "✅ All version increments included in merge commit"
+                else
+                    echo "⚠️  Failed to push version increments (may have been pushed already)"
+                fi
+            else
+                echo "⚠️  Failed to amend commit (may have been committed already)"
+            fi
+        fi
+    fi
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📊 Deployment Summary"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "✅ Successfully deployed: $DEPLOYED_COUNT"
+    if [ $FAILED_COUNT -gt 0 ]; then
+        echo "❌ Failed: $FAILED_COUNT"
+    fi
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+else
+    deploy_function "${FUNCTIONS[0]}"
+    EXIT_CODE=$?
+
+    if [ "$IS_CI" = "true" ]; then
+        if ! git diff --cached --quiet --exit-code 2>/dev/null; then
+            echo ""
+            echo "📝 Committing version increment to merge commit..."
+            if git commit --amend --no-edit 2>/dev/null; then
+                if git push origin main --force-with-lease 2>/dev/null; then
+                    echo "✅ Version increment included in merge commit"
+                else
+                    echo "⚠️  Failed to push version increment (may have been pushed already)"
+                fi
+            else
+                echo "⚠️  Failed to amend commit (may have been committed already)"
+            fi
+        fi
+    fi
+fi
+
+exit $EXIT_CODE

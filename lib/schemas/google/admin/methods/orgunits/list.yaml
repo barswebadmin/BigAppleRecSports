@@ -1,0 +1,36 @@
+description: Retrieves a list of all organizational units for an account.
+httpMethod: GET
+path: admin/directory/v1/customer/{customerId}/orgunits
+scopes:
+- https://www.googleapis.com/auth/admin.directory.orgunit
+- https://www.googleapis.com/auth/admin.directory.orgunit.readonly
+parameters:
+  customerId:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's `customerId`. The `customerId` is also returned as part of the
+      [Users resource](https://developers.google.com/workspace/admin/directory/v1/reference/users).
+    location: path
+    required: true
+    type: string
+  orgUnitPath:
+    description: The full path to the organizational unit or its unique ID. Returns
+      the children of the specified organizational unit.
+    default: ''
+    location: query
+    type: string
+  type:
+    description: Whether to return all sub-organizations or just immediate children.
+    location: query
+    type: string
+    enumDescriptions:
+    - All sub-organizational units.
+    - Immediate children only (default).
+    - All sub-organizational units and the specified organizational unit (root if
+      not specified).
+    enum:
+    - all
+    - children
+    - allIncludingParent
+response:
+  $ref: OrgUnits

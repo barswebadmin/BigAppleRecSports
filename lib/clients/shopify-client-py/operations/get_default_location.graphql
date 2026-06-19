@@ -1,8 +1,0 @@
-query GetDefaultLocation {
-  locations(first: 1) {
-    nodes {
-      id
-      name
-    }
-  }
-}

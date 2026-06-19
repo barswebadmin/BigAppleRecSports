@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DownloadRestrictionsMetadata
+description: Download restrictions applied to the file.
+type: object
+properties:
+  itemDownloadRestriction:
+    description: The download restriction of the file applied directly by the owner
+      or organizer. This doesn't take into account shared drive settings or DLP rules.
+    $ref: DownloadRestriction
+  effectiveDownloadRestrictionWithContext:
+    description: Output only. The effective download restriction applied to this file.
+      This considers all restriction settings and DLP rules.
+    $ref: DownloadRestriction

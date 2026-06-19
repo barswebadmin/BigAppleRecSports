@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteNamedRangeRequest
+description: Removes the named range with the given ID from the spreadsheet.
+type: object
+properties:
+  namedRangeId:
+    type: string
+    description: The ID of the named range to delete.

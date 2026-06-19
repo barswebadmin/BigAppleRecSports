@@ -1,0 +1,20 @@
+description: Creates a new draft with the `DRAFT` label.
+httpMethod: POST
+path: gmail/v1/users/{userId}/drafts
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.addons.current.action.compose
+- https://www.googleapis.com/auth/gmail.compose
+- https://www.googleapis.com/auth/gmail.modify
+request:
+  $ref: Draft
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Draft

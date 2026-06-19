@@ -1,0 +1,36 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PasteDataRequest
+description: Inserts data into the spreadsheet starting at the specified coordinate.
+type: object
+properties:
+  delimiter:
+    type: string
+    description: The delimiter in the data.
+  html:
+    type: boolean
+    description: True if the data is HTML.
+  type:
+    enum:
+    - PASTE_NORMAL
+    - PASTE_VALUES
+    - PASTE_FORMAT
+    - PASTE_NO_BORDERS
+    - PASTE_FORMULA
+    - PASTE_DATA_VALIDATION
+    - PASTE_CONDITIONAL_FORMATTING
+    description: How the data should be pasted.
+    type: string
+    enumDescriptions:
+    - Paste values, formulas, formats, and merges.
+    - Paste the values ONLY without formats, formulas, or merges.
+    - Paste the format and data validation only.
+    - Like `PASTE_NORMAL` but without borders.
+    - Paste the formulas only.
+    - Paste the data validation only.
+    - Paste the conditional formatting rules only.
+  coordinate:
+    $ref: GridCoordinate
+    description: The coordinate at which the data should start being inserted.
+  data:
+    type: string
+    description: The data to insert.

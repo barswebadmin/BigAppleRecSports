@@ -18,30 +18,20 @@ def find_repo_root() -> Path:
 
 
 def find_all_python_files(repo_root: Path) -> List[Path]:
-    """Find all Python files in backend/ and lambda/functions/ directories.
-    
+    """Find all Python files in backend/ and aws/lambda/functions/.
+
     Args:
-        repo_root: Repository root directory (kept for backward compatibility)
-        
+        repo_root: Repository root directory
+
     Returns:
         List of Python file paths
     """
     python_files: List[Path] = []
-    
-    # Check backend/
-    backend_dir = get_backend_root()
-    if backend_dir.exists():
-        python_files.extend(backend_dir.rglob("*.py"))
-    
-    # Check lambda/functions/
-    lambda_dir = get_lambda_root()
-    if lambda_dir.exists():
-        python_files.extend(lambda_dir.rglob("*.py"))
-    
-    # Check bars_cli/
-    bars_cli_dir = get_cli_root()
-    if bars_cli_dir.exists():
-        python_files.extend(bars_cli_dir.rglob("*.py"))
+
+    for subpath in ("backend", "aws/lambda/functions"):
+        candidate = repo_root / subpath
+        if candidate.exists():
+            python_files.extend(candidate.rglob("*.py"))
     
     # Filter out __pycache__ and test files if needed
     filtered = [
@@ -75,10 +65,10 @@ def path_to_module(file_path: Path, src_root: Path) -> str:
     
     Args:
         file_path: Path to Python file
-        src_root: Root directory (backend/, lambda/functions/, or bars_cli/)
-        
+        src_root: Root directory (backend/ or aws/lambda/functions/)
+
     Returns:
-        Module name (e.g., "backend.modules.auth" or "lambda.functions.handler")
+        Module name (e.g., "backend.modules.auth" or "ShopifyProductUpdates.main")
     """
     try:
         rel_path = file_path.relative_to(src_root)
@@ -100,9 +90,6 @@ def path_to_module(file_path: Path, src_root: Path) -> str:
             module_parts = parts[idx + 1:]
         elif "lambda" in parts and "functions" in parts:
             idx = parts.index("lambda")
-            module_parts = parts[idx:]
-        elif "bars_cli" in parts:
-            idx = parts.index("bars_cli")
             module_parts = parts[idx:]
         else:
             return file_path.stem

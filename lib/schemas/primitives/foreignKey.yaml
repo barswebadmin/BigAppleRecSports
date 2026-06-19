@@ -1,0 +1,11 @@
+title: "Foreign Key"
+description: "Reference to a record in another table"
+type: object
+properties:
+  table:
+    type: string
+    description: "Referenced table/schema name"
+  value:
+    $ref: "./_idFlexible.yaml#/"
+    description: "ID value from the referenced table"
+required: [table, value]

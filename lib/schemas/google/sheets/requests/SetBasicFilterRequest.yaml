@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SetBasicFilterRequest
+description: Sets the basic filter associated with a sheet.
+type: object
+properties:
+  filter:
+    $ref: BasicFilter
+    description: The filter to set.

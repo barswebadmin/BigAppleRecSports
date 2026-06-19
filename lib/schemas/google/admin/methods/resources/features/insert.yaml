@@ -1,0 +1,17 @@
+description: Inserts a feature.
+httpMethod: POST
+path: admin/directory/v1/customer/{customer}/resources/features
+scopes:
+- https://www.googleapis.com/auth/admin.directory.resource.calendar
+request:
+  $ref: Feature
+parameters:
+  customer:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's customer ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Feature

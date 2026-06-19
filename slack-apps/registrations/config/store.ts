@@ -74,6 +74,24 @@ export const REFUND_PROCESS_URL = envOr(
 );
 export const REFUND_PROCESS_DOMAIN = new URL(REFUND_PROCESS_URL).host;
 
+/** Canonical BARS HTTP API base (e.g. `https://api.bigapplerecsports.com`). No trailing slash.
+ *  When set, refund approvals use `POST {base}/refunds/create` and `DELETE {base}/orders/{id}`
+ *  instead of `REFUND_PROCESS_URL`. Other features can reuse the same base. */
+export function barsApiBaseUrl(): string | undefined {
+    const raw = readEnv("BARS_API_URL")?.trim();
+    return raw ? raw.replace(/\/+$/, "") : undefined;
+}
+
+export function barsApiDomain(): string | undefined {
+    const base = barsApiBaseUrl();
+    if (!base) return undefined;
+    try {
+        return new URL(base).host;
+    } catch {
+        return undefined;
+    }
+}
+
 /** Comma-separated Slack user IDs allowed to exceed the soft refund estimate without exec routing. */
 export function isRefundPrivilegedSlackUser(userId: string): boolean {
     const raw = readEnv("REFUND_PRIVILEGED_SLACK_USER_IDS");

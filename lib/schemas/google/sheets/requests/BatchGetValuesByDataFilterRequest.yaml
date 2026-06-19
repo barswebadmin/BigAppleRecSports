@@ -1,0 +1,66 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchGetValuesByDataFilterRequest
+description: The request for retrieving a range of values in a spreadsheet selected
+  by a set of DataFilters.
+type: object
+properties:
+  dataFilters:
+    type: array
+    description: The data filters used to match the ranges of values to retrieve.
+      Ranges that match any of the specified data filters are included in the response.
+    items:
+      $ref: DataFilter
+  majorDimension:
+    type: string
+    enumDescriptions:
+    - The default value, do not use.
+    - Operates on the rows of a sheet.
+    - Operates on the columns of a sheet.
+    enum:
+    - DIMENSION_UNSPECIFIED
+    - ROWS
+    - COLUMNS
+    description: 'The major dimension that results should use. For example, if the
+      spreadsheet data is: `A1=1,B1=2,A2=3,B2=4`, then a request that selects that
+      range and sets `majorDimension=ROWS` returns `[[1,2],[3,4]]`, whereas a request
+      that sets `majorDimension=COLUMNS` returns `[[1,3],[2,4]]`.'
+  valueRenderOption:
+    enumDescriptions:
+    - Values will be calculated & formatted in the response according to the cell's
+      formatting. Formatting is based on the spreadsheet's locale, not the requesting
+      user's locale. For example, if `A1` is `1.23` and `A2` is `=A1` and formatted
+      as currency, then `A2` would return `"$1.23"`.
+    - Values will be calculated, but not formatted in the reply. For example, if `A1`
+      is `1.23` and `A2` is `=A1` and formatted as currency, then `A2` would return
+      the number `1.23`.
+    - Values will not be calculated. The reply will include the formulas. For example,
+      if `A1` is `1.23` and `A2` is `=A1` and formatted as currency, then A2 would
+      return `"=A1"`. Sheets treats date and time values as decimal values. This lets
+      you perform arithmetic on them in formulas. For more information on interpreting
+      date and time values, see [About date & time values](https://developers.google.com/workspace/sheets/api/guides/formats#about_date_time_values).
+    type: string
+    description: How values should be represented in the output. The default render
+      option is FORMATTED_VALUE.
+    enum:
+    - FORMATTED_VALUE
+    - UNFORMATTED_VALUE
+    - FORMULA
+  dateTimeRenderOption:
+    description: How dates, times, and durations should be represented in the output.
+      This is ignored if value_render_option is FORMATTED_VALUE. The default dateTime
+      render option is SERIAL_NUMBER.
+    enum:
+    - SERIAL_NUMBER
+    - FORMATTED_STRING
+    enumDescriptions:
+    - Instructs date, time, datetime, and duration fields to be output as doubles
+      in "serial number" format, as popularized by Lotus 1-2-3. The whole number portion
+      of the value (left of the decimal) counts the days since December 30th 1899.
+      The fractional portion (right of the decimal) counts the time as a fraction
+      of the day. For example, January 1st 1900 at noon would be 2.5, 2 because it's
+      2 days after December 30th 1899, and .5 because noon is half a day. February
+      1st 1900 at 3pm would be 33.625. This correctly treats the year 1900 as not
+      a leap year.
+    - Instructs date, time, datetime, and duration fields to be output as strings
+      in their given number format (which depends on the spreadsheet locale).
+    type: string

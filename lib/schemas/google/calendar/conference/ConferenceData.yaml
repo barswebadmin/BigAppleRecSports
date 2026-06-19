@@ -1,0 +1,56 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ConferenceData
+description: ''
+type: object
+properties:
+  conferenceId:
+    type: string
+    description: "The ID of the conference.\nCan be used by developers to keep track\
+      \ of conferences, should not be displayed to users.\nThe ID value is formed\
+      \ differently for each conference solution type:  \n- eventHangout: ID is not\
+      \ set. (This conference type is deprecated.)\n- eventNamedHangout: ID is the\
+      \ name of the Hangout. (This conference type is deprecated.)\n- hangoutsMeet:\
+      \ ID is the 10-letter meeting code, for example aaa-bbbb-ccc.\n- addOn: ID is\
+      \ defined by the third-party provider.  Optional."
+  conferenceSolution:
+    $ref: ConferenceSolution
+    description: 'The conference solution, such as Google Meet.
+
+      Unset for a conference with a failed create request.
+
+      Either conferenceSolution and at least one entryPoint, or createRequest is required.'
+  createRequest:
+    $ref: CreateConferenceRequest
+    description: 'A request to generate a new conference and attach it to the event.
+      The data is generated asynchronously. To see whether the data is present check
+      the status field.
+
+      Either conferenceSolution and at least one entryPoint, or createRequest is required.'
+  entryPoints:
+    type: array
+    description: 'Information about individual conference entry points, such as URLs
+      or phone numbers.
+
+      All of them must belong to the same conference.
+
+      Either conferenceSolution and at least one entryPoint, or createRequest is required.'
+    items:
+      $ref: EntryPoint
+  notes:
+    type: string
+    description: Additional notes (such as instructions from the domain administrator,
+      legal notices) to display to the user. Can contain HTML. The maximum length
+      is 2048 characters. Optional.
+  parameters:
+    $ref: ConferenceParameters
+    description: Additional properties related to a conference. An example would be
+      a solution-specific setting for enabling video streaming.
+  signature:
+    type: string
+    description: 'The signature of the conference data.
+
+      Generated on server side.
+
+      Unset for a conference with a failed create request.
+
+      Optional for a conference with a pending create request.'

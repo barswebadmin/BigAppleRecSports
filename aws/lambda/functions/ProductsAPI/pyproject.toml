@@ -1,0 +1,62 @@
+[project]
+name = "shopify-product-updates"
+version = "1.0.0"
+description = "Big Apple Rec Sports - Consolidated Shopify product management: registration phase transitions, bulk price updates, and sold-out image swaps."
+requires-python = ">=3.14"
+dependencies = [
+    "bars-shared-utilities",
+    "python-box>=7.0.0",
+    "pydantic>=2.0",
+    # Provided by layers at runtime; listed here for local uv sync only.
+    "aws-lambda-powertools[parameters]>=3.0.0",
+    "pynamodb>=6.0.0",
+    "pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.deploy.required-env-vars]
+# phase-transition route
+phase-transition = [
+    "REGULAR_SEASON_TABLE",
+    "SSM_IMAGES_PATH",
+    "SSM_SOLD_OUT_IMAGES_PATH",
+]
+# all Shopify routes
+shopify = [
+    "SHOPIFY__API_VERSION",
+    "SHOPIFY__LOCATION_ID",
+    "SHOPIFY__STORE_ID",
+    "SHOPIFY__TOKEN__ADMIN",
+    "SHOPIFY__URL__ADMIN",
+    "SHOPIFY__URL__API_GRAPH_QL",
+]
+
+[tool.deploy]
+# All runtime deps come from layers — nothing bundled into the function zip
+# beyond this lambda's own source files.
+skip-deps = true
+runtime = "python3.14"
+handler = "main.lambda_handler"
+role = "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c"
+timeout = 90
+memory-size = 256
+architectures = ["arm64"]
+layers = [
+    # Official Powertools v3 layer (Python 3.14, arm64).
+    # https://docs.powertools.aws.dev/lambda/python/latest/#lambda-layer
+    "arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:23",
+    # BARS common utilities (bars_common_utils, shared_utilities, shopify_client).
+    "arn:aws:lambda:us-east-1:084375563770:layer:bars-common-utils:22",
+    # Pydantic v2.
+    "arn:aws:lambda:us-east-1:084375563770:layer:shared-utilities-deps:2",
+    # gql/DSL Shopify client (shop_client) — used by the update-prices route.
+    # PREREQ: publish the layer from aws/lambda/layers/lib/shopify-client/ first.
+    # Replace <TBD> with the published version once available in account 084375563770.
+    "arn:aws:lambda:us-east-1:084375563770:layer:shopify-client:<TBD>",
+]
+
+[tool.uv.sources]
+bars-shared-utilities = { workspace = true }

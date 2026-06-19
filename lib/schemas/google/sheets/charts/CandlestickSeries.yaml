@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CandlestickSeries
+description: The series of a CandlestickData.
+type: object
+properties:
+  data:
+    description: The data of the CandlestickSeries.
+    $ref: ChartData

@@ -1,0 +1,35 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Shopify Refund"
+description: "Refund from Shopify Admin GraphQL API"
+
+definitions:
+    Refund:
+        type: object
+        properties:
+            id:
+                $ref: "./_primitives.yaml#/definitions/shopifyGid"
+            createdAt:
+                $ref: "../primitives/isoDateTime.yaml"
+            note:
+                type: string
+            transactions:
+                type: array
+                items:
+                    $ref: "./Order.yaml#/definitions/Transaction"
+            refundLineItems:
+                type: array
+                items:
+                    type: object
+                    properties:
+                        quantity:
+                            type: integer
+                        priceSet:
+                            $ref: "./_primitives.yaml#/definitions/moneySet"
+                        lineItem:
+                            type: object
+                            properties:
+                                title:
+                                    type: string
+                            required: [title]
+                    required: [quantity]
+        required: [id, createdAt]

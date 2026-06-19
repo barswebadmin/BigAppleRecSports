@@ -13,7 +13,6 @@ from modules.integrations.slack.models import (
     SlackMessageRequest,
     SlackUserGroupRequest
 )
-from shared.api_models import APIResponse, ValidationAPIError
 
 router = APIRouter(prefix="/slack", tags=["slack-api"])
 
@@ -27,7 +26,7 @@ def get_slack_controller() -> SlackAPIController:
 async def get_user(
     identifier: str,
     controller: SlackAPIController = Depends(get_slack_controller)
-) -> APIResponse:
+) -> dict:
     """
     Get a Slack user by identifier (email or user ID).
     
@@ -44,8 +43,8 @@ async def get_user(
     """
     try:
         return await controller.get_user(identifier)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -54,7 +53,7 @@ async def get_user(
 async def get_group(
     identifier: str,
     controller: SlackAPIController = Depends(get_slack_controller)
-) -> APIResponse:
+) -> dict:
     """
     Get a Slack group by identifier (group ID or name).
     
@@ -71,8 +70,8 @@ async def get_group(
     """
     try:
         return await controller.get_group(identifier)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -81,7 +80,7 @@ async def get_group(
 async def get_channel(
     identifier: str,
     controller: SlackAPIController = Depends(get_slack_controller)
-) -> APIResponse:
+) -> dict:
     """
     Get a Slack channel by identifier (channel ID or name).
     
@@ -98,8 +97,8 @@ async def get_channel(
     """
     try:
         return await controller.get_channel(identifier)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -108,7 +107,7 @@ async def get_channel(
 async def send_message(
     message_request: SlackMessageRequest,
     controller: SlackAPIController = Depends(get_slack_controller)
-) -> APIResponse:
+) -> dict:
     """
     Send a message to a Slack channel.
     
@@ -124,8 +123,8 @@ async def send_message(
     """
     try:
         return await controller.send_message(message_request)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -135,7 +134,7 @@ async def add_user_to_group(
     group_id: str,
     user_id: str,
     controller: SlackAPIController = Depends(get_slack_controller)
-) -> APIResponse:
+) -> dict:
     """
     Add a user to a Slack group.
     
@@ -153,15 +152,13 @@ async def add_user_to_group(
     """
     try:
         user_group_request = SlackUserGroupRequest(user_id=user_id, group_id=group_id)
-        # Note: This would need to be implemented in the controller
-        # For now, return a placeholder response
-        return APIResponse(
-            success=True,
-            message="User group operation not yet implemented",
-            data={"user_id": user_id, "group_id": group_id}
-        )
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+        return {
+            "success": True,
+            "message": "User group operation not yet implemented",
+            "data": {"user_id": user_id, "group_id": group_id}
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

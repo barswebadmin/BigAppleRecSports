@@ -1,0 +1,114 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: About
+description: Information about the user, the user's Drive, and system capabilities.
+type: object
+properties:
+  kind:
+    description: 'Identifies what kind of resource this is. Value: the fixed string
+      `"drive#about"`.'
+    default: drive#about
+    type: string
+  storageQuota:
+    description: The user's storage quota limits and usage. For users that are part
+      of an organization with pooled storage, information about the limit and usage
+      across all services is for the organization, rather than the individual user.
+      All fields are measured in bytes.
+    type: object
+    properties:
+      limit:
+        description: The usage limit, if applicable. This will not be present if the
+          user has unlimited storage. For users that are part of an organization with
+          pooled storage, this is the limit for the organization, rather than the
+          individual user.
+        type: string
+        format: int64
+      usageInDrive:
+        description: The usage by all files in Google Drive.
+        type: string
+        format: int64
+      usageInDriveTrash:
+        description: The usage by trashed files in Google Drive.
+        type: string
+        format: int64
+      usage:
+        description: The total usage across all services. For users that are part
+          of an organization with pooled storage, this is the usage across all services
+          for the organization, rather than the individual user.
+        type: string
+        format: int64
+  driveThemes:
+    description: A list of themes that are supported for shared drives.
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          description: The ID of the theme.
+          type: string
+        backgroundImageLink:
+          description: A link to this theme's background image.
+          type: string
+        colorRgb:
+          description: The color of this theme as an RGB hex string.
+          type: string
+  canCreateDrives:
+    description: Whether the user can create shared drives.
+    type: boolean
+  importFormats:
+    description: A map of source MIME type to possible targets for all supported imports.
+    type: object
+    additionalProperties:
+      type: array
+      items:
+        type: string
+  exportFormats:
+    description: A map of source MIME type to possible targets for all supported exports.
+    type: object
+    additionalProperties:
+      type: array
+      items:
+        type: string
+  appInstalled:
+    description: Whether the user has installed the requesting app.
+    type: boolean
+  user:
+    description: The authenticated user.
+    $ref: User
+  folderColorPalette:
+    description: The currently supported folder colors as RGB hex strings.
+    type: array
+    items:
+      type: string
+  maxImportSizes:
+    description: A map of maximum import sizes by MIME type, in bytes.
+    type: object
+    additionalProperties:
+      type: string
+      format: int64
+  maxUploadSize:
+    description: The maximum upload size in bytes.
+    type: string
+    format: int64
+  teamDriveThemes:
+    description: 'Deprecated: Use `driveThemes` instead.'
+    deprecated: true
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          description: 'Deprecated: Use `driveThemes/id` instead.'
+          deprecated: true
+          type: string
+        backgroundImageLink:
+          description: 'Deprecated: Use `driveThemes/backgroundImageLink` instead.'
+          deprecated: true
+          type: string
+        colorRgb:
+          description: 'Deprecated: Use `driveThemes/colorRgb` instead.'
+          deprecated: true
+          type: string
+  canCreateTeamDrives:
+    description: 'Deprecated: Use `canCreateDrives` instead.'
+    deprecated: true
+    type: boolean

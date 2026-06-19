@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddDataSourceRequest
+description: Adds a data source. After the data source is added successfully, an associated
+  DATA_SOURCE sheet is created and an execution is triggered to refresh the sheet
+  to read data from the data source. The request requires an additional `bigquery.readonly`
+  OAuth scope if you are adding a BigQuery data source.
+type: object
+properties:
+  dataSource:
+    $ref: DataSource
+    description: The data source to add.

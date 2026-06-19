@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddSheetRequest
+description: Adds a new sheet. When a sheet is added at a given index, all subsequent
+  sheets' indexes are incremented. To add an object sheet, use AddChartRequest instead
+  and specify EmbeddedObjectPosition.sheetId or EmbeddedObjectPosition.newSheet.
+type: object
+properties:
+  properties:
+    $ref: SheetProperties
+    description: The properties the new sheet should have. All properties are optional.
+      The sheetId field is optional; if one is not set, an id will be randomly generated.
+      (It is an error to specify the ID of a sheet that already exists.)

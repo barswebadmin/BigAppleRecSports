@@ -1,0 +1,46 @@
+description: Retrieves a paginated list of all roleAssignments.
+httpMethod: GET
+path: admin/directory/v1/customer/{customer}/roleassignments
+scopes:
+- https://www.googleapis.com/auth/admin.directory.rolemanagement
+- https://www.googleapis.com/auth/admin.directory.rolemanagement.readonly
+parameters:
+  customer:
+    description: The unique ID for the customer's Google Workspace account. In case
+      of a multi-domain account, to fetch all groups for a customer, use this field
+      instead of `domain`. You can also use the `my_customer` alias to represent your
+      account's `customerId`. The `customerId` is also returned as part of the [Users](https://developers.google.com/workspace/admin/directory/v1/reference/users)
+      resource. You must provide either the `customer` or the `domain` parameter.
+    location: path
+    required: true
+    type: string
+  maxResults:
+    description: Maximum number of results to return.
+    minimum: '1'
+    maximum: '200'
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: Token to specify the next page in the list.
+    location: query
+    type: string
+  roleId:
+    description: Immutable ID of a role. If included in the request, returns only
+      role assignments containing this role ID.
+    location: query
+    type: string
+  userKey:
+    description: The primary email address, alias email address, or unique user or
+      group ID. If included in the request, returns role assignments only for this
+      user or group.
+    location: query
+    type: string
+  includeIndirectRoleAssignments:
+    description: When set to `true`, fetches indirect role assignments (i.e. role
+      assignment via a group) as well as direct ones. Defaults to `false`. You must
+      specify `user_key` or the indirect role assignments will not be included.
+    location: query
+    type: boolean
+response:
+  $ref: RoleAssignments

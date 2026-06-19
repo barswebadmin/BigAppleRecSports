@@ -1,0 +1,27 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AuxiliaryMessage
+description: 'Auxiliary message about issues with printers or settings. Example: {message_type:AUXILIARY_MESSAGE_WARNING,
+  field_mask:make_and_model, message:"Given printer is invalid or no longer supported."}'
+type: object
+properties:
+  severity:
+    description: Message severity
+    type: string
+    enumDescriptions:
+    - Message type unspecified.
+    - 'Message of severity: info.'
+    - 'Message of severity: warning.'
+    - 'Message of severity: error.'
+    enum:
+    - SEVERITY_UNSPECIFIED
+    - SEVERITY_INFO
+    - SEVERITY_WARNING
+    - SEVERITY_ERROR
+  fieldMask:
+    description: Field that this message concerns.
+    type: string
+    format: google-fieldmask
+  auxiliaryMessage:
+    description: 'Human readable message in English. Example: "Given printer is invalid
+      or no longer supported."'
+    type: string

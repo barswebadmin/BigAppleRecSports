@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GradientRule
+description: A rule that applies a gradient color scale format, based on the interpolation
+  points listed. The format of a cell will vary based on its contents as compared
+  to the values of the interpolation points.
+type: object
+properties:
+  minpoint:
+    $ref: InterpolationPoint
+    description: The starting interpolation point.
+  midpoint:
+    description: An optional midway interpolation point.
+    $ref: InterpolationPoint
+  maxpoint:
+    description: The final interpolation point.
+    $ref: InterpolationPoint

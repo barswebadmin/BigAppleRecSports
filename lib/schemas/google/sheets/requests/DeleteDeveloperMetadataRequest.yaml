@@ -1,0 +1,9 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteDeveloperMetadataRequest
+description: A request to delete developer metadata.
+type: object
+properties:
+  dataFilter:
+    description: The data filter describing the criteria used to select which developer
+      metadata entry to delete.
+    $ref: DataFilter

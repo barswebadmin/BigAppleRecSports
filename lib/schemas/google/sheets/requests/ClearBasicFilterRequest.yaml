@@ -1,0 +1,9 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ClearBasicFilterRequest
+description: Clears the basic filter, if any exists on the sheet.
+type: object
+properties:
+  sheetId:
+    description: The sheet ID on which the basic filter should be cleared.
+    format: int32
+    type: integer

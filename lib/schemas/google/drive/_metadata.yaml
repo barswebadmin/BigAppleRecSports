@@ -1,0 +1,51 @@
+api: drive
+version: v3
+title: Google Drive API
+description: The Google Drive API allows clients to access resources from Google Drive.
+baseUrl: https://www.googleapis.com/drive/v3/
+documentationLink: https://developers.google.com/workspace/drive/
+generated: auto-generated from Google Discovery API
+schemas:
+- Operation
+- Status
+- About
+- User
+- App
+- AppIcons
+- AppList
+- StartPageToken
+- ChangeList
+- Change
+- File
+- Permission
+- ContentRestriction
+- Label
+- LabelField
+- DownloadRestrictionsMetadata
+- DownloadRestriction
+- TeamDrive
+- Drive
+- Channel
+- Comment
+- Reply
+- CommentList
+- DriveList
+- GeneratedIds
+- FileList
+- LabelList
+- ModifyLabelsRequest
+- LabelModification
+- LabelFieldModification
+- ModifyLabelsResponse
+- PermissionList
+- ReplyList
+- Revision
+- RevisionList
+- TeamDriveList
+- Approval
+- ReviewerResponse
+- ApprovalList
+- AccessProposal
+- AccessProposalRoleAndView
+- ResolveAccessProposalRequest
+- ListAccessProposalsResponse

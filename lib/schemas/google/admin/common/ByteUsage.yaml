@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ByteUsage
+description: Represents a data capacity with some amount of current usage in bytes.
+type: object
+properties:
+  capacityBytes:
+    description: Output only. The total capacity value, in bytes.
+    readOnly: true
+    type: string
+    format: int64
+  usedBytes:
+    description: Output only. The current usage value, in bytes.
+    readOnly: true
+    type: string
+    format: int64

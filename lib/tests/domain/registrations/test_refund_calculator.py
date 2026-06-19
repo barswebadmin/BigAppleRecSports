@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from lib.domain.registrations.refund_calculator import (
+from lib.domain.registrations.refunds import (
     CREDIT_TIERS,
     REFUND_TIERS,
     EstimateTierKind,

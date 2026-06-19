@@ -1,0 +1,15 @@
+description: Updates a customer.
+httpMethod: PUT
+path: admin/directory/v1/customers/{customerKey}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.customer
+request:
+  $ref: Customer
+parameters:
+  customerKey:
+    description: Id of the customer to be updated
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Customer

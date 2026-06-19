@@ -1,0 +1,65 @@
+description: Retrieves all groups of a domain or of a user given a userKey (paginated).
+httpMethod: GET
+path: admin/directory/v1/groups
+scopes:
+- https://www.googleapis.com/auth/admin.directory.group
+- https://www.googleapis.com/auth/admin.directory.group.readonly
+parameters:
+  customer:
+    description: The unique ID for the customer's Google Workspace account. In case
+      of a multi-domain account, to fetch all groups for a customer, use this field
+      instead of `domain`. You can also use the `my_customer` alias to represent your
+      account's `customerId`. The `customerId` is also returned as part of the [Users](https://developers.google.com/workspace/admin/directory/v1/reference/users)
+      resource. You must provide either the `customer` or the `domain` parameter.
+    location: query
+    type: string
+  domain:
+    description: The domain name. Use this field to get groups from only one domain.
+      To return all domains for a customer account, use the `customer` query parameter
+      instead.
+    location: query
+    type: string
+  maxResults:
+    description: Maximum number of results to return. Max allowed value is 200.
+    default: '200'
+    minimum: '1'
+    location: query
+    type: integer
+    format: int32
+  orderBy:
+    description: Column to use for sorting results
+    location: query
+    type: string
+    enumDescriptions:
+    - Email of the group.
+    enum:
+    - email
+  pageToken:
+    description: Token to specify next page in the list
+    location: query
+    type: string
+  query:
+    description: Query string search. Contains one or more search clauses, each with
+      a field, operator, and value. For complete documentation, go to [Search for
+      groups](https://developers.google.com/workspace/admin/directory/v1/guides/search-groups).
+    location: query
+    type: string
+  sortOrder:
+    description: Whether to return results in ascending or descending order. Only
+      of use when orderBy is also used
+    location: query
+    type: string
+    enumDescriptions:
+    - Ascending order.
+    - Descending order.
+    enum:
+    - ASCENDING
+    - DESCENDING
+  userKey:
+    description: Email or immutable ID of the user if only those groups are to be
+      listed, the given user is a member of. If it's an ID, it should match with the
+      ID of the user object. Cannot be used with the `customer` parameter.
+    location: query
+    type: string
+response:
+  $ref: Groups

@@ -1,0 +1,19 @@
+description: Lists the delegates for the specified account. This method is only available
+  to service account clients that have been delegated domain-wide authority.
+httpMethod: GET
+path: gmail/v1/users/{userId}/settings/delegates
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.modify
+- https://www.googleapis.com/auth/gmail.readonly
+- https://www.googleapis.com/auth/gmail.settings.basic
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: ListDelegatesResponse

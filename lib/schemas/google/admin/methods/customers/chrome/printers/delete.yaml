@@ -1,0 +1,14 @@
+description: Deletes a `Printer`.
+httpMethod: DELETE
+path: admin/directory/v1/{+name}
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+parameters:
+  name:
+    description: 'Required. The name of the printer to be updated. Format: customers/{customer_id}/chrome/printers/{printer_id}'
+    pattern: ^customers/[^/]+/chrome/printers/[^/]+$
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Empty

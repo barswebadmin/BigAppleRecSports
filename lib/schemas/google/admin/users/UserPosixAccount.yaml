@@ -1,0 +1,37 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserPosixAccount
+description: JSON template for a POSIX account entry.
+type: object
+properties:
+  accountId:
+    description: A POSIX account field identifier.
+    type: string
+  gecos:
+    description: The GECOS (user information) for this account.
+    type: string
+  gid:
+    description: The default group ID.
+    type: string
+    format: uint64
+  homeDirectory:
+    description: The path to the home directory for this account.
+    type: string
+  operatingSystemType:
+    description: The operating system type for this account.
+    type: string
+  primary:
+    description: If this is user's primary account within the SystemId.
+    type: boolean
+  shell:
+    description: The path to the login shell for this account.
+    type: string
+  systemId:
+    description: System identifier for which account Username or Uid apply to.
+    type: string
+  uid:
+    description: The POSIX compliant user ID.
+    type: string
+    format: uint64
+  username:
+    description: The username of the account.
+    type: string

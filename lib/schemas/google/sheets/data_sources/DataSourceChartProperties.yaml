@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataSourceChartProperties
+description: Properties of a data source chart.
+type: object
+properties:
+  dataExecutionStatus:
+    readOnly: true
+    $ref: DataExecutionStatus
+    description: Output only. The data execution status.
+  dataSourceId:
+    description: ID of the data source that the chart is associated with.
+    type: string

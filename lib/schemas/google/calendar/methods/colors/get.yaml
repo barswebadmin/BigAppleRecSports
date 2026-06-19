@@ -1,0 +1,15 @@
+description: Returns the color definitions for calendars and events.
+httpMethod: GET
+path: colors
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.app.created
+- https://www.googleapis.com/auth/calendar.calendarlist
+- https://www.googleapis.com/auth/calendar.calendarlist.readonly
+- https://www.googleapis.com/auth/calendar.events.freebusy
+- https://www.googleapis.com/auth/calendar.events.owned
+- https://www.googleapis.com/auth/calendar.events.owned.readonly
+- https://www.googleapis.com/auth/calendar.events.public.readonly
+- https://www.googleapis.com/auth/calendar.readonly
+response:
+  $ref: Colors

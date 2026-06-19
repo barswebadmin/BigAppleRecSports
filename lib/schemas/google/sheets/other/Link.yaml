@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Link
+description: An external or local reference.
+type: object
+properties:
+  uri:
+    description: The link identifier.
+    type: string

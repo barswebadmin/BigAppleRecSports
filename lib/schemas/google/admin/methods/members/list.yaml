@@ -1,0 +1,38 @@
+description: Retrieves a paginated list of all members in a group. This method times
+  out after 60 minutes. For more information, see [Troubleshoot error codes](https://developers.google.com/workspace/admin/directory/v1/guides/troubleshoot-error-codes).
+httpMethod: GET
+path: admin/directory/v1/groups/{groupKey}/members
+scopes:
+- https://www.googleapis.com/auth/admin.directory.group
+- https://www.googleapis.com/auth/admin.directory.group.member
+- https://www.googleapis.com/auth/admin.directory.group.member.readonly
+- https://www.googleapis.com/auth/admin.directory.group.readonly
+parameters:
+  groupKey:
+    description: Identifies the group in the API request. The value can be the group's
+      email address, group alias, or the unique group ID.
+    location: path
+    required: true
+    type: string
+  includeDerivedMembership:
+    description: 'Whether to list indirect memberships. Default: false.'
+    location: query
+    type: boolean
+  maxResults:
+    description: Maximum number of results to return. Max allowed value is 200.
+    default: '200'
+    minimum: '1'
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: Token to specify next page in the list.
+    location: query
+    type: string
+  roles:
+    description: The `roles` query parameter allows you to retrieve group members
+      by role. Allowed values are `OWNER`, `MANAGER`, and `MEMBER`.
+    location: query
+    type: string
+response:
+  $ref: Members

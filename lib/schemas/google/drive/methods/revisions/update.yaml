@@ -1,0 +1,23 @@
+description: Updates a revision with patch semantics. For more information, see [Manage
+  file revisions](https://developers.google.com/workspace/drive/api/guides/manage-revisions).
+httpMethod: PATCH
+path: files/{fileId}/revisions/{revisionId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+request:
+  $ref: Revision
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  revisionId:
+    description: The ID of the revision.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Revision

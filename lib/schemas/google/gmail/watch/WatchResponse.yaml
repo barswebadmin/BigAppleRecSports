@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: WatchResponse
+description: Push notification watch response.
+type: object
+properties:
+  historyId:
+    description: The ID of the mailbox's current history record.
+    type: string
+    format: uint64
+  expiration:
+    description: When Gmail will stop sending notifications for mailbox updates (epoch
+      millis). Call `watch` again before this time to renew the watch.
+    type: string
+    format: int64

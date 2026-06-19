@@ -1,0 +1,17 @@
+description: Stops watching resources through this channel. For more information,
+  see [Notifications for resource changes](https://developers.google.com/workspace/drive/api/guides/push).
+httpMethod: POST
+path: channels/stop
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.photos.readonly
+- https://www.googleapis.com/auth/drive.readonly
+request:
+  parameterName: resource
+  $ref: Channel
+parameters: {}

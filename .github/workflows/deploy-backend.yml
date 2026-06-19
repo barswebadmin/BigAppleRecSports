@@ -12,8 +12,12 @@ on:
       - 'backend/**'
       - '.github/workflows/deploy-backend.yml'
 
-  # Allow manual deployment
   workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deployment'
+        required: false
+        default: 'Manual deployment'
 
 # TODO: Future enhancement - Add pull_request trigger for preview/staging deployments
 # This would allow testing deployments before merging PRs.
@@ -29,11 +33,6 @@ on:
 #     paths:
 #       - 'backend/**'
 #     types: [opened, synchronize, reopened]
-    inputs:
-      reason:
-        description: 'Reason for manual deployment'
-        required: false
-        default: 'Manual deployment'
 
 jobs:
   deploy:

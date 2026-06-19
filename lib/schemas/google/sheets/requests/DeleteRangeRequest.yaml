@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteRangeRequest
+description: Deletes a range of cells, shifting other cells into the deleted area.
+type: object
+properties:
+  shiftDimension:
+    description: The dimension from which deleted cells will be replaced with. If
+      ROWS, existing cells will be shifted upward to replace the deleted cells. If
+      COLUMNS, existing cells will be shifted left to replace the deleted cells.
+    enum:
+    - DIMENSION_UNSPECIFIED
+    - ROWS
+    - COLUMNS
+    enumDescriptions:
+    - The default value, do not use.
+    - Operates on the rows of a sheet.
+    - Operates on the columns of a sheet.
+    type: string
+  range:
+    $ref: GridRange
+    description: The range of cells to delete.

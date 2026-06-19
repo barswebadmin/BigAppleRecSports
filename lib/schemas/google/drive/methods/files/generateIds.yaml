@@ -1,0 +1,33 @@
+description: Generates a set of file IDs which can be provided in create or copy requests.
+  For more information, see [Create and manage files](https://developers.google.com/workspace/drive/api/guides/create-file).
+httpMethod: GET
+path: files/generateIds
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+parameters:
+  count:
+    description: The number of IDs to return.
+    default: '10'
+    minimum: '1'
+    maximum: '1000'
+    location: query
+    type: integer
+    format: int32
+  space:
+    description: 'The space in which the IDs can be used to create files. Supported
+      values are `drive` and `appDataFolder`. (Default: `drive`.) For more information,
+      see [File organization](https://developers.google.com/workspace/drive/api/guides/about-files#file-organization).'
+    default: drive
+    location: query
+    type: string
+  type:
+    description: 'The type of items which the IDs can be used for. Supported values
+      are `files` and `shortcuts`. Note that `shortcuts` are only supported in the
+      `drive` `space`. (Default: `files`.) For more information, see [File organization](https://developers.google.com/workspace/drive/api/guides/about-files#file-organization).'
+    default: files
+    location: query
+    type: string
+response:
+  $ref: GeneratedIds

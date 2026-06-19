@@ -1,0 +1,79 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Sheet
+description: A sheet in a spreadsheet.
+type: object
+properties:
+  data:
+    type: array
+    description: Data in the grid, if this is a grid sheet. The number of GridData
+      objects returned is dependent on the number of ranges requested on this sheet.
+      For example, if this is representing `Sheet1`, and the spreadsheet was requested
+      with ranges `Sheet1!A1:C10` and `Sheet1!D15:E20`, then the first GridData will
+      have a startRow/startColumn of `0`, while the second one will have `startRow
+      14` (zero-based row 15), and `startColumn 3` (zero-based column D). For a DATA_SOURCE
+      sheet, you can not request a specific range, the GridData contains all the values.
+    items:
+      $ref: GridData
+  columnGroups:
+    type: array
+    description: All column groups on this sheet, ordered by increasing range start
+      index, then by group depth.
+    items:
+      $ref: DimensionGroup
+  merges:
+    description: The ranges that are merged together.
+    items:
+      $ref: GridRange
+    type: array
+  bandedRanges:
+    description: The banded (alternating colors) ranges on this sheet.
+    items:
+      $ref: BandedRange
+    type: array
+  tables:
+    type: array
+    description: The tables on this sheet.
+    items:
+      $ref: Table
+  basicFilter:
+    description: The filter on this sheet, if any.
+    $ref: BasicFilter
+  developerMetadata:
+    description: The developer metadata associated with a sheet.
+    items:
+      $ref: DeveloperMetadata
+    type: array
+  protectedRanges:
+    description: The protected ranges in this sheet.
+    items:
+      $ref: ProtectedRange
+    type: array
+  filterViews:
+    type: array
+    description: The filter views in this sheet.
+    items:
+      $ref: FilterView
+  charts:
+    description: The specifications of every chart on this sheet.
+    items:
+      $ref: EmbeddedChart
+    type: array
+  properties:
+    $ref: SheetProperties
+    description: The properties of the sheet.
+  conditionalFormats:
+    description: The conditional format rules in this sheet.
+    items:
+      $ref: ConditionalFormatRule
+    type: array
+  rowGroups:
+    description: All row groups on this sheet, ordered by increasing range start index,
+      then by group depth.
+    items:
+      $ref: DimensionGroup
+    type: array
+  slicers:
+    description: The slicers on this sheet.
+    items:
+      $ref: Slicer
+    type: array

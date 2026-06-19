@@ -1,0 +1,19 @@
+description: Permanently deletes all of the user's trashed files. For more information,
+  see [Trash or delete files and folders](https://developers.google.com/workspace/drive/api/guides/delete).
+httpMethod: DELETE
+path: files/trash
+scopes:
+- https://www.googleapis.com/auth/drive
+parameters:
+  enforceSingleParent:
+    description: 'Deprecated: If an item isn''t in a shared drive and its last parent
+      is deleted but the item itself isn''t, the item will be placed under its owner''s
+      root.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  driveId:
+    description: If set, empties the trash of the provided shared drive.
+    location: query
+    type: string

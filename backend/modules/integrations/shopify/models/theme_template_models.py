@@ -6,10 +6,10 @@ with typed fields that match Shopify's API structure exactly, plus display names
 """
 
 from typing import Optional, Dict, Any, List
-from pydantic import Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 
-from shared.model_config import ApiModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 
 class FontWeight(str, Enum):
@@ -36,7 +36,7 @@ class FontStyle(str, Enum):
     OBLIQUE = "oblique"
 
 
-class FontConfig(ApiModel):
+class FontConfig(BaseModel):
     """Font configuration for text elements."""
     family: Optional[str] = Field(None, description="Font family/type")
     size_desktop: Optional[int] = Field(None, description="Font size (desktop)")
@@ -62,7 +62,8 @@ class FontConfig(ApiModel):
     )
 
 
-class PaddingConfig(ApiModel):
+class PaddingConfig(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Padding configuration for elements."""
     top: Optional[int] = Field(None, description="Padding top")
     bottom: Optional[int] = Field(None, description="Padding bottom")
@@ -86,7 +87,8 @@ class PaddingConfig(ApiModel):
     )
 
 
-class BlockSettings(ApiModel):
+class BlockSettings(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Block settings - represents a person/leadership entry. Matches Shopify JSON exactly."""
     # Text content
     text: Optional[str] = Field(None, description="Name")
@@ -157,7 +159,8 @@ class BlockSettings(ApiModel):
     )
 
 
-class Block(ApiModel):
+class Block(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """A single block within a section (represents one person/leadership entry)."""
     id: str = Field(..., description="Block ID (e.g., 'block_abc123')")
     type: str = Field(..., description="Block type (e.g., 'text')")
@@ -177,7 +180,8 @@ class Block(ApiModel):
     )
 
 
-class SectionSettings(ApiModel):
+class SectionSettings(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Section/Container settings. Matches Shopify JSON exactly."""
     # Container
     container: Optional[str] = Field(None, description="Container width (e.g., 'container', '1170')")
@@ -246,7 +250,8 @@ class SectionSettings(ApiModel):
     )
 
 
-class Section(ApiModel):
+class Section(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """A section/container within a template (represents a department)."""
     id: str = Field(..., description="Section ID (e.g., 'main', 'leadership_section')")
     type: str = Field(..., description="Section type (e.g., 'custom-service-block')")
@@ -268,7 +273,8 @@ class Section(ApiModel):
     )
 
 
-class ThemeTemplate(ApiModel):
+class ThemeTemplate(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Root model for a Shopify theme template."""
     theme_id: str = Field(..., description="Theme ID")
     asset_key: str = Field(..., description="Asset key (e.g., 'templates/page.template-about-us-2.json')")

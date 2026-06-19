@@ -1,0 +1,28 @@
+description: Counts ChromeOS devices matching the request.
+httpMethod: GET
+path: admin/directory/v1/customer/{customerId}/devices/chromeos:countChromeOsDevices
+scopes:
+- https://www.googleapis.com/auth/admin.directory.device.chromeos
+- https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly
+parameters:
+  customerId:
+    description: Required. Immutable ID of the Google Workspace account.
+    location: path
+    required: true
+    type: string
+  orgUnitPath:
+    description: Optional. The full path of the organizational unit (minus the leading
+      `/`) or its unique ID.
+    location: query
+    type: string
+  filter:
+    description: Optional. Search string in the format given at [List query operators](https://developers.google.com/workspace/admin/directory/v1/list-query-operators).
+    location: query
+    type: string
+  includeChildOrgunits:
+    description: Optional. Return devices from all child orgunits, as well as the
+      specified org unit. If this is set to true, 'orgUnitPath' must be provided.
+    location: query
+    type: boolean
+response:
+  $ref: CountChromeOsDevicesResponse

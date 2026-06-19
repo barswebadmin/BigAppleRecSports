@@ -6,6 +6,7 @@ requires-python = ">=3.14"
 dependencies = [
     # Monorepo Dependencies
     "bars-shared-utilities",
+    "shopify-client",
     
     # Web Framework & Server
     "fastapi==0.115.6",
@@ -46,8 +47,8 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.setuptools]
 packages = ["backend"]
@@ -66,5 +67,6 @@ addopts = "-v --tb=short"
 [tool.uv.sources]
 # Local package resolution for monorepo
 bars-shared-utilities = { path = "../shared_utilities", editable = true }
+shopify-client = { path = "../lib/clients/shopify-client" }
 
 # Note: Ruff configuration moved to root pyproject.toml for consistency

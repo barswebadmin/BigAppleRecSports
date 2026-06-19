@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListFormResponsesResponse
+description: Response to a ListFormResponsesRequest.
+type: object
+properties:
+  responses:
+    description: 'The returned form responses. Note: The `formId` field is not returned
+      in the `FormResponse` object for list requests.'
+    items:
+      $ref: FormResponse
+    type: array
+  nextPageToken:
+    description: If set, there are more responses. To get the next page of responses,
+      provide this as `page_token` in a future request.
+    type: string

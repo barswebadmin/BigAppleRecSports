@@ -5,7 +5,7 @@ Monorepo: Python backend + Deno/Slack frontend + Shopify integration.
 ## Project structure
 
 - `backend/` — Python (FastAPI). AWS Lambda deploy target.
-- `slack-apps/registrations/` — Deno Run-on-Slack app (waitlist + refund workflows).
+- `slack-apps/registrations/` — Deno Run-on-Slack app (waitlist + refund workflows). Prefer `slack-block-builder` (import map `slack-block-builder`) for Block Kit; a Claude Code `PostToolUse` hook nudges the agent after edits under `slack-apps/` (canonical script: `scripts/claude-hooks/post_slack_apps_edit_block_builder_reminder.sh`, symlinked from `.claude/hooks/`).
 - `lib/` — shared Python domain modules (registrations, shopify, etc.).
 - `cli/` — Python CLI tools. Each uses `_core/`, `commands/`, `utils.py` layout.
 - `infra/` — AWS CDK / SAM infrastructure.

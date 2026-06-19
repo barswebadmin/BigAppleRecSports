@@ -1,0 +1,45 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SortSpec
+description: A sort order associated with a specific column or row.
+type: object
+properties:
+  backgroundColorStyle:
+    description: The background fill color to sort by; cells with this fill color
+      are sorted to the top. Mutually exclusive with foreground_color, and must be
+      an RGB-type color. If background_color is also set, this field takes precedence.
+    $ref: ColorStyle
+  sortOrder:
+    type: string
+    enumDescriptions:
+    - Default value, do not use this.
+    - Sort ascending.
+    - Sort descending.
+    enum:
+    - SORT_ORDER_UNSPECIFIED
+    - ASCENDING
+    - DESCENDING
+    description: The order data should be sorted.
+  foregroundColor:
+    description: 'The foreground color to sort by; cells with this foreground color
+      are sorted to the top. Mutually exclusive with background_color. Deprecated:
+      Use foreground_color_style.'
+    deprecated: true
+    $ref: Color
+  dimensionIndex:
+    description: The dimension the sort should be applied to.
+    format: int32
+    type: integer
+  dataSourceColumnReference:
+    description: Reference to a data source column.
+    $ref: DataSourceColumnReference
+  backgroundColor:
+    $ref: Color
+    description: 'The background fill color to sort by; cells with this fill color
+      are sorted to the top. Mutually exclusive with foreground_color. Deprecated:
+      Use background_color_style.'
+    deprecated: true
+  foregroundColorStyle:
+    $ref: ColorStyle
+    description: The foreground color to sort by; cells with this foreground color
+      are sorted to the top. Mutually exclusive with background_color, and must be
+      an RGB-type color. If foreground_color is also set, this field takes precedence.

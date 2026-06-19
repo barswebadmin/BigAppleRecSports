@@ -1,0 +1,6 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PageBreakItem
+description: A page break. The title and description of this item are shown at the
+  top of the new page.
+type: object
+properties: {}

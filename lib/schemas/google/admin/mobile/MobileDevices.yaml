@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MobileDevices
+description: ''
+type: object
+properties:
+  kind:
+    description: Kind of resource this is.
+    default: admin#directory#mobiledevices
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  mobiledevices:
+    description: A list of Mobile Device objects.
+    type: array
+    items:
+      $ref: MobileDevice
+  nextPageToken:
+    description: Token used to access next page of this result.
+    type: string

@@ -1,0 +1,20 @@
+description: Updates a deployment of an Apps Script project.
+httpMethod: PUT
+path: v1/projects/{scriptId}/deployments/{deploymentId}
+scopes:
+- https://www.googleapis.com/auth/script.deployments
+request:
+  $ref: UpdateDeploymentRequest
+parameters:
+  scriptId:
+    required: true
+    type: string
+    description: The script project's Drive ID.
+    location: path
+  deploymentId:
+    required: true
+    type: string
+    description: The deployment ID for this deployment.
+    location: path
+response:
+  $ref: Deployment

@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: TimePeriod
+description: ''
+type: object
+properties:
+  end:
+    type: string
+    description: The (exclusive) end of the time period.
+    format: date-time
+  start:
+    type: string
+    description: The (inclusive) start of the time period.
+    format: date-time

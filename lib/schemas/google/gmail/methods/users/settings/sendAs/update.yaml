@@ -1,0 +1,26 @@
+description: Updates a send-as alias. If a signature is provided, Gmail will sanitize
+  the HTML before saving it with the alias. Addresses other than the primary address
+  for the account can only be updated by service account clients that have been delegated
+  domain-wide authority.
+httpMethod: PUT
+path: gmail/v1/users/{userId}/settings/sendAs/{sendAsEmail}
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.basic
+- https://www.googleapis.com/auth/gmail.settings.sharing
+request:
+  $ref: SendAs
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  sendAsEmail:
+    description: The send-as alias to be updated.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: SendAs

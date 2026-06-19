@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: LookerDataSourceSpec
+description: The specification of a Looker data source.
+type: object
+properties:
+  instanceUri:
+    description: A Looker instance URL.
+    type: string
+  model:
+    description: Name of a Looker model.
+    type: string
+  explore:
+    description: Name of a Looker model explore.
+    type: string

@@ -1,0 +1,36 @@
+title: "Point of Contact"
+description: "Contact information for individuals associated with venues and organizations"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      firstName:
+        type: string
+
+      lastName:
+        type: string
+
+      primaryEmail:
+        type: string
+        format: email
+
+      alternativeEmail:
+        type: string
+        format: email
+
+      primaryPhone:
+        $ref: "../primitives/phoneNumber.yaml#/"
+
+      alternativePhone:
+        $ref: "../primitives/phoneNumber.yaml#/"
+
+      title:
+        type: string
+        examples: ["Facility Manager", "Athletic Director", "Site Coordinator"]
+
+      organizationKey:
+        type: string
+        pattern: "^[a-z0-9-]+$"
+        examples: ["nyc-parks", "john-jay-college", "frames-bowling"]
+
+    required: [firstName, lastName, primaryEmail, organizationKey]

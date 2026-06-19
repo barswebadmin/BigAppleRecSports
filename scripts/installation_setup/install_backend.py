@@ -78,19 +78,12 @@ def install_backend(skip_shared_utilities: bool = False) -> InstallResult:
             _run(["uv", "venv"], cwd=backend_dir, timeout=300, check=True)
             notes.append(f"created {venv_dir.relative_to(REPO_ROOT)}")
 
-        # Install shared_utilities first (editable mode) unless already installed
-        if not skip_shared_utilities and shared_utilities_dir.exists():
-            _run(["uv", "pip", "install", "-e", str(shared_utilities_dir)], cwd=backend_dir, timeout=300, check=True)
-            notes.append("installed shared_utilities (editable)")
-        elif skip_shared_utilities:
-            notes.append("skipped shared_utilities (already installed)")
-
         # Install backend dependencies from pyproject.toml
-        _run(["uv", "pip", "install", "-e", "."], cwd=backend_dir, timeout=1800, check=True)
+        _run(["uv", "sync"], cwd=backend_dir, timeout=1800, check=True)
         notes.append("installed backend dependencies")
 
         # Install dev dependencies
-        _run(["uv", "pip", "install", "-e", ".[dev]"], cwd=backend_dir, timeout=1800, check=True)
+        _run(["uv", "sync", "--extra", "dev"], cwd=backend_dir, timeout=1800, check=True)
         notes.append("installed backend dev dependencies")
 
     except subprocess.CalledProcessError as e:

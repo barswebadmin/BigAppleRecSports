@@ -12,11 +12,6 @@ import json
 from typing import Dict, Any
 
 from controllers.api.base import BaseAPIController
-from shared.api_models import (
-    APIError,
-    ValidationAPIError,
-    APIResponse
-)
 
 
 class AdminController(BaseAPIController):
@@ -42,7 +37,7 @@ class AdminController(BaseAPIController):
     # GOOGLE OPERATIONS
     # ============================================================================
 
-    async def handle_create_google_alias(self, request_body: Dict[str, Any]) -> APIResponse:
+    async def handle_create_google_alias(self, request_body: Dict[str, Any]) -> dict:
         """
         Handle creation of Google email alias.
 
@@ -53,21 +48,17 @@ class AdminController(BaseAPIController):
             request_body: Dictionary containing alias creation parameters
 
         Returns:
-            APIResponse with success status and operation details
+            dict with success status and operation details
         """
         try:
             self.log_api_request("POST", "/admin/google/emails/aliases", request_body)
 
-            # Print request body as indented JSON (as requested)
             print("=== Google Alias Creation Request ===")
             print(json.dumps(request_body, indent=2))
             print("=====================================")
 
-            # Log the operation
             self.log_service_call("create_google_alias", request_body)
 
-            # For now, return success response with the request data
-            # Future: Replace with actual Google API call via service
             response_data = {
                 "operation": "create_google_alias",
                 "request_received": request_body,
@@ -75,15 +66,12 @@ class AdminController(BaseAPIController):
                 "message": "Request body printed to console as indented JSON"
             }
 
-            return APIResponse(**self.format_success_response(
+            return self.format_success_response(
                 data=response_data,
                 message="Google alias creation request processed (printed to console)"
-            ))
+            )
 
-        except ValidationAPIError:
-            # Re-raise validation errors as-is
-            raise
-        except APIError:
+        except ValueError:
             raise
         except Exception as e:
             self.logger.error("Error handling Google alias creation: %s", e)

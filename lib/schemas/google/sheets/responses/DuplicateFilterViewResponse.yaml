@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DuplicateFilterViewResponse
+description: The result of a filter view being duplicated.
+type: object
+properties:
+  filter:
+    $ref: FilterView
+    description: The newly created filter.

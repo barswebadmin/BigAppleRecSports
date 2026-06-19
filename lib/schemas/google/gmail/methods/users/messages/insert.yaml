@@ -1,0 +1,37 @@
+description: Directly inserts a message into only this user's mailbox similar to `IMAP
+  APPEND`, bypassing most scanning and classification. Does not send a message.
+httpMethod: POST
+path: gmail/v1/users/{userId}/messages
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.insert
+- https://www.googleapis.com/auth/gmail.modify
+request:
+  $ref: Message
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  internalDateSource:
+    description: Source for Gmail's internal date of the message.
+    default: receivedTime
+    location: query
+    type: string
+    enumDescriptions:
+    - Internal message date set to current time when received by Gmail.
+    - Internal message time based on 'Date' header in email, when valid.
+    enum:
+    - receivedTime
+    - dateHeader
+  deleted:
+    description: Mark the email as permanently deleted (not TRASH) and only visible
+      in Google Vault to a Vault administrator. Only used for Google Workspace accounts.
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: Message

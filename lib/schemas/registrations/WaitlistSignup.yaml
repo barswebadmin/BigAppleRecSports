@@ -1,0 +1,57 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "WaitlistSignup"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      programId:
+        allOf:
+          - $ref: "../primitives/foreignKey.yaml#/"
+          - properties:
+              table:
+                const: "RegularSeason"
+        description: "Foreign key reference to RegularSeason"
+
+      memberId:
+        allOf:
+          - $ref: "../primitives/foreignKey.yaml#/"
+          - properties:
+              table:
+                const: "members"
+        description: "Foreign key reference to members table"
+
+      shopifyCustomerId:
+        type: string
+
+      firstName:
+        type: string
+
+      lastName:
+        type: string
+
+      emailAddress:
+        type: string
+        format: email
+
+      phoneNumber:
+        $ref: "../primitives/phoneNumber.yaml#/"
+
+      contactedAt:
+        type: string
+        format: date-time
+
+      registeredAt:
+        type: string
+        format: date-time
+
+      cancelledAt:
+        type: string
+        format: date-time
+
+      expiredAt:
+        type: string
+        format: date-time
+
+    required: [programId, firstName, lastName, emailAddress]
+
+additionalProperties: true

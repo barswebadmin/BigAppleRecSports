@@ -1,0 +1,67 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CseKeyPair
+description: 'A client-side encryption S/MIME key pair, which is comprised of a public
+  key, its certificate chain, and metadata for its paired private key. Gmail uses
+  the key pair to complete the following tasks: - Sign outgoing client-side encrypted
+  messages. - Save and reopen drafts of client-side encrypted messages. - Save and
+  reopen sent messages. - Decrypt incoming or archived S/MIME messages. For administrators
+  managing identities and keypairs for users in their organization, requests require
+  authorization with a [service account](https://developers.google.com/identity/protocols/OAuth2ServiceAccount)
+  that has [domain-wide delegation authority](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#delegatingauthority)
+  to impersonate users with the `https://www.googleapis.com/auth/gmail.settings.basic`
+  scope. For users managing their own identities and keypairs, requests require [hardware
+  key encryption](https://support.google.com/a/answer/14153163) turned on and configured.'
+type: object
+properties:
+  keyPairId:
+    description: Output only. The immutable ID for the client-side encryption S/MIME
+      key pair.
+    readOnly: true
+    type: string
+  pkcs7:
+    description: Input only. The public key and its certificate chain. The chain must
+      be in [PKCS#7](https://en.wikipedia.org/wiki/PKCS_7) format and use PEM encoding
+      and ASCII armor.
+    type: string
+  pem:
+    description: Output only. The public key and its certificate chain, in [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail)
+      format.
+    readOnly: true
+    type: string
+  subjectEmailAddresses:
+    description: Output only. The email address identities that are specified on the
+      leaf certificate.
+    readOnly: true
+    type: array
+    items:
+      type: string
+  enablementState:
+    description: Output only. The current state of the key pair.
+    readOnly: true
+    type: string
+    enumDescriptions:
+    - The current state of the key pair is not set. The key pair is neither turned
+      on nor turned off.
+    - The key pair is turned on. For any email messages that this key pair encrypts,
+      Gmail decrypts the messages and signs any outgoing mail with the private key.
+      To turn on a key pair, use the EnableCseKeyPair method.
+    - The key pair is turned off. Authenticated users cannot decrypt email messages
+      nor sign outgoing messages. If a key pair is turned off for more than 30 days,
+      you can permanently delete it. To turn off a key pair, use the DisableCseKeyPair
+      method.
+    enum:
+    - stateUnspecified
+    - enabled
+    - disabled
+  disableTime:
+    description: Output only. If a key pair is set to `DISABLED`, the time that the
+      key pair's state changed from `ENABLED` to `DISABLED`. This field is present
+      only when the key pair is in state `DISABLED`.
+    readOnly: true
+    type: string
+    format: google-datetime
+  privateKeyMetadata:
+    description: Metadata for instances of this key pair's private key.
+    type: array
+    items:
+      $ref: CsePrivateKeyMetadata

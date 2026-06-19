@@ -1,0 +1,17 @@
+description: Updates vacation responder settings.
+httpMethod: PUT
+path: gmail/v1/users/{userId}/settings/vacation
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.basic
+request:
+  $ref: VacationSettings
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: VacationSettings

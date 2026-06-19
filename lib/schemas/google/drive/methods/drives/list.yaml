@@ -1,0 +1,35 @@
+description: ' Lists the user''s shared drives. This method accepts the `q` parameter,
+  which is a search query combining one or more search terms. For more information,
+  see the [Search for shared drives](/workspace/drive/api/guides/search-shareddrives)
+  guide.'
+httpMethod: GET
+path: drives
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  pageSize:
+    description: Maximum number of shared drives to return per page.
+    default: '10'
+    minimum: '1'
+    maximum: '100'
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: Page token for shared drives.
+    location: query
+    type: string
+  q:
+    description: Query string for searching shared drives.
+    location: query
+    type: string
+  useDomainAdminAccess:
+    description: Issue the request as a domain administrator; if set to true, then
+      all shared drives of the domain in which the requester is an administrator are
+      returned.
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: DriveList

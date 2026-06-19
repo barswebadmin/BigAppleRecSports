@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Image
+description: Data representing an image.
+type: object
+properties:
+  sourceUri:
+    description: Input only. The source URI is the URI used to insert the image. The
+      source URI can be empty when fetched.
+    type: string
+  altText:
+    type: string
+    description: A description of the image that is shown on hover and read by screenreaders.
+  contentUri:
+    readOnly: true
+    description: Output only. A URI from which you can download the image; this is
+      valid only for a limited time.
+    type: string
+  properties:
+    $ref: MediaProperties
+    description: Properties of an image.

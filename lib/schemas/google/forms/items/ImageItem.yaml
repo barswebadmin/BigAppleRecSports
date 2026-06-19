@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ImageItem
+description: An item containing an image.
+type: object
+properties:
+  image:
+    description: Required. The image displayed in the item.
+    $ref: Image

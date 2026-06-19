@@ -1,0 +1,48 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BaselineValueFormat
+description: Formatting options for baseline value.
+type: object
+properties:
+  textFormat:
+    $ref: TextFormat
+    description: Text formatting options for baseline value. The link field is not
+      supported.
+  negativeColor:
+    description: 'Color to be used, in case baseline value represents a negative change
+      for key value. This field is optional. Deprecated: Use negative_color_style.'
+    deprecated: true
+    $ref: Color
+  negativeColorStyle:
+    description: Color to be used, in case baseline value represents a negative change
+      for key value. This field is optional. If negative_color is also set, this field
+      takes precedence.
+    $ref: ColorStyle
+  description:
+    description: Description which is appended after the baseline value. This field
+      is optional.
+    type: string
+  positiveColor:
+    description: 'Color to be used, in case baseline value represents a positive change
+      for key value. This field is optional. Deprecated: Use positive_color_style.'
+    deprecated: true
+    $ref: Color
+  position:
+    description: Specifies the horizontal text positioning of baseline value. This
+      field is optional. If not specified, default positioning is used.
+    $ref: TextPosition
+  positiveColorStyle:
+    $ref: ColorStyle
+    description: Color to be used, in case baseline value represents a positive change
+      for key value. This field is optional. If positive_color is also set, this field
+      takes precedence.
+  comparisonType:
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - Use absolute difference between key and baseline value.
+    - Use percentage difference between key and baseline value.
+    enum:
+    - COMPARISON_TYPE_UNDEFINED
+    - ABSOLUTE_DIFFERENCE
+    - PERCENTAGE_DIFFERENCE
+    description: The comparison type of key value with baseline value.

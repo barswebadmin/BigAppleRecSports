@@ -1,0 +1,27 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FindReplaceResponse
+description: The result of the find/replace.
+type: object
+properties:
+  valuesChanged:
+    description: The number of non-formula cells changed.
+    format: int32
+    type: integer
+  rowsChanged:
+    description: The number of rows changed.
+    format: int32
+    type: integer
+  occurrencesChanged:
+    type: integer
+    description: The number of occurrences (possibly multiple within a cell) changed.
+      For example, if replacing `"e"` with `"o"` in `"Google Sheets"`, this would
+      be `"3"` because `"Google Sheets"` -> `"Googlo Shoots"`.
+    format: int32
+  formulasChanged:
+    description: The number of formula cells changed.
+    format: int32
+    type: integer
+  sheetsChanged:
+    description: The number of sheets changed.
+    format: int32
+    type: integer

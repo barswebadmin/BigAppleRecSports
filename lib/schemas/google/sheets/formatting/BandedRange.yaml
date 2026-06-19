@@ -1,0 +1,27 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BandedRange
+description: A banded (alternating colors) range in a sheet.
+type: object
+properties:
+  bandedRangeId:
+    description: The ID of the banded range. If unset, refer to banded_range_reference.
+    format: int32
+    type: integer
+  range:
+    description: The range over which these properties are applied.
+    $ref: GridRange
+  columnProperties:
+    $ref: BandingProperties
+    description: Properties for column bands. These properties are applied on a column-
+      by-column basis throughout all the columns in the range. At least one of row_properties
+      or column_properties must be specified.
+  bandedRangeReference:
+    description: Output only. The reference of the banded range, used to identify
+      the ID that is not supported by the banded_range_id.
+    readOnly: true
+    type: string
+  rowProperties:
+    description: Properties for row bands. These properties are applied on a row-by-row
+      basis throughout all the rows in the range. At least one of row_properties or
+      column_properties must be specified.
+    $ref: BandingProperties

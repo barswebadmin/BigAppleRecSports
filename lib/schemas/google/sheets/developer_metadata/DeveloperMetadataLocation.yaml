@@ -1,0 +1,32 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeveloperMetadataLocation
+description: A location where metadata may be associated in a spreadsheet.
+type: object
+properties:
+  sheetId:
+    type: integer
+    description: The ID of the sheet when metadata is associated with an entire sheet.
+    format: int32
+  dimensionRange:
+    description: Represents the row or column when metadata is associated with a dimension.
+      The specified DimensionRange must represent a single row or column. It cannot
+      be unbounded or span multiple rows or columns.
+    $ref: DimensionRange
+  locationType:
+    enumDescriptions:
+    - Default value.
+    - Developer metadata associated on an entire row dimension.
+    - Developer metadata associated on an entire column dimension.
+    - Developer metadata associated on an entire sheet.
+    - Developer metadata associated on the entire spreadsheet.
+    type: string
+    description: The type of location this object represents. This field is read-only.
+    enum:
+    - DEVELOPER_METADATA_LOCATION_TYPE_UNSPECIFIED
+    - ROW
+    - COLUMN
+    - SHEET
+    - SPREADSHEET
+  spreadsheet:
+    type: boolean
+    description: True when metadata is associated with an entire spreadsheet.

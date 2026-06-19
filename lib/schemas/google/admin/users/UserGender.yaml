@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserGender
+description: ''
+type: object
+properties:
+  addressMeAs:
+    description: AddressMeAs. A human-readable string containing the proper way to
+      refer to the profile owner by humans for example he/him/his or they/them/their.
+    type: string
+  customGender:
+    description: Custom gender.
+    type: string
+  type:
+    description: Gender.
+    type: string

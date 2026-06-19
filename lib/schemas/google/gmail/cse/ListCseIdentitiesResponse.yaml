@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListCseIdentitiesResponse
+description: ''
+type: object
+properties:
+  cseIdentities:
+    description: One page of the list of CSE identities configured for the user.
+    type: array
+    items:
+      $ref: CseIdentity
+  nextPageToken:
+    description: Pagination token to be passed to a subsequent ListCseIdentities call
+      in order to retrieve the next page of identities. If this value is not returned
+      or is the empty string, then no further pages remain.
+    type: string

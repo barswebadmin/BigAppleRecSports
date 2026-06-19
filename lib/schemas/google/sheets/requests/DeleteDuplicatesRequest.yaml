@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteDuplicatesRequest
+description: Removes rows within this range that contain values in the specified columns
+  that are duplicates of values in any previous row. Rows with identical values but
+  different letter cases, formatting, or formulas are considered to be duplicates.
+  This request also removes duplicate rows hidden from view (for example, due to a
+  filter). When removing duplicates, the first instance of each duplicate row scanning
+  from the top downwards is kept in the resulting range. Content outside of the specified
+  range isn't removed, and rows considered duplicates do not have to be adjacent to
+  each other in the range.
+type: object
+properties:
+  comparisonColumns:
+    description: The columns in the range to analyze for duplicate values. If no columns
+      are selected then all columns are analyzed for duplicates.
+    items:
+      $ref: DimensionRange
+    type: array
+  range:
+    description: The range to remove duplicates rows from.
+    $ref: GridRange

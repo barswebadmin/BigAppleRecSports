@@ -1,0 +1,29 @@
+title: "Database Record"
+description: "Standard fields for all database records"
+type: object
+properties:
+    id:
+        $ref: "./_idFlexible.yaml#/"
+
+    createdAt:
+        type: string
+        format: date-time
+        examples: ["2026-03-17T15:30:00Z"]
+
+    updatedAt:
+        type: string
+        format: date-time
+        examples: ["2026-03-17T16:45:00Z"]
+
+    deletedAt:
+        type: string
+        format: date-time
+        examples: ["2026-03-18T10:15:00Z", null]
+
+    notes:
+        type: array
+        items:
+            type: string
+        description: "General notes or comments about this record"
+
+required: [id, createdAt, updatedAt]

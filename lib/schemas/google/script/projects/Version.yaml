@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Version
+description: A resource representing a script project version. A version is a "snapshot"
+  of a script project and is similar to a read-only branched release. When creating
+  deployments, the version to use must be specified.
+type: object
+properties:
+  versionNumber:
+    format: int32
+    description: The incremental ID that is created by Apps Script when a version
+      is created. This is system assigned number and is immutable once created.
+    type: integer
+  description:
+    description: The description for this version.
+    type: string
+  createTime:
+    format: google-datetime
+    description: When the version was created.
+    type: string
+  scriptId:
+    description: The script project's Drive ID.
+    type: string

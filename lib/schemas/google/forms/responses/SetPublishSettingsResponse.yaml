@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SetPublishSettingsResponse
+description: The response of a SetPublishSettings request.
+type: object
+properties:
+  formId:
+    type: string
+    description: Required. The ID of the Form. This is same as the Form.form_id field.
+  publishSettings:
+    description: The publish settings of the form.
+    $ref: PublishSettings

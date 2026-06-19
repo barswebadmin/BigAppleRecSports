@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: WatchTarget
+description: The target for notification delivery.
+type: object
+properties:
+  topic:
+    $ref: CloudPubsubTopic
+    description: A Pub/Sub topic. To receive notifications, the topic must grant publish
+      privileges to the Forms service account `serviceAccount:forms-notifications@system.gserviceaccount.com`.
+      Only the project that owns a topic may create a watch with it. Pub/Sub delivery
+      guarantees should be considered.

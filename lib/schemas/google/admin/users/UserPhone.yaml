@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserPhone
+description: JSON template for a phone entry.
+type: object
+properties:
+  customType:
+    description: Custom Type.
+    type: string
+  primary:
+    description: If this is user's primary phone or not.
+    type: boolean
+  type:
+    description: Each entry can have a type which indicates standard types of that
+      entry. For example phone could be of home_fax work mobile etc. In addition to
+      the standard type an entry can have a custom type and can give it any name.
+      Such types should have the CUSTOM value as type and also have a customType value.
+    type: string
+  value:
+    description: Phone number.
+    type: string

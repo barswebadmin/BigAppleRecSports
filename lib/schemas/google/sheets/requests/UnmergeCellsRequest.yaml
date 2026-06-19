@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UnmergeCellsRequest
+description: Unmerges cells in the given range.
+type: object
+properties:
+  range:
+    $ref: GridRange
+    description: The range within which all cells should be unmerged. If the range
+      spans multiple merges, all will be unmerged. The range must not partially span
+      any merge.

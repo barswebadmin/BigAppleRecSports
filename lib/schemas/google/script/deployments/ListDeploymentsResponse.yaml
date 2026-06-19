@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListDeploymentsResponse
+description: Response with the list of deployments for the specified Apps Script project.
+type: object
+properties:
+  deployments:
+    description: The list of deployments.
+    type: array
+    items:
+      $ref: Deployment
+  nextPageToken:
+    description: The token that can be used in the next call to get the next page
+      of results.
+    type: string

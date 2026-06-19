@@ -27,9 +27,16 @@ log_info "🧹 Cleaning project: $(basename "$PROJECT_DIR")"
 
 CLEANED_COUNT=0
 
-# Clean build directory
+# Clean deploy temp directories
+if [ -d "$PROJECT_DIR/deploy_temp" ]; then
+    log_info "  Removing deploy_temp/ directory..."
+    rm -rf "$PROJECT_DIR/deploy_temp"
+    CLEANED_COUNT=$((CLEANED_COUNT + 1))
+fi
+
+# Clean legacy build directory (for backwards compatibility)
 if [ -d "$PROJECT_DIR/build" ]; then
-    log_info "  Removing build/ directory..."
+    log_info "  Removing legacy build/ directory..."
     rm -rf "$PROJECT_DIR/build"
     CLEANED_COUNT=$((CLEANED_COUNT + 1))
 fi

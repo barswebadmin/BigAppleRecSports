@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: InsertRangeRequest
+description: Inserts cells into a range, shifting the existing cells over or down.
+type: object
+properties:
+  shiftDimension:
+    enumDescriptions:
+    - The default value, do not use.
+    - Operates on the rows of a sheet.
+    - Operates on the columns of a sheet.
+    type: string
+    description: The dimension which will be shifted when inserting cells. If ROWS,
+      existing cells will be shifted down. If COLUMNS, existing cells will be shifted
+      right.
+    enum:
+    - DIMENSION_UNSPECIFIED
+    - ROWS
+    - COLUMNS
+  range:
+    description: The range to insert new cells into. The range is constrained to the
+      current sheet boundaries.
+    $ref: GridRange

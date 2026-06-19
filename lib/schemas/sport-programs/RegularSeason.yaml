@@ -1,0 +1,70 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "RegularSeason"
+description: "A season represents a specific instance of a league with timing, pricing, and schedule details"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - $ref: "./_league.yaml#/"
+  - type: object
+    properties:
+      shopifyProductId:
+        type: string
+
+      location:
+        type: string
+        description: "Venue key referencing a Venue record for location details (address, crossStreets, neighborhood)"
+        examples: ["vcs", "elliott", "dewitt", "chelsea-park"]
+
+      key:
+        type: string
+        description: "Format: year-season-sport-day-division + 'div'. Matches Shopify handles for newer products >= 2025."
+        examples: ["2024-summer-kickball-thursday-opendiv"]
+
+      year:
+        type: integer
+        minimum: 2009
+
+      season:
+        type: string
+        enum: ["winter", "spring", "summer", "fall"]
+
+      scheduleDetails:
+        $ref: "./_schedule-details.yaml#/"
+          
+      playersPerTeam:
+        type: integer
+        minimum: 1
+      maxTeams:
+        type: integer
+        minimum: 1
+      minimumTotalPlayers:
+        type: integer
+        description: "Minimum number of players to make the league/program viable to run"
+      maxCapacity:
+        type: integer
+
+      registrationPeriods:
+        type: object
+        description: |
+          Map keyed by period name. Each key MUST reference an entry in
+          _registration-period-templates.yaml. Common names: veteran, early, general, waitlist.
+          New period names can be added without code changes.
+        additionalProperties:
+          $ref: "#/definitions/RegistrationPeriod"
+
+      status:
+        type: string
+        enum: ["tentative", "confirmed", "announced", "published", "veteranRegistration", "earlyRegistration", "general", "waitlisted"]
+
+    required: [year, season, status]
+
+additionalProperties: true
+
+definitions:
+  RegistrationPeriod:
+    type: object
+    properties:
+      start:
+        $ref: "../primitives/isoDateTime.yaml#/"
+      shopifyVariantId:
+        type: string
+    required: []

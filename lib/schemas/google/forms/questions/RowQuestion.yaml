@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RowQuestion
+description: Configuration for a question that is part of a question group.
+type: object
+properties:
+  title:
+    description: Required. The title for the single row in the QuestionGroupItem.
+    type: string

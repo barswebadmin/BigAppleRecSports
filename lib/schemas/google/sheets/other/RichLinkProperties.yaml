@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RichLinkProperties
+description: 'Properties of a link to a Google resource (such as a file in Drive,
+  a YouTube video, a Maps address, or a Calendar event). Only Drive files can be written
+  as chips. All other rich link types are read only. URIs cannot exceed 2000 bytes
+  when writing. NOTE: Writing Drive file chips requires at least one of the `drive.file`,
+  `drive.readonly`, or `drive` OAuth scopes.'
+type: object
+properties:
+  uri:
+    type: string
+    description: Required. The URI to the link. This is always present.
+  mimeType:
+    type: string
+    readOnly: true
+    description: Output only. The [MIME type](https://developers.google.com/drive/api/v3/mime-types)
+      of the link, if there's one (for example, when it's a file in Drive).

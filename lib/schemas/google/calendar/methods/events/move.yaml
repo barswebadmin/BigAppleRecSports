@@ -1,0 +1,52 @@
+description: Moves an event to another calendar, i.e. changes an event's organizer.
+  Note that only default events can be moved; birthday, focusTime, fromGmail, outOfOffice
+  and workingLocation events cannot be moved.
+httpMethod: POST
+path: calendars/{calendarId}/events/{eventId}/move
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.events
+- https://www.googleapis.com/auth/calendar.events.owned
+parameters:
+  calendarId:
+    type: string
+    description: Calendar identifier of the source calendar where the event currently
+      is on.
+    required: true
+    location: path
+  destination:
+    type: string
+    description: Calendar identifier of the target calendar where the event is to
+      be moved to.
+    required: true
+    location: query
+  eventId:
+    type: string
+    description: Event identifier.
+    required: true
+    location: path
+  sendNotifications:
+    type: boolean
+    description: 'Deprecated. Please use sendUpdates instead.
+
+
+      Whether to send notifications about the change of the event''s organizer. Note
+      that some emails might still be sent even if you set the value to false. The
+      default is false.'
+    location: query
+  sendUpdates:
+    type: string
+    description: Guests who should receive notifications about the change of the event's
+      organizer.
+    enum:
+    - all
+    - externalOnly
+    - none
+    enumDescriptions:
+    - Notifications are sent to all guests.
+    - Notifications are sent to non-Google Calendar guests only.
+    - No notifications are sent. For calendar migration tasks, consider using the
+      Events.import method instead.
+    location: query
+response:
+  $ref: Event

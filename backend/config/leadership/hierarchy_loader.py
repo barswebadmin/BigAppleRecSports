@@ -9,7 +9,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, Optional, Any
 
-from shared.model_config import ApiModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 
 def normalize_title(title: str) -> str:
@@ -33,7 +33,8 @@ def normalize_title(title: str) -> str:
     return cleaned.lower()
 
 
-class PositionConfig(ApiModel):
+class PositionConfig(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Configuration for a single leadership position."""
     role_key: str
     title: str
@@ -41,7 +42,8 @@ class PositionConfig(ApiModel):
     required: bool = False
 
 
-class SectionConfig(ApiModel):
+class SectionConfig(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Configuration for a section of the leadership hierarchy."""
     name: str
     csv_section_headers: list[str]
@@ -49,7 +51,8 @@ class SectionConfig(ApiModel):
     is_list: bool = False
 
 
-class HierarchyConfig(ApiModel):
+class HierarchyConfig(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Complete leadership hierarchy configuration."""
     version: str
     sections: Dict[str, SectionConfig]

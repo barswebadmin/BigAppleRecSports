@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: KeyValueFormat
+description: Formatting options for key value.
+type: object
+properties:
+  position:
+    $ref: TextPosition
+    description: Specifies the horizontal text positioning of key value. This field
+      is optional. If not specified, default positioning is used.
+  textFormat:
+    description: Text formatting options for key value. The link field is not supported.
+    $ref: TextFormat

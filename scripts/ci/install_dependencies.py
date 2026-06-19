@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-"""Install dependencies for CI workflows.
+"""Install dependencies for CI workflows using uv.
 
-Note: CI uses system Python, not UV venvs. Dependencies are installed globally
-for the CI run. For local development, use UV with per-project venvs.
+CI uses uv for fast, reliable dependency installation.
 """
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-# Add shared utilities to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
 from paths import get_repo_root
 
@@ -22,38 +20,17 @@ from scripts._shared.path_utils import PROJECT_ROOT
 def install_backend_deps():
     """Install backend dependencies including dev dependencies for testing."""
     backend_dir = PROJECT_ROOT / "backend"
-    
+
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "--upgrade", "pip"],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+        ["uv", "sync"],
+        cwd=backend_dir,
+        env={**os.environ, "UV_NO_PROGRESS": "1"},
         check=True
     )
-    
-    # Install shared_utilities first
+
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "-e", str(PROJECT_ROOT / "shared_utilities")],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
-        check=True
-    )
-    
-    # Install backend dependencies from pyproject.toml
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "-e", str(backend_dir)],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
-        check=True
-    )
-    
-    # Install dev dependencies
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "-e", f"{backend_dir}[dev]"],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
-        check=True
-    )
-    
-    # Install rich for CI output formatting
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "rich"],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+        ["uv", "tool", "install", "rich"],
+        env={**os.environ, "UV_NO_PROGRESS": "1"},
         check=True
     )
 
@@ -61,13 +38,23 @@ def install_backend_deps():
 def install_lambda_deps():
     """Install Lambda test dependencies."""
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "--upgrade", "pip"],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+        ["uv", "tool", "install", "pytest"],
+        env={**os.environ, "UV_NO_PROGRESS": "1"},
         check=True
     )
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "pytest", "pytest-asyncio", "rich", "ruff==0.14.0"],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+        ["uv", "tool", "install", "pytest-asyncio"],
+        env={**os.environ, "UV_NO_PROGRESS": "1"},
+        check=True
+    )
+    subprocess.run(
+        ["uv", "tool", "install", "rich"],
+        env={**os.environ, "UV_NO_PROGRESS": "1"},
+        check=True
+    )
+    subprocess.run(
+        ["uv", "tool", "install", "ruff==0.14.0"],
+        env={**os.environ, "UV_NO_PROGRESS": "1"},
         check=True
     )
 
@@ -75,13 +62,13 @@ def install_lambda_deps():
 def install_deploy_deps():
     """Install deployment dependencies."""
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "--upgrade", "pip"],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+        ["uv", "tool", "install", "boto3"],
+        env={**os.environ, "UV_NO_PROGRESS": "1"},
         check=True
     )
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "boto3", "requests"],
-        env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_PROGRESS_BAR": "off", "PIP_NO_INPUT": "1"},
+        ["uv", "tool", "install", "requests"],
+        env={**os.environ, "UV_NO_PROGRESS": "1"},
         check=True
     )
 
@@ -101,4 +88,3 @@ if __name__ == "__main__":
     else:
         print(f"❌ Unknown command: {command}")
         sys.exit(1)
-

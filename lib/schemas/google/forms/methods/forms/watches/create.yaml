@@ -1,0 +1,22 @@
+description: Create a new watch. If a watch ID is provided, it must be unused. For
+  each invoking project, the per form limit is one watch per Watch.EventType. A watch
+  expires seven days after it is created (see Watch.expire_time).
+httpMethod: POST
+path: v1/forms/{formId}/watches
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.readonly
+- https://www.googleapis.com/auth/forms.body
+- https://www.googleapis.com/auth/forms.body.readonly
+- https://www.googleapis.com/auth/forms.responses.readonly
+request:
+  $ref: CreateWatchRequest
+parameters:
+  formId:
+    description: Required. ID of the Form to watch.
+    type: string
+    location: path
+    required: true
+response:
+  $ref: Watch

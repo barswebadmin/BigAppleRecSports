@@ -25,7 +25,10 @@ if os.getenv("ENVIRONMENT") == "production":
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routers import shopify, refunds, orders, slack, products
+from routers import shopify, slack, products
+from services.orders.routes import router as services_orders_router
+from services.refunds.routes import router as services_refunds_router
+from services.waitlists.routes import router as services_waitlists_router
 from config import config
 import logging
 import json
@@ -115,12 +118,18 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# Include routers (prefix is already defined in the router)
-app.include_router(orders.router)
-app.include_router(products.router)
-app.include_router(slack.router)
-app.include_router(shopify.router)
-# app.include_router(refunds.router)
+# Mounted in include order; FastAPI first-match resolves overlapping paths,
+# so per-service routers come first.
+ROUTERS = [
+    services_orders_router,
+    services_refunds_router,
+    services_waitlists_router,
+    products.router,
+    slack.router,
+    shopify.router,
+]
+for r in ROUTERS:
+    app.include_router(r)
 
 # Include new API routers
 from routers.shopify_api import router as shopify_api_router

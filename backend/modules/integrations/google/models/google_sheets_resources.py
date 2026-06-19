@@ -1,17 +1,19 @@
 from typing import Optional, Dict, Any, List
-from pydantic import Field
+from pydantic import BaseModel, Field
 
-from shared.model_config import ApiModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 
-class ValueRange(ApiModel):
+class ValueRange(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Sheets API ValueRange response structure."""
     range_: Optional[str] = Field(None, alias='range')  # 'range' is a Python keyword
     major_dimension: Optional[str] = None  # 'ROWS' or 'COLUMNS'
     values: Optional[list[list[str]]] = None
 
 
-class UpdateValuesResponse(ApiModel):
+class UpdateValuesResponse(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Sheets API UpdateValuesResponse structure."""
     spreadsheet_id: Optional[str] = None
     updated_cells: Optional[int] = None
@@ -20,7 +22,8 @@ class UpdateValuesResponse(ApiModel):
     updated_range: Optional[str] = None
 
 
-class BatchUpdateValuesResponse(ApiModel):
+class BatchUpdateValuesResponse(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Sheets API BatchUpdateValuesResponse structure."""
     total_updated_cells: int
     total_updated_columns: int
@@ -29,7 +32,8 @@ class BatchUpdateValuesResponse(ApiModel):
     responses: list[UpdateValuesResponse]
 
 
-class SheetDataWithFormatting(ApiModel):
+class SheetDataWithFormatting(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Sheet data including values and formatting."""
     values: List[List[str]]
     backgrounds: List[List[Dict[str, Any]]]

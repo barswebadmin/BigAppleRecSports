@@ -1,0 +1,12 @@
+description: Creates a spreadsheet, returning the newly created spreadsheet.
+httpMethod: POST
+path: v4/spreadsheets
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+request:
+  $ref: Spreadsheet
+parameters: {}
+response:
+  $ref: Spreadsheet

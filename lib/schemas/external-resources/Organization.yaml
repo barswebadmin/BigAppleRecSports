@@ -1,0 +1,54 @@
+title: "Organization"
+description: "External organizations that manage venues used by BARS"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      key:
+        type: string
+        pattern: "^[a-z0-9-]+$"
+        examples: ["parks", "hprt", "frames", "henrietta"]
+
+      name:
+        type: string
+        examples: ["NYC Parks & Recreation", "Hudson River Park Trust", "Frames", "John Jay College", "Pickle1", "PS 003"]
+
+      organizationType:
+        type: string
+        enum: ["government", "nonprofit", "private", "school", "community_center"]
+
+      pointsOfContact:
+        type: object
+        properties:
+          daily:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "points-of-contact"
+            description: "Foreign key reference to daily point of contact"
+          management:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "points-of-contact"
+            description: "Foreign key reference to management point of contact"
+          owner:
+            allOf:
+              - $ref: "../primitives/foreignKey.yaml#/"
+              - properties:
+                  table:
+                    const: "points-of-contact"
+            description: "Foreign key reference to owner point of contact"
+
+      website:
+        type: string
+        format: uri
+
+      status:
+        type: string
+        enum: ["active", "inactive"]
+        default: "active"
+
+    required: [key, name, pointsOfContact]

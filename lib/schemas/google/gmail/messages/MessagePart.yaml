@@ -1,0 +1,34 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MessagePart
+description: A single MIME message part.
+type: object
+properties:
+  partId:
+    description: The immutable ID of the message part.
+    type: string
+  mimeType:
+    description: The MIME type of the message part.
+    type: string
+  filename:
+    description: The filename of the attachment. Only present if this message part
+      represents an attachment.
+    type: string
+  headers:
+    description: List of headers on this message part. For the top-level message part,
+      representing the entire message payload, it will contain the standard RFC 2822
+      email headers such as `To`, `From`, and `Subject`.
+    type: array
+    items:
+      $ref: MessagePartHeader
+  body:
+    description: The message part body for this part, which may be empty for container
+      MIME message parts.
+    $ref: MessagePartBody
+  parts:
+    description: The child MIME message parts of this part. This only applies to container
+      MIME message parts, for example `multipart/*`. For non- container MIME message
+      part types, such as `text/plain`, this field is empty. For more information,
+      see RFC 1521.
+    type: array
+    items:
+      $ref: MessagePart

@@ -1,0 +1,20 @@
+description: Returns one or more ranges of values that match the specified data filters.
+  For more information, see [Read, write, and search metadata](https://developers.google.com/workspace/sheets/api/guides/metadata).
+  The caller must specify the spreadsheet ID and one or more DataFilters. Ranges that
+  match any of the data filters in the request will be returned.
+httpMethod: POST
+path: v4/spreadsheets/{spreadsheetId}/values:batchGetByDataFilter
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+request:
+  $ref: BatchGetValuesByDataFilterRequest
+parameters:
+  spreadsheetId:
+    description: The ID of the spreadsheet to retrieve data from.
+    required: true
+    location: path
+    type: string
+response:
+  $ref: BatchGetValuesByDataFilterResponse

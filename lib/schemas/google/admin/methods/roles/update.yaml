@@ -1,0 +1,20 @@
+description: Updates a role.
+httpMethod: PUT
+path: admin/directory/v1/customer/{customer}/roles/{roleId}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.rolemanagement
+request:
+  $ref: Role
+parameters:
+  customer:
+    description: Immutable ID of the Google Workspace account.
+    location: path
+    required: true
+    type: string
+  roleId:
+    description: Immutable ID of the role.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Role

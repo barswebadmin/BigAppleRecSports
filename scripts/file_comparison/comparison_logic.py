@@ -7,16 +7,20 @@ Handles file comparison, code block detection, and move detection.
 import difflib
 import hashlib
 import re
+import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from ._file_helpers import (
+# Ensure the directory containing this file is on sys.path so sibling modules resolve
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _file_helpers import (
     discover_files, normalize_extension, find_matching_files,
     get_files_only_in_path, read_file_lines
 )
-from ._code_block_mover import CodeBlockMoveDetector, MovedBlock
+from _code_block_mover import CodeBlockMoveDetector, MovedBlock
 
 
 # Data Classes

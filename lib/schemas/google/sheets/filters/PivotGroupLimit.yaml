@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PivotGroupLimit
+description: The count limit on rows or columns in the pivot group.
+type: object
+properties:
+  applyOrder:
+    description: The order in which the group limit is applied to the pivot table.
+      Pivot group limits are applied from lower to higher order number. Order numbers
+      are normalized to consecutive integers from 0. For write request, to fully customize
+      the applying orders, all pivot group limits should have this field set with
+      an unique number. Otherwise, the order is determined by the index in the PivotTable.rows
+      list and then the PivotTable.columns list.
+    format: int32
+    type: integer
+  countLimit:
+    description: The count limit.
+    format: int32
+    type: integer

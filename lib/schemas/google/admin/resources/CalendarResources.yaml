@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CalendarResources
+description: 'Public API: Resources.calendars'
+type: object
+properties:
+  kind:
+    description: Identifies this as a collection of CalendarResources. This is always
+      `admin#directory#resources#calendars#calendarResourcesList`.
+    default: admin#directory#resources#calendars#calendarResourcesList
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  items:
+    description: The CalendarResources in this page of results.
+    type: array
+    items:
+      $ref: CalendarResource
+  nextPageToken:
+    description: The continuation token, used to page through large result sets. Provide
+      this value in a subsequent request to return the next page of results.
+    type: string

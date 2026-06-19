@@ -68,7 +68,7 @@ def install_root() -> InstallResult:
     # Install dev dependencies
     print("  Installing dev dependencies (ruff, pytest, mypy, etc.)...")
     result = subprocess.run(
-        ["uv", "pip", "install", "-e", ".[dev]"],
+        ["uv", "sync", "--extra", "dev"],
         cwd=repo_root,
         capture_output=True,
         text=True

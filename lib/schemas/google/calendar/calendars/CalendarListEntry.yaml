@@ -1,0 +1,114 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CalendarListEntry
+description: ''
+type: object
+properties:
+  accessRole:
+    type: string
+    description: "The effective access role that the authenticated user has on the\
+      \ calendar. Read-only. Possible values are:  \n- \"freeBusyReader\" - Provides\
+      \ read access to free/busy information. \n- \"reader\" - Provides read access\
+      \ to the calendar. Private events will appear to users with reader access, but\
+      \ event details will be hidden. \n- \"writer\" - Provides read and write access\
+      \ to the calendar. Private events will appear to users with writer access, and\
+      \ event details will be visible. \n- \"owner\" - Provides manager access to\
+      \ the calendar. This role has all of the permissions of the writer role with\
+      \ the additional ability to see and modify access levels of other users.\nImportant:\
+      \ the owner role is different from the calendar's data owner. A calendar has\
+      \ a single data owner, but can have multiple users with owner role."
+  autoAcceptInvitations:
+    type: boolean
+    description: Whether this calendar automatically accepts invitations. Only valid
+      for resource calendars. Read-only.
+  backgroundColor:
+    type: string
+    description: The main color of the calendar in the hexadecimal format "#0088aa".
+      This property supersedes the index-based colorId property. To set or change
+      this property, you need to specify colorRgbFormat=true in the parameters of
+      the insert, update and patch methods. Optional.
+  colorId:
+    type: string
+    description: The color of the calendar. This is an ID referring to an entry in
+      the calendar section of the colors definition (see the colors endpoint). This
+      property is superseded by the backgroundColor and foregroundColor properties
+      and can be ignored when using these properties. Optional.
+  conferenceProperties:
+    $ref: ConferenceProperties
+    description: Conferencing properties for this calendar, for example what types
+      of conferences are allowed.
+  dataOwner:
+    type: string
+    description: The email of the owner of the calendar. Set only for secondary calendars.
+      Read-only.
+  defaultReminders:
+    type: array
+    description: The default reminders that the authenticated user has for this calendar.
+    items:
+      $ref: EventReminder
+  deleted:
+    type: boolean
+    description: Whether this calendar list entry has been deleted from the calendar
+      list. Read-only. Optional. The default is False.
+    default: 'false'
+  description:
+    type: string
+    description: Description of the calendar. Optional. Read-only.
+  etag:
+    type: string
+    description: ETag of the resource.
+  foregroundColor:
+    type: string
+    description: The foreground color of the calendar in the hexadecimal format "#ffffff".
+      This property supersedes the index-based colorId property. To set or change
+      this property, you need to specify colorRgbFormat=true in the parameters of
+      the insert, update and patch methods. Optional.
+  hidden:
+    type: boolean
+    description: Whether the calendar has been hidden from the list. Optional. The
+      attribute is only returned when the calendar is hidden, in which case the value
+      is true.
+    default: 'false'
+  id:
+    type: string
+    description: Identifier of the calendar.
+    annotations:
+      required:
+      - calendar.calendarList.insert
+  kind:
+    type: string
+    description: Type of the resource ("calendar#calendarListEntry").
+    default: calendar#calendarListEntry
+  location:
+    type: string
+    description: Geographic location of the calendar as free-form text. Optional.
+      Read-only.
+  notificationSettings:
+    type: object
+    description: The notifications that the authenticated user is receiving for this
+      calendar.
+    properties:
+      notifications:
+        type: array
+        description: The list of notifications set for this calendar.
+        items:
+          $ref: CalendarNotification
+  primary:
+    type: boolean
+    description: Whether the calendar is the primary calendar of the authenticated
+      user. Read-only. Optional. The default is False.
+    default: 'false'
+  selected:
+    type: boolean
+    description: Whether the calendar content shows up in the calendar UI. Optional.
+      The default is False.
+    default: 'false'
+  summary:
+    type: string
+    description: Title of the calendar. Read-only.
+  summaryOverride:
+    type: string
+    description: The summary that the authenticated user has set for this calendar.
+      Optional.
+  timeZone:
+    type: string
+    description: The time zone of the calendar. Optional. Read-only.

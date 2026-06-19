@@ -10,6 +10,41 @@ Run-on-Slack (Deno) app that powers BARS registration workflows:
 
 Deploy and operate per `.claude/skills/slack-app-deploy/SKILL.md`.
 
+### Refund webhook triggers (`Ft…` + `hooks.slack.com/triggers/…`)
+
+**Look up an existing trigger**
+
+```sh
+# Defaults to only 4 rows — raise the limit
+slack trigger list -w T02HQ2C2G --app deployed  -L 50
+slack trigger list -w T02HQ2C2G --app local     -L 50
+
+slack trigger info --trigger-id FtXXXXXXXX -w T02HQ2C2G --app deployed
+slack trigger info --trigger-id FtXXXXXXXX -w T02HQ2C2G --app local
+```
+
+**Env vars (copy into your real `.env` — see `.env.example`)**
+
+| Variable                         | Where                                                                     | Value                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `SLACK__REFUND_EVAL_TRIGGER_URL` | **Backend** Render (and local `backend` `.env` if you hit submit locally) | **Deployed** trigger URL from `slack trigger create --app deployed …` |
+| (same key, different URL)        | While debugging against `slack run`                                       | **Local** trigger URL from `slack trigger create --app local …`       |
+| `SLACK__REFUND_TRIGGER_ID_*`     | Optional in **your** `.env`                                               | `Ft…` only for CLI `slack trigger update` / docs — not read by code   |
+
+Hosted Run-on-Slack **secrets** for the app itself: `slack env add …` (see skill). The webhook URL
+is for **callers** (FastAPI/Lambda/curl), not for `slack env` unless something in-app reads it.
+
+**Remaining wiring**
+
+1. **Render** — Dashboard → `bars-backend` → Environment → set `SLACK__REFUND_EVAL_TRIGGER_URL` to
+   the **deployed** `https://hooks.slack.com/triggers/…` URL → **Manual Deploy** (or push) so the
+   new env is picked up.
+2. **Optional** — Set `BARS_API_URL` on the **Slack** hosted app
+   (`slack env add BARS_API_URL https://…`) so refund approvals hit the BARS API; add that host to
+   `manifest.ts` `outgoingDomains` if it is not already there.
+3. **Smoke** — With `slack run` active and backend pointing at the **local** trigger URL,
+   `POST /refunds/submit` should post the review card to the refund channel.
+
 ---
 
 ## Directory layout

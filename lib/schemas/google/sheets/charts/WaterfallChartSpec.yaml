@@ -1,0 +1,40 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: WaterfallChartSpec
+description: A waterfall chart.
+type: object
+properties:
+  stackedType:
+    description: The stacked type.
+    enum:
+    - WATERFALL_STACKED_TYPE_UNSPECIFIED
+    - STACKED
+    - SEQUENTIAL
+    enumDescriptions:
+    - Default value, do not use.
+    - Values corresponding to the same domain (horizontal axis) value will be stacked
+      vertically.
+    - Series will spread out along the horizontal axis.
+    type: string
+  firstValueIsTotal:
+    description: True to interpret the first value as a total.
+    type: boolean
+  totalDataLabel:
+    $ref: DataLabel
+    description: Controls whether to display additional data labels on stacked charts
+      which sum the total value of all stacked values at each value along the domain
+      axis. stacked_type must be STACKED and neither CUSTOM nor placement can be set
+      on the total_data_label.
+  hideConnectorLines:
+    type: boolean
+    description: True to hide connector lines between columns.
+  connectorLineStyle:
+    description: The line style for the connector lines.
+    $ref: LineStyle
+  domain:
+    description: The domain data (horizontal axis) for the waterfall chart.
+    $ref: WaterfallChartDomain
+  series:
+    type: array
+    description: The data this waterfall chart is visualizing.
+    items:
+      $ref: WaterfallChartSeries

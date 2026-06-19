@@ -1,0 +1,44 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: File
+description: An individual file within a script project. A file is a third-party source
+  code created by one or more developers. It can be a server-side JS code, HTML, or
+  a configuration file. Each script project can contain multiple files.
+type: object
+properties:
+  functionSet:
+    $ref: GoogleAppsScriptTypeFunctionSet
+    description: The defined set of functions in the script file, if any.
+  type:
+    description: The type of the file.
+    type: string
+    enumDescriptions:
+    - Undetermined file type; never actually used.
+    - An Apps Script server-side code file.
+    - A file containing client-side HTML.
+    - A file in JSON format. This type is only used for the script project's manifest.
+      The manifest file content must match the structure of a valid [ScriptManifest](/apps-script/concepts/manifests)
+    enum:
+    - ENUM_TYPE_UNSPECIFIED
+    - SERVER_JS
+    - HTML
+    - JSON
+  updateTime:
+    description: Last modified date timestamp.
+    type: string
+    format: google-datetime
+  name:
+    description: The name of the file. The file extension is not part of the file
+      name, which can be identified from the type field.
+    type: string
+  source:
+    description: The file content.
+    type: string
+  lastModifyUser:
+    description: The user who modified the file most recently. The details visible
+      in this object are controlled by the profile visibility settings of the last
+      modifying user.
+    $ref: GoogleAppsScriptTypeUser
+  createTime:
+    description: Creation date timestamp.
+    type: string
+    format: google-datetime

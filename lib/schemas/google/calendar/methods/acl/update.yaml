@@ -1,0 +1,29 @@
+description: Updates an access control rule.
+httpMethod: PUT
+path: calendars/{calendarId}/acl/{ruleId}
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.acls
+request:
+  $ref: AclRule
+parameters:
+  calendarId:
+    type: string
+    description: Calendar identifier. To retrieve calendar IDs call the calendarList.list
+      method. If you want to access the primary calendar of the currently logged in
+      user, use the "primary" keyword.
+    required: true
+    location: path
+  ruleId:
+    type: string
+    description: ACL rule identifier.
+    required: true
+    location: path
+  sendNotifications:
+    type: boolean
+    description: Whether to send notifications about the calendar sharing change.
+      Note that there are no notifications on access removal. Optional. The default
+      is True.
+    location: query
+response:
+  $ref: AclRule

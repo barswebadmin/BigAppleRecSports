@@ -1,0 +1,18 @@
+description: Removes an alias.
+httpMethod: DELETE
+path: admin/directory/v1/users/{userKey}/aliases/{alias}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+- https://www.googleapis.com/auth/admin.directory.user.alias
+parameters:
+  userKey:
+    description: Identifies the user in the API request. The value can be the user's
+      primary email address, alias email address, or unique user ID.
+    location: path
+    required: true
+    type: string
+  alias:
+    description: The alias to be removed.
+    location: path
+    required: true
+    type: string

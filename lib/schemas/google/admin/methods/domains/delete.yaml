@@ -1,0 +1,16 @@
+description: Deletes a domain of the customer.
+httpMethod: DELETE
+path: admin/directory/v1/customer/{customer}/domains/{domainName}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.domain
+parameters:
+  customer:
+    description: Immutable ID of the Google Workspace account.
+    location: path
+    required: true
+    type: string
+  domainName:
+    description: Name of domain to be deleted
+    location: path
+    required: true
+    type: string

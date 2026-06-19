@@ -1,0 +1,16 @@
+description: Creates a new immutable version using the current code, with a unique
+  version number.
+httpMethod: POST
+path: v1/projects/{scriptId}/versions
+scopes:
+- https://www.googleapis.com/auth/script.projects
+request:
+  $ref: Version
+parameters:
+  scriptId:
+    type: string
+    description: The script project's Drive ID.
+    location: path
+    required: true
+response:
+  $ref: Version

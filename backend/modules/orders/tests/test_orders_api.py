@@ -53,22 +53,28 @@ def test_date_utils():
     print("\nTesting date utilities...")
     
     try:
-        from shared.date_utils import extract_season_dates, calculate_refund_amount
+        from lib.domain.registrations.refunds import (
+            SeasonDates,
+            EstimateTierKind,
+            calculate_estimated_refund_due,
+        )
         
-        # Test season date extraction
         sample_html = """
         <p>Season Dates: 1/15/25 - 3/15/25 (8 weeks, off 2/15/25)</p>
         """
         
-        start_date, off_dates = extract_season_dates(sample_html)
-        print(f"Extracted dates - Start: {start_date}, Off: {off_dates}")
-        
-        if start_date:
-            # Test refund calculation
-            refund_amount, refund_text = calculate_refund_amount(
-                start_date, off_dates, 100.0, "refund"
+        season_dates = SeasonDates.from_html(sample_html)
+        if season_dates:
+            print(f"Extracted dates - Start: {season_dates.start_date_str}, Off: {season_dates.off_dates_str}")
+            
+            refund_amount, refund_text = calculate_estimated_refund_due(
+                season_dates=season_dates,
+                total_paid=100.0,
+                tier_kind=EstimateTierKind.REFUND,
             )
             print(f"Refund calculation - Amount: {refund_amount}, Text: {refund_text}")
+        else:
+            print("Could not extract season dates from HTML")
         
         print("✅ Date utilities test completed")
         

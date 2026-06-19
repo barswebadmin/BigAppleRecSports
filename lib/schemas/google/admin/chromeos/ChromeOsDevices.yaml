@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ChromeOsDevices
+description: ''
+type: object
+properties:
+  kind:
+    description: Kind of resource this is.
+    default: admin#directory#chromeosdevices
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  chromeosdevices:
+    description: A list of Chrome OS Device objects.
+    type: array
+    items:
+      $ref: ChromeOsDevice
+  nextPageToken:
+    description: Token used to access the next page of this result. To access the
+      next page, use this token's value in the `pageToken` query string of this request.
+    type: string

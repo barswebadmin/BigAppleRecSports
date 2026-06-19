@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateFilterViewRequest
+description: Updates properties of the filter view.
+type: object
+properties:
+  filter:
+    description: The new properties of the filter view.
+    $ref: FilterView
+  fields:
+    description: The fields that should be updated. At least one field must be specified.
+      The root `filter` is implied and should not be specified. A single `"*"` can
+      be used as short-hand for listing every field.
+    format: google-fieldmask
+    type: string

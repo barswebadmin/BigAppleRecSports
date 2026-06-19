@@ -1,0 +1,19 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Editors
+description: The editors of a protected range.
+type: object
+properties:
+  users:
+    type: array
+    description: The email addresses of users with edit access to the protected range.
+    items:
+      type: string
+  groups:
+    type: array
+    description: The email addresses of groups with edit access to the protected range.
+    items:
+      type: string
+  domainUsersCanEdit:
+    description: True if anyone in the document's domain has edit access to the protected
+      range. Domain protection is only supported on documents within a domain.
+    type: boolean

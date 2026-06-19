@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GuestAccountInfo
+description: Account info specific to Guest users.
+type: object
+properties:
+  primaryGuestEmail:
+    description: Immutable. The guest's external email.
+    type: string

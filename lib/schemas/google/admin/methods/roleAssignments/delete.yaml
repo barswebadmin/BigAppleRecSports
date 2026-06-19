@@ -1,0 +1,16 @@
+description: Deletes a role assignment.
+httpMethod: DELETE
+path: admin/directory/v1/customer/{customer}/roleassignments/{roleAssignmentId}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.rolemanagement
+parameters:
+  customer:
+    description: Immutable ID of the Google Workspace account.
+    location: path
+    required: true
+    type: string
+  roleAssignmentId:
+    description: Immutable ID of the role assignment.
+    location: path
+    required: true
+    type: string

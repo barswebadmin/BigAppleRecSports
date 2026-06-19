@@ -33,7 +33,7 @@ function setup_local_auth() {
     
     # Check if clasp is installed
     if ! command -v clasp >/dev/null 2>&1; then
-        log_error "clasp is not installed. Install it with: npm install -g @google/clasp"
+        log_error "clasp is not installed. Install it with: pnpm add -g @google/clasp"
         exit 1
     fi
     

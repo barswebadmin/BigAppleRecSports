@@ -1,0 +1,41 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Product"
+description: "Financial product representation with pricing policies and terms"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      programId:
+        allOf:
+          - $ref: "../primitives/foreignKey.yaml#/"
+          - properties:
+              table:
+                const: "RegularSeason"
+        description: "Foreign key reference to RegularSeason"
+
+      refundPolicyId:
+        allOf:
+          - $ref: "../primitives/foreignKey.yaml#/"
+          - properties:
+              table:
+                const: "refund-policies"
+        description: "Foreign key reference to refund policies table"
+
+      price:
+        type: number
+        minimum: 0
+        description: "Base price for this product"
+
+      status:
+        type: string
+        enum: [draft, active, inactive, archived]
+        default: draft
+        description: "Current status of the product"
+
+      shopifyProductId:
+        type: string
+        description: "Shopify product ID if managed through Shopify"
+
+    required: [programId, refundPolicyId, price, status]
+
+additionalProperties: true

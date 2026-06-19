@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Aliases
+description: JSON response template to list aliases in Directory API.
+type: object
+properties:
+  aliases:
+    type: array
+    items:
+      type: any
+  etag:
+    type: string
+  kind:
+    default: admin#directory#aliases
+    type: string

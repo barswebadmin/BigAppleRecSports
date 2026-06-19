@@ -1,0 +1,23 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BasicSeriesDataPointStyleOverride
+description: Style override settings for a single series data point.
+type: object
+properties:
+  pointStyle:
+    description: Point style of the series data point. Valid only if the chartType
+      is AREA, LINE, or SCATTER. COMBO charts are also supported if the series chart
+      type is AREA, LINE, or SCATTER. If empty, the series default is used.
+    $ref: PointStyle
+  color:
+    description: 'Color of the series data point. If empty, the series default is
+      used. Deprecated: Use color_style.'
+    deprecated: true
+    $ref: Color
+  colorStyle:
+    $ref: ColorStyle
+    description: Color of the series data point. If empty, the series default is used.
+      If color is also set, this field takes precedence.
+  index:
+    type: integer
+    description: The zero-based index of the series data point.
+    format: int32

@@ -1,0 +1,18 @@
+description: Gets vacation responder settings.
+httpMethod: GET
+path: gmail/v1/users/{userId}/settings/vacation
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.modify
+- https://www.googleapis.com/auth/gmail.readonly
+- https://www.googleapis.com/auth/gmail.settings.basic
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: VacationSettings

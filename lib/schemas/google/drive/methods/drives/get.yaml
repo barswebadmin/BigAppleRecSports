@@ -1,0 +1,22 @@
+description: Gets a shared drive's metadata by ID. For more information, see [Manage
+  shared drives](https://developers.google.com/workspace/drive/api/guides/manage-shareddrives).
+httpMethod: GET
+path: drives/{driveId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  driveId:
+    description: The ID of the shared drive.
+    location: path
+    required: true
+    type: string
+  useDomainAdminAccess:
+    description: Issue the request as a domain administrator; if set to true, then
+      the requester will be granted access if they are an administrator of the domain
+      to which the shared drive belongs.
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: Drive

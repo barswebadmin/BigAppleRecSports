@@ -1,0 +1,17 @@
+description: Get a form.
+httpMethod: GET
+path: v1/forms/{formId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.readonly
+- https://www.googleapis.com/auth/forms.body
+- https://www.googleapis.com/auth/forms.body.readonly
+parameters:
+  formId:
+    location: path
+    required: true
+    description: Required. The form ID.
+    type: string
+response:
+  $ref: Form

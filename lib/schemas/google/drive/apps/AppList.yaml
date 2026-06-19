@@ -1,0 +1,25 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AppList
+description: A list of third-party applications which the user has installed or given
+  access to Google Drive.
+type: object
+properties:
+  defaultAppIds:
+    description: The list of app IDs that the user has specified to use by default.
+      The list is in reverse-priority order (lowest to highest).
+    type: array
+    items:
+      type: string
+  kind:
+    description: 'Output only. Identifies what kind of resource this is. Value: the
+      fixed string "drive#appList".'
+    default: drive#appList
+    type: string
+  selfLink:
+    description: A link back to this list.
+    type: string
+  items:
+    description: The list of apps.
+    type: array
+    items:
+      $ref: App

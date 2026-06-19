@@ -1,0 +1,215 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Request
+description: A single kind of update to apply to a spreadsheet.
+type: object
+properties:
+  addSheet:
+    $ref: AddSheetRequest
+    description: Adds a sheet.
+  deleteDuplicates:
+    $ref: DeleteDuplicatesRequest
+    description: Removes rows containing duplicate values in specified columns of
+      a cell range.
+  deleteTable:
+    description: A request for deleting a table.
+    $ref: DeleteTableRequest
+  updateDimensionProperties:
+    $ref: UpdateDimensionPropertiesRequest
+    description: Updates dimensions' properties.
+  refreshDataSource:
+    description: Refreshes one or multiple data sources and associated dbobjects.
+    $ref: RefreshDataSourceRequest
+  updateSlicerSpec:
+    description: Updates a slicer's specifications.
+    $ref: UpdateSlicerSpecRequest
+  deleteDimension:
+    $ref: DeleteDimensionRequest
+    description: Deletes rows or columns in a sheet.
+  textToColumns:
+    description: Converts a column of text into many columns of text.
+    $ref: TextToColumnsRequest
+  addProtectedRange:
+    $ref: AddProtectedRangeRequest
+    description: Adds a protected range.
+  cancelDataSourceRefresh:
+    description: Cancels refreshes of one or multiple data sources and associated
+      dbobjects.
+    $ref: CancelDataSourceRefreshRequest
+  setBasicFilter:
+    description: Sets the basic filter on a sheet.
+    $ref: SetBasicFilterRequest
+  addBanding:
+    $ref: AddBandingRequest
+    description: Adds a new banded range
+  updateCells:
+    description: Updates many cells at once.
+    $ref: UpdateCellsRequest
+  addDimensionGroup:
+    $ref: AddDimensionGroupRequest
+    description: Creates a group over the specified range.
+  sortRange:
+    $ref: SortRangeRequest
+    description: Sorts data in a range.
+  deleteDataSource:
+    $ref: DeleteDataSourceRequest
+    description: Deletes a data source.
+  addTable:
+    $ref: AddTableRequest
+    description: Adds a table.
+  updateSpreadsheetProperties:
+    $ref: UpdateSpreadsheetPropertiesRequest
+    description: Updates the spreadsheet's properties.
+  findReplace:
+    $ref: FindReplaceRequest
+    description: Finds and replaces occurrences of some text with other text.
+  deleteBanding:
+    description: Removes a banded range
+    $ref: DeleteBandingRequest
+  trimWhitespace:
+    $ref: TrimWhitespaceRequest
+    description: Trims cells of whitespace (such as spaces, tabs, or new lines).
+  duplicateFilterView:
+    description: Duplicates a filter view.
+    $ref: DuplicateFilterViewRequest
+  appendDimension:
+    description: Appends dimensions to the end of a sheet.
+    $ref: AppendDimensionRequest
+  clearBasicFilter:
+    $ref: ClearBasicFilterRequest
+    description: Clears the basic filter on a sheet.
+  insertRange:
+    $ref: InsertRangeRequest
+    description: Inserts new cells in a sheet, shifting the existing cells.
+  updateEmbeddedObjectPosition:
+    description: Updates an embedded object's (e.g. chart, image) position.
+    $ref: UpdateEmbeddedObjectPositionRequest
+  autoResizeDimensions:
+    description: Automatically resizes one or more dimensions based on the contents
+      of the cells in that dimension.
+    $ref: AutoResizeDimensionsRequest
+  deleteRange:
+    description: Deletes a range of cells from a sheet, shifting the remaining cells.
+    $ref: DeleteRangeRequest
+  copyPaste:
+    $ref: CopyPasteRequest
+    description: Copies data from one area and pastes it to another.
+  updateBanding:
+    $ref: UpdateBandingRequest
+    description: Updates a banded range
+  updateDataSource:
+    $ref: UpdateDataSourceRequest
+    description: Updates a data source.
+  deleteFilterView:
+    $ref: DeleteFilterViewRequest
+    description: Deletes a filter view from a sheet.
+  updateTable:
+    description: Updates a table.
+    $ref: UpdateTableRequest
+  appendCells:
+    $ref: AppendCellsRequest
+    description: Appends cells after the last row with data in a sheet.
+  deleteConditionalFormatRule:
+    description: Deletes an existing conditional format rule.
+    $ref: DeleteConditionalFormatRuleRequest
+  updateDimensionGroup:
+    description: Updates the state of the specified group.
+    $ref: UpdateDimensionGroupRequest
+  deleteEmbeddedObject:
+    $ref: DeleteEmbeddedObjectRequest
+    description: Deletes an embedded object (e.g, chart, image) in a sheet.
+  addConditionalFormatRule:
+    description: Adds a new conditional format rule.
+    $ref: AddConditionalFormatRuleRequest
+  autoFill:
+    description: Automatically fills in more data based on existing data.
+    $ref: AutoFillRequest
+  repeatCell:
+    description: Repeats a single cell across a range.
+    $ref: RepeatCellRequest
+  pasteData:
+    description: Pastes data (HTML or delimited) into a sheet.
+    $ref: PasteDataRequest
+  updateConditionalFormatRule:
+    $ref: UpdateConditionalFormatRuleRequest
+    description: Updates an existing conditional format rule.
+  updateChartSpec:
+    $ref: UpdateChartSpecRequest
+    description: Updates a chart's specifications.
+  updateEmbeddedObjectBorder:
+    $ref: UpdateEmbeddedObjectBorderRequest
+    description: Updates an embedded object's border.
+  cutPaste:
+    description: Cuts data from one area and pastes it to another.
+    $ref: CutPasteRequest
+  addFilterView:
+    description: Adds a filter view.
+    $ref: AddFilterViewRequest
+  addChart:
+    description: Adds a chart.
+    $ref: AddChartRequest
+  deleteDeveloperMetadata:
+    $ref: DeleteDeveloperMetadataRequest
+    description: Deletes developer metadata
+  updateProtectedRange:
+    description: Updates a protected range.
+    $ref: UpdateProtectedRangeRequest
+  createDeveloperMetadata:
+    description: Creates new developer metadata
+    $ref: CreateDeveloperMetadataRequest
+  addNamedRange:
+    description: Adds a named range.
+    $ref: AddNamedRangeRequest
+  moveDimension:
+    $ref: MoveDimensionRequest
+    description: Moves rows or columns to another location in a sheet.
+  updateBorders:
+    $ref: UpdateBordersRequest
+    description: Updates the borders in a range of cells.
+  insertDimension:
+    description: Inserts new rows or columns in a sheet.
+    $ref: InsertDimensionRequest
+  addSlicer:
+    description: Adds a slicer.
+    $ref: AddSlicerRequest
+  setDataValidation:
+    description: Sets data validation for one or more cells.
+    $ref: SetDataValidationRequest
+  deleteProtectedRange:
+    $ref: DeleteProtectedRangeRequest
+    description: Deletes a protected range.
+  duplicateSheet:
+    $ref: DuplicateSheetRequest
+    description: Duplicates a sheet.
+  deleteSheet:
+    $ref: DeleteSheetRequest
+    description: Deletes a sheet.
+  deleteDimensionGroup:
+    $ref: DeleteDimensionGroupRequest
+    description: Deletes a group over the specified range.
+  deleteNamedRange:
+    $ref: DeleteNamedRangeRequest
+    description: Deletes a named range.
+  updateDeveloperMetadata:
+    $ref: UpdateDeveloperMetadataRequest
+    description: Updates an existing developer metadata entry
+  unmergeCells:
+    description: Unmerges merged cells.
+    $ref: UnmergeCellsRequest
+  updateFilterView:
+    $ref: UpdateFilterViewRequest
+    description: Updates the properties of a filter view.
+  updateNamedRange:
+    description: Updates a named range.
+    $ref: UpdateNamedRangeRequest
+  randomizeRange:
+    $ref: RandomizeRangeRequest
+    description: Randomizes the order of the rows in a range.
+  addDataSource:
+    $ref: AddDataSourceRequest
+    description: Adds a data source.
+  updateSheetProperties:
+    $ref: UpdateSheetPropertiesRequest
+    description: Updates a sheet's properties.
+  mergeCells:
+    description: Merges cells together.
+    $ref: MergeCellsRequest

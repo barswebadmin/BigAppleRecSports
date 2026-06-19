@@ -22,12 +22,6 @@ from modules.integrations.shopify.models import (
     CustomerResponse,
     CustomerListResponse
 )
-from shared.api_models import (
-    SuccessResponse,
-    PaginationParams,
-    FilterParams,
-    ExceptionMapper
-)
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ModifyMessageRequest
+description: ''
+type: object
+properties:
+  addLabelIds:
+    description: A list of IDs of labels to add to this message. You can add up to
+      100 labels with each update.
+    type: array
+    items:
+      type: string
+  removeLabelIds:
+    description: A list IDs of labels to remove from this message. You can remove
+      up to 100 labels with each update.
+    type: array
+    items:
+      type: string

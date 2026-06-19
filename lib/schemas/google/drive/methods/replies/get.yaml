@@ -1,0 +1,32 @@
+description: Gets a reply by ID. For more information, see [Manage comments and replies](https://developers.google.com/workspace/drive/api/guides/manage-comments).
+httpMethod: GET
+path: files/{fileId}/comments/{commentId}/replies/{replyId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  commentId:
+    description: The ID of the comment.
+    location: path
+    required: true
+    type: string
+  replyId:
+    description: The ID of the reply.
+    location: path
+    required: true
+    type: string
+  includeDeleted:
+    description: Whether to return deleted replies. Deleted replies don't include
+      their original content.
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: Reply

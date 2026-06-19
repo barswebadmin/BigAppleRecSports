@@ -1,0 +1,19 @@
+description: Gets a deployment of an Apps Script project.
+httpMethod: GET
+path: v1/projects/{scriptId}/deployments/{deploymentId}
+scopes:
+- https://www.googleapis.com/auth/script.deployments
+- https://www.googleapis.com/auth/script.deployments.readonly
+parameters:
+  scriptId:
+    required: true
+    type: string
+    description: The script project's Drive ID.
+    location: path
+  deploymentId:
+    description: The deployment ID.
+    location: path
+    type: string
+    required: true
+response:
+  $ref: Deployment

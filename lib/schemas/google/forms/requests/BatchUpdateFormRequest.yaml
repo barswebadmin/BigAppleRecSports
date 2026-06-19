@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchUpdateFormRequest
+description: A batch of updates to perform on a form. All the specified updates are
+  made or none of them are.
+type: object
+properties:
+  includeFormInResponse:
+    type: boolean
+    description: Whether to return an updated version of the model in the response.
+  requests:
+    items:
+      $ref: Request
+    description: Required. The update requests of this batch.
+    type: array
+  writeControl:
+    $ref: WriteControl
+    description: Provides control over how write requests are executed.

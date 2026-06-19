@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AppIcons
+description: ''
+type: object
+properties:
+  size:
+    description: Size of the icon. Represented as the maximum of the width and height.
+    type: integer
+    format: int32
+  category:
+    description: 'Category of the icon. Allowed values are: * `application` - The
+      icon for the application. * `document` - The icon for a file associated with
+      the app. * `documentShared` - The icon for a shared file associated with the
+      app.'
+    type: string
+  iconUrl:
+    description: URL for the icon.
+    type: string

@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: WaterfallChartColumnStyle
+description: Styles for a waterfall chart column.
+type: object
+properties:
+  color:
+    description: 'The color of the column. Deprecated: Use color_style.'
+    deprecated: true
+    $ref: Color
+  colorStyle:
+    $ref: ColorStyle
+    description: The color of the column. If color is also set, this field takes precedence.
+  label:
+    description: The label of the column's legend.
+    type: string

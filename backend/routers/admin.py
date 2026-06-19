@@ -11,7 +11,6 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 
 from controllers.admin.admin_controller import AdminController
 from modules.integrations.google.controllers import GoogleController
-from shared.api_models import APIResponse, ValidationAPIError, SuccessResponse, APIError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -61,7 +60,7 @@ google_router = APIRouter(prefix="/google", tags=["admin-google"])
 async def get_group(
     identifier: str,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """
     Get a Google group by identifier (email or group ID).
     
@@ -78,8 +77,8 @@ async def get_group(
     """
     try:
         return await controller.get_group(identifier)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -88,7 +87,7 @@ async def get_group(
 async def create_group(
     group_request: dict,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """
     Create a new Google group.
     
@@ -104,8 +103,8 @@ async def create_group(
     """
     try:
         return await controller.create_group(group_request)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -115,7 +114,7 @@ async def add_group_member(
     group_email: str,
     member_request: dict,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """
     Add a member to a Google group.
     
@@ -138,20 +137,13 @@ async def add_group_member(
         
         # Check if this is a warning (member already exists)
         # If so, return 200 instead of 201
-        if result.data and isinstance(result.data, dict) and result.data.get('warning'):
-            from fastapi import Response
+        if isinstance(result, dict) and result.get('data', {}).get('warning'):
             from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=200,
-                content=result.model_dump()
-            )
+            return JSONResponse(status_code=200, content=result)
         
-        # Otherwise return 201 (default from decorator)
         return result
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
-    except APIError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -161,7 +153,7 @@ async def remove_group_member(
     group_email: str,
     member_email: str,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """
     Remove a member from a Google group.
     
@@ -179,10 +171,8 @@ async def remove_group_member(
     """
     try:
         return await controller.remove_group_member(group_email, member_email)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
-    except APIError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -192,14 +182,12 @@ async def remove_group_member(
 async def get_user(
     identifier: str,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """Get a Google user by identifier (email or user ID)."""
     try:
         return await controller.get_user(identifier)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
-    except APIError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -208,14 +196,12 @@ async def get_user(
 async def list_users(
     max_results: int = 500,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """List all users in the organization."""
     try:
         return await controller.list_users(max_results=max_results)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
-    except APIError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -224,14 +210,12 @@ async def list_users(
 async def create_user(
     user_request: dict,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """Create a new Google user."""
     try:
         return await controller.create_user(user_request)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
-    except APIError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -241,14 +225,12 @@ async def create_user(
 async def get_sheet(
     spreadsheet_id: str,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """Get a Google Sheet by ID."""
     try:
         return await controller.get_sheet(spreadsheet_id)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
-    except APIError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -257,14 +239,12 @@ async def get_sheet(
 async def create_sheet(
     sheet_request: dict,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """Create a new Google Sheet."""
     try:
         return await controller.create_sheet(sheet_request)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
-    except APIError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -274,14 +254,12 @@ async def update_sheet(
     spreadsheet_id: str,
     sheet_request: dict,
     controller: GoogleController = Depends(get_google_controller)
-) -> SuccessResponse:
+) -> dict:
     """Update a Google Sheet."""
     try:
         return await controller.update_sheet(spreadsheet_id, sheet_request)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict()) from e
-    except APIError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.to_dict()) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -290,7 +268,7 @@ async def update_sheet(
 async def create_google_alias(
     request: Request,
     controller: AdminController = Depends(get_admin_controller)
-) -> APIResponse:
+) -> dict:
     """
     Create a Google email alias.
     
@@ -305,12 +283,10 @@ async def create_google_alias(
         500: Internal server error
     """
     try:
-        # Get request body as dict
         request_body = await request.json()
-        
         return await controller.handle_create_google_alias(request_body)
-    except ValidationAPIError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

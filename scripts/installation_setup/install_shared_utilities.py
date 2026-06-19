@@ -6,7 +6,7 @@ This is primarily for IDE/workspace setup where shared_utilities
 needs its own .venv for proper import resolution.
 
 In production, shared_utilities is installed as a dependency of
-backend and bars_cli via `pip install -e shared_utilities`.
+backend via `uv sync`.
 """
 import subprocess
 import sys
@@ -65,7 +65,7 @@ def install_shared_utilities() -> InstallResult:
     # Install package in editable mode
     print("  Installing package...")
     result = subprocess.run(
-        ["uv", "pip", "install", "-e", "."],
+        ["uv", "sync"],
         cwd=shared_utils_dir,
         capture_output=True,
         text=True

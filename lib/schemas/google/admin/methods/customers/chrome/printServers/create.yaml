@@ -1,0 +1,17 @@
+description: Creates a print server.
+httpMethod: POST
+path: admin/directory/v1/{+parent}/chrome/printServers
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+request:
+  $ref: PrintServer
+parameters:
+  parent:
+    description: 'Required. The [unique ID](https://developers.google.com/workspace/admin/directory/reference/rest/v1/customers)
+      of the customer''s Google Workspace account. Format: `customers/{id}`'
+    pattern: ^customers/[^/]+$
+    location: path
+    required: true
+    type: string
+response:
+  $ref: PrintServer

@@ -1,0 +1,43 @@
+[project]
+name = "aws-router"
+version = "0.1.0"
+description = "Big Apple Rec Sports - General-purpose Lambda router. Receives Lambda Function URL events and dispatches to registered handlers by action/route key."
+requires-python = ">=3.14"
+# aws-lambda-powertools is provided by the official Powertools Lambda layer at
+# runtime. Listed here only so `uv sync` gives local type-checking / IDE support.
+dependencies = [
+    "aws-lambda-powertools>=3.0.0",
+    "bars-shared-utilities",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.deploy.required-env-vars]
+# Powertools — must match the Lambda function's environment variables.
+powertools = [
+    "POWERTOOLS_SERVICE_NAME",
+    "POWERTOOLS_LOG_LEVEL",
+]
+
+[tool.deploy]
+# Runtime deps come from layers; source files are rsync'd on deploy.
+skip-deps = true
+runtime = "python3.14"
+handler = "main.lambda_handler"
+role = "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c"
+timeout = 30
+memory-size = 256
+architectures = ["arm64"]
+layers = [
+    # Official Powertools v3 layer (Python 3.14, arm64).
+    # https://docs.powertools.aws.dev/lambda/python/latest/#lambda-layer
+    "arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:23",
+    # BARS common utilities (bars_common_utils, shared_utilities, shopify_client).
+    "arn:aws:lambda:us-east-1:084375563770:layer:bars-common-utils:22",
+    "arn:aws:lambda:us-east-1:084375563770:layer:shared-utilities-deps:2",
+]
+
+[tool.uv.sources]
+bars-shared-utilities = { workspace = true }

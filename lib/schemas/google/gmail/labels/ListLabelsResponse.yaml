@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListLabelsResponse
+description: ''
+type: object
+properties:
+  labels:
+    description: List of labels. Note that each label resource only contains an `id`,
+      `name`, `messageListVisibility`, `labelListVisibility`, and `type`. The [`labels.get`](https://developers.google.com/workspace/gmail/api/v1/reference/users/labels/get)
+      method can fetch additional label details.
+    type: array
+    items:
+      $ref: Label

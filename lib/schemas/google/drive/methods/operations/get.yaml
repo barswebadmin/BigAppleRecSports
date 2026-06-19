@@ -1,0 +1,17 @@
+description: Gets the latest state of a long-running operation. Clients can use this
+  method to poll the operation result at intervals as recommended by the API service.
+httpMethod: GET
+path: operations/{name}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  name:
+    description: The name of the operation resource.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Operation

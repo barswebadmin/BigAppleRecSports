@@ -1,0 +1,31 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GoogleAppsScriptTypeAddOnEntryPoint
+description: An add-on entry point.
+type: object
+properties:
+  title:
+    description: The add-on's required title.
+    type: string
+  helpUrl:
+    description: The add-on's optional help URL.
+    type: string
+  description:
+    description: The add-on's optional description.
+    type: string
+  postInstallTipUrl:
+    description: The add-on's required post install tip URL.
+    type: string
+  reportIssueUrl:
+    description: The add-on's optional report issue URL.
+    type: string
+  addOnType:
+    description: The add-on's required list of supported container types.
+    type: string
+    enumDescriptions:
+    - Default value, unknown add-on type.
+    - Add-on type for Gmail.
+    - Add-on type for Data Studio.
+    enum:
+    - UNKNOWN_ADDON_TYPE
+    - GMAIL
+    - DATA_STUDIO

@@ -1,9 +1,11 @@
 from typing import Optional, List
 
-from shared.model_config import ApiModel
+from pydantic import BaseModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 
-class EmailMessage(ApiModel):
+class EmailMessage(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Gmail message structure."""
     id: str
     thread_id: str
@@ -16,7 +18,8 @@ class EmailMessage(ApiModel):
     body_html: Optional[str] = None
 
 
-class EmailSearchResult(ApiModel):
+class EmailSearchResult(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Result of email search."""
     messages: List[EmailMessage]
     total_count: int

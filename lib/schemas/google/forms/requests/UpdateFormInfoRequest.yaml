@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateFormInfoRequest
+description: Update Form's Info.
+type: object
+properties:
+  info:
+    description: The info to update.
+    $ref: Info
+  updateMask:
+    format: google-fieldmask
+    description: Required. Only values named in this mask are changed. At least one
+      field must be specified. The root `info` is implied and should not be specified.
+      A single `"*"` can be used as short-hand for updating every field.
+    type: string

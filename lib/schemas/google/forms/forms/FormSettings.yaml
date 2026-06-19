@@ -1,0 +1,25 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FormSettings
+description: A form's settings.
+type: object
+properties:
+  emailCollectionType:
+    enumDescriptions:
+    - Unspecified. This value is unused.
+    - The form doesn't collect email addresses. Default value if the form owner uses
+      a Google account.
+    - The form collects email addresses automatically based on the account of the
+      signed-in user. Default value if the form owner uses a Google Workspace account.
+    - The form collects email addresses using a field that the respondent completes
+      on the form.
+    type: string
+    description: Optional. The setting that determines whether the form collects email
+      addresses from respondents.
+    enum:
+    - EMAIL_COLLECTION_TYPE_UNSPECIFIED
+    - DO_NOT_COLLECT
+    - VERIFIED
+    - RESPONDER_INPUT
+  quizSettings:
+    description: Settings related to quiz forms and grading.
+    $ref: QuizSettings

@@ -1,9 +1,0 @@
-# Schema SDL is committed — diffs across versions are the migration surface.
-# Introspection JSON is intermediate; never commit it.
-schema/*.json
-
-# Build artifacts from accidental sub-venv creation
-.venv/
-.ruff_cache/
-*.egg-info/
-uv.lock

@@ -1,0 +1,27 @@
+description: Retrieves a list of features for an account.
+httpMethod: GET
+path: admin/directory/v1/customer/{customer}/resources/features
+scopes:
+- https://www.googleapis.com/auth/admin.directory.resource.calendar
+- https://www.googleapis.com/auth/admin.directory.resource.calendar.readonly
+parameters:
+  customer:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's customer ID.
+    location: path
+    required: true
+    type: string
+  maxResults:
+    description: Maximum number of results to return.
+    minimum: '1'
+    maximum: '500'
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: Token to specify the next page in the list.
+    location: query
+    type: string
+response:
+  $ref: Features

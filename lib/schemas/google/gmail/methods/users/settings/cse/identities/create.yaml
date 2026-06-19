@@ -1,0 +1,27 @@
+description: Creates and configures a client-side encryption identity that's authorized
+  to send mail from the user account. Google publishes the S/MIME certificate to a
+  shared domain-wide directory so that people within a Google Workspace organization
+  can encrypt and send mail to the identity. For administrators managing identities
+  and keypairs for users in their organization, requests require authorization with
+  a [service account](https://developers.google.com/identity/protocols/OAuth2ServiceAccount)
+  that has [domain-wide delegation authority](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#delegatingauthority)
+  to impersonate users with the `https://www.googleapis.com/auth/gmail.settings.basic`
+  scope. For users managing their own identities and keypairs, requests require [hardware
+  key encryption](https://support.google.com/a/answer/14153163) turned on and configured.
+httpMethod: POST
+path: gmail/v1/users/{userId}/settings/cse/identities
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.basic
+- https://www.googleapis.com/auth/gmail.settings.sharing
+request:
+  $ref: CseIdentity
+parameters:
+  userId:
+    description: The requester's primary email address. To indicate the authenticated
+      user, you can use the special value `me`.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: CseIdentity

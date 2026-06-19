@@ -1,0 +1,17 @@
+description: 'Gets information about the user, the user''s Drive, and system capabilities.
+  For more information, see [Return user info](https://developers.google.com/workspace/drive/api/guides/user-info).
+  Required: The `fields` parameter must be set. To return the exact fields you need,
+  see [Return specific fields](https://developers.google.com/workspace/drive/api/guides/fields-parameter).'
+httpMethod: GET
+path: about
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.photos.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters: {}
+response:
+  $ref: About

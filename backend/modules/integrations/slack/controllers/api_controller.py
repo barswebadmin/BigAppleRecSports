@@ -12,12 +12,6 @@ from typing import Dict, Any, Optional
 
 from controllers.api.base import BaseAPIController
 from modules.integrations.slack.slack_service import SlackService
-from shared.api_models import (
-    APIError,
-    NotFoundAPIError,
-    ValidationAPIError,
-    APIResponse
-)
 from modules.integrations.slack.models import (
     SlackUserIdentifierRequest,
     SlackGroupIdentifierRequest,
@@ -51,7 +45,7 @@ class SlackAPIController(BaseAPIController):
     # USER OPERATIONS
     # ============================================================================
 
-    async def get_user(self, identifier: str) -> APIResponse:
+    async def get_user(self, identifier: str) -> dict:
         """
         Get a specific user by identifier.
 
@@ -60,29 +54,23 @@ class SlackAPIController(BaseAPIController):
         try:
             self.log_api_request("GET", f"/users/{identifier}")
 
-            # Validate and parse identifier using request model
             identifier_request = SlackUserIdentifierRequest(identifier=identifier)
             identifier_dict = identifier_request.parse()
 
-            # DELEGATE to existing service method - same as CLI command uses
             self.log_service_call("get_user", identifier_dict)
             user = self.slack_service.get_user_by_identifier(identifier_dict)
 
             if not user:
-                raise NotFoundAPIError("User", identifier)
+                raise LookupError(f"User not found: {identifier}")
 
-            # Convert to API response format
             user_dict = self._convert_user_to_dict(user)
 
-            return APIResponse(**self.format_success_response(
+            return self.format_success_response(
                 data=user_dict,
                 message="User retrieved successfully"
-            ))
+            )
 
-        except ValidationAPIError:
-            # Re-raise validation errors as-is
-            raise
-        except APIError:
+        except (ValueError, LookupError):
             raise
         except Exception as e:
             self.logger.error("Error getting user %s: %s", identifier, e)
@@ -92,7 +80,7 @@ class SlackAPIController(BaseAPIController):
     # GROUP OPERATIONS
     # ============================================================================
 
-    async def get_group(self, identifier: str) -> APIResponse:
+    async def get_group(self, identifier: str) -> dict:
         """
         Get a specific group by identifier.
 
@@ -101,29 +89,23 @@ class SlackAPIController(BaseAPIController):
         try:
             self.log_api_request("GET", f"/groups/{identifier}")
 
-            # Validate and parse identifier using request model
             identifier_request = SlackGroupIdentifierRequest(identifier=identifier)
             identifier_dict = identifier_request.parse()
 
-            # DELEGATE to existing service method - same as CLI command uses
             self.log_service_call("get_group", identifier_dict)
             group = self.slack_service.get_group_by_identifier(identifier_dict)
 
             if not group:
-                raise NotFoundAPIError("Group", identifier)
+                raise LookupError(f"Group not found: {identifier}")
 
-            # Convert to API response format
             group_dict = self._convert_group_to_dict(group)
 
-            return APIResponse(**self.format_success_response(
+            return self.format_success_response(
                 data=group_dict,
                 message="Group retrieved successfully"
-            ))
+            )
 
-        except ValidationAPIError:
-            # Re-raise validation errors as-is
-            raise
-        except APIError:
+        except (ValueError, LookupError):
             raise
         except Exception as e:
             self.logger.error("Error getting group %s: %s", identifier, e)
@@ -133,7 +115,7 @@ class SlackAPIController(BaseAPIController):
     # CHANNEL OPERATIONS
     # ============================================================================
 
-    async def get_channel(self, identifier: str) -> APIResponse:
+    async def get_channel(self, identifier: str) -> dict:
         """
         Get a specific channel by identifier.
 
@@ -142,29 +124,23 @@ class SlackAPIController(BaseAPIController):
         try:
             self.log_api_request("GET", f"/channels/{identifier}")
 
-            # Validate and parse identifier using request model
             identifier_request = SlackChannelIdentifierRequest(identifier=identifier)
             identifier_dict = identifier_request.parse()
 
-            # DELEGATE to existing service method - same as CLI command uses
             self.log_service_call("get_channel", identifier_dict)
             channel = self.slack_service.get_channel_by_identifier(identifier_dict)
 
             if not channel:
-                raise NotFoundAPIError("Channel", identifier)
+                raise LookupError(f"Channel not found: {identifier}")
 
-            # Convert to API response format
             channel_dict = self._convert_channel_to_dict(channel)
 
-            return APIResponse(**self.format_success_response(
+            return self.format_success_response(
                 data=channel_dict,
                 message="Channel retrieved successfully"
-            ))
+            )
 
-        except ValidationAPIError:
-            # Re-raise validation errors as-is
-            raise
-        except APIError:
+        except (ValueError, LookupError):
             raise
         except Exception as e:
             self.logger.error("Error getting channel %s: %s", identifier, e)
@@ -174,7 +150,7 @@ class SlackAPIController(BaseAPIController):
     # MESSAGE OPERATIONS
     # ============================================================================
 
-    async def send_message(self, message_request: SlackMessageRequest) -> APIResponse:
+    async def send_message(self, message_request: SlackMessageRequest) -> dict:
         """
         Send a message to a Slack channel.
 
@@ -186,10 +162,8 @@ class SlackAPIController(BaseAPIController):
                 "text": message_request.text[:100] + "..." if len(message_request.text) > 100 else message_request.text
             })
 
-            # Parse channel identifier
             channel_dict = message_request.parse_channel()
 
-            # DELEGATE to existing service method - same as CLI command uses
             self.log_service_call("send_message", {
                 "channel": channel_dict,
                 "text": message_request.text,
@@ -202,15 +176,12 @@ class SlackAPIController(BaseAPIController):
                 thread_ts=message_request.thread_ts
             )
 
-            return APIResponse(**self.format_success_response(
+            return self.format_success_response(
                 data={"message_ts": result.get("ts"), "channel": result.get("channel")},
                 message="Message sent successfully"
-            ))
+            )
 
-        except ValidationAPIError:
-            # Re-raise validation errors as-is
-            raise
-        except APIError:
+        except ValueError:
             raise
         except Exception as e:
             self.logger.error("Error sending message: %s", e)

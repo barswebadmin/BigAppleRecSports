@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ReviewerResponse
+description: A response on an Approval made by a specific Reviewer.
+type: object
+properties:
+  kind:
+    description: This is always drive#reviewerResponse.
+    type: string
+  reviewer:
+    description: The user that is responsible for this response.
+    $ref: User
+  response:
+    description: "A Reviewer\u2019s Response for the Approval."
+    type: string
+    enumDescriptions:
+    - Response was set to an unrecognized value.
+    - The reviewer has not yet responded
+    - The Reviewer has approved the item.
+    - The Reviewer has declined the item.
+    enum:
+    - RESPONSE_UNSPECIFIED
+    - NO_RESPONSE
+    - APPROVED
+    - DECLINED

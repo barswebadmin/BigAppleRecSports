@@ -1,0 +1,46 @@
+description: List printers configs.
+httpMethod: GET
+path: admin/directory/v1/{+parent}/chrome/printers
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+- https://www.googleapis.com/auth/admin.chrome.printers.readonly
+parameters:
+  parent:
+    description: 'Required. The name of the customer who owns this collection of printers.
+      Format: customers/{customer_id}'
+    pattern: ^customers/[^/]+$
+    location: path
+    required: true
+    type: string
+  pageSize:
+    description: The maximum number of objects to return. The service may return fewer
+      than this value.
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: A page token, received from a previous call.
+    location: query
+    type: string
+  orgUnitId:
+    description: Organization Unit that we want to list the printers for. When org_unit
+      is not present in the request then all printers of the customer are returned
+      (or filtered). When org_unit is present in the request then only printers available
+      to this OU will be returned (owned or inherited). You may see if printer is
+      owned or inherited for this OU by looking at Printer.org_unit_id.
+    location: query
+    type: string
+  filter:
+    description: Search query. Search syntax is shared between this api and Admin
+      Console printers pages.
+    location: query
+    type: string
+  orderBy:
+    description: The order to sort results by. Must be one of display_name, description,
+      make_and_model, or create_time. Default order is ascending, but descending order
+      can be returned by appending "desc" to the order_by field. For instance, "description
+      desc" will return the printers sorted by description in descending order.
+    location: query
+    type: string
+response:
+  $ref: ListPrintersResponse

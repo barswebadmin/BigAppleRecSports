@@ -1,0 +1,40 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Spreadsheet
+description: Resource that represents a spreadsheet.
+type: object
+properties:
+  spreadsheetUrl:
+    description: The url of the spreadsheet. This field is read-only.
+    type: string
+  properties:
+    description: Overall properties of a spreadsheet.
+    $ref: SpreadsheetProperties
+  developerMetadata:
+    type: array
+    description: The developer metadata associated with a spreadsheet.
+    items:
+      $ref: DeveloperMetadata
+  dataSourceSchedules:
+    description: Output only. A list of data source refresh schedules.
+    items:
+      $ref: DataSourceRefreshSchedule
+    readOnly: true
+    type: array
+  spreadsheetId:
+    description: The ID of the spreadsheet. This field is read-only.
+    type: string
+  sheets:
+    type: array
+    description: The sheets that are part of a spreadsheet.
+    items:
+      $ref: Sheet
+  dataSources:
+    description: A list of external data sources connected with the spreadsheet.
+    items:
+      $ref: DataSource
+    type: array
+  namedRanges:
+    description: The named ranges defined in a spreadsheet.
+    items:
+      $ref: NamedRange
+    type: array

@@ -1,0 +1,27 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateValuesResponse
+description: The response when updating a range of values in a spreadsheet.
+type: object
+properties:
+  updatedRows:
+    description: The number of rows where at least one cell in the row was updated.
+    format: int32
+    type: integer
+  updatedCells:
+    type: integer
+    description: The number of cells updated.
+    format: int32
+  updatedRange:
+    type: string
+    description: The range (in A1 notation) that updates were applied to.
+  spreadsheetId:
+    description: The spreadsheet the updates were applied to.
+    type: string
+  updatedData:
+    $ref: ValueRange
+    description: The values of the cells after updates were applied. This is only
+      included if the request's `includeValuesInResponse` field was `true`.
+  updatedColumns:
+    type: integer
+    description: The number of columns where at least one cell in the column was updated.
+    format: int32

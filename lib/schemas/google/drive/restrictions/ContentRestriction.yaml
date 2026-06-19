@@ -1,0 +1,37 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ContentRestriction
+description: A restriction for accessing the content of the file.
+type: object
+properties:
+  readOnly:
+    description: Whether the content of the file is read-only. If a file is read-only,
+      a new revision of the file may not be added, comments may not be added or modified,
+      and the title of the file may not be modified.
+    type: boolean
+  reason:
+    description: Reason for why the content of the file is restricted. This is only
+      mutable on requests that also set `readOnly=true`.
+    type: string
+  type:
+    description: Output only. The type of the content restriction. Currently the only
+      possible value is `globalContentRestriction`.
+    type: string
+  restrictingUser:
+    description: Output only. The user who set the content restriction. Only populated
+      if `readOnly=true`.
+    $ref: User
+  restrictionTime:
+    description: The time at which the content restriction was set (formatted RFC
+      3339 timestamp). Only populated if readOnly is true.
+    type: string
+    format: date-time
+  ownerRestricted:
+    description: Whether the content restriction can only be modified or removed by
+      a user who owns the file. For files in shared drives, any user with `organizer`
+      capabilities can modify or remove this content restriction.
+    type: boolean
+  systemRestricted:
+    description: Output only. Whether the content restriction was applied by the system,
+      for example due to an esignature. Users cannot modify or remove system restricted
+      content restrictions.
+    type: boolean

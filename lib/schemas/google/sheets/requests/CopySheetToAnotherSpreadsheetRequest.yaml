@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CopySheetToAnotherSpreadsheetRequest
+description: The request to copy a sheet across spreadsheets.
+type: object
+properties:
+  destinationSpreadsheetId:
+    type: string
+    description: The ID of the spreadsheet to copy the sheet to.

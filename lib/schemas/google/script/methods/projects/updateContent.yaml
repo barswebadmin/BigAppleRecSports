@@ -1,0 +1,18 @@
+description: Updates the content of the specified script project. This content is
+  stored as the HEAD version, and is used when the script is executed as a trigger,
+  in the script editor, in add-on preview mode, or as a web app or Apps Script API
+  in development mode. This clears all the existing files in the project.
+httpMethod: PUT
+path: v1/projects/{scriptId}/content
+scopes:
+- https://www.googleapis.com/auth/script.projects
+request:
+  $ref: Content
+parameters:
+  scriptId:
+    required: true
+    description: The script project's Drive ID.
+    location: path
+    type: string
+response:
+  $ref: Content

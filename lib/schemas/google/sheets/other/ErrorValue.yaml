@@ -1,0 +1,34 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ErrorValue
+description: An error in a cell.
+type: object
+properties:
+  type:
+    description: The type of error.
+    enum:
+    - ERROR_TYPE_UNSPECIFIED
+    - ERROR
+    - NULL_VALUE
+    - DIVIDE_BY_ZERO
+    - VALUE
+    - REF
+    - NAME
+    - NUM
+    - N_A
+    - LOADING
+    enumDescriptions:
+    - The default error type, do not use this.
+    - Corresponds to the `#ERROR!` error.
+    - Corresponds to the `#NULL!` error.
+    - Corresponds to the `#DIV/0` error.
+    - Corresponds to the `#VALUE!` error.
+    - Corresponds to the `#REF!` error.
+    - Corresponds to the `#NAME?` error.
+    - Corresponds to the `#NUM!` error.
+    - Corresponds to the `#N/A` error.
+    - Corresponds to the `Loading...` state.
+    type: string
+  message:
+    description: A message with more information about the error (in the spreadsheet's
+      locale).
+    type: string

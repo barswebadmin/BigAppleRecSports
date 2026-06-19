@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchModifyMessagesRequest
+description: ''
+type: object
+properties:
+  ids:
+    description: The IDs of the messages to modify. There is a limit of 1000 ids per
+      request.
+    type: array
+    items:
+      type: string
+  addLabelIds:
+    description: A list of label IDs to add to messages.
+    type: array
+    items:
+      type: string
+  removeLabelIds:
+    description: A list of label IDs to remove from messages.
+    type: array
+    items:
+      type: string

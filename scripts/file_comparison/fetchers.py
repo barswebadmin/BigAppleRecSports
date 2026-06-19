@@ -9,6 +9,7 @@ import atexit
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import urllib.request
 import zipfile
@@ -226,7 +227,7 @@ def fetch_from_google(project_name: str, temp_dir: Path, project_root: Optional[
         from paths import get_repo_root
 
         repo_root = get_repo_root()
-        project_root = repo_root / "GoogleAppsScripts"
+        project_root = repo_root / "google-apps-scripts"
     
     project_dir = project_root / "projects" / project_name
     

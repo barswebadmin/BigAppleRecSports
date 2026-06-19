@@ -1,0 +1,29 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Grading
+description: Grading for a single question
+type: object
+properties:
+  pointValue:
+    format: int32
+    description: Required. The maximum number of points a respondent can automatically
+      get for a correct answer. This must not be negative.
+    type: integer
+  correctAnswers:
+    description: Required. The answer key for the question. Responses are automatically
+      graded based on this field.
+    $ref: CorrectAnswers
+  whenRight:
+    $ref: Feedback
+    description: The feedback displayed for correct responses. This feedback can only
+      be set for multiple choice questions that have correct answers provided.
+  generalFeedback:
+    $ref: Feedback
+    description: The feedback displayed for all answers. This is commonly used for
+      short answer questions when a quiz owner wants to quickly give respondents some
+      sense of whether they answered the question correctly before they've had a chance
+      to officially grade the response. General feedback cannot be set for automatically
+      graded multiple choice questions.
+  whenWrong:
+    description: The feedback displayed for incorrect responses. This feedback can
+      only be set for multiple choice questions that have correct answers provided.
+    $ref: Feedback

@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchDeletePrintServersRequest
+description: Request to delete multiple existing print servers in a batch.
+type: object
+properties:
+  printServerIds:
+    description: A list of print server IDs that should be deleted (max `100` per
+      batch).
+    type: array
+    items:
+      type: string

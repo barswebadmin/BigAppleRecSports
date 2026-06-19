@@ -1,0 +1,24 @@
+description: Copies a single sheet from a spreadsheet to another spreadsheet. Returns
+  the properties of the newly created sheet.
+httpMethod: POST
+path: v4/spreadsheets/{spreadsheetId}/sheets/{sheetId}:copyTo
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+request:
+  $ref: CopySheetToAnotherSpreadsheetRequest
+parameters:
+  spreadsheetId:
+    required: true
+    description: The ID of the spreadsheet containing the sheet to copy.
+    location: path
+    type: string
+  sheetId:
+    required: true
+    location: path
+    description: The ID of the sheet to copy.
+    type: integer
+    format: int32
+response:
+  $ref: SheetProperties

@@ -1,0 +1,46 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FileUploadQuestion
+description: A file upload question. The API currently does not support creating file
+  upload questions.
+type: object
+properties:
+  maxFiles:
+    description: Maximum number of files that can be uploaded for this question in
+      a single response.
+    format: int32
+    type: integer
+  maxFileSize:
+    type: string
+    description: Maximum number of bytes allowed for any single file uploaded to this
+      question.
+    format: int64
+  folderId:
+    description: Required. The ID of the Drive folder where uploaded files are stored.
+    type: string
+  types:
+    description: File types accepted by this question.
+    items:
+      type: string
+      enumDescriptions:
+      - Default value. Unused.
+      - No restrictions on type.
+      - A Google Docs document.
+      - A Google Slides presentation.
+      - A Google Sheets spreadsheet.
+      - A drawing.
+      - A PDF.
+      - An image.
+      - A video.
+      - An audio file.
+      enum:
+      - FILE_TYPE_UNSPECIFIED
+      - ANY
+      - DOCUMENT
+      - PRESENTATION
+      - SPREADSHEET
+      - DRAWING
+      - PDF
+      - IMAGE
+      - VIDEO
+      - AUDIO
+    type: array

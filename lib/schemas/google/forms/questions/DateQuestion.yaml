@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DateQuestion
+description: A date question. Date questions default to just month + day.
+type: object
+properties:
+  includeTime:
+    description: Whether to include the time as part of the question.
+    type: boolean
+  includeYear:
+    type: boolean
+    description: Whether to include the year as part of the question.

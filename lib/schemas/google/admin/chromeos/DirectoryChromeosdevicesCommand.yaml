@@ -1,0 +1,80 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DirectoryChromeosdevicesCommand
+description: Information regarding a command that was issued to a device.
+type: object
+properties:
+  commandId:
+    description: Unique ID of a device command.
+    type: string
+    format: int64
+  type:
+    description: The type of the command.
+    type: string
+    enumDescriptions:
+    - The command type was unspecified.
+    - Reboot the device. Can be issued to Kiosk and managed guest session devices,
+      and regular devices running ChromeOS version 113 or later.
+    - Take a screenshot of the device. Only available if the device is in Kiosk Mode.
+    - Set the volume of the device. Can only be issued to Kiosk and managed guest
+      session devices.
+    - Wipe all the users off of the device. Executing this command in the device will
+      remove all user profile data, but it will keep device policy and enrollment.
+    - 'Wipes the device by performing a power wash. Executing this command in the
+      device will remove all data including user policies, device policies and enrollment
+      policies. Warning: This will revert the device back to a factory state with
+      no enrollment unless the device is subject to forced or auto enrollment. Use
+      with caution, as this is an irreversible action!'
+    - Starts a Chrome Remote Desktop session.
+    - Capture the system logs of a kiosk device. The logs can be downloaded from the
+      downloadUrl link present in `deviceFiles` field of [chromeosdevices](https://developers.google.com/workspace/admin/directory/reference/rest/v1/chromeosdevices)
+    - Fetches available type(s) of Chrome Remote Desktop sessions (private or shared)
+      that can be used to remotely connect to the device.
+    - Fetch support packet from a device remotely. Support packet is a zip archive
+      that contains various system logs and debug data from a ChromeOS device. The
+      support packet can be downloaded from the downloadURL link present in the `deviceFiles`
+      field of [`chromeosdevices`](https://developers.google.com/workspace/admin/directory/reference/rest/v1/chromeosdevices)
+    enum:
+    - COMMAND_TYPE_UNSPECIFIED
+    - REBOOT
+    - TAKE_A_SCREENSHOT
+    - SET_VOLUME
+    - WIPE_USERS
+    - REMOTE_POWERWASH
+    - DEVICE_START_CRD_SESSION
+    - CAPTURE_LOGS
+    - FETCH_CRD_AVAILABILITY_INFO
+    - FETCH_SUPPORT_PACKET
+  issueTime:
+    description: The timestamp when the command was issued by the admin.
+    type: string
+    format: google-datetime
+  state:
+    description: Indicates the command state.
+    type: string
+    enumDescriptions:
+    - The command status was unspecified.
+    - An unexpired command not yet sent to the client.
+    - The command didn't get executed by the client within the expected time.
+    - The command is cancelled by admin while in PENDING.
+    - The command has been sent to the client.
+    - The client has responded that it received the command.
+    - The client has (un)successfully executed the command.
+    enum:
+    - STATE_UNSPECIFIED
+    - PENDING
+    - EXPIRED
+    - CANCELLED
+    - SENT_TO_CLIENT
+    - ACKED_BY_CLIENT
+    - EXECUTED_BY_CLIENT
+  commandExpireTime:
+    description: The time at which the command will expire. If the device doesn't
+      execute the command within this time the command will become expired.
+    type: string
+    format: google-datetime
+  commandResult:
+    description: The result of the command execution.
+    $ref: DirectoryChromeosdevicesCommandResult
+  payload:
+    description: The payload that the command specified, if any.
+    type: string

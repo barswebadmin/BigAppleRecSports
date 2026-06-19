@@ -1,0 +1,38 @@
+description: Gets the starting pageToken for listing future changes. For more information,
+  see [Retrieve changes](https://developers.google.com/workspace/drive/api/guides/manage-changes).
+httpMethod: GET
+path: changes/startPageToken
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.photos.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  driveId:
+    description: The ID of the shared drive for which the starting pageToken for listing
+      future changes from that shared drive will be returned.
+    location: query
+    type: string
+  supportsAllDrives:
+    description: Whether the requesting application supports both My Drives and shared
+      drives.
+    default: 'false'
+    location: query
+    type: boolean
+  supportsTeamDrives:
+    description: 'Deprecated: Use `supportsAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  teamDriveId:
+    description: 'Deprecated: Use `driveId` instead.'
+    location: query
+    deprecated: true
+    type: string
+response:
+  $ref: StartPageToken

@@ -1,0 +1,77 @@
+description: Creates a permission for a file or shared drive. For more information,
+  see [Share files, folders, and drives](https://developers.google.com/workspace/drive/api/guides/manage-sharing).
+  **Warning:** Concurrent permissions operations on the same file aren't supported;
+  only the last update is applied.
+httpMethod: POST
+path: files/{fileId}/permissions
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+request:
+  $ref: Permission
+parameters:
+  fileId:
+    description: The ID of the file or shared drive.
+    location: path
+    required: true
+    type: string
+  emailMessage:
+    description: A plain text custom message to include in the notification email.
+    location: query
+    type: string
+  enforceSingleParent:
+    description: 'Deprecated: See `moveToNewOwnersRoot` for details.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  moveToNewOwnersRoot:
+    description: This parameter only takes effect if the item isn't in a shared drive
+      and the request is attempting to transfer the ownership of the item. If set
+      to `true`, the item is moved to the new owner's My Drive root folder and all
+      prior parents removed. If set to `false`, parents aren't changed.
+    default: 'false'
+    location: query
+    type: boolean
+  sendNotificationEmail:
+    description: Whether to send a notification email when sharing to users or groups.
+      This defaults to `true` for users and groups, and is not allowed for other requests.
+      It must not be disabled for ownership transfers.
+    location: query
+    type: boolean
+  supportsAllDrives:
+    description: Whether the requesting application supports both My Drives and shared
+      drives.
+    default: 'false'
+    location: query
+    type: boolean
+  supportsTeamDrives:
+    description: 'Deprecated: Use `supportsAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  transferOwnership:
+    description: Whether to transfer ownership to the specified user and downgrade
+      the current owner to a writer. This parameter is required as an acknowledgement
+      of the side effect. For more information, see [Transfer file ownership](https://developers.google.com/workspace/drive/api/guides/transfer-file).
+    default: 'false'
+    location: query
+    type: boolean
+  useDomainAdminAccess:
+    description: 'Issue the request as a domain administrator. If set to `true`, and
+      if the following additional conditions are met, the requester is granted access:
+      1. The file ID parameter refers to a shared drive. 2. The requester is an administrator
+      of the domain to which the shared drive belongs. For more information, see [Manage
+      shared drives as domain administrators](https://developers.google.com/workspace/drive/api/guides/manage-shareddrives#manage-administrators).'
+    default: 'false'
+    location: query
+    type: boolean
+  enforceExpansiveAccess:
+    description: 'Deprecated: All requests use the expansive access rules.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+response:
+  $ref: Permission

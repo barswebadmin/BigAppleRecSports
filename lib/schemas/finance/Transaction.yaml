@@ -1,0 +1,93 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Transaction"
+description: "General financial ledger for all money movements"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      type:
+        type: string
+        enum: [credit, debit]
+        description: "Financial transaction type - credit (money in), debit (money out)"
+
+      amount:
+        type: number
+        minimum: 0
+        description: "Transaction amount in dollars (always positive)"
+
+      payer:
+        type: object
+        properties:
+          type:
+            type: string
+            enum: [player, donor, organization, venue, referee, other]
+          id:
+            type: string
+            description: "ID of the payer entity"
+          name:
+            type: string
+            description: "Display name of payer"
+        required: [type, id, name]
+        description: "Who is paying/sending the money"
+
+      payee:
+        type: object
+        properties:
+          type:
+            type: string
+            enum: [player, donor, organization, venue, referee, other]
+          id:
+            type: string
+            description: "ID of the payee entity"
+          name:
+            type: string
+            description: "Display name of payee"
+        required: [type, id, name]
+        description: "Who is receiving the money"
+
+      category:
+        type: string
+        enum: [registration, refund, venue_payment, referee_payment, equipment, marketing, administrative, other]
+        description: "Category of transaction for reporting"
+
+      department:
+        type: string
+        enum: [dodgeball, kickball, bowling, pickleball, marketing, philanthropy, dei, general-operations]
+        description: "Department responsible for or related to this transaction"
+
+      description:
+        type: string
+        description: "Description of the transaction"
+
+      status:
+        type: string
+        enum: [outstanding, pending, completed, failed, cancelled]
+        default: outstanding
+        description: "Current status of the transaction"
+
+      processedAt:
+        type: string
+        format: date-time
+        description: "When the transaction was processed (if completed)"
+
+      method:
+        type: string
+        enum: [card, ach, store_credit, check, cash, venmo, paypal, other]
+        description: "Payment method used (for credit transactions)"
+
+      failureReason:
+        type: string
+        description: "Reason for transaction failure (if status is failed)"
+
+      relatedEntityId:
+        type: string
+        description: "ID of related entity (registrationId, seasonId, etc.)"
+
+      relatedEntityType:
+        type: string
+        enum: [registration, season, venue_booking, referee_assignment, other]
+        description: "Type of related entity"
+
+    required: [type, amount, payer, payee, category, status]
+
+additionalProperties: true

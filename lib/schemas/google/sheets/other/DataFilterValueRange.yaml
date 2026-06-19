@@ -1,0 +1,29 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataFilterValueRange
+description: A range of values whose location is specified by a DataFilter.
+type: object
+properties:
+  dataFilter:
+    description: The data filter describing the location of the values in the spreadsheet.
+    $ref: DataFilter
+  majorDimension:
+    enum:
+    - DIMENSION_UNSPECIFIED
+    - ROWS
+    - COLUMNS
+    description: The major dimension of the values.
+    type: string
+    enumDescriptions:
+    - The default value, do not use.
+    - Operates on the rows of a sheet.
+    - Operates on the columns of a sheet.
+  values:
+    description: The data to be written. If the provided values exceed any of the
+      ranges matched by the data filter then the request fails. If the provided values
+      are less than the matched ranges only the specified values are written, existing
+      values in the matched ranges remain unaffected.
+    items:
+      items:
+        type: any
+      type: array
+    type: array

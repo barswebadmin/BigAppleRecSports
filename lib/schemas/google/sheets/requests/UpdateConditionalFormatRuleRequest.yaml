@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateConditionalFormatRuleRequest
+description: Updates a conditional format rule at the given index, or moves a conditional
+  format rule to another index.
+type: object
+properties:
+  index:
+    type: integer
+    description: The zero-based index of the rule that should be replaced or moved.
+    format: int32
+  rule:
+    $ref: ConditionalFormatRule
+    description: The rule that should replace the rule at the given index.
+  newIndex:
+    type: integer
+    description: The zero-based new index the rule should end up at.
+    format: int32
+  sheetId:
+    description: The sheet of the rule to move. Required if new_index is set, unused
+      otherwise.
+    format: int32
+    type: integer

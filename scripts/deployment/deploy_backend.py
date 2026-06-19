@@ -61,7 +61,7 @@ try:
     import requests
 except ImportError:
     print("❌ Missing required dependencies. Install with:")
-    print("   pip install requests")
+    print("   uv sync")
     sys.exit(1)
 
 
@@ -76,7 +76,7 @@ def validate_requirements() -> bool:
     print("🔍 Validating backend/requirements.txt...")
     try:
         result = subprocess.run(
-            ["pip", "install", "--dry-run", "-r", str(requirements_file)],
+            ["uv", "tree", "--depth", "1"],
             capture_output=True,
             text=True,
             timeout=60

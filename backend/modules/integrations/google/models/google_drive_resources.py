@@ -1,8 +1,10 @@
 from typing import Optional, Dict, Any
-from shared.model_config import ApiModel
+from pydantic import BaseModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 
-class SheetRevision(ApiModel):
+class SheetRevision(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Sheets revision information."""
     id: str
     modified_time: str

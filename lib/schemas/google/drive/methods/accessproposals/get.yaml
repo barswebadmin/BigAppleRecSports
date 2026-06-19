@@ -1,0 +1,23 @@
+description: Retrieves an access proposal by ID. For more information, see [Manage
+  pending access proposals](https://developers.google.com/workspace/drive/api/guides/pending-access).
+httpMethod: GET
+path: files/{fileId}/accessproposals/{proposalId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  fileId:
+    description: Required. The ID of the item the request is on.
+    location: path
+    required: true
+    type: string
+  proposalId:
+    description: Required. The ID of the access proposal to resolve.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: AccessProposal

@@ -1,0 +1,32 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Privilege
+description: ''
+type: object
+properties:
+  serviceId:
+    description: The obfuscated ID of the service this privilege is for. This value
+      is returned with [`Privileges.list()`](https://developers.google.com/workspace/admin/directory/v1/reference/privileges/list).
+    type: string
+  kind:
+    description: The type of the API resource. This is always `admin#directory#privilege`.
+    default: admin#directory#privilege
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  isOuScopable:
+    description: If the privilege can be restricted to an organization unit.
+    type: boolean
+  childPrivileges:
+    description: A list of child privileges. Privileges for a service form a tree.
+      Each privilege can have a list of child privileges; this list is empty for a
+      leaf privilege.
+    type: array
+    items:
+      $ref: Privilege
+  privilegeName:
+    description: The name of the privilege.
+    type: string
+  serviceName:
+    description: The name of the service this privilege is for.
+    type: string

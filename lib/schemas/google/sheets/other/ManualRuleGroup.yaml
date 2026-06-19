@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ManualRuleGroup
+description: A group name and a list of items from the source data that should be
+  placed in the group with this name.
+type: object
+properties:
+  items:
+    type: array
+    description: The items in the source data that should be placed into this group.
+      Each item may be a string, number, or boolean. Items may appear in at most one
+      group within a given ManualRule. Items that do not appear in any group will
+      appear on their own.
+    items:
+      $ref: ExtendedValue
+  groupName:
+    $ref: ExtendedValue
+    description: The group name, which must be a string. Each group in a given ManualRule
+      must have a unique group name.

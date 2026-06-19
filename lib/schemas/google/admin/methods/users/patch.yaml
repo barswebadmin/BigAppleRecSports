@@ -1,0 +1,20 @@
+description: Updates a user using patch semantics. The update method should be used
+  instead, because it also supports patch semantics and has better performance. If
+  you're mapping an external identity to a Google identity, use the [`update`](https://developers.google.com/workspace/admin/directory/v1/reference/users/update)
+  method instead of the `patch` method. This method is unable to clear fields that
+  contain repeated objects (`addresses`, `phones`, etc). Use the update method instead.
+httpMethod: PATCH
+path: admin/directory/v1/users/{userKey}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+request:
+  $ref: User
+parameters:
+  userKey:
+    description: Identifies the user in the API request. The value can be the user's
+      primary email address, alias email address, or unique user ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: User

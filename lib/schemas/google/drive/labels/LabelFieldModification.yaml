@@ -1,0 +1,43 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: LabelFieldModification
+description: A modification to a label's field.
+type: object
+properties:
+  fieldId:
+    description: The ID of the field to be modified.
+    type: string
+  kind:
+    description: This is always `"drive#labelFieldModification"`.
+    type: string
+  setDateValues:
+    description: 'Replaces the value of a dateString Field with these new values.
+      The string must be in the RFC 3339 full-date format: YYYY-MM-DD.'
+    type: array
+    items:
+      type: string
+      format: date
+  setTextValues:
+    description: Sets the value of a `text` field.
+    type: array
+    items:
+      type: string
+  setSelectionValues:
+    description: Replaces a `selection` field with these new values.
+    type: array
+    items:
+      type: string
+  setIntegerValues:
+    description: Replaces the value of an `integer` field with these new values.
+    type: array
+    items:
+      type: string
+      format: int64
+  setUserValues:
+    description: Replaces a `user` field with these new values. The values must be
+      a valid email addresses.
+    type: array
+    items:
+      type: string
+  unsetValues:
+    description: Unsets the values for this field.
+    type: boolean

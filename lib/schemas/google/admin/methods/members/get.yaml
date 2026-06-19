@@ -1,0 +1,24 @@
+description: Retrieves a group member's properties.
+httpMethod: GET
+path: admin/directory/v1/groups/{groupKey}/members/{memberKey}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.group
+- https://www.googleapis.com/auth/admin.directory.group.member
+- https://www.googleapis.com/auth/admin.directory.group.member.readonly
+- https://www.googleapis.com/auth/admin.directory.group.readonly
+parameters:
+  groupKey:
+    description: Identifies the group in the API request. The value can be the group's
+      email address, group alias, or the unique group ID.
+    location: path
+    required: true
+    type: string
+  memberKey:
+    description: Identifies the group member in the API request. A group member can
+      be a user or another group. The value can be the member's (group or user) primary
+      email address, alias, or unique ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Member

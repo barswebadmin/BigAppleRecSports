@@ -41,7 +41,7 @@ backend/
 1. **Install Dependencies**
    ```bash
    cd backend
-   pip install -r requirements.txt
+   uv sync
    ```
 
 2. **Environment Configuration**

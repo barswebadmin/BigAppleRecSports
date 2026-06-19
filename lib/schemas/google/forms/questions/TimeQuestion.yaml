@@ -1,0 +1,9 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: TimeQuestion
+description: A time question.
+type: object
+properties:
+  duration:
+    type: boolean
+    description: '`true` if the question is about an elapsed time. Otherwise it is
+      about a time of day.'

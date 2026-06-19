@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: VerificationCode
+description: The Directory API allows you to view, generate, and invalidate backup
+  verification codes for a user.
+type: object
+properties:
+  userId:
+    description: The obfuscated unique ID of the user.
+    type: string
+  verificationCode:
+    description: A current verification code for the user. Invalidated or used verification
+      codes are not returned as part of the result.
+    type: string
+  kind:
+    description: The type of the resource. This is always `admin#directory#verificationCode`.
+    default: admin#directory#verificationCode
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string

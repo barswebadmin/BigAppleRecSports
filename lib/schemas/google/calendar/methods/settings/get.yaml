@@ -1,0 +1,15 @@
+description: Returns a single user setting.
+httpMethod: GET
+path: users/me/settings/{setting}
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.readonly
+- https://www.googleapis.com/auth/calendar.settings.readonly
+parameters:
+  setting:
+    type: string
+    description: The id of the user setting.
+    required: true
+    location: path
+response:
+  $ref: Setting

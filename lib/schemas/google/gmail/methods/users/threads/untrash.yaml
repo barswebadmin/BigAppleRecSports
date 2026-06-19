@@ -1,0 +1,22 @@
+description: Removes the specified thread from the trash. Any messages that belong
+  to the thread are also removed from the trash.
+httpMethod: POST
+path: gmail/v1/users/{userId}/threads/{id}/untrash
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.modify
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  id:
+    description: The ID of the thread to remove from Trash.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Thread

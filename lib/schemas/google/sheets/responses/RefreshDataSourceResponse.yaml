@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RefreshDataSourceResponse
+description: The response from refreshing one or multiple data source objects.
+type: object
+properties:
+  statuses:
+    description: All the refresh status for the data source object references specified
+      in the request. If is_all is specified, the field contains only those in failure
+      status.
+    items:
+      $ref: RefreshDataSourceObjectExecutionStatus
+    type: array

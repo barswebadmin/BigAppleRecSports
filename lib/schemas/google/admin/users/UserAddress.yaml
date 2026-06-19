@@ -1,0 +1,50 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserAddress
+description: JSON template for address.
+type: object
+properties:
+  country:
+    description: Country.
+    type: string
+  countryCode:
+    description: Country code.
+    type: string
+  customType:
+    description: Custom type.
+    type: string
+  extendedAddress:
+    description: Extended Address.
+    type: string
+  formatted:
+    description: Formatted address.
+    type: string
+  locality:
+    description: Locality.
+    type: string
+  poBox:
+    description: Other parts of address.
+    type: string
+  postalCode:
+    description: Postal code.
+    type: string
+  primary:
+    description: If this is user's primary address. Only one entry could be marked
+      as primary.
+    type: boolean
+  region:
+    description: Region.
+    type: string
+  sourceIsStructured:
+    description: User supplied address was structured. Structured addresses are NOT
+      supported at this time. You might be able to write structured addresses but
+      any values will eventually be clobbered.
+    type: boolean
+  streetAddress:
+    description: Street.
+    type: string
+  type:
+    description: Each entry can have a type which indicates standard values of that
+      entry. For example address could be of home work etc. In addition to the standard
+      type an entry can have a custom type and can take any value. Such type should
+      have the CUSTOM value as type and also have a customType value.
+    type: string

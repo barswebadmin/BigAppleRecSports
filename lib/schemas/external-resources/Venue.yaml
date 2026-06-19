@@ -1,0 +1,53 @@
+title: "Venue"
+description: "Venues used by BARS for sports and other events"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      key:
+        type: string
+        examples: ["elliott", "ps3", "vcs", "hartley", "dewitt", "chelsea-park", "gansevoort", "gotham-pb", "john-jay", "pickle1", "frames", "bowlero"]
+
+      displayName:
+        type: string
+        examples: ["Elliott Center", "PS3 Charrette", "DeWitt Clinton Park"]
+
+      # displayNameWithLocation values for record creation reference:
+      # "Elliott Center (26th St & 9th Ave)"
+      # "PS3 Charrette School (Grove St & Hudson St)"
+      # "Village Community School (10th St & Greenwich St)"
+      # "Hartley House (46th St & 9th Ave)"
+      # "DeWitt Clinton Park (52nd St & 11th Ave)"
+      # "Gansevoort Peninsula Athletic Park, Pier 53 (Gansevoort St & 11th)"
+      # "Chelsea Park (27th St & 9th Ave)"
+      # "Gotham Pickleball (46th and Vernon in LIC)"
+      # "John Jay College (59th and 10th)"
+      # "Pickle1 (7 Hanover Square in LIC)"
+      # "Frames Bowling Lounge (40th St and 9th Ave)"
+      # "Bowlero Chelsea Piers (60 Chelsea Piers)"
+
+      address:
+        $ref: "../primitives/address.yaml#/"
+
+      usage:
+        type: object
+        properties:
+          type:
+            type: string
+            enum: ["sports", "post-play", "special-events", "other"]
+          details:
+            type: object
+            properties:
+              sport:
+                type: string
+                enum: 
+                  - "pickleball"
+                  - "dodgeball"
+                  - "kickball"
+                  - "bowling"
+      status:
+        type: string
+        enum: ["active", "inactive"]
+        default: "active"
+
+    required: [key, displayName, address, venueType]

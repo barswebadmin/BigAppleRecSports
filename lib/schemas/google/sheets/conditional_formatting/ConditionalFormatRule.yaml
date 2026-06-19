@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ConditionalFormatRule
+description: A rule describing a conditional format.
+type: object
+properties:
+  gradientRule:
+    description: The formatting will vary based on the gradients in the rule.
+    $ref: GradientRule
+  ranges:
+    type: array
+    description: The ranges that are formatted if the condition is true. All the ranges
+      must be on the same grid.
+    items:
+      $ref: GridRange
+  booleanRule:
+    description: The formatting is either "on" or "off" according to the rule.
+    $ref: BooleanRule

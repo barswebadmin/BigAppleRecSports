@@ -1,0 +1,186 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MobileDevice
+description: Google Workspace Mobile Management includes Android, [Google Sync](https://support.google.com/a/answer/135937),
+  and iOS devices. For more information about common group mobile device API tasks,
+  see the [Developer's Guide](https://developers.google.com/workspace/admin/directory/v1/guides/manage-mobile-devices.html).
+type: object
+properties:
+  kind:
+    description: The type of the API resource. For Mobiledevices resources, the value
+      is `admin#directory#mobiledevice`.
+    default: admin#directory#mobiledevice
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  resourceId:
+    description: The unique ID the API service uses to identify the mobile device.
+    type: string
+  deviceId:
+    description: The serial number for a Google Sync mobile device. For Android and
+      iOS devices, this is a software generated unique identifier.
+    type: string
+  name:
+    description: The list of the owner's user names. If your application needs the
+      current list of device owner names, use the [get](https://developers.google.com/workspace/admin/directory/v1/reference/mobiledevices/get.html)
+      method. For more information about retrieving mobile device user information,
+      see the [Developer's Guide](https://developers.google.com/workspace/admin/directory/v1/guides/manage-users#get_user).
+    type: array
+    items:
+      type: string
+  email:
+    description: The list of the owner's email addresses. If your application needs
+      the current list of user emails, use the [get](https://developers.google.com/workspace/admin/directory/v1/reference/mobiledevices/get.html)
+      method. For additional information, see the [retrieve a user](https://developers.google.com/workspace/admin/directory/v1/guides/manage-users#get_user)
+      method.
+    type: array
+    items:
+      type: string
+  model:
+    description: The mobile device's model name, for example Nexus S. This property
+      can be [updated](https://developers.google.com/workspace/admin/directory/v1/reference/mobiledevices/update.html).
+      For more information, see the [Developer's Guide](https://developers.google.com/workspace/admin/directory/v1/guides/manage-mobile=devices#update_mobile_device).
+    type: string
+  os:
+    description: The mobile device's operating system, for example IOS 4.3 or Android
+      2.3.5. This property can be [updated](https://developers.google.com/workspace/admin/directory/v1/reference/mobiledevices/update.html).
+      For more information, see the [Developer's Guide](https://developers.google.com/workspace/admin/directory/v1/guides/manage-mobile-devices#update_mobile_device).
+    type: string
+  type:
+    description: The type of mobile device.
+    type: string
+  status:
+    description: The device's status.
+    type: string
+  hardwareId:
+    description: The IMEI/MEID unique identifier for Android hardware. It is not applicable
+      to Google Sync devices. When adding an Android mobile device, this is an optional
+      property. When updating one of these devices, this is a read-only property.
+    type: string
+  firstSync:
+    description: Date and time the device was first synchronized with the policy settings
+      in the G Suite administrator control panel (Read-only)
+    type: string
+    format: date-time
+  lastSync:
+    description: Date and time the device was last synchronized with the policy settings
+      in the G Suite administrator control panel (Read-only)
+    type: string
+    format: date-time
+  userAgent:
+    description: Gives information about the device such as `os` version. This property
+      can be [updated](https://developers.google.com/workspace/admin/directory/v1/reference/mobiledevices/update.html).
+      For more information, see the [Developer's Guide](https://developers.google.com/workspace/admin/directory/v1/guides/manage-mobile-devices#update_mobile_device).
+    type: string
+  serialNumber:
+    description: The device's serial number.
+    type: string
+  imei:
+    description: The device's IMEI number.
+    type: string
+  meid:
+    description: The device's MEID number.
+    type: string
+  wifiMacAddress:
+    description: The device's MAC address on Wi-Fi networks.
+    type: string
+  networkOperator:
+    description: Mobile Device mobile or network operator (if available) (Read-only)
+    type: string
+  defaultLanguage:
+    description: The default locale used on the device.
+    type: string
+  managedAccountIsOnOwnerProfile:
+    description: Boolean indicating if this account is on owner/primary profile or
+      not.
+    type: boolean
+  deviceCompromisedStatus:
+    description: The compromised device status.
+    type: string
+  buildNumber:
+    description: The device's operating system build number.
+    type: string
+  kernelVersion:
+    description: The device's kernel version.
+    type: string
+  basebandVersion:
+    description: The device's baseband version.
+    type: string
+  unknownSourcesStatus:
+    description: Unknown sources enabled or disabled on device (Read-only)
+    type: boolean
+  developerOptionsStatus:
+    description: Developer options enabled or disabled on device (Read-only)
+    type: boolean
+  otherAccountsInfo:
+    description: The list of accounts added on device (Read-only)
+    type: array
+    items:
+      type: string
+  adbStatus:
+    description: Adb (USB debugging) enabled or disabled on device (Read-only)
+    type: boolean
+  supportsWorkProfile:
+    description: Work profile supported on device (Read-only)
+    type: boolean
+  manufacturer:
+    description: Mobile Device manufacturer (Read-only)
+    type: string
+  releaseVersion:
+    description: Mobile Device release version version (Read-only)
+    type: string
+  securityPatchLevel:
+    description: Mobile Device Security patch level (Read-only)
+    type: string
+    format: int64
+  brand:
+    description: Mobile Device Brand (Read-only)
+    type: string
+  bootloaderVersion:
+    description: Mobile Device Bootloader version (Read-only)
+    type: string
+  hardware:
+    description: Mobile Device Hardware (Read-only)
+    type: string
+  encryptionStatus:
+    description: Mobile Device Encryption Status (Read-only)
+    type: string
+  devicePasswordStatus:
+    description: DevicePasswordStatus (Read-only)
+    type: string
+  privilege:
+    description: DMAgentPermission (Read-only)
+    type: string
+  applications:
+    description: The list of applications installed on an Android mobile device. It
+      is not applicable to Google Sync and iOS devices. The list includes any Android
+      applications that access Google Workspace data. When updating an applications
+      list, it is important to note that updates replace the existing list. If the
+      Android device has two existing applications and the API updates the list with
+      five applications, the is now the updated list of five applications.
+    type: array
+    items:
+      type: object
+      properties:
+        packageName:
+          description: The application's package name. An example is `com.android.browser`.
+          type: string
+        displayName:
+          description: The application's display name. An example is `Browser`.
+          type: string
+        versionName:
+          description: The application's version name. An example is `3.2-140714`.
+          type: string
+        versionCode:
+          description: The application's version code. An example is `13`.
+          type: integer
+          format: int32
+        permission:
+          description: The list of permissions of this application. These can be either
+            a standard Android permission or one defined by the application, and are
+            found in an application's [Android manifest](https://developer.android.com/guide/topics/manifest/uses-permission-element.html).
+            Examples of a Calendar application's permissions are `READ_CALENDAR`,
+            or `MANAGE_ACCOUNTS`.
+          type: array
+          items:
+            type: string

@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserExternalId
+description: JSON template for an externalId entry.
+type: object
+properties:
+  customType:
+    description: Custom type.
+    type: string
+  type:
+    description: The type of the Id.
+    type: string
+  value:
+    description: The value of the id.
+    type: string

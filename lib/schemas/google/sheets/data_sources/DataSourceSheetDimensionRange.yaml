@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataSourceSheetDimensionRange
+description: A range along a single dimension on a DATA_SOURCE sheet.
+type: object
+properties:
+  sheetId:
+    type: integer
+    description: The ID of the data source sheet the range is on.
+    format: int32
+  columnReferences:
+    description: The columns on the data source sheet.
+    items:
+      $ref: DataSourceColumnReference
+    type: array

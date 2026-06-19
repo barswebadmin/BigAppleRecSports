@@ -1,0 +1,16 @@
+description: Modifies the labels on the specified messages.
+httpMethod: POST
+path: gmail/v1/users/{userId}/messages/batchModify
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.modify
+request:
+  $ref: BatchModifyMessagesRequest
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string

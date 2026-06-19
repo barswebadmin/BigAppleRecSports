@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddBandingRequest
+description: Adds a new banded range to the spreadsheet.
+type: object
+properties:
+  bandedRange:
+    $ref: BandedRange
+    description: The banded range to add. The bandedRangeId field is optional; if
+      one is not set, an id will be randomly generated. (It is an error to specify
+      the ID of a range that already exists.)

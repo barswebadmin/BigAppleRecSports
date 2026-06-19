@@ -1,4 +1,5 @@
-from .main import (
+"""Re-exports from shared_utilities for backward compatibility."""
+from shared_utilities.clients.slack import (
     SlackClient,
     SlackUserIdentifier,
     UserListPayload,
@@ -15,5 +16,3 @@ __all__ = [
     "show_loading_modal",
     "update_modal",
 ]
-
-

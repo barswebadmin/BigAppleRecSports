@@ -1,0 +1,43 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: InterpolationPoint
+description: A single interpolation point on a gradient conditional format. These
+  pin the gradient color scale according to the color, type and value chosen.
+type: object
+properties:
+  color:
+    description: 'The color this interpolation point should use. Deprecated: Use color_style.'
+    deprecated: true
+    $ref: Color
+  colorStyle:
+    $ref: ColorStyle
+    description: The color this interpolation point should use. If color is also set,
+      this field takes precedence.
+  type:
+    enum:
+    - INTERPOLATION_POINT_TYPE_UNSPECIFIED
+    - MIN
+    - MAX
+    - NUMBER
+    - PERCENT
+    - PERCENTILE
+    description: How the value should be interpreted.
+    type: string
+    enumDescriptions:
+    - The default value, do not use.
+    - The interpolation point uses the minimum value in the cells over the range of
+      the conditional format.
+    - The interpolation point uses the maximum value in the cells over the range of
+      the conditional format.
+    - The interpolation point uses exactly the value in InterpolationPoint.value.
+    - 'The interpolation point is the given percentage over all the cells in the range
+      of the conditional format. This is equivalent to `NUMBER` if the value was:
+      `=(MAX(FLATTEN(range)) * (value / 100)) + (MIN(FLATTEN(range)) * (1 - (value
+      / 100)))` (where errors in the range are ignored when flattening).'
+    - 'The interpolation point is the given percentile over all the cells in the range
+      of the conditional format. This is equivalent to `NUMBER` if the value was:
+      `=PERCENTILE(FLATTEN(range), value / 100)` (where errors in the range are ignored
+      when flattening).'
+  value:
+    type: string
+    description: The value this interpolation point uses. May be a formula. Unused
+      if type is MIN or MAX.

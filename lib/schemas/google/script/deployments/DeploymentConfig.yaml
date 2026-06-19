@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeploymentConfig
+description: Metadata the defines how a deployment is configured.
+type: object
+properties:
+  scriptId:
+    description: The script project's Drive ID.
+    type: string
+  versionNumber:
+    description: The version number on which this deployment is based.
+    type: integer
+    format: int32
+  description:
+    description: The description for this deployment.
+    type: string
+  manifestFileName:
+    description: The manifest file name for this deployment.
+    type: string

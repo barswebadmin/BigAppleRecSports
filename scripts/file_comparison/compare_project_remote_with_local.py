@@ -10,13 +10,17 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+# Add parent directory to path for imports
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir))
+
 # Add shared utilities to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
 from paths import get_repo_root
 
-from .fetchers import fetch_from_remote, check_credentials
-from .comparison_logic import compare_directories, ComparisonResult
-from .formatters import display_comparison_result
+from fetchers import fetch_from_remote, check_credentials
+from comparison_logic import compare_directories, ComparisonResult
+from formatters import display_comparison_result
 
 
 def compare_project_remote_with_local(
@@ -61,7 +65,7 @@ def compare_project_remote_with_local(
         if remote_origin_type == "aws":
             local_path = repo_root / "lambda" / "functions" / project_name
         else:  # google
-            local_path = repo_root / "GoogleAppsScripts" / "projects" / project_name
+            local_path = repo_root / "google-apps-scripts" / "projects" / project_name
     
     if not local_path.exists():
         raise ValueError(f"Local path does not exist: {local_path}")
@@ -127,7 +131,7 @@ Examples:
   %(prog)s --remote-origin-type google --project-name waitlist-script-comprehensive
   
   # With explicit local path
-  %(prog)s --remote-origin-type aws --project-name MoveInventoryLambda --local-path lambda/functions/MoveInventoryLambda
+  %(prog)s --remote-origin-type aws --project-name MoveInventoryLambda --local-path aws/lambda/functions/MoveInventoryLambda
         """
     )
     

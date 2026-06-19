@@ -1,0 +1,27 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MediaProperties
+description: Properties of the media.
+type: object
+properties:
+  alignment:
+    description: Position of the media.
+    enum:
+    - ALIGNMENT_UNSPECIFIED
+    - LEFT
+    - RIGHT
+    - CENTER
+    type: string
+    enumDescriptions:
+    - Default value. Unused.
+    - Left align.
+    - Right align.
+    - Center.
+  width:
+    format: int32
+    description: The width of the media in pixels. When the media is displayed, it
+      is scaled to the smaller of this value or the width of the displayed form. The
+      original aspect ratio of the media is preserved. If a width is not specified
+      when the media is added to the form, it is set to the width of the media source.
+      Width must be between 0 and 740, inclusive. Setting width to 0 or unspecified
+      is only permitted when updating the media source.
+    type: integer

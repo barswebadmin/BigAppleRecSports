@@ -1,0 +1,16 @@
+description: Returns a print server's configuration.
+httpMethod: GET
+path: admin/directory/v1/{+name}
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+- https://www.googleapis.com/auth/admin.chrome.printers.readonly
+parameters:
+  name:
+    description: 'Required. The [unique ID](https://developers.google.com/workspace/admin/directory/reference/rest/v1/customers)
+      of the customer''s Google Workspace account. Format: `customers/{id}`'
+    pattern: ^customers/[^/]+/chrome/printServers/[^/]+$
+    location: path
+    required: true
+    type: string
+response:
+  $ref: PrintServer

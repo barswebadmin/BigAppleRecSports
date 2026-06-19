@@ -15,7 +15,6 @@ from modules.integrations.google.models.requests import (
     GoogleGroupCreateRequest,
     GoogleUserCreateRequest
 )
-from shared.api_models import ValidationAPIError
 
 
 class TestGoogleUserIdentifierRequest:

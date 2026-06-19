@@ -1,0 +1,31 @@
+description: Deletes a client-side encryption key pair permanently and immediately.
+  You can only permanently delete key pairs that have been turned off for more than
+  30 days. To turn off a key pair, use the DisableCseKeyPair method. Gmail can't restore
+  or decrypt any messages that were encrypted by an obliterated key. Authenticated
+  users and Google Workspace administrators lose access to reading the encrypted messages.
+  For administrators managing identities and keypairs for users in their organization,
+  requests require authorization with a [service account](https://developers.google.com/identity/protocols/OAuth2ServiceAccount)
+  that has [domain-wide delegation authority](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#delegatingauthority)
+  to impersonate users with the `https://www.googleapis.com/auth/gmail.settings.basic`
+  scope. For users managing their own identities and keypairs, requests require [hardware
+  key encryption](https://support.google.com/a/answer/14153163) turned on and configured.
+httpMethod: POST
+path: gmail/v1/users/{userId}/settings/cse/keypairs/{keyPairId}:obliterate
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.basic
+- https://www.googleapis.com/auth/gmail.settings.sharing
+request:
+  $ref: ObliterateCseKeyPairRequest
+parameters:
+  userId:
+    description: The requester's primary email address. To indicate the authenticated
+      user, you can use the special value `me`.
+    default: me
+    location: path
+    required: true
+    type: string
+  keyPairId:
+    description: The identifier of the key pair to obliterate.
+    location: path
+    required: true
+    type: string

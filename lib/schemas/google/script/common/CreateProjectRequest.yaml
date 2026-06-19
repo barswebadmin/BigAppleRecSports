@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CreateProjectRequest
+description: Request to create a script project.
+type: object
+properties:
+  title:
+    description: The title for the project.
+    type: string
+  parentId:
+    description: The Drive ID of a parent file that the created script project is
+      bound to. This is usually the ID of a Google Doc, Google Sheet, Google Form,
+      or Google Slides file. If not set, a standalone script project is created.
+    type: string

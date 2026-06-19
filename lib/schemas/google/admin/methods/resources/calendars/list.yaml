@@ -1,0 +1,48 @@
+description: Retrieves a list of calendar resources for an account.
+httpMethod: GET
+path: admin/directory/v1/customer/{customer}/resources/calendars
+scopes:
+- https://www.googleapis.com/auth/admin.directory.resource.calendar
+- https://www.googleapis.com/auth/admin.directory.resource.calendar.readonly
+parameters:
+  customer:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's customer ID.
+    location: path
+    required: true
+    type: string
+  maxResults:
+    description: Maximum number of results to return.
+    minimum: '1'
+    maximum: '500'
+    location: query
+    type: integer
+    format: int32
+  orderBy:
+    description: Field(s) to sort results by in either ascending or descending order.
+      Supported fields include `resourceId`, `resourceName`, `capacity`, `buildingId`,
+      and `floorName`. If no order is specified, defaults to ascending. Should be
+      of the form "field [asc|desc], field [asc|desc], ...". For example `buildingId,
+      capacity desc` would return results sorted first by `buildingId` in ascending
+      order then by `capacity` in descending order.
+    location: query
+    type: string
+  pageToken:
+    description: Token to specify the next page in the list.
+    location: query
+    type: string
+  query:
+    description: String query used to filter results. Contains one or more search
+      clauses, each with a field, operator, and value. A field can be any of supported
+      fields and operators can be any of supported operations. Operators include '='
+      for exact match, '!=' for mismatch and ':' for prefix match or HAS match where
+      applicable. For prefix match, the value should always be followed by a *. Logical
+      operators NOT and AND are supported (in this order of precedence). Supported
+      fields include `generatedResourceName`, `name`, `buildingId`, `floor_name`,
+      `capacity`, `featureInstances.feature.name`, `resourceEmail`, `resourceCategory`.
+      For example `buildingId=US-NYC-9TH AND featureInstances.feature.name:Phone`.
+    location: query
+    type: string
+response:
+  $ref: CalendarResources

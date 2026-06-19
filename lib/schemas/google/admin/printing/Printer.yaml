@@ -1,0 +1,46 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Printer
+description: Printer configuration.
+type: object
+properties:
+  name:
+    description: Identifier. The resource name of the Printer object, in the format
+      customers/{customer-id}/printers/{printer-id} (During printer creation leave
+      empty)
+    type: string
+  id:
+    description: Id of the printer. (During printer creation leave empty)
+    type: string
+  displayName:
+    description: Editable. Name of printer.
+    type: string
+  description:
+    description: Editable. Description of printer.
+    type: string
+  makeAndModel:
+    description: Editable. Make and model of printer. e.g. Lexmark MS610de Value must
+      be in format as seen in ListPrinterModels response.
+    type: string
+  uri:
+    description: Editable. Printer URI.
+    type: string
+  createTime:
+    description: Output only. Time when printer was created.
+    readOnly: true
+    type: string
+    format: google-datetime
+  orgUnitId:
+    description: Organization Unit that owns this printer (Only can be set during
+      Printer creation)
+    type: string
+  auxiliaryMessages:
+    description: Output only. Auxiliary messages about issues with the printer configuration
+      if any.
+    readOnly: true
+    type: array
+    items:
+      $ref: AuxiliaryMessage
+  useDriverlessConfig:
+    description: Editable. flag to use driverless configuration or not. If it's set
+      to be true, make_and_model can be ignored
+    type: boolean

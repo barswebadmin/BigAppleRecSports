@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BacklightInfo
+description: Information about the device's backlights.
+type: object
+properties:
+  path:
+    description: Output only. Path to this backlight on the system. Useful if the
+      caller needs to correlate with other information.
+    readOnly: true
+    type: string
+  maxBrightness:
+    description: Output only. Maximum brightness for the backlight.
+    readOnly: true
+    type: integer
+    format: int32
+  brightness:
+    description: Output only. Current brightness of the backlight, between 0 and max_brightness.
+    readOnly: true
+    type: integer
+    format: int32

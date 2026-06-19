@@ -1,0 +1,44 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: LabelField
+description: Representation of field, which is a typed key-value pair.
+type: object
+properties:
+  kind:
+    description: This is always drive#labelField.
+    type: string
+  id:
+    description: The identifier of this label field.
+    type: string
+  valueType:
+    description: 'The field type. While new values may be supported in the future,
+      the following are currently allowed: * `dateString` * `integer` * `selection`
+      * `text` * `user`'
+    type: string
+  dateString:
+    description: 'Only present if valueType is dateString. RFC 3339 formatted date:
+      YYYY-MM-DD.'
+    type: array
+    items:
+      type: string
+      format: date
+  integer:
+    description: Only present if `valueType` is `integer`.
+    type: array
+    items:
+      type: string
+      format: int64
+  selection:
+    description: Only present if `valueType` is `selection`
+    type: array
+    items:
+      type: string
+  text:
+    description: Only present if `valueType` is `text`.
+    type: array
+    items:
+      type: string
+  user:
+    description: Only present if `valueType` is `user`.
+    type: array
+    items:
+      $ref: User

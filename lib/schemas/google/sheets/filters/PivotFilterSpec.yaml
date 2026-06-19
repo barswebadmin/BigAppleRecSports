@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PivotFilterSpec
+description: The pivot table filter criteria associated with a specific source column
+  offset.
+type: object
+properties:
+  filterCriteria:
+    $ref: PivotFilterCriteria
+    description: The criteria for the column.
+  columnOffsetIndex:
+    description: The zero-based column offset of the source range.
+    format: int32
+    type: integer
+  dataSourceColumnReference:
+    $ref: DataSourceColumnReference
+    description: The reference to the data source column.

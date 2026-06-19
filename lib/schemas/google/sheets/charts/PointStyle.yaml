@@ -1,0 +1,32 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PointStyle
+description: The style of a point on the chart.
+type: object
+properties:
+  size:
+    type: number
+    description: The point size. If empty, a default size is used.
+    format: double
+  shape:
+    enumDescriptions:
+    - Default value.
+    - A circle shape.
+    - A diamond shape.
+    - A hexagon shape.
+    - A pentagon shape.
+    - A square shape.
+    - A star shape.
+    - A triangle shape.
+    - An x-mark shape.
+    type: string
+    description: The point shape. If empty or unspecified, a default shape is used.
+    enum:
+    - POINT_SHAPE_UNSPECIFIED
+    - CIRCLE
+    - DIAMOND
+    - HEXAGON
+    - PENTAGON
+    - SQUARE
+    - STAR
+    - TRIANGLE
+    - X_MARK

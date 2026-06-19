@@ -1,0 +1,46 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FilterView
+description: A filter view. For more information, see [Manage data visibility with
+  filters](https://developers.google.com/workspace/sheets/api/guides/filters).
+type: object
+properties:
+  filterViewId:
+    type: integer
+    description: The ID of the filter view.
+    format: int32
+  title:
+    type: string
+    description: The name of the filter view.
+  sortSpecs:
+    description: The sort order per column. Later specifications are used when values
+      are equal in the earlier specifications.
+    items:
+      $ref: SortSpec
+    type: array
+  filterSpecs:
+    type: array
+    description: The filter criteria for showing or hiding values per column. Both
+      criteria and filter_specs are populated in responses. If both fields are specified
+      in an update request, this field takes precedence.
+    items:
+      $ref: FilterSpec
+  range:
+    description: The range this filter view covers. When writing, only one of range,
+      named_range_id, or table_id may be set.
+    $ref: GridRange
+  namedRangeId:
+    type: string
+    description: The named range this filter view is backed by, if any. When writing,
+      only one of range, named_range_id, or table_id may be set.
+  criteria:
+    type: object
+    description: The criteria for showing/hiding values per column. The map's key
+      is the column index, and the value is the criteria for that column. This field
+      is deprecated in favor of filter_specs.
+    deprecated: true
+    additionalProperties:
+      $ref: FilterCriteria
+  tableId:
+    type: string
+    description: The table this filter view is backed by, if any. When writing, only
+      one of range, named_range_id, or table_id may be set.

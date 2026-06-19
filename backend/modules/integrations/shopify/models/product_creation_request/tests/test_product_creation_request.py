@@ -35,7 +35,7 @@ class TestProductCreationRequestModel:
                 "seasonEndDate": "2025-12-10T04:00:00.000Z",
                 "vetRegistrationStartDateTime": "2025-09-16T23:00:00.000Z",
                 "earlyRegistrationStartDateTime": "2025-09-16T23:00:00.000Z",
-                "openRegistrationStartDateTime": "2025-09-17T23:00:00.000Z",
+                "generalRegistrationStartDateTime": "2025-09-17T23:00:00.000Z",
             },
             "inventoryInfo": {
                 "price": 150,
@@ -68,7 +68,7 @@ class TestProductCreationRequestModel:
                 "seasonEndDate": "2025-06-15T04:00:00.000Z",
                 "vetRegistrationStartDateTime": "2025-03-15T23:00:00.000Z",
                 "earlyRegistrationStartDateTime": "2025-03-16T23:00:00.000Z",
-                "openRegistrationStartDateTime": "2025-03-17T23:00:00.000Z",
+                "generalRegistrationStartDateTime": "2025-03-17T23:00:00.000Z",
             },
             "inventoryInfo": {"price": 85, "totalInventory": 32},
         }
@@ -96,7 +96,7 @@ class TestProductCreationRequestModel:
                 "seasonEndDate": "2025-06-15T04:00:00.000Z",
                 "vetRegistrationStartDateTime": "2025-03-15T23:00:00.000Z",
                 "earlyRegistrationStartDateTime": "2025-03-16T23:00:00.000Z",
-                "openRegistrationStartDateTime": "2025-03-17T23:00:00.000Z",
+                "generalRegistrationStartDateTime": "2025-03-17T23:00:00.000Z",
             },
             "inventoryInfo": {"price": 85, "totalInventory": 32},
         }
@@ -129,7 +129,7 @@ class TestProductCreationRequestModel:
                 "seasonEndDate": "2025-12-10T04:00:00.000Z",
                 "vetRegistrationStartDateTime": "2025-09-16T23:00:00.000Z",
                 "earlyRegistrationStartDateTime": "2025-09-16T23:00:00.000Z",
-                "openRegistrationStartDateTime": "2025-09-17T23:00:00.000Z",
+                "generalRegistrationStartDateTime": "2025-09-17T23:00:00.000Z",
             },
             "inventoryInfo": {"price": 150, "totalInventory": 64},
         }
@@ -162,7 +162,7 @@ class TestProductCreationRequestModel:
                 "seasonEndDate": "2025-12-10T04:00:00.000Z",
                 "vetRegistrationStartDateTime": "2025-09-16T23:00:00.000Z",
                 "earlyRegistrationStartDateTime": "2025-09-16T23:00:00.000Z",
-                "openRegistrationStartDateTime": "2025-09-17T23:00:00.000Z",
+                "generalRegistrationStartDateTime": "2025-09-17T23:00:00.000Z",
             },
             "inventoryInfo": {"price": 150, "totalInventory": 64},
         }
@@ -196,7 +196,7 @@ class TestProductCreationRequestModel:
                 "seasonEndDate": "2025-06-15T04:00:00.000Z",
                 "vetRegistrationStartDateTime": "2025-03-15T23:00:00.000Z",
                 "earlyRegistrationStartDateTime": "2025-03-16T23:00:00.000Z",
-                "openRegistrationStartDateTime": "2025-03-17T23:00:00.000Z",
+                "generalRegistrationStartDateTime": "2025-03-17T23:00:00.000Z",
             },
             "inventoryInfo": {"price": 85, "totalInventory": 32},
         }
@@ -228,7 +228,7 @@ class TestProductCreationRequestModel:
                 "seasonEndDate": "2025-06-15T04:00:00.000Z",
                 "vetRegistrationStartDateTime": "2025-03-15T23:00:00.000Z",
                 "earlyRegistrationStartDateTime": "2025-03-16T23:00:00.000Z",
-                "openRegistrationStartDateTime": "2025-03-17T23:00:00.000Z",
+                "generalRegistrationStartDateTime": "2025-03-17T23:00:00.000Z",
             },
             "inventoryInfo": {"price": 85, "totalInventory": 32},
         }

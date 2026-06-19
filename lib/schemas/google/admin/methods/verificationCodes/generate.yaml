@@ -1,0 +1,11 @@
+description: Generates new backup verification codes for the user.
+httpMethod: POST
+path: admin/directory/v1/users/{userKey}/verificationCodes/generate
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user.security
+parameters:
+  userKey:
+    description: Email or immutable ID of the user
+    location: path
+    required: true
+    type: string

@@ -2,7 +2,7 @@
 """
 Google Apps Scripts installation script.
 
-Installs npm dependencies via pnpm in GoogleAppsScripts/.
+Installs npm dependencies via pnpm in google-apps-scripts/.
 """
 import json
 import subprocess
@@ -56,7 +56,7 @@ def install_google() -> InstallResult:
     notes: list[str] = []
     warnings: list[str] = []
 
-    gas_dir = REPO_ROOT / "GoogleAppsScripts"
+    gas_dir = REPO_ROOT / "google-apps-scripts"
     pkg_json = gas_dir / "package.json"
     expected = set()
     try:
@@ -86,7 +86,7 @@ def install_google() -> InstallResult:
     missing = sorted(expected - installed) if installed else []
     if extras:
         warnings.append(f"unexpected direct packages in pnpm list: {', '.join(extras)}")
-        warnings.append("recommendation: add to GoogleAppsScripts/package.json or remove")
+        warnings.append("recommendation: add to google-apps-scripts/package.json or remove")
     if missing:
         warnings.append(f"declared packages not present in pnpm list: {', '.join(missing)}")
 

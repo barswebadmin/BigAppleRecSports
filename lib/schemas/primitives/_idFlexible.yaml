@@ -1,0 +1,9 @@
+title: "Flexible ID"
+description: "ID that can be integer or string with leading zeros for sorting"
+oneOf:
+  - type: integer
+    examples: [1, 42, 1337]
+  - type: string
+    pattern: "^\\d{7}$"
+    description: "Numeric string with exactly 7 digits, padded with leading zeros for proper alphabetical sorting"
+    examples: ["0000001", "0000042", "0001337"]

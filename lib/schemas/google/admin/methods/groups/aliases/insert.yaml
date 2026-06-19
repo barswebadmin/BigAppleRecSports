@@ -1,0 +1,16 @@
+description: Adds an alias for the group.
+httpMethod: POST
+path: admin/directory/v1/groups/{groupKey}/aliases
+scopes:
+- https://www.googleapis.com/auth/admin.directory.group
+request:
+  $ref: Alias
+parameters:
+  groupKey:
+    description: Identifies the group in the API request. The value can be the group's
+      email address, group alias, or the unique group ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Alias

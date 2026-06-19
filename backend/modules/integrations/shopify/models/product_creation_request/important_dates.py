@@ -14,7 +14,7 @@ class ImportantDates(BaseModel):
     seasonEndDate: Union[str, datetime]
     vetRegistrationStartDateTime: Union[str, datetime]
     earlyRegistrationStartDateTime: Union[str, datetime]
-    openRegistrationStartDateTime: Union[str, datetime]
+    generalRegistrationStartDateTime: Union[str, datetime]
     offDates: Optional[List[Union[str, datetime]]] = None
     newPlayerOrientationDateTime: Optional[Union[str, datetime]] = None
     scoutNightDateTime: Optional[Union[str, datetime]] = None

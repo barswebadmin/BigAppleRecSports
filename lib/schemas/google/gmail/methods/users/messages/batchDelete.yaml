@@ -1,0 +1,16 @@
+description: Deletes many messages by message ID. Provides no guarantees that messages
+  were not already deleted or even existed at all.
+httpMethod: POST
+path: gmail/v1/users/{userId}/messages/batchDelete
+scopes:
+- https://mail.google.com/
+request:
+  $ref: BatchDeleteMessagesRequest
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string

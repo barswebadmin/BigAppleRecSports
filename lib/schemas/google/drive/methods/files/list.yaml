@@ -1,0 +1,126 @@
+description: ' Lists the user''s files. For more information, see [Search for files
+  and folders](/workspace/drive/api/guides/search-files). This method accepts the
+  `q` parameter, which is a search query combining one or more search terms. This
+  method returns *all* files by default, including trashed files. If you don''t want
+  trashed files to appear in the list, use the `trashed=false` query parameter to
+  remove trashed files from the results.'
+httpMethod: GET
+path: files
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.photos.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  corpora:
+    description: 'Specifies a collection of items (files or documents) to which the
+      query applies. Supported items include: * `user` * `domain` * `drive` * `allDrives`
+      Prefer `user` or `drive` to `allDrives` for efficiency. By default, corpora
+      is set to `user`. However, this can change depending on the filter set through
+      the `q` parameter. For more information, see [File organization](https://developers.google.com/workspace/drive/api/guides/about-files#file-organization).'
+    location: query
+    type: string
+  corpus:
+    description: 'Deprecated: The source of files to list. Use `corpora` instead.'
+    location: query
+    deprecated: true
+    type: string
+    enumDescriptions:
+    - Files shared to the user's domain.
+    - Files owned by or shared to the user.
+    enum:
+    - domain
+    - user
+  driveId:
+    description: ID of the shared drive to search.
+    location: query
+    type: string
+  includeItemsFromAllDrives:
+    description: Whether both My Drive and shared drive items should be included in
+      results.
+    default: 'false'
+    location: query
+    type: boolean
+  includeTeamDriveItems:
+    description: 'Deprecated: Use `includeItemsFromAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  orderBy:
+    description: 'A comma-separated list of sort keys. Valid keys are: * `createdTime`:
+      When the file was created. Avoid using this key for queries on large item collections
+      as it might result in timeouts or other issues. For time-related sorting on
+      large item collections, use `modifiedTime` instead. * `folder`: The folder ID.
+      This field is sorted using alphabetical ordering. * `modifiedByMeTime`: The
+      last time the file was modified by the user. * `modifiedTime`: The last time
+      the file was modified by anyone. * `name`: The name of the file. This field
+      is sorted using alphabetical ordering, so 1, 12, 2, 22. * `name_natural`: The
+      name of the file. This field is sorted using natural sort ordering, so 1, 2,
+      12, 22. * `quotaBytesUsed`: The number of storage quota bytes used by the file.
+      * `recency`: The most recent timestamp from the file''s date-time fields. *
+      `sharedWithMeTime`: When the file was shared with the user, if applicable. *
+      `starred`: Whether the user has starred the file. * `viewedByMeTime`: The last
+      time the file was viewed by the user. Each key sorts ascending by default, but
+      can be reversed with the `desc` modifier. Example usage: `?orderBy=folder,modifiedTime
+      desc,name`.'
+    location: query
+    type: string
+  pageSize:
+    description: The maximum number of files to return per page. Partial or empty
+      result pages are possible even before the end of the files list has been reached.
+    default: '100'
+    minimum: '1'
+    maximum: '1000'
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: The token for continuing a previous list request on the next page.
+      This should be set to the value of `nextPageToken` from the previous response.
+    location: query
+    type: string
+  q:
+    description: A query for filtering the file results. For supported syntax, see
+      [Search for files and folders](/workspace/drive/api/guides/search-files).
+    location: query
+    type: string
+  spaces:
+    description: A comma-separated list of spaces to query within the corpora. Supported
+      values are `drive` and `appDataFolder`. For more information, see [File organization](https://developers.google.com/workspace/drive/api/guides/about-files#file-organization).
+    default: drive
+    location: query
+    type: string
+  supportsAllDrives:
+    description: Whether the requesting application supports both My Drives and shared
+      drives.
+    default: 'false'
+    location: query
+    type: boolean
+  supportsTeamDrives:
+    description: 'Deprecated: Use `supportsAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  teamDriveId:
+    description: 'Deprecated: Use `driveId` instead.'
+    location: query
+    deprecated: true
+    type: string
+  includePermissionsForView:
+    description: Specifies which additional view's permissions to include in the response.
+      Only `published` is supported.
+    location: query
+    type: string
+  includeLabels:
+    description: A comma-separated list of IDs of labels to include in the `labelInfo`
+      part of the response.
+    location: query
+    type: string
+response:
+  $ref: FileList

@@ -74,11 +74,11 @@ def install_lambda() -> InstallResult:
             notes.append(f"created {venv_dir.relative_to(REPO_ROOT)}")
 
         # Install dependencies using UV
-        _run(["uv", "pip", "install", "-e", "."], cwd=lambda_dir, timeout=1800, check=True)
+        _run(["uv", "sync"], cwd=lambda_dir, timeout=1800, check=True)
         notes.append("installed lambda dependencies")
 
         # Install dev dependencies
-        _run(["uv", "pip", "install", "-e", ".[dev]"], cwd=lambda_dir, timeout=1800, check=True)
+        _run(["uv", "sync", "--extra", "dev"], cwd=lambda_dir, timeout=1800, check=True)
         notes.append("installed lambda dev dependencies")
 
     except subprocess.CalledProcessError as e:

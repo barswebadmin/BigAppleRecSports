@@ -1,0 +1,29 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: TimeOfDay
+description: Represents a time of day. The date and time zone are either not significant
+  or are specified elsewhere. An API may choose to allow leap seconds. Related types
+  are google.type.Date and `google.protobuf.Timestamp`.
+type: object
+properties:
+  hours:
+    description: Hours of a day in 24 hour format. Must be greater than or equal to
+      0 and typically must be less than or equal to 23. An API may choose to allow
+      the value "24:00:00" for scenarios like business closing time.
+    format: int32
+    type: integer
+  minutes:
+    type: integer
+    description: Minutes of an hour. Must be greater than or equal to 0 and less than
+      or equal to 59.
+    format: int32
+  seconds:
+    type: integer
+    description: Seconds of a minute. Must be greater than or equal to 0 and typically
+      must be less than or equal to 59. An API may allow the value 60 if it allows
+      leap-seconds.
+    format: int32
+  nanos:
+    description: Fractions of seconds, in nanoseconds. Must be greater than or equal
+      to 0 and less than or equal to 999,999,999.
+    format: int32
+    type: integer

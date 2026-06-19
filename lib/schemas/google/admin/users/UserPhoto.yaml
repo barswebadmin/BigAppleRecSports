@@ -1,0 +1,44 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserPhoto
+description: ''
+type: object
+properties:
+  id:
+    description: The ID the API uses to uniquely identify the user.
+    type: string
+  primaryEmail:
+    description: The user's primary email address.
+    type: string
+  kind:
+    description: The type of the API resource. For Photo resources, this is `admin#directory#user#photo`.
+    default: admin#directory#user#photo
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  photoData:
+    description: 'The user photo''s upload data in [web-safe Base64](https://en.wikipedia.org/wiki/Base64#URL_applications)
+      format in bytes. This means: * The slash (/) character is replaced with the
+      underscore (_) character. * The plus sign (+) character is replaced with the
+      hyphen (-) character. * The equals sign (=) character is replaced with the asterisk
+      (*). * For padding, the period (.) character is used instead of the RFC-4648
+      baseURL definition which uses the equals sign (=) for padding. This is done
+      to simplify URL-parsing. * Whatever the size of the photo being uploaded, the
+      API downsizes it to 96x96 pixels.'
+    annotations:
+      required:
+      - directory.users.photos.update
+    type: string
+    format: byte
+  mimeType:
+    description: The MIME type of the photo. Allowed values are `JPEG`, `PNG`, `GIF`,
+      `BMP`, `TIFF`, and web-safe base64 encoding.
+    type: string
+  width:
+    description: Width of the photo in pixels.
+    type: integer
+    format: int32
+  height:
+    description: Height of the photo in pixels.
+    type: integer
+    format: int32

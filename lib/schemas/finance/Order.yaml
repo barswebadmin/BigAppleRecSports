@@ -1,0 +1,88 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Order_New"
+description: "ALTERNATIVE: Consolidated order with embedded registration details for review"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      shopifyOrderId:
+        type: string
+        description: "Shopify order ID"
+
+      memberId:
+        allOf:
+          - $ref: "../primitives/foreignKey.yaml#/"
+          - properties:
+              table:
+                const: "members"
+        description: "Foreign key reference to the member who placed this order"
+
+      type:
+        type: string
+        enum: [program-registration, merchandise, donation, other]
+
+      registrationDetails:
+        $ref: "./RegistrationDetails.yaml#/"
+
+      
+      paymentDetails:
+        originalAmount:
+          type: number
+          minimum: 0
+
+        discountDetails:
+          type: object
+          properties:
+            discountId:
+              allOf:
+                - $ref: "../primitives/foreignKey.yaml#/"
+                - properties:
+                    table:
+                      const: "discounts"
+              description: "Foreign key reference to the applied discount"
+            amountDiscounted:
+              type: number
+              minimum: 0
+
+        paymentPlanId:
+          allOf:
+            - $ref: "../primitives/foreignKey.yaml#/"
+            - properties:
+                table:
+                  const: "payment-plans"
+          description: "Foreign key reference to the payment plan for this order"
+        
+        refundId:
+          allOf:
+            - $ref: "../primitives/foreignKey.yaml#/"
+            - properties:
+                table:
+                  const: "refunds"
+          description: "Foreign key reference to the refund for this order"
+
+        totalAmountPaid:
+          type: number
+          minimum: 0
+
+        totalAmountDue:
+          type: number
+
+        transactions:
+          type: array
+          items:
+            type: string
+          description: "Array of Transaction record IDs associated with this order"
+
+      status:
+        type: string
+        enum: [in-progress, completed, cancelled, refunded, disputed]
+        default: in-progress
+        description: "Current order status"
+
+      cancelledAt:
+        type: string
+        format: date-time
+
+    required: [memberId, type, totalAmountPaid, status]
+
+additionalProperties: true

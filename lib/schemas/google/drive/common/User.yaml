@@ -1,0 +1,33 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: User
+description: Information about a Drive user.
+type: object
+properties:
+  displayName:
+    description: Output only. A plain text displayable name for this user.
+    readOnly: true
+    type: string
+  kind:
+    description: 'Output only. Identifies what kind of resource this is. Value: the
+      fixed string `drive#user`.'
+    default: drive#user
+    readOnly: true
+    type: string
+  me:
+    description: Output only. Whether this user is the requesting user.
+    readOnly: true
+    type: boolean
+  permissionId:
+    description: Output only. The user's ID as visible in Permission resources.
+    readOnly: true
+    type: string
+  emailAddress:
+    description: Output only. The email address of the user. This may not be present
+      in certain contexts if the user has not made their email address visible to
+      the requester.
+    readOnly: true
+    type: string
+  photoLink:
+    description: Output only. A link to the user's profile photo, if available.
+    readOnly: true
+    type: string

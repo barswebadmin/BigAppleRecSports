@@ -1,0 +1,37 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PieChartSpec
+description: A pie chart.
+type: object
+properties:
+  domain:
+    description: The data that covers the domain of the pie chart.
+    $ref: ChartData
+  series:
+    description: The data that covers the one and only series of the pie chart.
+    $ref: ChartData
+  pieHole:
+    description: The size of the hole in the pie chart.
+    format: double
+    type: number
+  threeDimensional:
+    description: True if the pie is three dimensional.
+    type: boolean
+  legendPosition:
+    enum:
+    - PIE_CHART_LEGEND_POSITION_UNSPECIFIED
+    - BOTTOM_LEGEND
+    - LEFT_LEGEND
+    - RIGHT_LEGEND
+    - TOP_LEGEND
+    - NO_LEGEND
+    - LABELED_LEGEND
+    description: Where the legend of the pie chart should be drawn.
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - The legend is rendered on the bottom of the chart.
+    - The legend is rendered on the left of the chart.
+    - The legend is rendered on the right of the chart.
+    - The legend is rendered on the top of the chart.
+    - No legend is rendered.
+    - Each pie slice has a label attached to it.

@@ -1,0 +1,23 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ExecutionError
+description: An object that provides information about the nature of an error resulting
+  from an attempted execution of a script function using the Apps Script API. If a
+  run call succeeds but the script function (or Apps Script itself) throws an exception,
+  the response body's error field contains a Status object. The `Status` object's
+  `details` field contains an array with a single one of these `ExecutionError` objects.
+type: object
+properties:
+  errorMessage:
+    description: The error message thrown by Apps Script, usually localized into the
+      user's language.
+    type: string
+  errorType:
+    description: The error type, for example `TypeError` or `ReferenceError`. If the
+      error type is unavailable, this field is not included.
+    type: string
+  scriptStackTraceElements:
+    description: An array of objects that provide a stack trace through the script
+      to show where the execution failed, with the deepest call first.
+    type: array
+    items:
+      $ref: ScriptStackTraceElement

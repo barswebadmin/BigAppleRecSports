@@ -12,11 +12,6 @@ from typing import Dict, Any, Optional
 
 from controllers.api.base import BaseAPIController
 from modules.integrations.shopify.services.shopify_service import ShopifyService
-from shared.api_models import (
-    APIError,
-    NotFoundAPIError,
-    ValidationAPIError
-)
 from modules.integrations.shopify.models import (
     OrderResponse,
     OrderListResponse,
@@ -118,8 +113,7 @@ class ShopifyAPIController(BaseAPIController):
                 message=f"Retrieved {len(order_items)} orders"
             ))
 
-        except ValidationAPIError:
-            # Re-raise validation errors as-is
+        except ValueError:
             raise
         except Exception as e:
             self.logger.error("Error listing orders: %s", e)
@@ -154,17 +148,14 @@ class ShopifyAPIController(BaseAPIController):
             )
 
             if not orders:
-                raise NotFoundAPIError("Order", identifier)
+                raise LookupError(f"Order not found: {identifier}")
 
-            # Use first order (same logic as CLI)
             order = orders[0]
 
-            # Convert sgqlc object to JSON dict (preserves all fields)
             import json
             if hasattr(order, '__json_data__'):
                 order_dict = order.__json_data__
             else:
-                # Fallback: use json serialization
                 order_dict = json.loads(json.dumps(order, default=str))
 
             result = OrderResponse(**self.format_success_response(
@@ -173,10 +164,7 @@ class ShopifyAPIController(BaseAPIController):
             ))
             return result
 
-        except ValidationAPIError:
-            # Re-raise validation errors as-is
-            raise
-        except APIError:
+        except (ValueError, LookupError):
             raise
         except Exception as e:
             self.logger.error("Error getting order %s: %s", identifier, e)
@@ -227,11 +215,9 @@ class ShopifyAPIController(BaseAPIController):
                 "payment_summary": result.get("payment_summary")
             }
 
-            # Map status codes to HTTP exceptions or return success
             if status_code == 404:
-                raise NotFoundAPIError("Order", identifier)
+                raise LookupError(f"Order not found: {identifier}")
             elif status_code == 202:
-                # Order already canceled - return with 202 status (warning, not error)
                 from fastapi import Response
                 return Response(
                     content=json.dumps({
@@ -243,20 +229,16 @@ class ShopifyAPIController(BaseAPIController):
                     media_type="application/json"
                 )
             elif status_code == 500:
-                raise APIError(message)
+                raise RuntimeError(message)
             elif status_code == 200:
-                # Order is eligible - return success with enriched data
                 return OrderResponse(**self.format_success_response(
                     data=response_data,
                     message=message
                 ))
             else:
-                # Unexpected status code
-                raise APIError(f"Unexpected status code: {status_code}")
+                raise RuntimeError(f"Unexpected status code: {status_code}")
 
-        except ValidationAPIError:
-            raise
-        except APIError:
+        except (ValueError, LookupError, RuntimeError):
             raise
         except Exception as e:
             self.logger.error("Error validating order cancellation %s: %s", identifier, e)
@@ -308,11 +290,9 @@ class ShopifyAPIController(BaseAPIController):
                 "refund_calculations": result.get("refund_calculations")
             }
 
-            # Map status codes to HTTP exceptions or return success
             if status_code == 404:
-                raise NotFoundAPIError("Order", identifier)
+                raise LookupError(f"Order not found: {identifier}")
             elif status_code == 202:
-                # No refundable amount - return with 202 status (warning, not error)
                 from fastapi import Response
                 return Response(
                     content=json.dumps({
@@ -324,20 +304,16 @@ class ShopifyAPIController(BaseAPIController):
                     media_type="application/json"
                 )
             elif status_code == 500:
-                raise APIError(message)
+                raise RuntimeError(message)
             elif status_code == 200:
-                # Order has refundable amount - return success with enriched data
                 return OrderResponse(**self.format_success_response(
                     data=response_data,
                     message=message
                 ))
             else:
-                # Unexpected status code
-                raise APIError(f"Unexpected status code: {status_code}")
+                raise RuntimeError(f"Unexpected status code: {status_code}")
 
-        except ValidationAPIError:
-            raise
-        except APIError:
+        except (ValueError, LookupError, RuntimeError):
             raise
         except Exception as e:
             self.logger.error("Error validating order refund %s: %s", identifier, e)
@@ -403,9 +379,7 @@ class ShopifyAPIController(BaseAPIController):
                     }
                 )
 
-        except ValidationAPIError:
-            raise
-        except APIError:
+        except (ValueError, LookupError):
             raise
         except Exception as e:
             self.logger.error("Error cancelling order %s: %s", order_id, e)
@@ -432,7 +406,7 @@ class ShopifyAPIController(BaseAPIController):
         """
         identifier = identifier.strip() if identifier else ""
         if not identifier:
-            raise ValidationAPIError("Order identifier cannot be empty")
+            raise ValueError("Order identifier cannot be empty")
         
         # Check if it's a 5-digit order number (already normalized without #)
         if identifier.isdigit() and len(identifier) == 5:
@@ -444,8 +418,7 @@ class ShopifyAPIController(BaseAPIController):
             # It's an order ID - use as-is
             return ("order_id", f"id:{identifier}")
         
-        # If neither format matches, raise error
-        raise ValidationAPIError(
+        raise ValueError(
             f"Invalid order identifier format: {identifier}. "
             f"Expected order number (5 digits, e.g., 12345) "
             f"or order ID (11-16 digits, e.g., 1234567890)"

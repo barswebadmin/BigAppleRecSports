@@ -1,0 +1,36 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BasicChartAxis
+description: An axis of the chart. A chart may not have more than one axis per axis
+  position.
+type: object
+properties:
+  title:
+    type: string
+    description: The title of this axis. If set, this overrides any title inferred
+      from headers of the data.
+  position:
+    enum:
+    - BASIC_CHART_AXIS_POSITION_UNSPECIFIED
+    - BOTTOM_AXIS
+    - LEFT_AXIS
+    - RIGHT_AXIS
+    description: The position of this axis.
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - The axis rendered at the bottom of a chart. For most charts, this is the standard
+      major axis. For bar charts, this is a minor axis.
+    - The axis rendered at the left of a chart. For most charts, this is a minor axis.
+      For bar charts, this is the standard major axis.
+    - The axis rendered at the right of a chart. For most charts, this is a minor
+      axis. For bar charts, this is an unusual major axis.
+  format:
+    description: The format of the title. Only valid if the axis is not associated
+      with the domain. The link field is not supported.
+    $ref: TextFormat
+  titleTextPosition:
+    description: The axis title text position.
+    $ref: TextPosition
+  viewWindowOptions:
+    $ref: ChartAxisViewWindowOptions
+    description: The view window options for this axis.

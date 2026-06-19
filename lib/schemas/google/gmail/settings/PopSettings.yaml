@@ -1,0 +1,35 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PopSettings
+description: POP settings for an account.
+type: object
+properties:
+  accessWindow:
+    description: The range of messages which are accessible via POP.
+    type: string
+    enumDescriptions:
+    - Unspecified range.
+    - Indicates that no messages are accessible via POP.
+    - Indicates that unfetched messages received after some past point in time are
+      accessible via POP.
+    - Indicates that all unfetched messages are accessible via POP.
+    enum:
+    - accessWindowUnspecified
+    - disabled
+    - fromNowOn
+    - allMail
+  disposition:
+    description: The action that will be executed on a message after it has been fetched
+      via POP.
+    type: string
+    enumDescriptions:
+    - Unspecified disposition.
+    - Leave the message in the `INBOX`.
+    - Archive the message.
+    - Move the message to the `TRASH`.
+    - Leave the message in the `INBOX` and mark it as read.
+    enum:
+    - dispositionUnspecified
+    - leaveInInbox
+    - archive
+    - trash
+    - markRead

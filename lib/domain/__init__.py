@@ -1,0 +1,1 @@
+"""BARS domain modules."""

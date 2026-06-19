@@ -1,0 +1,7 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserCustomProperties
+description: JSON template for a set of custom properties (i.e. all fields in a particular
+  schema)
+type: object
+additionalProperties:
+  type: any

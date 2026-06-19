@@ -1,0 +1,57 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Reply
+description: A reply to a comment on a file. Some resource methods (such as `replies.update`)
+  require a `replyId`. Use the `replies.list` method to retrieve the ID for a reply.
+type: object
+properties:
+  id:
+    description: Output only. The ID of the reply.
+    type: string
+  kind:
+    description: 'Output only. Identifies what kind of resource this is. Value: the
+      fixed string `"drive#reply"`.'
+    default: drive#reply
+    type: string
+  createdTime:
+    description: The time at which the reply was created (RFC 3339 date-time).
+    type: string
+    format: date-time
+  modifiedTime:
+    description: The last time the reply was modified (RFC 3339 date-time).
+    type: string
+    format: date-time
+  action:
+    description: 'The action the reply performed to the parent comment. The supported
+      values are: * `resolve` * `reopen`'
+    type: string
+  author:
+    description: Output only. The author of the reply. The author's email address
+      and permission ID won't be populated.
+    $ref: User
+  deleted:
+    description: Output only. Whether the reply has been deleted. A deleted reply
+      has no content.
+    type: boolean
+  htmlContent:
+    description: Output only. The content of the reply with HTML formatting.
+    type: string
+  content:
+    description: The plain text content of the reply. This field is used for setting
+      the content, while `htmlContent` should be displayed. This field is required
+      by the `create` method if no `action` value is specified.
+    annotations:
+      required:
+      - drive.replies.update
+    type: string
+  mentionedEmailAddresses:
+    description: Output only. A list of email addresses for users mentioned in this
+      comment. If no users are mentioned, the list is empty.
+    readOnly: true
+    type: array
+    items:
+      type: string
+  assigneeEmailAddress:
+    description: Output only. The email address of the user assigned to this comment.
+      If no user is assigned, the field is unset.
+    readOnly: true
+    type: string

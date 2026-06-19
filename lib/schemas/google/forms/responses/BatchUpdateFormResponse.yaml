@@ -1,0 +1,19 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchUpdateFormResponse
+description: Response to a BatchUpdateFormRequest.
+type: object
+properties:
+  replies:
+    items:
+      $ref: Response
+    description: The reply of the updates. This maps 1:1 with the update requests,
+      although replies to some requests may be empty.
+    type: array
+  form:
+    description: Based on the bool request field `include_form_in_response`, a form
+      with all applied mutations/updates is returned or not. This may be later than
+      the revision ID created by these changes.
+    $ref: Form
+  writeControl:
+    $ref: WriteControl
+    description: The updated write control after applying the request.

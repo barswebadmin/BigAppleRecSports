@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddSlicerRequest
+description: Adds a slicer to a sheet in the spreadsheet.
+type: object
+properties:
+  slicer:
+    description: The slicer that should be added to the spreadsheet, including the
+      position where it should be placed. The slicerId field is optional; if one is
+      not set, an id will be randomly generated. (It is an error to specify the ID
+      of a slicer that already exists.)
+    $ref: Slicer

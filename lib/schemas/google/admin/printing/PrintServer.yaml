@@ -1,0 +1,34 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PrintServer
+description: Configuration for a print server.
+type: object
+properties:
+  name:
+    description: 'Identifier. Resource name of the print server. Leave empty when
+      creating. Format: `customers/{customer.id}/printServers/{print_server.id}`'
+    type: string
+  id:
+    description: Immutable. ID of the print server. Leave empty when creating.
+    type: string
+  displayName:
+    description: Editable. Display name of the print server (as shown in the Admin
+      console).
+    type: string
+  description:
+    description: Editable. Description of the print server (as shown in the Admin
+      console).
+    type: string
+  uri:
+    description: Editable. Print server URI.
+    type: string
+  createTime:
+    description: Output only. Time when the print server was created.
+    readOnly: true
+    type: string
+    format: google-datetime
+  orgUnitId:
+    description: ID of the organization unit (OU) that owns this print server. This
+      value can only be set when the print server is initially created. If it's not
+      populated, the print server is placed under the root OU. The `org_unit_id` can
+      be retrieved using the [Directory API](https://developers.google.com/workspace/admin/directory/reference/rest/v1/orgunits).
+    type: string

@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SignAndEncryptKeyPairs
+description: The configuration of a CSE identity that uses different key pairs for
+  signing and encryption.
+type: object
+properties:
+  signingKeyPairId:
+    description: The ID of the CseKeyPair that signs outgoing mail.
+    type: string
+  encryptionKeyPairId:
+    description: The ID of the CseKeyPair that encrypts signed outgoing mail.
+    type: string

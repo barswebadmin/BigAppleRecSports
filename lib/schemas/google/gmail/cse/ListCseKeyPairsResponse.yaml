@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListCseKeyPairsResponse
+description: ''
+type: object
+properties:
+  cseKeyPairs:
+    description: One page of the list of CSE key pairs installed for the user.
+    type: array
+    items:
+      $ref: CseKeyPair
+  nextPageToken:
+    description: Pagination token to be passed to a subsequent ListCseKeyPairs call
+      in order to retrieve the next page of key pairs. If this value is not returned,
+      then no further pages remain.
+    type: string

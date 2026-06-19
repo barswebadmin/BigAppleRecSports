@@ -1,0 +1,26 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchUpdateSpreadsheetRequest
+description: The request for updating any aspect of a spreadsheet.
+type: object
+properties:
+  includeSpreadsheetInResponse:
+    description: Determines if the update response should include the spreadsheet
+      resource.
+    type: boolean
+  responseRanges:
+    description: Limits the ranges included in the response spreadsheet. Meaningful
+      only if include_spreadsheet_in_response is 'true'.
+    items:
+      type: string
+    type: array
+  requests:
+    description: A list of updates to apply to the spreadsheet. Requests will be applied
+      in the order they are specified. If any request is not valid, no requests will
+      be applied.
+    items:
+      $ref: Request
+    type: array
+  responseIncludeGridData:
+    type: boolean
+    description: True if grid data should be returned. Meaningful only if include_spreadsheet_in_response
+      is 'true'. This parameter is ignored if a field mask was set in the request.

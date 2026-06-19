@@ -1,0 +1,18 @@
+description: Deletes a deployment of an Apps Script project.
+httpMethod: DELETE
+path: v1/projects/{scriptId}/deployments/{deploymentId}
+scopes:
+- https://www.googleapis.com/auth/script.deployments
+parameters:
+  scriptId:
+    required: true
+    description: The script project's Drive ID.
+    location: path
+    type: string
+  deploymentId:
+    description: The deployment ID to be undeployed.
+    location: path
+    type: string
+    required: true
+response:
+  $ref: Empty

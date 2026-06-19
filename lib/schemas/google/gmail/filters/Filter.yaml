@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Filter
+description: Resource definition for Gmail filters. Filters apply to specific messages
+  instead of an entire email thread.
+type: object
+properties:
+  id:
+    description: The server assigned ID of the filter.
+    type: string
+  criteria:
+    description: Matching criteria for the filter.
+    $ref: FilterCriteria
+  action:
+    description: Action that the filter performs.
+    $ref: FilterAction

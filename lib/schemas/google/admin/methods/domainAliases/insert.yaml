@@ -1,0 +1,15 @@
+description: Inserts a domain alias of the customer.
+httpMethod: POST
+path: admin/directory/v1/customer/{customer}/domainaliases
+scopes:
+- https://www.googleapis.com/auth/admin.directory.domain
+request:
+  $ref: DomainAlias
+parameters:
+  customer:
+    description: Immutable ID of the Google Workspace account.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: DomainAlias

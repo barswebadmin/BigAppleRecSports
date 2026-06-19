@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateConditionalFormatRuleResponse
+description: The result of updating a conditional format rule.
+type: object
+properties:
+  newRule:
+    $ref: ConditionalFormatRule
+    description: The new rule that replaced the old rule (if replacing), or the rule
+      that was moved (if moved)
+  oldRule:
+    $ref: ConditionalFormatRule
+    description: The old (deleted) rule. Not set if a rule was moved (because it is
+      the same as new_rule).
+  oldIndex:
+    type: integer
+    description: The old index of the rule. Not set if a rule was replaced (because
+      it is the same as new_index).
+    format: int32
+  newIndex:
+    type: integer
+    description: The index of the new rule.
+    format: int32

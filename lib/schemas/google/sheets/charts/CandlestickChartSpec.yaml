@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CandlestickChartSpec
+description: A candlestick chart.
+type: object
+properties:
+  domain:
+    description: The domain data (horizontal axis) for the candlestick chart. String
+      data will be treated as discrete labels, other data will be treated as continuous
+      values.
+    $ref: CandlestickDomain
+  data:
+    type: array
+    description: The Candlestick chart data. Only one CandlestickData is supported.
+    items:
+      $ref: CandlestickData

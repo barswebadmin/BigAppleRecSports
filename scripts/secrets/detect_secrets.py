@@ -17,7 +17,7 @@ try:
     from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
     from rich.prompt import Prompt
 except ImportError:
-    print("❌ Error: rich library not installed. Install with: pip install rich")
+    print("❌ Error: rich library not installed. Install with: uv sync --extra secrets")
     sys.exit(1)
 
 

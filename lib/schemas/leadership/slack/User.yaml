@@ -1,0 +1,226 @@
+# Slack User API Response Schema
+# Source: https://api.slack.com/methods/users.info
+# This is the single source of truth for SlackUser types across Python and TypeScript
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: SlackUser
+description: Slack user information from users.info API
+type: object
+
+required:
+  - id
+  - name
+
+properties:
+  id:
+    type: string
+    description: Unique identifier for the user (e.g., U0278M72535)
+    pattern: "^(U[A-Z0-9]{8,}|@[a-z]+)$"
+    
+  name:
+    type: string
+    description: Username (e.g., joe, here)
+    
+  team_id:
+    type: string
+    description: Team/workspace ID
+    
+  profile:
+    $ref: "#/definitions/SlackUserProfile"
+    
+  deleted:
+    type: boolean
+    description: Whether the user has been deleted
+    
+  is_bot:
+    type: boolean
+    description: Whether this is a bot user
+    
+  color:
+    type: string
+    description: Color hex code for the user
+    
+  real_name:
+    type: string
+    description: Real name of the user
+    
+  tz:
+    type: string
+    description: Timezone identifier (e.g., America/Los_Angeles)
+    
+  tz_label:
+    type: string
+    description: Human-readable timezone label
+    
+  tz_offset:
+    type: integer
+    description: Timezone offset in seconds
+    
+  is_admin:
+    type: boolean
+    description: Whether user is a workspace admin
+    
+  is_owner:
+    type: boolean
+    description: Whether user is a workspace owner
+    
+  is_primary_owner:
+    type: boolean
+    description: Whether user is the primary workspace owner
+    
+  is_restricted:
+    type: boolean
+    description: Whether user is a guest with restricted access
+    
+  is_ultra_restricted:
+    type: boolean
+    description: Whether user is a single-channel guest
+    
+  is_app_user:
+    type: boolean
+    description: Whether this is an app user
+    
+  is_email_confirmed:
+    type: boolean
+    description: Whether the user's email has been confirmed
+    
+  who_can_share_contact_card:
+    type: string
+    description: Contact card sharing permissions
+    
+  updated:
+    type: integer
+    description: Unix timestamp of last update
+
+definitions:
+  SlackUserProfile:
+    type: object
+    required:
+      - real_name
+      - display_name
+    properties:
+      real_name:
+        type: string
+        description: Full real name
+        
+      display_name:
+        type: string
+        description: Display name shown in Slack
+        
+      real_name_normalized:
+        type: string
+        description: Normalized version of real name
+        
+      display_name_normalized:
+        type: string
+        description: Normalized version of display name
+        
+      avatar_hash:
+        type: string
+        description: Hash of the avatar image
+        
+      email:
+        type: string
+        format: email
+        description: Email address
+        
+      first_name:
+        type: string
+        description: First name
+        
+      last_name:
+        type: string
+        description: Last name
+        
+      title:
+        type: string
+        description: Job title
+        
+      phone:
+        $ref: "../../primitives/phoneNumber.yaml#/"
+        description: Phone number
+        
+      pronouns:
+        type: string
+        description: Preferred pronouns
+        
+      skype:
+        type: string
+        description: Skype username
+        
+      team:
+        type: string
+        description: Team identifier
+        
+      image_24:
+        type: string
+        format: uri
+        description: 24x24 avatar URL
+        
+      image_32:
+        type: string
+        format: uri
+        description: 32x32 avatar URL
+        
+      image_48:
+        type: string
+        format: uri
+        description: 48x48 avatar URL
+        
+      image_72:
+        type: string
+        format: uri
+        description: 72x72 avatar URL
+        
+      image_192:
+        type: string
+        format: uri
+        description: 192x192 avatar URL
+        
+      image_512:
+        type: string
+        format: uri
+        description: 512x512 avatar URL
+        
+      image_1024:
+        type: string
+        format: uri
+        description: 1024x1024 avatar URL
+        
+      image_original:
+        type: string
+        format: uri
+        description: Original size avatar URL
+        
+      is_custom_image:
+        type: boolean
+        description: Whether avatar is custom uploaded
+        
+      status_text:
+        type: string
+        description: Current status text
+        
+      status_text_canonical:
+        type: string
+        description: Canonical status text
+        
+      status_emoji:
+        type: string
+        description: Status emoji (e.g., :rocket:)
+        
+      status_emoji_display_info:
+        type: array
+        items: {}
+        description: Display info for status emoji
+        
+      status_expiration:
+        type: integer
+        description: Unix timestamp when status expires
+        
+      huddle_state:
+        type: string
+        description: Current huddle state
+        
+      huddle_state_expiration_ts:
+        type: integer
+        description: Unix timestamp when huddle state expires

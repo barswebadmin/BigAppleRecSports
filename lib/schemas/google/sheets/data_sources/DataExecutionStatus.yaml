@@ -1,0 +1,84 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataExecutionStatus
+description: 'The data execution status. A data execution is created to sync a data
+  source object with the latest data from a DataSource. It is usually scheduled to
+  run at background, you can check its state to tell if an execution completes There
+  are several scenarios where a data execution is triggered to run: * Adding a data
+  source creates an associated data source sheet as well as a data execution to sync
+  the data from the data source to the sheet. * Updating a data source creates a data
+  execution to refresh the associated data source sheet similarly. * You can send
+  refresh request to explicitly refresh one or multiple data source objects.'
+type: object
+properties:
+  errorCode:
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - The data execution timed out.
+    - The data execution returns more rows than the limit.
+    - The data execution returns more columns than the limit.
+    - The data execution returns more cells than the limit.
+    - Error is received from the backend data execution engine (e.g. BigQuery). Check
+      error_message for details.
+    - One or some of the provided data source parameters are invalid.
+    - The data execution returns an unsupported data type.
+    - The data execution returns duplicate column names or aliases.
+    - The data execution is interrupted. Please refresh later.
+    - The data execution is currently in progress, can not be refreshed until it completes.
+    - Other errors.
+    - The data execution returns values that exceed the maximum characters allowed
+      in a single cell.
+    - The database referenced by the data source is not found. */
+    - The user does not have access to the database referenced by the data source.
+    - The data execution returns columns with missing aliases.
+    - The data source object does not exist.
+    - The data source object is currently in error state. To force refresh, set force
+      in RefreshDataSourceRequest.
+    - The data source object specification is invalid.
+    - The data execution has been cancelled.
+    enum:
+    - DATA_EXECUTION_ERROR_CODE_UNSPECIFIED
+    - TIMED_OUT
+    - TOO_MANY_ROWS
+    - TOO_MANY_COLUMNS
+    - TOO_MANY_CELLS
+    - ENGINE
+    - PARAMETER_INVALID
+    - UNSUPPORTED_DATA_TYPE
+    - DUPLICATE_COLUMN_NAMES
+    - INTERRUPTED
+    - CONCURRENT_QUERY
+    - OTHER
+    - TOO_MANY_CHARS_PER_CELL
+    - DATA_NOT_FOUND
+    - PERMISSION_DENIED
+    - MISSING_COLUMN_ALIAS
+    - OBJECT_NOT_FOUND
+    - OBJECT_IN_ERROR_STATE
+    - OBJECT_SPEC_INVALID
+    - DATA_EXECUTION_CANCELLED
+    description: The error code.
+  lastRefreshTime:
+    description: Gets the time the data last successfully refreshed.
+    format: google-datetime
+    type: string
+  state:
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - The data execution has not started.
+    - The data execution has started and is running.
+    - The data execution is currently being cancelled.
+    - The data execution has completed successfully.
+    - The data execution has completed with errors.
+    enum:
+    - DATA_EXECUTION_STATE_UNSPECIFIED
+    - NOT_STARTED
+    - RUNNING
+    - CANCELLING
+    - SUCCEEDED
+    - FAILED
+    description: The state of the data execution.
+  errorMessage:
+    description: The error message, which may be empty.
+    type: string

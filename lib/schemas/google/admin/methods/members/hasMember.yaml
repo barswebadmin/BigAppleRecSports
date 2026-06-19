@@ -1,0 +1,27 @@
+description: Checks whether the given user is a member of the group. Membership can
+  be direct or nested, but if nested, the `memberKey` and `groupKey` must be entities
+  in the same domain or an `Invalid input` error is returned. To check for nested
+  memberships that include entities outside of the group's domain, use the [`checkTransitiveMembership()`](https://cloud.google.com/identity/docs/reference/rest/v1/groups.memberships/checkTransitiveMembership)
+  method in the Cloud Identity Groups API.
+httpMethod: GET
+path: admin/directory/v1/groups/{groupKey}/hasMember/{memberKey}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.group
+- https://www.googleapis.com/auth/admin.directory.group.member
+- https://www.googleapis.com/auth/admin.directory.group.member.readonly
+- https://www.googleapis.com/auth/admin.directory.group.readonly
+parameters:
+  groupKey:
+    description: Identifies the group in the API request. The value can be the group's
+      email address, group alias, or the unique group ID.
+    location: path
+    required: true
+    type: string
+  memberKey:
+    description: Identifies the user member in the API request. The value can be the
+      user's primary email address, alias, or unique ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: MembersHasMember

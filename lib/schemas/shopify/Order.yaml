@@ -1,0 +1,96 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Shopify Order"
+description: "Order, LineItem, and Transaction from Shopify Admin GraphQL API"
+
+definitions:
+    orderStatus:
+        type: string
+        enum: [OPEN, CLOSED, CANCELLED]
+
+    cancelReason:
+        type: string
+        enum: [CUSTOMER, FRAUD, INVENTORY, DECLINED, OTHER]
+
+    LineItem:
+        type: object
+        properties:
+            title:
+                type: string
+            quantity:
+                type: integer
+            customAttributes:
+                type: array
+                items:
+                    type: object
+                    properties:
+                        key:
+                            type: string
+                        value:
+                            type: string
+                    required: [key, value]
+            product:
+                $ref: "./Product.yaml#/definitions/Product"
+            priceSet:
+                $ref: "./_primitives.yaml#/definitions/moneySet"
+        required: [title, quantity]
+
+    Transaction:
+        type: object
+        properties:
+            id:
+                $ref: "./_primitives.yaml#/definitions/shopifyGid"
+            status:
+                type: string
+            kind:
+                type: string
+                enum:
+                    [
+                        SALE,
+                        CAPTURE,
+                        AUTHORIZATION,
+                        VOID,
+                        REFUND,
+                        CHANGE,
+                        EMV_AUTHORIZATION,
+                        SUGGESTED_REFUND,
+                    ]
+            gateway:
+                type: string
+            amountSet:
+                $ref: "./_primitives.yaml#/definitions/moneySet"
+            createdAt:
+                $ref: "../primitives/isoDateTime.yaml"
+        required: [id, status, kind, gateway, amountSet, createdAt]
+
+    Order:
+        type: object
+        properties:
+            id:
+                $ref: "./_primitives.yaml#/definitions/shopifyGid"
+            name:
+                type: string
+                description: "Display name like #12345"
+            createdAt:
+                $ref: "../primitives/isoDateTime.yaml"
+            cancelledAt:
+                $ref: "../primitives/isoDateTime.yaml"
+            cancelReason:
+                $ref: "#/definitions/cancelReason"
+            totalPriceSet:
+                $ref: "./_primitives.yaml#/definitions/moneySet"
+            subtotalPriceSet:
+                $ref: "./_primitives.yaml#/definitions/moneySet"
+            currentSubtotalPriceSet:
+                $ref: "./_primitives.yaml#/definitions/moneySet"
+            customer:
+                $ref: "./Customer.yaml#/definitions/Customer"
+            lineItems:
+                description: "edges/node connection in raw GQL, flat list after parsing"
+                type: array
+                items:
+                    $ref: "#/definitions/LineItem"
+            refunds:
+                type: array
+                items:
+                    $ref: "./Refund.yaml#/definitions/Refund"
+        required: [id, name, createdAt, totalPriceSet]

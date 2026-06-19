@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddProtectedRangeResponse
+description: The result of adding a new protected range.
+type: object
+properties:
+  protectedRange:
+    description: The newly added protected range.
+    $ref: ProtectedRange

@@ -1,0 +1,98 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "User"
+description: "A person in the BARS ecosystem."
+
+allOf:
+    - $ref: "../primitives/dbRecordBase.yaml#/"
+    - $ref: "../primitives/basicContactDetails.yaml#/"
+    - type: object
+      properties:
+          # ── Identity ──────────────────────────────────────────
+          dateOfBirth:
+              $ref: "../primitives/isoDate.yaml#/"
+
+          gender:
+              type: string
+              examples:
+                  - "Cis Male"
+                  - "Cis Female"
+                  - "Trans Male"
+                  - "Trans Female"
+                  - "Gender Neutral"
+                  - "Nonbinary"
+                  - "Agender"
+                  - "Pangender"
+                  - "Genderqueer"
+                  - "Two-Spirit"
+                  - "Other"
+
+          pronouns:
+              type: string
+              examples:
+                  - "She/Her"
+                  - "She/They"
+                  - "They/She"
+                  - "They/Them"
+                  - "They/He"
+                  - "He/They"
+                  - "He/She/They"
+                  - "He/Him"
+                  - "Other"
+
+          ethnicity:
+              type: string
+              examples:
+                  - "American Indian or Alaska Native"
+                  - "Asian"
+                  - "Black or African American"
+                  - "Hispanic or Latino"
+                  - "Middle Eastern or North African"
+                  - "Native Hawaiian or Other Pacific Islander"
+                  - "White"
+                  - "Other"
+                  - "Two or More Races"
+                  - "Decline To Self Identify"
+
+          # ── Extended Contact ──────────────────────────────────
+          address:
+              $ref: "../primitives/address.yaml#/"
+
+          isEmailVerified:
+              type: boolean
+              default: false
+
+          # ── Status ────────────────────────────────────────────
+          status:
+              type: string
+              enum: ["active", "inactive", "suspended", "banned"]
+              default: "active"
+
+          # ── External IDs ──────────────────────────────────────
+          shopifyCustomerId:
+              type: string
+
+          # ── Player-specific (optional) ────────────────────────
+          emergencyContactFirstName:
+              type: string
+
+          emergencyContactLastName:
+              type: string
+
+          emergencyContactPhoneNumber:
+              $ref: "../primitives/phoneNumber.yaml#/"
+
+          waiverSignedAt:
+              $ref: "../primitives/isoDateTime.yaml#/"
+
+          optedIntoEmails:
+              type: boolean
+              default: false
+
+          optedIntoSms:
+              type: boolean
+              default: false
+
+      required:
+          - status
+
+additionalProperties: true

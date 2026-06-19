@@ -1,12 +1,20 @@
 name: Deploy AWS Lambda Functions
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'lambda/functions/**'
-      - '.github/workflows/deploy-aws.yml'
+  # Auto-deploy off: merge to main no longer triggers Lambda deploys. Re-enable when ready.
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'lambda/functions/**'
+  #     - '.github/workflows/deploy-aws.yml'
+
   workflow_dispatch:
+    inputs:
+      function:
+        description: 'Function name to deploy (or "all" for all functions)'
+        required: true
+        default: 'all'
+        type: string
 
 # TODO: Future enhancement - Add pull_request trigger for preview/staging deployments
 # This would allow testing Lambda deployments before merging PRs.
@@ -23,12 +31,6 @@ on:
 #     paths:
 #       - 'lambda/functions/**'
 #     types: [opened, synchronize, reopened]
-    inputs:
-      function:
-        description: 'Function name to deploy (or "all" for all functions)'
-        required: true
-        default: 'all'
-        type: string
 
 jobs:
   deploy:

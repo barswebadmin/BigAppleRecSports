@@ -7,9 +7,10 @@ Provides a clean interface to all Shopify operations organized by resource:
 - Products (get, create, update)
 - Inventory (adjustments, movements)
 
+
 This service is pure Shopify - no BARS domain logic.
 """
-
+import datetime
 import json
 import logging
 from typing import Dict, Any, List, Optional, Tuple, TYPE_CHECKING
@@ -407,7 +408,22 @@ class ShopifyService:
             List of (birthday, first_name, last_name) tuples
         """
         import concurrent.futures
-        from backend.shared.customer_property_extractors import extract_birthday_with_name
+        
+        def extract_birthday_with_name(properties):
+            """Extract birthdays with associated names from properties."""
+            birthday = None
+            first_name = ""
+            last_name = ""
+            for prop in properties:
+                key = prop.get("key", "").lower()
+                value = prop.get("value", "").strip()
+                if "date of birth" in key and value:
+                    birthday = value
+                elif "first name" in key and value and not first_name:
+                    first_name = value
+                elif "last name" in key and value and not last_name:
+                    last_name = value
+            return [(birthday, first_name, last_name)] if birthday else []
         
         birthday_records = []
         
@@ -438,11 +454,25 @@ class ShopifyService:
             List of (pronouns, first_name, last_name, created_at) tuples
         """
         import concurrent.futures
-        from backend.shared.customer_property_extractors import extract_pronouns_with_name
+        
+        def extract_pronouns_with_name(properties):
+            """Extract pronouns with associated names from properties."""
+            pronouns = None
+            first_name = ""
+            last_name = ""
+            for prop in properties:
+                key = prop.get("key", "").lower()
+                value = prop.get("value", "").strip()
+                if "pronouns" in key and value:
+                    pronouns = value.lower()
+                elif "first name" in key and value and not first_name:
+                    first_name = value
+                elif "last name" in key and value and not last_name:
+                    last_name = value
+            return [(pronouns, first_name, last_name)] if pronouns else []
         
         pronouns_records = []
         
-        # Process orders concurrently while preserving date info
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             future_to_order = {
                 executor.submit(self.get_order_line_item_properties, order_id): (order_id, created_at)
@@ -623,6 +653,9 @@ class ShopifyService:
         
         # Execute with generic client
         response = self.client.execute(op)
+        
+        # DEBUG: Print raw response
+        print(f"\n[DEBUG] Raw GraphQL Response:\n{json.dumps(response, indent=2, default=str)}\n")
         
         # Check for GraphQL errors
         if response.get('errors'):
@@ -1609,7 +1642,7 @@ class ShopifyService:
         Returns:
             Tuple of (season_start_date_str, off_dates_str) or (None, None) if not found
         """
-        from backend.shared.date_utils import extract_season_dates
+        from lib.domain.registrations.refunds import SeasonDates
         
         line_items_conn = getattr(order, 'lineItems', None)  # type: ignore[attr-defined]
         if not line_items_conn:
@@ -1624,10 +1657,8 @@ class ShopifyService:
         if not product:
             return None, None
         
-        # Try to access descriptionHtml as attribute first (if selected in GraphQL)
         product_description = getattr(product, 'descriptionHtml', None)
         
-        # Fall back to __json_data__ if not available as attribute
         if not product_description and hasattr(product, '__json_data__'):
             product_data = product.__json_data__
             product_description = product_data.get('descriptionHtml', '')
@@ -1635,8 +1666,10 @@ class ShopifyService:
         if not product_description:
             return None, None
         
-        season_start_date_str, off_dates_str = extract_season_dates(product_description)
-        return season_start_date_str, off_dates_str
+        season_dates = SeasonDates.from_html(product_description)
+        if season_dates is None:
+            return None, None
+        return season_dates.start_date_str, season_dates.off_dates_str
     
     def calculate_estimated_refund(
         self,
@@ -1657,8 +1690,12 @@ class ShopifyService:
         Returns:
             Tuple of (estimated_amount, message) or (None, None) if calculation not possible
         """
-        from backend.shared.date_utils import extract_season_dates, calculate_refund_amount
         from datetime import datetime, timezone
+        from lib.domain.registrations.refunds import (
+            SeasonDates,
+            EstimateTierKind,
+            calculate_estimated_refund_due,
+        )
         
         if submitted_at is None:
             submitted_at = datetime.now(timezone.utc)
@@ -1676,10 +1713,8 @@ class ShopifyService:
         if not product:
             return None, None
         
-        # Try to access descriptionHtml as attribute first (if selected in GraphQL)
         product_description = getattr(product, 'descriptionHtml', None)
         
-        # Fall back to __json_data__ if not available as attribute
         if not product_description and hasattr(product, '__json_data__'):
             product_data = product.__json_data__
             product_description = product_data.get('descriptionHtml', '')
@@ -1687,17 +1722,17 @@ class ShopifyService:
         if not product_description:
             return None, None
         
-        season_start_date_str, off_dates_str = extract_season_dates(product_description)
-        
-        if not season_start_date_str:
+        season_dates = SeasonDates.from_html(product_description)
+        if season_dates is None:
             return None, None
         
-        estimated_refund_amount, estimated_refund_message = calculate_refund_amount(
-            season_start_date_str=season_start_date_str,
-            off_dates_str=off_dates_str,
-            total_amount_paid=total_amount,
-            refund_type=refund_type,
-            request_submitted_at=submitted_at
+        tier_kind = EstimateTierKind.REFUND if refund_type == "refund" else EstimateTierKind.CREDIT
+        
+        estimated_refund_amount, estimated_refund_message = calculate_estimated_refund_due(
+            season_dates=season_dates,
+            total_paid=total_amount,
+            tier_kind=tier_kind,
+            request_submitted_at=submitted_at,
         )
         
         return estimated_refund_amount, estimated_refund_message

@@ -1,0 +1,27 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Shopify GraphQL Primitives"
+description: "Shared types used across multiple Shopify schema files"
+
+definitions:
+    shopifyGid:
+        type: string
+        pattern: "^gid://shopify/[A-Za-z]+/\\d+$"
+        examples:
+            - "gid://shopify/Order/5890295201886"
+            - "gid://shopify/Product/7590249070686"
+            - "gid://shopify/Customer/8204287901790"
+
+    money:
+        type: object
+        properties:
+            amount:
+                type: string
+                examples: ["145.00", "0.00"]
+        required: [amount]
+
+    moneySet:
+        type: object
+        properties:
+            shopMoney:
+                $ref: "#/definitions/money"
+        required: [shopMoney]

@@ -1,0 +1,26 @@
+description: Updates an existing calendar on the user's calendar list.
+httpMethod: PUT
+path: users/me/calendarList/{calendarId}
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.app.created
+- https://www.googleapis.com/auth/calendar.calendarlist
+request:
+  $ref: CalendarListEntry
+parameters:
+  calendarId:
+    type: string
+    description: Calendar identifier. To retrieve calendar IDs call the calendarList.list
+      method. If you want to access the primary calendar of the currently logged in
+      user, use the "primary" keyword.
+    required: true
+    location: path
+  colorRgbFormat:
+    type: boolean
+    description: Whether to use the foregroundColor and backgroundColor fields to
+      write the calendar colors (RGB). If this feature is used, the index-based colorId
+      field will be set to the best matching option automatically. Optional. The default
+      is False.
+    location: query
+response:
+  $ref: CalendarListEntry

@@ -7,8 +7,8 @@ configuration, discovery, and execution.
 
 Project test runners:
 - backend/tests/run_tests.py
-- lambda/functions/tests/run_tests.py
-- GoogleAppsScripts/tests/run_tests.sh
+- aws/lambda/functions/tests/run_tests.py
+- google-apps-scripts/tests/run_tests.sh
 """
 
 import subprocess
@@ -38,7 +38,7 @@ def run_lambda_tests(test_type: str | None = None) -> int:
 
 def run_gas_tests() -> int:
     """Run GAS tests via project-specific runner."""
-    runner = PROJECT_ROOT / "GoogleAppsScripts" / "tests" / "run_tests.sh"
+    runner = PROJECT_ROOT / "google-apps-scripts" / "tests" / "run_tests.sh"
     return subprocess.run(["bash", str(runner)], check=False).returncode
 
 
@@ -56,7 +56,7 @@ def run_tests_for_path(path: str) -> int:
     """Run tests for a specific path.
 
     Args:
-        path: Path to test (e.g., "backend", "lambda/functions", "GoogleAppsScripts")
+        path: Path to test (e.g., "backend", "aws/lambda/functions", "google-apps-scripts")
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -68,11 +68,11 @@ def run_tests_for_path(path: str) -> int:
         return run_backend_tests()
     if "lambda" in path_str or "lambda-functions" in path_str:
         return run_lambda_tests()
-    if "GoogleAppsScripts" in path_str or "gas" in path_str.lower():
+    if "google-apps-scripts" in path_str or "gas" in path_str.lower():
         return run_gas_tests()
 
     print(f"⚠️  Unknown path: {path}")
-    print("   Supported paths: backend, lambda/functions, GoogleAppsScripts")
+    print("   Supported paths: backend, aws/lambda/functions, google-apps-scripts")
     return 1
 
 

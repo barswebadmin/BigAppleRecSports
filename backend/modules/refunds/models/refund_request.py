@@ -1,24 +1,18 @@
-from pydantic import model_validator, Field
+from pydantic import BaseModel, model_validator, Field
 from typing import Optional
 from datetime import datetime, timezone
 
 from validator_collection import is_email
 
-from shared.model_config import ApiModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 from backend.modules.integrations.shopify.services.shopify_normalizers import (
     validate_shopify_order_number_format,
 )
-from shared.validators import (
-    validate_multiple_fields,
-)
 
-class RefundRequest(ApiModel):
-    """
-    Request model for initiating a refund.
 
-    Accepts both snake_case (order_number) and camelCase (orderNumber) input thanks
-    to ApiModel's alias_generator.
-    """
+class RefundRequest(BaseModel):
+    """Request model for initiating a refund."""
+    model_config = DEFAULT_CONFIG_DICT
 
     email: str
     order_number: str
@@ -27,26 +21,21 @@ class RefundRequest(ApiModel):
     @model_validator(mode='before')
     @classmethod
     def validate_all_fields(cls, values):
-        """
-        Validate all fields using centralized multi-field validator.
-        This ensures both email and order_number errors are reported together,
-        even when inputs are not strings.
-        """
+        """Validate email and order_number, reporting all errors together."""
         if not isinstance(values, dict):
             return values
         
-        # Define field validators for this model
-        field_validators = {
-            "email": is_email,
-            "order_number": validate_shopify_order_number_format,
-        }
+        errors = []
+        email = values.get("email")
+        order_number = values.get("order_number")
         
-        # Use centralized validation
-        result = validate_multiple_fields(values, field_validators)
+        if not is_email(email):
+            errors.append("Invalid email format")
+        if not validate_shopify_order_number_format(order_number):
+            errors.append("Invalid order number format")
         
-        # If validation failed, raise ValueError with all errors
-        if not result["success"]:
-            raise ValueError("; ".join(result["errors"]))
+        if errors:
+            raise ValueError("; ".join(errors))
             
         return values
 

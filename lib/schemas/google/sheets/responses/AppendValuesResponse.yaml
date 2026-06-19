@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AppendValuesResponse
+description: The response when updating a range of values in a spreadsheet.
+type: object
+properties:
+  updates:
+    $ref: UpdateValuesResponse
+    description: Information about the updates that were applied.
+  spreadsheetId:
+    type: string
+    description: The spreadsheet the updates were applied to.
+  tableRange:
+    type: string
+    description: The range (in A1 notation) of the table that values are being appended
+      to (before the values were appended). Empty if no table was found.

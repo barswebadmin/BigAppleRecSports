@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ChromeOsDeviceAction
+description: Data about an update to the status of a Chrome OS device.
+type: object
+properties:
+  action:
+    description: Action to be taken on the Chrome OS device.
+    annotations:
+      required:
+      - directory.chromeosdevices.action
+    type: string
+  deprovisionReason:
+    description: 'Only used when the action is `deprovision`. With the `deprovision`
+      action, this field is required. *Note*: The deprovision reason is audited because
+      it might have implications on licenses for perpetual subscription customers.'
+    type: string

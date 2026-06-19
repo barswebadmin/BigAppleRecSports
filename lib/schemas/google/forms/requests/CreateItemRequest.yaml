@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CreateItemRequest
+description: Create an item in a form.
+type: object
+properties:
+  item:
+    description: Required. The item to create.
+    $ref: Item
+  location:
+    description: Required. Where to place the new item.
+    $ref: Location

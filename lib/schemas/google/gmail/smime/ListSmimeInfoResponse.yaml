@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListSmimeInfoResponse
+description: ''
+type: object
+properties:
+  smimeInfo:
+    description: List of SmimeInfo.
+    type: array
+    items:
+      $ref: SmimeInfo

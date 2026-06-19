@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ClassificationLabelValue
+description: Classification Labels applied to the email message. Classification Labels
+  are different from Gmail inbox labels. Only used for Google Workspace accounts.
+  [Learn more about classification labels](https://support.google.com/a/answer/9292382).
+type: object
+properties:
+  labelId:
+    description: Required. The canonical or raw alphanumeric classification label
+      ID. Maps to the ID field of the Google Drive Label resource.
+    type: string
+  fields:
+    description: Field values for the given classification label ID.
+    type: array
+    items:
+      $ref: ClassificationLabelFieldValue

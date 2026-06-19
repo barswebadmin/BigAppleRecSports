@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListPrintServersResponse
+description: ''
+type: object
+properties:
+  printServers:
+    description: List of print servers.
+    type: array
+    items:
+      $ref: PrintServer
+  nextPageToken:
+    description: A token that can be sent as `page_token` in a request to retrieve
+      the next page. If this field is omitted, there are no subsequent pages.
+    type: string

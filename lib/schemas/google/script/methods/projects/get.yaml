@@ -1,0 +1,14 @@
+description: Gets a script project's metadata.
+httpMethod: GET
+path: v1/projects/{scriptId}
+scopes:
+- https://www.googleapis.com/auth/script.projects
+- https://www.googleapis.com/auth/script.projects.readonly
+parameters:
+  scriptId:
+    description: The script project's Drive ID.
+    location: path
+    type: string
+    required: true
+response:
+  $ref: Project

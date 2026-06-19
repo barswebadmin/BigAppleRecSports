@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SetPublishSettingsRequest
+description: Updates the publish settings of a Form.
+type: object
+properties:
+  publishSettings:
+    $ref: PublishSettings
+    description: Required. The desired publish settings to apply to the form.
+  updateMask:
+    format: google-fieldmask
+    description: 'Optional. The `publish_settings` fields to update. This field mask
+      accepts the following values: * `publish_state`: Updates or replaces all `publish_state`
+      settings. * `"*"`: Updates or replaces all `publish_settings` fields.'
+    type: string

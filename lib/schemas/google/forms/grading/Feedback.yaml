@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Feedback
+description: Feedback for a respondent about their response to a question.
+type: object
+properties:
+  text:
+    type: string
+    description: Required. The main text of the feedback.
+  material:
+    type: array
+    items:
+      $ref: ExtraMaterial
+    description: Additional information provided as part of the feedback, often used
+      to point the respondent to more reading and resources.

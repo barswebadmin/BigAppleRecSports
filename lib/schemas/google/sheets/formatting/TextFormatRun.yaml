@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: TextFormatRun
+description: A run of a text format. The format of this run continues until the start
+  index of the next run. When updating, all fields must be set.
+type: object
+properties:
+  startIndex:
+    type: integer
+    description: The zero-based character index where this run starts, in UTF-16 code
+      units.
+    format: int32
+  format:
+    description: The format of this run. Absent values inherit the cell's format.
+    $ref: TextFormat

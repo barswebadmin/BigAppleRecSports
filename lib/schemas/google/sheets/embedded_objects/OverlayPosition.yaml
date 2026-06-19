@@ -1,0 +1,26 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: OverlayPosition
+description: The location an object is overlaid on top of a grid.
+type: object
+properties:
+  offsetXPixels:
+    description: The horizontal offset, in pixels, that the object is offset from
+      the anchor cell.
+    format: int32
+    type: integer
+  heightPixels:
+    type: integer
+    description: The height of the object, in pixels. Defaults to 371.
+    format: int32
+  widthPixels:
+    type: integer
+    description: The width of the object, in pixels. Defaults to 600.
+    format: int32
+  anchorCell:
+    $ref: GridCoordinate
+    description: The cell the object is anchored to.
+  offsetYPixels:
+    description: The vertical offset, in pixels, that the object is offset from the
+      anchor cell.
+    format: int32
+    type: integer

@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Feature
+description: JSON template for Feature object in Directory API.
+type: object
+properties:
+  etags:
+    description: ETag of the resource.
+    type: string
+  kind:
+    description: Kind of resource this is.
+    default: admin#directory#resources#features#Feature
+    type: string
+  name:
+    description: The name of the feature.
+    type: string
+    annotations:
+      required:
+      - directory.resources.features.insert

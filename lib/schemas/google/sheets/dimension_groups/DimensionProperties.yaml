@@ -1,0 +1,25 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DimensionProperties
+description: Properties about a dimension.
+type: object
+properties:
+  dataSourceColumnReference:
+    $ref: DataSourceColumnReference
+    description: Output only. If set, this is a column in a data source sheet.
+    readOnly: true
+  developerMetadata:
+    type: array
+    description: The developer metadata associated with a single row or column.
+    items:
+      $ref: DeveloperMetadata
+  hiddenByFilter:
+    type: boolean
+    description: True if this dimension is being filtered. This field is read-only.
+  hiddenByUser:
+    type: boolean
+    description: True if this dimension is explicitly hidden.
+  pixelSize:
+    type: integer
+    description: The height (if a row) or width (if a column) of the dimension in
+      pixels.
+    format: int32

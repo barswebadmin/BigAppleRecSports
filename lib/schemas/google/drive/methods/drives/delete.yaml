@@ -1,0 +1,26 @@
+description: Permanently deletes a shared drive for which the user is an `organizer`.
+  The shared drive cannot contain any untrashed items. For more information, see [Manage
+  shared drives](https://developers.google.com/workspace/drive/api/guides/manage-shareddrives).
+httpMethod: DELETE
+path: drives/{driveId}
+scopes:
+- https://www.googleapis.com/auth/drive
+parameters:
+  driveId:
+    description: The ID of the shared drive.
+    location: path
+    required: true
+    type: string
+  useDomainAdminAccess:
+    description: Issue the request as a domain administrator; if set to true, then
+      the requester will be granted access if they are an administrator of the domain
+      to which the shared drive belongs.
+    default: 'false'
+    location: query
+    type: boolean
+  allowItemDeletion:
+    description: Whether any items inside the shared drive should also be deleted.
+      This option is only supported when `useDomainAdminAccess` is also set to `true`.
+    default: 'false'
+    location: query
+    type: boolean

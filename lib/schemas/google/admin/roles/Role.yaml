@@ -1,0 +1,47 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Role
+description: ''
+type: object
+properties:
+  roleId:
+    description: ID of the role.
+    type: string
+    format: int64
+  roleName:
+    description: Name of the role.
+    annotations:
+      required:
+      - directory.roles.insert
+    type: string
+  roleDescription:
+    description: A short description of the role.
+    type: string
+  rolePrivileges:
+    description: The set of privileges that are granted to this role.
+    annotations:
+      required:
+      - directory.roles.insert
+    type: array
+    items:
+      type: object
+      properties:
+        serviceId:
+          description: The obfuscated ID of the service this privilege is for. This
+            value is returned with [`Privileges.list()`](https://developers.google.com/workspace/admin/directory/v1/reference/privileges/list).
+          type: string
+        privilegeName:
+          description: The name of the privilege.
+          type: string
+  isSystemRole:
+    description: Returns `true` if this is a pre-defined system role.
+    type: boolean
+  isSuperAdminRole:
+    description: Returns `true` if the role is a super admin role.
+    type: boolean
+  kind:
+    description: The type of the API resource. This is always `admin#directory#role`.
+    default: admin#directory#role
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string

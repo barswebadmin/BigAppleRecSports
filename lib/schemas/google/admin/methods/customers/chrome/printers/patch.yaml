@@ -1,0 +1,30 @@
+description: Updates a `Printer` resource.
+httpMethod: PATCH
+path: admin/directory/v1/{+name}
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+request:
+  $ref: Printer
+parameters:
+  name:
+    description: Identifier. The resource name of the Printer object, in the format
+      customers/{customer-id}/printers/{printer-id} (During printer creation leave
+      empty)
+    pattern: ^customers/[^/]+/chrome/printers/[^/]+$
+    location: path
+    required: true
+    type: string
+  updateMask:
+    description: The list of fields to be updated. Note, some of the fields are read
+      only and cannot be updated. Values for not specified fields will be patched.
+    location: query
+    type: string
+    format: google-fieldmask
+  clearMask:
+    description: The list of fields to be cleared. Note, some of the fields are read
+      only and cannot be updated. Values for not specified fields will be patched.
+    location: query
+    type: string
+    format: google-fieldmask
+response:
+  $ref: Printer

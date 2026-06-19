@@ -31,17 +31,17 @@
    - Click "New +" → "Web Service"
    - Connect repository
    - Set root directory: `backend`
-   - Build command: `pip install -e ../shared_utilities && pip install -r requirements.txt`
+   - Build command: `uv sync`
    - Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
 2. **Environment Variables:**
-   Set these in Render dashboard:
+   Set these in Render dashboard (or use `python scripts/sync_secrets.py --render-only`):
    ```
    ENVIRONMENT=production
-   GOOGLE.SERVICE_ACCOUNT.PRIVATE_KEY=-----BEGIN PRIVATE KEY-----...
-   SHOPIFY.TOKEN.ADMIN=shpat_...
-   SLACK.DEV_BOT.TOKEN=xoxb-...
-   # ... all other secrets from .config.toml
+   GOOGLE__SERVICE_ACCOUNT={"type":"service_account",...}
+   SHOPIFY__TOKEN__ADMIN=shpat_...
+   SLACK__DEV_BOT__TOKEN=xoxb-...
+   # ... all other secrets from .env
    ```
 
 ### Configuration
@@ -53,7 +53,7 @@ services:
     name: bars-backend
     env: python
     rootDir: backend
-    buildCommand: pip install -e ../shared_utilities && pip install -r requirements.txt
+    buildCommand: uv sync
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: RENDER
@@ -83,16 +83,13 @@ config.shopify.token.admin
 ### Syncing Secrets
 
 **Option 1: Manual (Render Dashboard)**
-- Copy values from `.config.toml`
+- Copy values from `.env`
 - Paste into Render environment variables
 
-**Option 2: Automated (AWS Parameter Store → Render)**
-Create a script to sync:
-```python
-# Fetch from AWS Parameter Store
-params = ssm.describe_parameters()
-
-# Push to Render API
+**Option 2: Automated (sync_secrets.py)**
+```bash
+python scripts/sync_secrets.py --render-only
+```
 for param in params:
     render_api.update_env_var(
         service_id='srv-xxx',
@@ -146,14 +143,14 @@ render logs -s bars-backend
 
 **Import errors from shared_utilities:**
 - Render clones the entire monorepo, so `../shared_utilities` should be accessible
-- Verify `pip install -e ../shared_utilities` runs in build command
+- Verify `uv sync` runs in build command and installs shared_utilities via workspace dependencies
 - Check that `shared_utilities/pyproject.toml` exists
 - If still failing, check Render build logs for the exact error
 
 **How shared_utilities works on Render:**
 1. Render clones your entire GitHub repository
 2. Sets working directory to `backend/` (via `rootDir: backend`)
-3. Runs build command: `pip install -e ../shared_utilities` installs from parent directory
+3. Runs build command: `uv sync` installs dependencies including shared_utilities from workspace
 4. Backend can now import: `from shared_utilities.api_clients.http_client import AsyncHTTPClient`
 5. No `sys.path.append()` needed!
 
@@ -164,7 +161,7 @@ Test deployment setup locally:
 cd backend
 
 # Install dependencies
-pip install -r requirements.txt
+uv sync
 
 # Start with production settings
 ENVIRONMENT=production uvicorn main:app --host 0.0.0.0 --port 8000

@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateSheetPropertiesRequest
+description: Updates properties of the sheet with the specified sheetId.
+type: object
+properties:
+  properties:
+    description: The properties to update.
+    $ref: SheetProperties
+  fields:
+    type: string
+    description: The fields that should be updated. At least one field must be specified.
+      The root `properties` is implied and should not be specified. A single `"*"`
+      can be used as short-hand for listing every field.
+    format: google-fieldmask

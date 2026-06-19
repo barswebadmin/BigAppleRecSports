@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SearchDeveloperMetadataRequest
+description: A request to retrieve all developer metadata matching the set of specified
+  criteria.
+type: object
+properties:
+  dataFilters:
+    description: The data filters describing the criteria used to determine which
+      DeveloperMetadata entries to return. DeveloperMetadata matching any of the specified
+      filters are included in the response.
+    items:
+      $ref: DataFilter
+    type: array

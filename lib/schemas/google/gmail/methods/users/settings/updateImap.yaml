@@ -1,0 +1,17 @@
+description: Updates IMAP settings.
+httpMethod: PUT
+path: gmail/v1/users/{userId}/settings/imap
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.basic
+request:
+  $ref: ImapSettings
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: ImapSettings

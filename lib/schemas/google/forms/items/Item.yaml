@@ -1,0 +1,33 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Item
+description: A single item of the form. `kind` defines which kind of item it is.
+type: object
+properties:
+  questionItem:
+    $ref: QuestionItem
+    description: Poses a question to the user.
+  questionGroupItem:
+    description: Poses one or more questions to the user with a single major prompt.
+    $ref: QuestionGroupItem
+  itemId:
+    type: string
+    description: The item ID. On creation, it can be provided but the ID must not
+      be already used in the form. If not provided, a new ID is assigned.
+  pageBreakItem:
+    $ref: PageBreakItem
+    description: Starts a new page with a title.
+  title:
+    type: string
+    description: The title of the item.
+  imageItem:
+    $ref: ImageItem
+    description: Displays an image on the page.
+  videoItem:
+    $ref: VideoItem
+    description: Displays a video on the page.
+  textItem:
+    $ref: TextItem
+    description: Displays a title and description on the page.
+  description:
+    type: string
+    description: The description of the item.

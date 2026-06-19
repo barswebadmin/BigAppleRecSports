@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CancelDataSourceRefreshRequest
+description: Cancels one or multiple refreshes of data source objects in the spreadsheet
+  by the specified references. The request requires an additional `bigquery.readonly`
+  OAuth scope if you are cancelling a refresh on a BigQuery data source.
+type: object
+properties:
+  references:
+    $ref: DataSourceObjectReferences
+    description: References to data source objects whose refreshes are to be cancelled.
+  dataSourceId:
+    description: Reference to a DataSource. If specified, cancels all associated data
+      source object refreshes for this data source.
+    type: string
+  isAll:
+    description: Cancels all existing data source object refreshes for all data sources
+      in the spreadsheet.
+    type: boolean

@@ -25,7 +25,8 @@ Functions read secrets from the `env` arg (ROSI) by **name** — never commit va
 
 - `GOOGLE__SERVICE_ACCOUNT` — service-account JSON (Sheets + Gmail)
 - `SHOPIFY__URL__API_GRAPH_QL`, `SHOPIFY__TOKEN__ADMIN` — Shopify Admin GraphQL
-- Refund Lambda URL is a constant in `config.ts` (`REFUND_PROCESS_URL`), not a secret.
+- `BARS_API_URL` — optional canonical BARS HTTP API base (no trailing slash); when set, refund approvals call the API instead of `REFUND_PROCESS_URL`. Add host to `manifest.ts` `outgoingDomains`.
+- Refund Lambda URL is a constant in `config/store.ts` (`REFUND_PROCESS_URL`), not a secret, when `BARS_API_URL` is unset.
 
 Where they come from:
 

@@ -1,8 +1,8 @@
 from typing import Optional, Annotated, Literal, TYPE_CHECKING, Any, List
 from dataclasses import dataclass
-from pydantic import PlainSerializer
+from pydantic import BaseModel, PlainSerializer
 
-from shared.model_config import ApiModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 
 class EnumField(str):
@@ -19,20 +19,23 @@ class EnumField(str):
         return Annotated[Literal[tuple(allowed_values)], PlainSerializer(cls.serialize)]
 
 
-class UserName(ApiModel):
+class UserName(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Admin SDK Directory API User name structure."""
     given_name: Optional[str] = None
     family_name: Optional[str] = None
     full_name: Optional[str] = None
 
 
-class UserEmail(ApiModel):
+class UserEmail(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Admin SDK Directory API User email structure."""
     address: Optional[str] = None
     primary: Optional[bool] = None
 
 
-class MemberResource(ApiModel):
+class MemberResource(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Admin SDK Directory API Member resource structure."""
     kind: str  # 'admin#directory#member'
     etag: str
@@ -44,7 +47,8 @@ class MemberResource(ApiModel):
     delivery_settings: Optional[EnumField.create('ALL_MAIL', 'DAILY', 'DIGEST', 'NONE', 'DISABLED')] = None  # type: ignore[misc]
 
 
-class MemberslistResponse(ApiModel):
+class MemberslistResponse(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Admin SDK Directory API Members list response structure."""
     kind: Optional[str] = None  # 'admin#directory#members'
     etag: Optional[str] = None
@@ -52,7 +56,8 @@ class MemberslistResponse(ApiModel):
     next_page_token: Optional[str] = None
 
 
-class GroupResource(ApiModel):
+class GroupResource(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Admin SDK Directory API Group resource structure."""
     kind: str  # 'admin#directory#group'
     id: str
@@ -65,7 +70,8 @@ class GroupResource(ApiModel):
     aliases: Optional[list[str]] = None  # Can be None or empty list
 
 
-class GroupslistResponse(ApiModel):
+class GroupslistResponse(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Admin SDK Directory API Groups list response structure."""
     kind: Optional[str] = None  # 'admin#directory#groups'
     etag: Optional[str] = None
@@ -80,7 +86,8 @@ class GroupWithMembers:
     members: list[MemberResource]
 
 
-class UserResource(ApiModel):
+class UserResource(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Admin SDK Directory API User resource structure."""
     kind: Optional[str] = None  # 'admin#directory#user'
     id: Optional[str] = None
@@ -99,7 +106,8 @@ class UserResource(ApiModel):
     customer_id: Optional[str] = None
 
 
-class UserslistResponse(ApiModel):
+class UserslistResponse(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Google Admin SDK Directory API Users list response structure."""
     kind: Optional[str] = None  # 'admin#directory#users'
     etag: Optional[str] = None

@@ -1,0 +1,19 @@
+description: Moves or inserts multiple Chrome OS devices to an organizational unit.
+  You can move up to 50 devices at once.
+httpMethod: POST
+path: admin/directory/v1/customer/{customerId}/devices/chromeos/moveDevicesToOu
+scopes:
+- https://www.googleapis.com/auth/admin.directory.device.chromeos
+request:
+  $ref: ChromeOsMoveDevicesToOu
+parameters:
+  customerId:
+    description: Immutable. ID of the Google Workspace account
+    location: path
+    required: true
+    type: string
+  orgUnitPath:
+    description: Full path of the target organizational unit or its ID
+    location: query
+    required: true
+    type: string

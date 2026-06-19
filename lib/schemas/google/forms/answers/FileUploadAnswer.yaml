@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FileUploadAnswer
+description: Info for a single file submitted to a file upload question.
+type: object
+properties:
+  fileName:
+    type: string
+    readOnly: true
+    description: Output only. The file name, as stored in Google Drive on upload.
+  mimeType:
+    type: string
+    description: Output only. The MIME type of the file, as stored in Google Drive
+      on upload.
+    readOnly: true
+  fileId:
+    type: string
+    description: Output only. The ID of the Google Drive file.
+    readOnly: true

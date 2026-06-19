@@ -18,7 +18,7 @@ from paths import get_repo_root
 from .compare_project_remote_with_local import compare_project_remote_with_local
 
 REPO_ROOT = get_repo_root()
-GAS_ROOT = REPO_ROOT / "GoogleAppsScripts"
+GAS_ROOT = REPO_ROOT / "google-apps-scripts"
 PROJECTS_DIR = GAS_ROOT / "projects"
 LAMBDA_FUNCTIONS_DIR = REPO_ROOT / "lambda" / "functions"
 
@@ -66,7 +66,7 @@ def get_lambda_functions() -> List[str]:
     functions = []
     for item in LAMBDA_FUNCTIONS_DIR.iterdir():
         if item.is_dir() and not item.name.startswith('.'):
-            if (item / "lambda_function.py").exists():
+            if (item / "main.py").exists():
                 functions.append(item.name)
     
     return sorted(functions)

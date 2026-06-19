@@ -1,0 +1,9 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FeatureInstance
+description: JSON template for a feature instance.
+type: object
+properties:
+  feature:
+    $ref: Feature
+    description: The feature that this is an instance of. A calendar resource may
+      have multiple instances of a feature.

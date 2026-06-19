@@ -18,7 +18,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
-from scripts._shared.path_utils import PROJECT_ROOT
 
 def parse_version(version_string: str) -> Tuple[int, int, int]:
     """Parse version string into components"""

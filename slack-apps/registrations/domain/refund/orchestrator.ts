@@ -31,6 +31,9 @@ import {
 import { buildRefundEvalBlocks } from "../../views/refund/eval_blocks.ts";
 import type { RefundDecision } from "./types.ts";
 import {
+    barsApiConfigured,
+    buildBackendOrderCancelRequest,
+    buildBackendRefundCreateRequest,
     buildCancelOrderRequest,
     buildCreateRefundRequest,
     executeActionRequest,
@@ -282,16 +285,45 @@ export async function handleApproveModalSubmit(
         isTest: payload.is_test === true,
     };
 
+    const useBackend = barsApiConfigured();
     const requests: PreparedRequest[] = [];
-    if (needsCancel) requests.push(buildCancelOrderRequest(orderRef));
-    if (needsRefund) {
-        requests.push(
-            buildCreateRefundRequest(orderRef, {
-                refundType,
-                amount: modalVals.amount!,
-                transactions: payload.transactions,
-            }),
-        );
+    if (useBackend) {
+        if (needsCancel && needsRefund) {
+            requests.push(
+                buildBackendRefundCreateRequest(orderRef, {
+                    cancelOrder: true,
+                    refundType,
+                    amount: modalVals.amount!,
+                    transactions: payload.transactions,
+                    currency: payload.currency_code,
+                    notify: modalVals.sendNotification,
+                }),
+            );
+        } else if (needsCancel) {
+            requests.push(buildBackendOrderCancelRequest(orderRef));
+        } else if (needsRefund) {
+            requests.push(
+                buildBackendRefundCreateRequest(orderRef, {
+                    cancelOrder: false,
+                    refundType,
+                    amount: modalVals.amount!,
+                    transactions: payload.transactions,
+                    currency: payload.currency_code,
+                    notify: modalVals.sendNotification,
+                }),
+            );
+        }
+    } else {
+        if (needsCancel) requests.push(buildCancelOrderRequest(orderRef));
+        if (needsRefund) {
+            requests.push(
+                buildCreateRefundRequest(orderRef, {
+                    refundType,
+                    amount: modalVals.amount!,
+                    transactions: payload.transactions,
+                }),
+            );
+        }
     }
 
     if (REFUND_DRY_RUN) {
@@ -299,7 +331,7 @@ export async function handleApproveModalSubmit(
             client,
             REFUND_CHANNELS.test,
             requests.map((r) => ({
-                header: `:test_tube: *DRY RUN* — would POST to ShopifyRefundHandler: *${r.label}*`,
+                header: `:test_tube: *DRY RUN* — would send: *${r.label}*`,
                 label: `${payload.order_number} (${payload.first_name} ${payload.last_name})`,
                 steps: [requestStep(r)],
             })),

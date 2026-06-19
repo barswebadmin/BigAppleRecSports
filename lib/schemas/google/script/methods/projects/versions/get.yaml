@@ -1,0 +1,20 @@
+description: Gets a version of a script project.
+httpMethod: GET
+path: v1/projects/{scriptId}/versions/{versionNumber}
+scopes:
+- https://www.googleapis.com/auth/script.projects
+- https://www.googleapis.com/auth/script.projects.readonly
+parameters:
+  scriptId:
+    type: string
+    description: The script project's Drive ID.
+    location: path
+    required: true
+  versionNumber:
+    format: int32
+    description: The version number.
+    location: path
+    required: true
+    type: integer
+response:
+  $ref: Version

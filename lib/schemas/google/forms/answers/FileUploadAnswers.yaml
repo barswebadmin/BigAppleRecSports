@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FileUploadAnswers
+description: All submitted files for a FileUpload question.
+type: object
+properties:
+  answers:
+    type: array
+    description: Output only. All submitted files for a FileUpload question.
+    readOnly: true
+    items:
+      $ref: FileUploadAnswer

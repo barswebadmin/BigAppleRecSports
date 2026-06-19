@@ -5,51 +5,82 @@ description = "Big Apple Rec Sports - Monorepo Development Tools"
 requires-python = ">=3.14"
 readme = "README.md"
 
-# No runtime dependencies at root level - those go in individual projects
 dependencies = [
+    # Config / settings
     "python-dotenv>=1.0.0",
-    "click-extra>=0.15.0",
-    "firebase-admin>=7.2.0",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
+
+    # Data manipulation
+    "python-benedict[io,parse]>=0.37.0",
+    "python-box>=7.4.1",
+    "glom>=25.12.0",
+    "caseutil>=0.7.2",
+    "python-dateutil>=2.9.0",
+    "anyio",
+    "anytree>=2.13.0",
+    "python-fsutil>=0.16.1",
+    "polars",
+
+    # HTTP + cloud clients
     "google-auth>=2.49.1",
     "google-api-python-client>=2.192.0",
     "boto3>=1.34.0",
-    "httpx>=0.27.0",
+    "httpx[cli,http2]",
+    "httpx-retries>=0.4.6",
+    "aiohttp>=3.9",
     "gql>=4.0.0",
     "autoregistry>=1.3.0",
+    "tldextract>=5.3.1",
+    "beautifulsoup4>=4.12",
+
+    # CLI / interactive tools
+    "cyclopts>=4.5.1",
+    "rich>=13",
+    "pyperclip>=1.11.0",
+    "questionary",
+    "prompt-toolkit>=3.0.52",
 ]
 
 [project.optional-dependencies]
+firebase = [
+    "firebase-admin>=7.2.0",
+]
 dev = [
-    # Linting & Formatting
+    # Linting & formatting
     "ruff>=0.1.0",
 
-    # Type Checking
+    # Type checking
     "mypy>=1.0.0",
+    "pyright>=1.1.409",
 
     # Testing
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.11.0",
+    "pytest-rich",
+    "hypothesis",
 
-    # AWS Mocking (for lambda tests)
+    # Import analysis
+    "import-linter>=2.6",
+    "knot-imports>=0.1.0",
+
+    # AWS mocking (for lambda tests)
     "moto>=4.0.0",
 
-    # HTTP Testing
-    "httpx>=0.27.0",
-
-    # Pre-commit Hooks
+    # Pre-commit hooks
     "pre-commit>=3.0.0",
 ]
 
-[build-system]
-requires = ["setuptools>=45"]
-build-backend = "setuptools.build_meta"
+[dependency-groups]
+dev = [
+    "boto3-stubs[scheduler]>=1.43.33",
+]
 
-[tool.setuptools]
-py-modules = []  # Root is not a package, just dev tools
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 # =============================================================================
 # UV SOURCES CONFIGURATION
@@ -67,10 +98,10 @@ bars-shared-utilities = { workspace = true }
 # They stay standalone projects with their own [tool.uv.sources] path entries.
 # When backend's pins are relaxed it can be added here as a member.
 members = [
-    "bars_cli",
     "lib/clients/shopify-client",
     "scripts",
     "shared_utilities",
+    "aws/lambda/functions/AwsRouter",
     "aws/lambda/functions/ShopifyProductUpdates",
     "aws/lambda/functions/ShopifyRefundHandler",
 ]
@@ -119,7 +150,6 @@ testpaths = [
     "backend/tests",
     "backend/routers/tests",
     "lambda/functions/tests",
-    "bars_cli/tests",
     "shared_utilities/tests",
     "lib/tests",
 ]
@@ -130,7 +160,6 @@ pythonpath = [
     "backend",
     "lambda/functions",
     "lambda/layers/bars_common_utils",
-    "bars_cli",
     "shared_utilities",
 ]
 
@@ -156,7 +185,6 @@ markers = [
 source = [
     "backend",
     "lambda/functions",
-    "bars_cli",
     "shared_utilities",
 ]
 omit = [
@@ -191,3 +219,5 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 ignore_errors = true
+
+

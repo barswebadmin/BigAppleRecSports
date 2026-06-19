@@ -1,0 +1,19 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListDraftsResponse
+description: ''
+type: object
+properties:
+  drafts:
+    description: List of drafts. Note that the `Message` property in each `Draft`
+      resource only contains an `id` and a `threadId`. The [`messages.get`](https://developers.google.com/workspace/gmail/api/v1/reference/users/messages/get)
+      method can fetch additional message details.
+    type: array
+    items:
+      $ref: Draft
+  nextPageToken:
+    description: Token to retrieve the next page of results in the list.
+    type: string
+  resultSizeEstimate:
+    description: Estimated total number of results.
+    type: integer
+    format: uint32

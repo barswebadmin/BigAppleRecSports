@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserSshPublicKey
+description: JSON template for a POSIX account entry.
+type: object
+properties:
+  expirationTimeUsec:
+    description: An expiration time in microseconds since epoch.
+    type: string
+    format: int64
+  fingerprint:
+    description: A SHA-256 fingerprint of the SSH public key. (Read-only)
+    type: string
+    readOnly: true
+  key:
+    description: An SSH public key.
+    type: string

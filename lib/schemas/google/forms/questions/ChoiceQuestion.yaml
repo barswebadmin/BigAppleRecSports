@@ -1,0 +1,32 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ChoiceQuestion
+description: A radio/checkbox/dropdown question.
+type: object
+properties:
+  type:
+    enumDescriptions:
+    - Default value. Unused.
+    - 'Radio buttons: All choices are shown to the user, who can only pick one of
+      them.'
+    - 'Checkboxes: All choices are shown to the user, who can pick any number of them.'
+    - 'Drop-down menu: The choices are only shown to the user on demand, otherwise
+      only the current choice is shown. Only one option can be chosen.'
+    type: string
+    description: Required. The type of choice question.
+    enum:
+    - CHOICE_TYPE_UNSPECIFIED
+    - RADIO
+    - CHECKBOX
+    - DROP_DOWN
+  options:
+    type: array
+    items:
+      $ref: Option
+    description: Required. List of options that a respondent must choose from.
+  shuffle:
+    description: Whether the options should be displayed in random order for different
+      instances of the quiz. This is often used to prevent cheating by respondents
+      who might be looking at another respondent's screen, or to address bias in a
+      survey that might be introduced by always putting the same options first or
+      last.
+    type: boolean

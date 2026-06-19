@@ -1,8 +1,10 @@
 from typing import Optional
 
-from shared.model_config import ApiModel
+from pydantic import BaseModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
-class ExecutionInfo(ApiModel):
+class ExecutionInfo(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Apps Script execution information."""
     name: Optional[str] = None
     execution_id: Optional[str] = None
