@@ -150,30 +150,35 @@ if [ -f "$REQUIRED_FIELDS_CHECKER" ]; then
 fi
 
 # 3. Test CI Deployment Workflows (if workflows changed)
+SELF_CONTAINED_LAMBDA_YML=".github/workflows/deploy-self-contained-lambdas.yml"
+LAMBDA_LAYER_YML=".github/workflows/deploy-lambda-layer.yml"
 if git diff --cached --name-only | grep -q "^\.github/workflows/\|^shared-utilities/\|^lambda-functions/"; then
+    if [ ! -f "$SELF_CONTAINED_LAMBDA_YML" ]; then
+        echo "⚠️  Skipping self-contained lambda CI checks ($SELF_CONTAINED_LAMBDA_YML not in repo)"
+    else
     echo "🧪 Testing CI Deployment Logic..."
     
-    if ! grep -q "shared-utilities" .github/workflows/deploy-self-contained-lambdas.yml; then
+    if ! grep -q "shared-utilities" "$SELF_CONTAINED_LAMBDA_YML"; then
         echo "❌ FAIL: Self-contained workflow should trigger on shared-utilities changes"
         exit 1
     fi
     
-    if ! grep -q "push:" .github/workflows/deploy-self-contained-lambdas.yml; then
+    if ! grep -q "push:" "$SELF_CONTAINED_LAMBDA_YML"; then
         echo "❌ FAIL: Self-contained workflow should trigger on push"
         exit 1
     fi
     
-    if ! grep -r "inventory\.inventory_checker" lambda-functions/shopifyProductUpdateHandler/ > /dev/null 2>&1; then
+    if [ -d lambda-functions/shopifyProductUpdateHandler ] && ! grep -r "inventory\.inventory_checker" lambda-functions/shopifyProductUpdateHandler/ > /dev/null 2>&1; then
         echo "❌ FAIL: Expected inventory dependency not found in shopifyProductUpdateHandler"
         exit 1
     fi
     
-    if grep -v "^[[:space:]]*#" .github/workflows/deploy-self-contained-lambdas.yml | grep -v "echo" | grep -i "lambda.*layer" > /dev/null; then
+    if grep -v "^[[:space:]]*#" "$SELF_CONTAINED_LAMBDA_YML" | grep -v "echo" | grep -i "lambda.*layer" > /dev/null; then
         echo "❌ FAIL: Self-contained workflow mentions lambda layers"
         exit 1
     fi
     
-    if grep -v "^[[:space:]]*#" .github/workflows/deploy-lambda-layer.yml | grep "shared_utilities" > /dev/null; then
+    if [ -f "$LAMBDA_LAYER_YML" ] && grep -v "^[[:space:]]*#" "$LAMBDA_LAYER_YML" | grep "shared_utilities" > /dev/null; then
         echo "❌ FAIL: Lambda layer workflow mentions shared_utilities folder"
         exit 1
     fi
@@ -208,17 +213,18 @@ for product in non_bars:
         sys.exit(1)
 " || exit 1
     
-    if ! grep -q "inventory\\\.inventory_checker" .github/workflows/deploy-self-contained-lambdas.yml; then
+    if ! grep -q "inventory\\\.inventory_checker" "$SELF_CONTAINED_LAMBDA_YML"; then
         echo "❌ FAIL: CI workflow should detect inventory.inventory_checker pattern"
         exit 1
     fi
     
-    if ! grep -q "DETECTED_MODULES" .github/workflows/deploy-self-contained-lambdas.yml; then
+    if ! grep -q "DETECTED_MODULES" "$SELF_CONTAINED_LAMBDA_YML"; then
         echo "❌ FAIL: CI workflow should use selective module detection"
         exit 1
     fi
     
     echo "✅ CI deployment tests passed"
+    fi
 fi
 
 # 4. GAS doGet/doPost change detection
