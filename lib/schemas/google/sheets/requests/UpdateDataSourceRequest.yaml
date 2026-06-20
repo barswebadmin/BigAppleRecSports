@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateDataSourceRequest
+description: Updates a data source. After the data source is updated successfully,
+  an execution is triggered to refresh the associated DATA_SOURCE sheet to read data
+  from the updated data source. The request requires an additional `bigquery.readonly`
+  OAuth scope if you are updating a BigQuery data source.
+type: object
+properties:
+  fields:
+    type: string
+    description: The fields that should be updated. At least one field must be specified.
+      The root `dataSource` is implied and should not be specified. A single `"*"`
+      can be used as short-hand for listing every field.
+    format: google-fieldmask
+  dataSource:
+    description: The data source to update.
+    $ref: DataSource

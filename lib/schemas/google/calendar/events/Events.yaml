@@ -1,0 +1,61 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Events
+description: ''
+type: object
+properties:
+  accessRole:
+    type: string
+    description: "The user's access role for this calendar. Read-only. Possible values\
+      \ are:  \n- \"none\" - The user has no access. \n- \"freeBusyReader\" - The\
+      \ user has read access to free/busy information. \n- \"reader\" - The user has\
+      \ read access to the calendar. Private events will appear to users with reader\
+      \ access, but event details will be hidden. \n- \"writer\" - The user has read\
+      \ and write access to the calendar. Private events will appear to users with\
+      \ writer access, and event details will be visible. \n- \"owner\" - The user\
+      \ has manager access to the calendar. This role has all of the permissions of\
+      \ the writer role with the additional ability to see and modify access levels\
+      \ of other users.\nImportant: the owner role is different from the calendar's\
+      \ data owner. A calendar has a single data owner, but can have multiple users\
+      \ with owner role."
+  defaultReminders:
+    type: array
+    description: The default reminders on the calendar for the authenticated user.
+      These reminders apply to all events on this calendar that do not explicitly
+      override them (i.e. do not have reminders.useDefault set to True).
+    items:
+      $ref: EventReminder
+  description:
+    type: string
+    description: Description of the calendar. Read-only.
+  etag:
+    type: string
+    description: ETag of the collection.
+  items:
+    type: array
+    description: List of events on the calendar.
+    items:
+      $ref: Event
+  kind:
+    type: string
+    description: Type of the collection ("calendar#events").
+    default: calendar#events
+  nextPageToken:
+    type: string
+    description: Token used to access the next page of this result. Omitted if no
+      further results are available, in which case nextSyncToken is provided.
+  nextSyncToken:
+    type: string
+    description: Token used at a later point in time to retrieve only the entries
+      that have changed since this result was returned. Omitted if further results
+      are available, in which case nextPageToken is provided.
+  summary:
+    type: string
+    description: Title of the calendar. Read-only.
+  timeZone:
+    type: string
+    description: The time zone of the calendar. Read-only.
+  updated:
+    type: string
+    description: Last modification time of the calendar (as a RFC3339 timestamp).
+      Read-only.
+    format: date-time

@@ -1,0 +1,45 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Channel
+description: An notification channel used to watch for resource changes.
+type: object
+properties:
+  id:
+    description: A UUID or similar unique string that identifies this channel.
+    type: string
+  token:
+    description: An arbitrary string delivered to the target address with each notification
+      delivered over this channel. Optional.
+    type: string
+  expiration:
+    description: Date and time of notification channel expiration, expressed as a
+      Unix timestamp, in milliseconds. Optional.
+    type: string
+    format: int64
+  type:
+    description: The type of delivery mechanism used for this channel.
+    type: string
+  address:
+    description: The address where notifications are delivered for this channel.
+    type: string
+  payload:
+    description: A Boolean value to indicate whether payload is wanted. Optional.
+    type: boolean
+  params:
+    description: Additional parameters controlling delivery channel behavior. Optional.
+      For example, `params.ttl` specifies the time-to-live in seconds for the notification
+      channel, where the default is 2 hours and the maximum TTL is 2 days.
+    type: object
+    additionalProperties:
+      type: string
+  resourceId:
+    description: An opaque ID that identifies the resource being watched on this channel.
+      Stable across different API versions.
+    type: string
+  resourceUri:
+    description: A version-specific identifier for the watched resource.
+    type: string
+  kind:
+    description: Identifies this as a notification channel used to watch for changes
+      to a resource, which is `api#channel`.
+    default: api#channel
+    type: string

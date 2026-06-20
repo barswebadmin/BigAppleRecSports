@@ -35,7 +35,7 @@ def run_slack_tests():
         
     except FileNotFoundError:
         print("\n❌ pytest not found!")
-        print("💡 Install pytest: pip install pytest")
+        print("💡 Install pytest: uv sync --extra dev")
         return 1
     except Exception as e:
         print(f"\n❌ Error running tests: {e}")

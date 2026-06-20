@@ -5,8 +5,11 @@ Handles both AWS Lambda and Google Apps Script fetching.
 """
 
 import json
+import atexit
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import urllib.request
 import zipfile
@@ -17,7 +20,8 @@ from typing import Optional
 def fetch_from_remote(
     remote_origin_type: str,
     project_name: str,
-    temp_dir: Path,
+    temp_dir: Optional[Path] = None,
+    should_handle_cleanup: bool = True,
     **kwargs
 ) -> Path:
     """
@@ -26,7 +30,10 @@ def fetch_from_remote(
     Args:
         remote_origin_type: "google" or "aws"
         project_name: Name of the project/function
-        temp_dir: Temporary directory to store fetched code
+        temp_dir: Temporary directory to store fetched code (optional; auto-created if not provided)
+        should_handle_cleanup: If temp_dir is auto-created, cleanup behavior:
+            - True: delete without prompting
+            - False: prompt at process exit (default yes)
         **kwargs: Additional arguments (region, project_root, etc.)
     
     Returns:
@@ -36,6 +43,30 @@ def fetch_from_remote(
         ValueError: If remote_origin_type is unknown
         RuntimeError: If fetch fails
     """
+    created_temp_dir = False
+    if temp_dir is None:
+        temp_dir = Path(tempfile.mkdtemp(prefix=f"{project_name}_local_temp_"))
+        created_temp_dir = True
+
+    if created_temp_dir:
+        def _cleanup_temp_dir() -> None:
+            if not temp_dir or not temp_dir.exists():
+                return
+
+            should_delete = True
+            if not should_handle_cleanup and os.isatty(0):
+                try:
+                    ans = input(f"Delete temporary directory '{temp_dir}'? [Y/n]: ").strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    ans = ""
+                if ans in ("n", "no"):
+                    should_delete = False
+
+            if should_delete:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+        atexit.register(_cleanup_temp_dir)
+
     if remote_origin_type == "aws":
         region = kwargs.get("region", "us-east-1")
         return fetch_from_aws(project_name, temp_dir, region=region)
@@ -191,9 +222,12 @@ def fetch_from_google(project_name: str, temp_dir: Path, project_root: Optional[
     """
     # Auto-detect project_root if not provided
     if project_root is None:
-        script_dir = Path(__file__).parent
-        repo_root = script_dir.parent.parent
-        project_root = repo_root / "GoogleAppsScripts"
+        # Add shared utilities to path for imports
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+        from paths import get_repo_root
+
+        repo_root = get_repo_root()
+        project_root = repo_root / "google-apps-scripts"
     
     project_dir = project_root / "projects" / project_name
     

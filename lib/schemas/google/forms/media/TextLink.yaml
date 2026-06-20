@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: TextLink
+description: Link for text.
+type: object
+properties:
+  uri:
+    description: Required. The URI.
+    type: string
+  displayText:
+    description: Required. Display text for the URI.
+    type: string

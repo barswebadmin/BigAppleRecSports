@@ -1,0 +1,53 @@
+title: "League"
+description: "League details for composition into sport programs"
+type: object
+properties:
+  sport:
+    type: string
+    enum: ["Kickball", "Bowling", "Pickleball", "Dodgeball"]
+
+  division:
+    type: string
+    enum: ["open", "wtnb"]
+
+  dayOfPlay:
+    type: string
+    enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+  dodgeballBallType:
+    type: string
+    enum: ["Big Ball", "Small Ball", "Foam"]
+
+  levelOfPlay:
+    type: string
+    enum: [
+      "Social",
+      "Advanced",
+      "Mixed Social/Advanced",
+      "Competitive/Advanced",
+      "Intermediate/Advanced"
+    ]
+
+  teamAssignment:
+    type: array
+    items:
+      type: string
+      enum: [
+        "draft",
+        "randomized",
+        "buddy",
+        "buddyNewbieOnly",
+        "ladder"
+      ]
+
+  gameDuration:
+    type: string
+    examples: ["15 minutes per match, 2 matches per night", "45 minutes per game"]
+
+  contactEmail:
+    type: string
+    format: email
+
+required: [sport, division, dayOfPlay, contactEmail]
+
+additionalProperties: true

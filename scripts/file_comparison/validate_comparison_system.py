@@ -11,10 +11,14 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from enum import Enum
 
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
 from .compare_project_remote_with_local import compare_project_remote_with_local
 
-REPO_ROOT = Path(__file__).parent.parent.parent
-GAS_ROOT = REPO_ROOT / "GoogleAppsScripts"
+REPO_ROOT = get_repo_root()
+GAS_ROOT = REPO_ROOT / "google-apps-scripts"
 PROJECTS_DIR = GAS_ROOT / "projects"
 LAMBDA_FUNCTIONS_DIR = REPO_ROOT / "lambda" / "functions"
 
@@ -62,7 +66,7 @@ def get_lambda_functions() -> List[str]:
     functions = []
     for item in LAMBDA_FUNCTIONS_DIR.iterdir():
         if item.is_dir() and not item.name.startswith('.'):
-            if (item / "lambda_function.py").exists():
+            if (item / "main.py").exists():
                 functions.append(item.name)
     
     return sorted(functions)

@@ -1,0 +1,7 @@
+title: "ISO Time"
+description: "Time in ISO 8601 format (HH:MM:SS[Z])"
+type: string
+format: time
+examples:
+  - "23:00:00Z"
+  - "14:30:00"

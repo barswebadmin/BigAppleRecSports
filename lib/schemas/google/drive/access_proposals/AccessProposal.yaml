@@ -1,0 +1,30 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AccessProposal
+description: Manage outstanding access proposals on a file.
+type: object
+properties:
+  fileId:
+    description: The file ID that the proposal for access is on.
+    type: string
+  proposalId:
+    description: The ID of the access proposal.
+    type: string
+  requesterEmailAddress:
+    description: The email address of the requesting user.
+    type: string
+  recipientEmailAddress:
+    description: The email address of the user that will receive permissions, if accepted.
+    type: string
+  rolesAndViews:
+    description: A wrapper for the role and view of an access proposal. For more information,
+      see [Roles and permissions](https://developers.google.com/workspace/drive/api/guides/ref-roles).
+    type: array
+    items:
+      $ref: AccessProposalRoleAndView
+  requestMessage:
+    description: The message that the requester added to the proposal.
+    type: string
+  createTime:
+    description: The creation time.
+    type: string
+    format: google-datetime

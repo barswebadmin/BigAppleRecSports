@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateCellsRequest
+description: Updates all cells in a range with new data.
+type: object
+properties:
+  fields:
+    description: The fields of CellData that should be updated. At least one field
+      must be specified. The root is the CellData; 'row.values.' should not be specified.
+      A single `"*"` can be used as short-hand for listing every field.
+    format: google-fieldmask
+    type: string
+  start:
+    description: The coordinate to start writing data at. Any number of rows and columns
+      (including a different number of columns per row) may be written.
+    $ref: GridCoordinate
+  rows:
+    description: The data to write.
+    items:
+      $ref: RowData
+    type: array
+  range:
+    description: The range to write data to. If the data in rows does not cover the
+      entire requested range, the fields matching those set in fields will be cleared.
+    $ref: GridRange

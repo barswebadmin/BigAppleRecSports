@@ -1,0 +1,59 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BandingProperties
+description: 'Properties referring a single dimension (either row or column). If both
+  BandedRange.row_properties and BandedRange.column_properties are set, the fill colors
+  are applied to cells according to the following rules: * header_color and footer_color
+  take priority over band colors. * first_band_color takes priority over second_band_color.
+  * row_properties takes priority over column_properties. For example, the first row
+  color takes priority over the first column color, but the first column color takes
+  priority over the second row color. Similarly, the row header takes priority over
+  the column header in the top left cell, but the column header takes priority over
+  the first row color if the row header is not set.'
+type: object
+properties:
+  headerColor:
+    $ref: Color
+    description: 'The color of the first row or column. If this field is set, the
+      first row or column is filled with this color and the colors alternate between
+      first_band_color and second_band_color starting from the second row or column.
+      Otherwise, the first row or column is filled with first_band_color and the colors
+      proceed to alternate as they normally would. Deprecated: Use header_color_style.'
+    deprecated: true
+  secondBandColorStyle:
+    description: The second color that is alternating. (Required) If second_band_color
+      is also set, this field takes precedence.
+    $ref: ColorStyle
+  secondBandColor:
+    description: 'The second color that is alternating. (Required) Deprecated: Use
+      second_band_color_style.'
+    deprecated: true
+    $ref: Color
+  footerColorStyle:
+    description: The color of the last row or column. If this field is not set, the
+      last row or column is filled with either first_band_color or second_band_color,
+      depending on the color of the previous row or column. If footer_color is also
+      set, this field takes precedence.
+    $ref: ColorStyle
+  firstBandColor:
+    $ref: Color
+    description: 'The first color that is alternating. (Required) Deprecated: Use
+      first_band_color_style.'
+    deprecated: true
+  footerColor:
+    description: 'The color of the last row or column. If this field is not set, the
+      last row or column is filled with either first_band_color or second_band_color,
+      depending on the color of the previous row or column. Deprecated: Use footer_color_style.'
+    deprecated: true
+    $ref: Color
+  headerColorStyle:
+    description: The color of the first row or column. If this field is set, the first
+      row or column is filled with this color and the colors alternate between first_band_color
+      and second_band_color starting from the second row or column. Otherwise, the
+      first row or column is filled with first_band_color and the colors proceed to
+      alternate as they normally would. If header_color is also set, this field takes
+      precedence.
+    $ref: ColorStyle
+  firstBandColorStyle:
+    description: The first color that is alternating. (Required) If first_band_color
+      is also set, this field takes precedence.
+    $ref: ColorStyle

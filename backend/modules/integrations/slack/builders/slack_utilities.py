@@ -23,48 +23,6 @@ class SlackMessageBuilder:
         """Initialize the message builder."""
         pass
     
-    def build_refund_request_message(
-        self,
-        refund_request: Slack.RefundNotification,
-        order_data: Optional[Dict[str, Any]] = None,
-        refund_calculation: Optional[Dict[str, Any]] = None,
-        error_type: Optional[str] = None
-    ) -> str:
-        """Build message text for a refund request notification."""
-        requestor_name = self._format_requestor_name(refund_request.requestor_name)
-        
-        if error_type:
-            return self._build_error_message(refund_request, error_type, requestor_name)
-        elif refund_calculation and refund_calculation.get("success"):
-            return self._build_success_message(refund_request, refund_calculation, requestor_name)
-        else:
-            return self._build_basic_message(refund_request, requestor_name)
-    
-    def build_refund_confirmation_message(self, confirmation: Slack.RefundConfirmation) -> str:
-        """Build message text for a refund confirmation."""
-        return (
-            f"✅ *Refund Confirmed* for {confirmation.order_number}\n\n"
-            f"**Customer:** {confirmation.customer_name}\n"
-            f"**Email:** {confirmation.customer_email}\n"
-            f"**Amount:** ${confirmation.refund_amount:.2f}\n"
-            f"**Type:** {confirmation.refund_type.value.title()}\n"
-            f"**Processed by:** {confirmation.processed_by}\n"
-            f"**Processed at:** {self._format_timestamp(confirmation.processed_at)}"
-            + (f"\n**Notes:** {confirmation.notes}" if confirmation.notes else "")
-        )
-    
-    def build_refund_denial_message(self, denial: Slack.RefundDenial) -> str:
-        """Build message text for a refund denial."""
-        return (
-            f"❌ *Refund Denied* for {denial.order_number}\n\n"
-            f"**Customer:** {denial.customer_name}\n"
-            f"**Email:** {denial.customer_email}\n"
-            f"**Reason:** {denial.denial_reason}\n"
-            f"**Denied by:** {denial.denied_by}\n"
-            f"**Denied at:** {self._format_timestamp(denial.denied_at)}"
-            + (f"\n**Notes:** {denial.notes}" if denial.notes else "")
-        )
-    
     def build_order_update_message(self, update: Slack.OrderUpdate) -> str:
         """Build message text for an order update."""
         status_change = ""
@@ -102,56 +60,6 @@ class SlackMessageBuilder:
             + (f"\n**Notes:** {notification.notes}" if notification.notes else "")
         )
     
-    def build_action_buttons(
-        self,
-        refund_request: Slack.RefundNotification,
-        order_data: Optional[Dict[str, Any]] = None,
-        error_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """Build action buttons for refund notifications."""
-        buttons = []
-        
-        if error_type:
-            buttons.extend([
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Edit Details"},
-                    "action_id": "edit_request_details",
-                    "value": refund_request.order_number
-                },
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Deny Request"},
-                    "action_id": "deny_refund_request",
-                    "value": refund_request.order_number,
-                    "style": "danger"
-                }
-            ])
-        else:
-            buttons.extend([
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Process Refund"},
-                    "action_id": "process_refund",
-                    "value": refund_request.order_number,
-                    "style": "primary"
-                },
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Custom Amount"},
-                    "action_id": "custom_refund_amount",
-                    "value": refund_request.order_number
-                },
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "No Refund"},
-                    "action_id": "no_refund",
-                    "value": refund_request.order_number,
-                    "style": "danger"
-                }
-            ])
-        
-        return buttons
     
     def _format_requestor_name(self, requestor_name) -> str:
         """Format requestor name consistently."""
@@ -173,38 +81,6 @@ class SlackMessageBuilder:
             pass
         return timestamp or "Unknown"
     
-    def _build_error_message(self, refund_request: Slack.RefundNotification, error_type: str, requestor_name: str) -> str:
-        """Build error message."""
-        return (
-            f"❌ *Error Processing Refund Request* for {refund_request.order_number}\n\n"
-            f"**Requestor:** {requestor_name}\n"
-            f"**Email:** {refund_request.requestor_email}\n"
-            f"**Error Type:** {error_type}\n"
-            f"**Refund Type:** {refund_request.refund_type.value.title()}"
-            + (f"\n**Notes:** {refund_request.notes}" if refund_request.notes else "")
-        )
-    
-    def _build_success_message(self, refund_request: Slack.RefundNotification, refund_calculation: Dict[str, Any], requestor_name: str) -> str:
-        """Build success message with calculated refund."""
-        amount = refund_calculation.get("refund_amount", "Unknown")
-        return (
-            f"💰 *Refund Request* for {refund_request.order_number}\n\n"
-            f"**Requestor:** {requestor_name}\n"
-            f"**Email:** {refund_request.requestor_email}\n"
-            f"**Refund Amount:** ${amount}\n"
-            f"**Type:** {refund_request.refund_type.value.title()}"
-            + (f"\n**Notes:** {refund_request.notes}" if refund_request.notes else "")
-        )
-    
-    def _build_basic_message(self, refund_request: Slack.RefundNotification, requestor_name: str) -> str:
-        """Build basic refund request message."""
-        return (
-            f"📋 *Refund Request* for {refund_request.order_number}\n\n"
-            f"**Requestor:** {requestor_name}\n"
-            f"**Email:** {refund_request.requestor_email}\n"
-            f"**Type:** {refund_request.refund_type.value.title()}"
-            + (f"\n**Notes:** {refund_request.notes}" if refund_request.notes else "")
-        )
 
 
 class SlackCacheManager:
@@ -296,50 +172,6 @@ class SlackMetadataBuilder:
     Handles metadata creation for different message types.
     """
     
-    def build_refund_request_metadata(
-        self,
-        refund_request: Slack.RefundNotification,
-        order_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Build metadata for refund request messages."""
-        metadata = {
-            "order_number": refund_request.order_number,
-            "requestor_email": refund_request.requestor_email,
-            "refund_type": refund_request.refund_type.value,
-            "message_type": SlackMessageType.REFUND_REQUEST.value,
-            "timestamp": datetime.utcnow().isoformat() + "Z"
-        }
-        
-        if order_data:
-            order = order_data.get("order", {})
-            metadata.update({
-                "order_id": order.get("id"),
-                "order_total": order.get("totalPrice"),
-                "order_status": order.get("fulfillmentStatus")
-            })
-        
-        return metadata
-    
-    def build_confirmation_metadata(self, confirmation: Slack.RefundConfirmation) -> Dict[str, Any]:
-        """Build metadata for refund confirmation messages."""
-        return {
-            "order_number": confirmation.order_number,
-            "refund_amount": str(confirmation.refund_amount),
-            "processed_by": confirmation.processed_by,
-            "message_type": SlackMessageType.REFUND_CONFIRMATION.value,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "shopify_refund_id": confirmation.shopify_refund_id
-        }
-    
-    def build_denial_metadata(self, denial: Slack.RefundDenial) -> Dict[str, Any]:
-        """Build metadata for refund denial messages."""
-        return {
-            "order_number": denial.order_number,
-            "denial_reason": denial.denial_reason,
-            "denied_by": denial.denied_by,
-            "message_type": SlackMessageType.REFUND_DENIAL.value,
-            "timestamp": datetime.utcnow().isoformat() + "Z"
-        }
     
     def build_order_update_metadata(self, update: Slack.OrderUpdate) -> Dict[str, Any]:
         """Build metadata for order update messages."""

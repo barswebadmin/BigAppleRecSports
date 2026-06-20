@@ -1,0 +1,86 @@
+description: Retrieves a paginated list of Chrome OS devices within an account.
+httpMethod: GET
+path: admin/directory/v1/customer/{customerId}/devices/chromeos
+scopes:
+- https://www.googleapis.com/auth/admin.directory.device.chromeos
+- https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly
+parameters:
+  customerId:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's `customerId`. The `customerId` is also returned as part of the
+      [Users resource](https://developers.google.com/workspace/admin/directory/v1/reference/users).
+    location: path
+    required: true
+    type: string
+  maxResults:
+    description: Maximum number of results to return. Value should not exceed 300.
+    default: '100'
+    minimum: '1'
+    location: query
+    type: integer
+    format: int32
+  orderBy:
+    description: Device property to use for sorting results.
+    location: query
+    type: string
+    enumDescriptions:
+    - Chrome device location as annotated by the administrator.
+    - Chromebook user as annotated by administrator.
+    - The date and time the Chrome device was last synchronized with the policy settings
+      in the Admin console.
+    - Chrome device notes as annotated by the administrator.
+    - The Chrome device serial number entered when the device was enabled.
+    - Chrome device status. For more information, see the <a [chromeosdevices](https://developers.google.com/workspace/admin/directory/v1/reference/chromeosdevices.html).
+    enum:
+    - annotatedLocation
+    - annotatedUser
+    - lastSync
+    - notes
+    - serialNumber
+    - status
+  orgUnitPath:
+    description: The full path of the organizational unit (minus the leading `/`)
+      or its unique ID.
+    location: query
+    type: string
+  pageToken:
+    description: The `pageToken` query parameter is used to request the next page
+      of query results. The follow-on request's `pageToken` query parameter is the
+      `nextPageToken` from your previous response.
+    location: query
+    type: string
+  projection:
+    description: Determines whether the response contains the full list of properties
+      or only a subset.
+    location: query
+    type: string
+    enumDescriptions:
+    - Includes only the basic metadata fields (e.g., deviceId, serialNumber, status,
+      and user)
+    - Includes all metadata fields
+    enum:
+    - BASIC
+    - FULL
+  query:
+    description: Search string in the format given at [List query operators](https://developers.google.com/workspace/admin/directory/v1/list-query-operators).
+    location: query
+    type: string
+  sortOrder:
+    description: Whether to return results in ascending or descending order. Must
+      be used with the `orderBy` parameter.
+    location: query
+    type: string
+    enumDescriptions:
+    - Ascending order.
+    - Descending order.
+    enum:
+    - ASCENDING
+    - DESCENDING
+  includeChildOrgunits:
+    description: Return devices from all child orgunits, as well as the specified
+      org unit. If this is set to true, 'orgUnitPath' must be provided.
+    location: query
+    type: boolean
+response:
+  $ref: ChromeOsDevices

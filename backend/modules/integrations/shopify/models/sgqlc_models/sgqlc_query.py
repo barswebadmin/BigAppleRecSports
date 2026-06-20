@@ -6,12 +6,18 @@ customer and order-specific fields and helpers.
 """
 
 from typing import Optional
-from sgqlc.types import Type, Field, String, ID
+from sgqlc.types import Type, Field, String, ID, Int
 from sgqlc.types.relay import connection_args
 from sgqlc.operation import Operation
 
-from backend.modules.integrations.shopify.models.sgqlc_models import CustomerConnection, OrderConnection, ProductConnection
-from backend.modules.integrations.shopify.models import sgqlc_models
+from modules.integrations.shopify.models.sgqlc_models import (
+    CustomerConnection,
+    OrderConnection,
+    ProductConnection,
+    LocationConnection,
+    FileConnection,
+)
+from modules.integrations.shopify.models import sgqlc_models
 
 
 class BaseQuery(Type):
@@ -59,10 +65,59 @@ class BaseQuery(Type):
             # or a type class directly
             type_repr = field
         
-        # Check for string forward reference first (before other checks)
+        # FIRST: Check for Connection types (must be before object type check)
+        # Check if type_repr is a Connection class (by name or inheritance)
+        # Also check string representation for Connection (handles ContainerTypeMeta)
+        is_connection_type = False
+        type_repr_str = str(type_repr) if type_repr else ''
+        
+        if isinstance(type_repr, type) and issubclass(type_repr, Connection):
+            is_connection_type = True
+        elif 'Connection' in type_repr_str:
+            # String representation like 'CollectionConnection' or "Connection[Collection]SGQLC"
+            is_connection_type = True
+        
+        # Also check if Field has connection args
+        has_connection_args = False
+        if isinstance(field, Field) and hasattr(field, 'args') and field.args:
+            connection_keys = {'first', 'after', 'before', 'last'}
+            has_connection_args = any(k in field.args for k in connection_keys)
+        
+        if is_connection_type or has_connection_args:
+            # It's a Connection - extract node type
+            # Use string representation to extract node name
+            import re
+            match = re.search(r'Connection\[([^\]]+)\]', type_repr_str)
+            if match:
+                node_name = match.group(1).strip()
+                if hasattr(sgqlc_models, node_name):
+                    node_class = getattr(sgqlc_models, node_name)
+                    return ('connection', node_class)
+            # Try simple name replacement (e.g., 'CollectionConnection' -> 'Collection')
+            node_name = type_repr_str.replace('Connection', '').replace('[', '').replace(']', '').replace('SGQLC', '').strip()
+            if node_name and hasattr(sgqlc_models, node_name):
+                node_class = getattr(sgqlc_models, node_name)
+                return ('connection', node_class)
+            
+            # Handle Connection class
+            elif isinstance(type_repr, type) and issubclass(type_repr, Connection):
+                # Try to get node type from Connection.nodes
+                if hasattr(type_repr, 'nodes'):
+                    # nodes_field.type is [NodeType] (ContainerTypeMeta), not the class
+                    # So we use the fallback: extract from class name
+                    node_name = type_repr.__name__.replace('Connection', '')
+                    
+                    if hasattr(sgqlc_models, node_name):
+                        node_class = getattr(sgqlc_models, node_name)
+                        return ('connection', node_class)
+            
+            # Couldn't resolve Connection type
+            return ('connection', None)
+        
+        # SECOND: Check for string forward reference (object types)
         # This handles cases like customer: Optional["Customer"] where the bridge
         # stores it as a string "Customer" in the sgqlc Type
-        if isinstance(type_repr, str) and not type_repr.startswith('['):
+        if isinstance(type_repr, str) and not type_repr.startswith('[') and 'Connection' not in type_repr:
             # Try to resolve the string to an actual type from sgqlc_models
             if hasattr(sgqlc_models, type_repr):
                 resolved_type = getattr(sgqlc_models, type_repr)
@@ -74,35 +129,65 @@ class BaseQuery(Type):
                     if not issubclass(resolved_type, Connection) and not is_edge:
                         return ('object', resolved_type)
         
-        # Check for Connection (has pagination args)
+        # Check for Connection (has pagination args or Connection type)
+        # First check if type_repr is a Connection class (by name or inheritance)
+        is_connection_type = False
+        if isinstance(type_repr, type) and issubclass(type_repr, Connection):
+            is_connection_type = True
+        elif isinstance(type_repr, str) and 'Connection' in type_repr:
+            # String forward reference like 'CollectionConnection'
+            is_connection_type = True
+        
+        # Also check if Field has connection args
+        has_connection_args = False
         if isinstance(field, Field) and hasattr(field, 'args') and field.args:
             connection_keys = {'first', 'after', 'before', 'last'}
-            has_pagination = any(k in field.args for k in connection_keys)
+            has_connection_args = any(k in field.args for k in connection_keys)
+        
+        if is_connection_type or has_connection_args:
+            # It's a Connection - extract node type
             
-            if has_pagination:
-                # It's a Connection - extract node type
-                
-                # Handle string forward reference (e.g., 'OrderConnection')
-                if isinstance(type_repr, str):
-                    node_name = type_repr.replace('Connection', '')
+            # Handle string forward reference (e.g., 'OrderConnection')
+            if isinstance(type_repr, str):
+                node_name = type_repr.replace('Connection', '')
+                if hasattr(sgqlc_models, node_name):
+                    node_class = getattr(sgqlc_models, node_name)
+                    return ('connection', node_class)
+            
+            # Handle Connection class
+            elif isinstance(type_repr, type) and issubclass(type_repr, Connection):
+                # Try to get node type from Connection.nodes
+                if hasattr(type_repr, 'nodes'):
+                    # nodes_field.type is [NodeType] (ContainerTypeMeta), not the class
+                    # So we use the fallback: extract from class name
+                    node_name = type_repr.__name__.replace('Connection', '')
+                    
                     if hasattr(sgqlc_models, node_name):
                         node_class = getattr(sgqlc_models, node_name)
                         return ('connection', node_class)
-                
-                # Handle Connection class
-                elif isinstance(type_repr, type) and issubclass(type_repr, Connection):
-                    # Try to get node type from Connection.nodes
-                    if hasattr(type_repr, 'nodes'):
-                        # nodes_field.type is [NodeType] (ContainerTypeMeta), not the class
-                        # So we use the fallback: extract from class name
-                        node_name = type_repr.__name__.replace('Connection', '')
-                        
-                        if hasattr(sgqlc_models, node_name):
-                            node_class = getattr(sgqlc_models, node_name)
-                            return ('connection', node_class)
-                
-                # Couldn't resolve Connection type
-                return ('connection', None)
+            
+            # Couldn't resolve Connection type
+            return ('connection', None)
+        
+        # Check for list (field.type is [TypeName] string or list_of)
+        # First check if field.type is a list_of instance (from sgqlc.types)
+        if isinstance(field, Field) and hasattr(field, 'type'):
+            field_type = field.type
+            # Check if it's a list_of instance
+            if hasattr(field_type, '__class__') and 'list_of' in str(type(field_type)):
+                # Extract the inner type from list_of
+                if hasattr(field_type, 'type'):
+                    inner_type = field_type.type
+                    # Check if inner type is a string forward reference
+                    if isinstance(inner_type, str):
+                        if hasattr(sgqlc_models, inner_type):
+                            item_class = getattr(sgqlc_models, inner_type)
+                            return ('list', item_class)
+                    # Check if inner type is a Type class
+                    elif isinstance(inner_type, type):
+                        from sgqlc.types import Type as SGQLCType
+                        if issubclass(inner_type, SGQLCType):
+                            return ('list', inner_type)
         
         # Check for list (field.type is [TypeName] string or list_of)
         if isinstance(field, Field) and isinstance(type_repr, str) and type_repr.startswith('['):
@@ -271,6 +356,12 @@ class BaseQuery(Type):
             # Special case: Order.lineItems always uses first=1 (only 1 line item per order)
             if model_class.__name__ == 'Order' and conn_field == 'lineItems':
                 conn_sel = getattr(selector, conn_field)(first=1)  # type: ignore[union-attr]
+            # Special case: Customer.orders - sort by creation date descending (newest first)
+            elif model_class.__name__ == 'Customer' and conn_field == 'orders':
+                # Import OrderSortKeys enum
+                from modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import OrderSortKeys
+                # Sort by CREATED_AT in descending order (newest first)
+                conn_sel = getattr(selector, conn_field)(first=first, sortKey=OrderSortKeys.CREATED_AT, reverse=True)  # type: ignore[union-attr]
             else:
                 conn_sel = getattr(selector, conn_field)(first=first)  # type: ignore[union-attr]
             _, node_type = field_info[conn_field]
@@ -311,8 +402,17 @@ class Query(BaseQuery):
     # Product-specific field
     products = Field(ProductConnection, args=connection_args(query=String))
     
+    # Product variant field (for single variant lookup)
+    productVariant = Field('ProductVariant', args={'id': ID})
+    
+    # Locations field (for location queries)
+    locations = Field(LocationConnection, args=connection_args())
+    
     # Node query for fetching any node by ID (used for CalculatedOrder, etc.)
     node = Field('Node', args={'id': ID})
+    
+    # Files field (for file queries)
+    files = Field(FileConnection, args=connection_args(query=String))
     
     # Extract Customer model from CustomerConnection automatically (no import needed)
     @classmethod
@@ -416,7 +516,7 @@ class Query(BaseQuery):
     def build_customer_query(
         cls,
         query_str: str,
-        first: int = 1,
+        first: int = 5,
         orders_first: int = 5
     ) -> Operation:
         """Build a customer query operation.
@@ -427,22 +527,38 @@ class Query(BaseQuery):
         
         Args:
             query_str: GraphQL query string (e.g., "email:test@example.com", "id:123")
-            first: Number of customers to fetch (default: 1)
+            first: Number of customers to fetch (default: 5)
             orders_first: Number of orders to fetch per customer (default: 5)
         
         Returns:
             Configured sgqlc Operation ready for execution
         """
+        import sys
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        print(f"[DEBUG] Query.build_customer_query: Entry with query_str={query_str}, first={first}, orders_first={orders_first}", file=sys.stderr)
+        logger.debug(f"Query.build_customer_query: Entry with query_str={query_str}, first={first}, orders_first={orders_first}")
+        
         op = Operation(cls)
+        print("[DEBUG] Query.build_customer_query: Operation created", file=sys.stderr)
+        logger.debug("Query.build_customer_query: Operation created")
+        
         customers_connection_selector = op.customers(query=query_str, first=first)
+        print("[DEBUG] Query.build_customer_query: customers() called, getting customer connection", file=sys.stderr)
+        logger.debug("Query.build_customer_query: customers() called, getting customer connection")
+        
         cls.get_customer_connection(customers_connection_selector, orders_first=orders_first)
+        print("[DEBUG] Query.build_customer_query: Customer connection built, returning operation", file=sys.stderr)
+        logger.debug("Query.build_customer_query: Customer connection built, returning operation")
+        
         return op
     
     @classmethod
     def build_order_query(
         cls,
         query_str: str,
-        first: int = 1,
+        first: int = 5,
         line_items_first: int = 5
     ) -> Operation:
         """Build an order query operation.
@@ -453,7 +569,7 @@ class Query(BaseQuery):
         
         Args:
             query_str: GraphQL query string (e.g., "name:#1234", "email:test@example.com")
-            first: Number of orders to fetch (default: 1)
+            first: Number of orders to fetch (default: 5)
             line_items_first: Number of line items to fetch per order (default: 5)
         
         Returns:
@@ -502,7 +618,7 @@ class Query(BaseQuery):
     def build_product_query(
         cls,
         query_str: str,
-        first: int = 1,
+        first: int = 5,
         variants_first: int = 5
     ) -> Operation:
         """Build a product query operation.
@@ -513,7 +629,7 @@ class Query(BaseQuery):
         
         Args:
             query_str: GraphQL query string (e.g., "id:123", "handle:product-handle")
-            first: Number of products to fetch (default: 1)
+            first: Number of products to fetch (default: 5)
             variants_first: Number of variants to fetch per product (default: 5)
         
         Returns:
@@ -526,32 +642,92 @@ class Query(BaseQuery):
     
     @classmethod
     def build_variant_query(cls, variant_id: str) -> Operation:
-        """Build a query to get a single product variant."""
-        from backend.modules.integrations.shopify.models.sgqlc_models.product_sgqlc import ProductVariant
+        """Build a query to get a single product variant with inventory information."""
         from sgqlc.types import ID
         
-        class VariantQuery(Type):
-            productVariant = Field(ProductVariant, args={'id': ID})
-        
-        op = Operation(VariantQuery)
+        op = Operation(cls)
         variant_sel = op.productVariant(id=variant_id)
         variant_sel.id()  # type: ignore[union-attr]
         variant_sel.product.id()  # type: ignore[union-attr]
         variant_sel.product.title()  # type: ignore[union-attr]
+        variant_sel.inventoryQuantity()  # type: ignore[union-attr]
+        inventory_item = variant_sel.inventoryItem()  # type: ignore[union-attr]
+        inventory_item.id()  # type: ignore[union-attr]
         return op
     
     @classmethod
     def build_location_query(cls, first: int = 1) -> Operation:
         """Build a query to get locations."""
-        from backend.modules.integrations.shopify.models.sgqlc_models.location_sgqlc import LocationConnection
-        from sgqlc.types.relay import connection_args
-        
-        class LocationQuery(Type):
-            locations = Field(LocationConnection, args=connection_args())
-        
-        op = Operation(LocationQuery)
+        op = Operation(cls)
         locations_sel = op.locations(first=first)
         locations_sel.nodes.id()  # type: ignore[union-attr]
         locations_sel.nodes.name()  # type: ignore[union-attr]
+        return op
+    
+    @classmethod
+    def build_files_query(cls, query_str: str, first: int = 10) -> Operation:
+        """Build a query to get files by filename.
+        
+        Args:
+            query_str: GraphQL query string (e.g., "filename:Eliana_Glatt.jpg")
+            first: Number of files to fetch (default: 10)
+        
+        Returns:
+            Configured sgqlc Operation ready for execution
+        """
+        op = Operation(cls)
+        files_sel = op.files(query=query_str, first=first)
+        files_sel.nodes.id()  # type: ignore[union-attr]
+        files_sel.nodes.fileStatus()  # type: ignore[union-attr]
+        return op
+    
+    @classmethod
+    def build_product_variants_query(cls, product_id: str, variants_first: int = 10) -> Operation:
+        """Build a minimal query to get product variants for restock.
+        
+        Only selects the fields needed for restock:
+        - Variant ID
+        - Variant title
+        - Inventory quantity
+        - Inventory item ID
+        
+        This avoids the high query cost of selecting all product fields recursively.
+        
+        Args:
+            product_id: Product ID (numeric or GID)
+            variants_first: Number of variants to fetch (default: 10)
+        
+        Returns:
+            Configured sgqlc Operation ready for execution
+        """
+        from sgqlc.types import ID
+        
+        # Extract numeric product ID for query
+        if '/' in product_id:
+            product_id_numeric = product_id.split('/')[-1]
+        else:
+            product_id_numeric = product_id
+        
+        op = Operation(cls)
+        products_sel = op.products(query=f"id:{product_id_numeric}", first=1)
+        product_nodes = products_sel.nodes  # type: ignore[union-attr]
+        
+        # Only select minimal fields needed for restock
+        product_nodes.id()  # type: ignore[union-attr]
+        product_nodes.title()  # type: ignore[union-attr]
+        
+        # Select variants connection with minimal fields
+        variants_conn = product_nodes.variants(first=variants_first)  # type: ignore[union-attr]
+        variant_nodes = variants_conn.nodes  # type: ignore[union-attr]
+        
+        # Only select fields needed for restock
+        variant_nodes.id()  # type: ignore[union-attr]
+        variant_nodes.title()  # type: ignore[union-attr]
+        variant_nodes.inventoryQuantity()  # type: ignore[union-attr]
+        
+        # Select inventory item ID (needed for restock)
+        inventory_item = variant_nodes.inventoryItem()  # type: ignore[union-attr]
+        inventory_item.id()  # type: ignore[union-attr]
+        
         return op
 

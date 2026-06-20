@@ -5,11 +5,14 @@ Handles text and JSON output formatting.
 """
 
 import json
+import sys
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Optional
 
-from .comparison_logic import ComparisonResult, FileComparison, ComparisonStatus
+sys.path.insert(0, str(Path(__file__).parent))
+
+from comparison_logic import ComparisonResult, FileComparison, ComparisonStatus
 
 
 def format_comparison_result(

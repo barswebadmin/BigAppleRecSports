@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RowData
+description: Data about each cell in a row.
+type: object
+properties:
+  values:
+    type: array
+    description: The values in the row, one per column.
+    items:
+      $ref: CellData

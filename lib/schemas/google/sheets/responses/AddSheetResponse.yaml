@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddSheetResponse
+description: The result of adding a sheet.
+type: object
+properties:
+  properties:
+    $ref: SheetProperties
+    description: The properties of the newly added sheet.

@@ -1,0 +1,62 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CalendarResource
+description: 'Public API: Resources.calendars'
+type: object
+properties:
+  kind:
+    description: The type of the resource. For calendar resources, the value is `admin#directory#resources#calendars#CalendarResource`.
+    default: admin#directory#resources#calendars#CalendarResource
+    type: string
+  etags:
+    description: ETag of the resource.
+    type: string
+  resourceName:
+    description: The name of the calendar resource. For example, "Training Room 1A".
+    annotations:
+      required:
+      - directory.resources.calendars.insert
+    type: string
+  resourceDescription:
+    description: Description of the resource, visible only to admins.
+    type: string
+  resourceType:
+    description: The type of the calendar resource, intended for non-room resources.
+    type: string
+  resourceEmail:
+    description: The read-only email for the calendar resource. Generated as part
+      of creating a new calendar resource.
+    type: string
+  resourceCategory:
+    description: The category of the calendar resource. Either CONFERENCE_ROOM or
+      OTHER. Legacy data is set to CATEGORY_UNKNOWN.
+    type: string
+  userVisibleDescription:
+    description: Description of the resource, visible to users and admins.
+    type: string
+  generatedResourceName:
+    description: The read-only auto-generated name of the calendar resource which
+      includes metadata about the resource such as building name, floor, capacity,
+      etc. For example, "NYC-2-Training Room 1A (16)".
+    type: string
+  featureInstances:
+    description: Instances of features for the calendar resource.
+    type: any
+  resourceId:
+    description: The unique ID for the calendar resource.
+    annotations:
+      required:
+      - directory.resources.calendars.insert
+    type: string
+  capacity:
+    description: Capacity of a resource, number of seats in a room.
+    type: integer
+    format: int32
+  floorName:
+    description: Name of the floor a resource is located on.
+    type: string
+  buildingId:
+    description: Unique ID for the building a resource is located in.
+    type: string
+  floorSection:
+    description: Name of the section within a floor a resource is located in.
+    type: string

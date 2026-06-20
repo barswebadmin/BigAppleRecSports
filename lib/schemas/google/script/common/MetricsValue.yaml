@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MetricsValue
+description: Metrics value that holds number of executions counted.
+type: object
+properties:
+  startTime:
+    description: Required field indicating the start time of the interval.
+    type: string
+    format: google-datetime
+  endTime:
+    description: Required field indicating the end time of the interval.
+    type: string
+    format: google-datetime
+  value:
+    description: Indicates the number of executions counted.
+    type: string
+    format: uint64

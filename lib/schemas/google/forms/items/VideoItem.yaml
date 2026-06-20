@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: VideoItem
+description: An item containing a video.
+type: object
+properties:
+  video:
+    description: Required. The video displayed in the item.
+    $ref: Video
+  caption:
+    description: The text displayed below the video.
+    type: string

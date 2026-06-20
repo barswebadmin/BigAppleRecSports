@@ -1,0 +1,19 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GetSpreadsheetByDataFilterRequest
+description: The request for retrieving a Spreadsheet.
+type: object
+properties:
+  includeGridData:
+    type: boolean
+    description: True if grid data should be returned. This parameter is ignored if
+      a field mask was set in the request.
+  dataFilters:
+    type: array
+    description: The DataFilters used to select which ranges to retrieve from the
+      spreadsheet.
+    items:
+      $ref: DataFilter
+  excludeTablesInBandedRanges:
+    type: boolean
+    description: True if tables should be excluded in the banded ranges. False if
+      not set.

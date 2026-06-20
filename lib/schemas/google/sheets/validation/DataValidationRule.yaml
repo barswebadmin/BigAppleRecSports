@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataValidationRule
+description: A data validation rule.
+type: object
+properties:
+  showCustomUi:
+    description: True if the UI should be customized based on the kind of condition.
+      If true, "List" conditions will show a dropdown.
+    type: boolean
+  inputMessage:
+    description: A message to show the user when adding data to the cell.
+    type: string
+  strict:
+    description: True if invalid data should be rejected.
+    type: boolean
+  condition:
+    $ref: BooleanCondition
+    description: The condition that data in the cell must match.

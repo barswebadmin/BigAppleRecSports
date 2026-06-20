@@ -8,12 +8,25 @@
     "**/bars_common_utils": true,
     "**/clasp_helpers.sh": true,
     "**/backend_services": true,
-    "**/.pnpm": true
+    "**/.pnpm": true,
+    "**/*.egg-info": true,
+    "**/*.egg-info/**": true,
+    "**/.pytest_cache": true,
+    "**/.pytest_cache/**": true
   },
   "files.exclude": {
     "**/bars_common_utils": true,
-    "**/backend_services": true
+    "**/backend_services": true,
+    "**/*.egg-info": true,
+    "**/*.egg-info/**": true,
+    "**/.pytest_cache": true,
+    "**/.pytest_cache/**": true
   },
   "search.useIgnoreFiles": true,
-  "search.useGlobalIgnoreFiles": true
+  "search.useGlobalIgnoreFiles": true,
+  "plugins": {
+    "shopify-plugin": {
+      "enabled": true
+    }
+  }
 }

@@ -1,0 +1,31 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Option
+description: An option for a Choice question.
+type: object
+properties:
+  isOther:
+    description: Whether the option is "other". Currently only applies to `RADIO`
+      and `CHECKBOX` choice types, but is not allowed in a QuestionGroupItem.
+    type: boolean
+  goToSectionId:
+    type: string
+    description: Item ID of section header to go to.
+  image:
+    $ref: Image
+    description: Display image as an option.
+  goToAction:
+    enumDescriptions:
+    - Default value. Unused.
+    - Go to the next section.
+    - Go back to the beginning of the form.
+    - Submit form immediately.
+    type: string
+    description: Section navigation type.
+    enum:
+    - GO_TO_ACTION_UNSPECIFIED
+    - NEXT_SECTION
+    - RESTART_FORM
+    - SUBMIT_FORM
+  value:
+    description: Required. The choice as presented to the user.
+    type: string

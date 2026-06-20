@@ -4,8 +4,22 @@ Direct sgqlc Type definitions for Customer models.
 These are separate from Pydantic models and defined directly using sgqlc's Type system.
 """
 
-from sgqlc.types import Type, Field, String, Int, Boolean, list_of
+from sgqlc.types import Type, Field, String, Int, Boolean, list_of, Enum
 from sgqlc.types.relay import Connection
+
+
+class OrderSortKeys(Enum):
+    """Order sort keys enum for Shopify."""
+    CREATED_AT = "CREATED_AT"
+    UPDATED_AT = "UPDATED_AT"
+    NUMBER = "NUMBER"
+    TOTAL_PRICE = "TOTAL_PRICE"
+    PROCESSED_AT = "PROCESSED_AT"
+    # Add other sort keys as needed
+
+# Register enum choices with sgqlc schema
+OrderSortKeys.__choices__ = ("CREATED_AT", "UPDATED_AT", "NUMBER", "TOTAL_PRICE", "PROCESSED_AT")
+
 
 
 class Address(Type):
@@ -33,7 +47,7 @@ class Customer(Type):
     state = Field(String)
     verifiedEmail = Field(Boolean)
     defaultAddress = Field(Address)
-    # orders will be added as a Connection field in the Query class
+    orders = Field('OrderConnection', args={'first': Int, 'sortKey': OrderSortKeys, 'reverse': Boolean})
 
 
 class CustomerConnection(Connection):

@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddBandingResponse
+description: The result of adding a banded range.
+type: object
+properties:
+  bandedRange:
+    description: The banded range that was added.
+    $ref: BandedRange

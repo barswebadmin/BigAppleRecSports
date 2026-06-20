@@ -27,6 +27,73 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Interactive project selection
+# Usage: select_project_interactive "$invalid_arg" "$gas_root"
+# Returns: Selected project name via stdout
+# Exits: 1 if user cancels or no projects found
+select_project_interactive() {
+    local invalid_arg="$1"
+    local gas_root="${2:-}"
+    
+    if [ -z "$gas_root" ]; then
+        gas_root=$(get_gas_root)
+    fi
+    
+    local projects_dir="$gas_root/projects"
+    
+    if [ ! -d "$projects_dir" ]; then
+        log_error "Projects directory not found: $projects_dir"
+        return 1
+    fi
+    
+    # Get list of projects with .clasp.json
+    local projects=()
+    while IFS= read -r dir; do
+        if [ -f "$dir/.clasp.json" ]; then
+            projects+=("$(basename "$dir")")
+        fi
+    done < <(find "$projects_dir" -maxdepth 1 -mindepth 1 -type d | sort)
+    
+    if [ ${#projects[@]} -eq 0 ]; then
+        log_error "No GAS projects found in $projects_dir"
+        return 1
+    fi
+    
+    # Display error message if invalid arg was provided
+    if [ -n "$invalid_arg" ]; then
+        echo ""
+        log_error "Project '${invalid_arg}' could not be resolved"
+        echo ""
+    fi
+    
+    # Display available projects
+    echo "Available Google Apps Script projects:"
+    echo ""
+    for i in "${!projects[@]}"; do
+        printf "  ${GREEN}%2d${NC}) %s\n" $((i + 1)) "${projects[$i]}"
+    done
+    echo ""
+    
+    # Prompt for selection
+    while true; do
+        read -p "Select project number (1-${#projects[@]}) or 'q' to quit: " selection
+        
+        if [ "$selection" = "q" ] || [ "$selection" = "Q" ]; then
+            log_info "Cancelled by user"
+            return 1
+        fi
+        
+        # Check if selection is a valid number
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le "${#projects[@]}" ]; then
+            local selected_project="${projects[$((selection - 1))]}"
+            echo "$selected_project"
+            return 0
+        else
+            echo -e "${RED}Invalid selection. Please enter a number between 1 and ${#projects[@]}, or 'q' to quit.${NC}"
+        fi
+    done
+}
+
 # Normalize .clasp.json rootDir to "." for temp directories
 normalize_clasp_json() {
     local source_file="$1"
@@ -56,8 +123,12 @@ execute_clasp() {
     local exit_code=$?
     set -e  # Re-enable exit on error
     
-    eval "$output_var='$output'"
+    # Use printf to avoid issues with single quotes in output
+    printf -v "$output_var" '%s' "$output"
     eval "$exit_code_var=$exit_code"
+    
+    # Always print clasp output so the user can see what happened
+    echo "$output"
     
     return $exit_code
 }
@@ -84,7 +155,11 @@ clean_gas_project() {
         script_dir=$(get_script_dir)
     fi
     
+    # Check if script_dir is the deployment directory, if so look in google/ subdirectory
     local clean_script="$script_dir/clean.sh"
+    if [ ! -f "$clean_script" ] && [ -f "$script_dir/google/clean.sh" ]; then
+        clean_script="$script_dir/google/clean.sh"
+    fi
     
     if [ ! -f "$clean_script" ]; then
         log_error "Clean script not found: $clean_script"
@@ -112,7 +187,7 @@ get_script_dir() {
     fi
 }
 
-# Get GAS root directory (GoogleAppsScripts/)
+# Get GAS root directory (google-apps-scripts/)
 get_gas_root() {
     local script_dir="$1"
     if [ -z "$script_dir" ]; then
@@ -120,15 +195,14 @@ get_gas_root() {
     fi
     
     REPO_ROOT="$(cd "$script_dir/../../.." && pwd)"
-    GAS_ROOT="$REPO_ROOT/GoogleAppsScripts"
+    GAS_ROOT="$REPO_ROOT/google-apps-scripts"
     
     if [ -d "$GAS_ROOT" ]; then
         echo "$GAS_ROOT"
         return 0
     fi
-    done
     
-    log_error "Could not find GoogleAppsScripts root directory"
+    log_error "Could not find google-apps-scripts root directory"
     return 1
 }
 
@@ -175,8 +249,8 @@ check_script_dependencies() {
     fi
     
     local required_scripts=(
-        "$REPO_ROOT/scripts/deployment/push_google.sh"
-        "$REPO_ROOT/scripts/deployment/pull_google.sh"
+        "$REPO_ROOT/scripts/deployment/push"
+        "$REPO_ROOT/scripts/deployment/pull"
         "$REPO_ROOT/scripts/deployment/google/build.js"
     )
     
@@ -199,19 +273,17 @@ check_script_dependencies() {
 
 # Parse clasp command arguments
 # Usage: parse_clasp_args "$@"
-# Sets: PROJECT_NAME, IS_DRY_RUN, IS_COMPARE_ONLY
+# Sets: PROJECT_NAME, IS_DRY_RUN, IS_COMPARE_ONLY, IS_SKIP_COMPARE
 parse_clasp_args() {
     PROJECT_NAME="${1:-}"
     MODE="${2:-}"
     
-    if [ -z "$PROJECT_NAME" ]; then
-        log_error "Project name required"
-        echo "Usage: $0 <project-name> [--dry-run|--compare-only]"
-        exit 1
-    fi
+    # Don't exit if PROJECT_NAME is empty - let the calling script handle it
+    # This allows for interactive project selection
     
     IS_DRY_RUN=false
     IS_COMPARE_ONLY=false
+    IS_SKIP_COMPARE=false
     
     if [ "$MODE" = "--dry-run" ]; then
         IS_DRY_RUN=true
@@ -219,6 +291,9 @@ parse_clasp_args() {
     elif [ "$MODE" = "--compare-only" ]; then
         IS_COMPARE_ONLY=true
         log_info "🔍 COMPARE ONLY MODE - Showing diff and exiting"
+    elif [ "$MODE" = "--skip-compare" ]; then
+        IS_SKIP_COMPARE=true
+        log_info "⚡ SKIP COMPARE MODE - Pushing without comparison"
     fi
 }
 
@@ -233,8 +308,16 @@ get_project_paths() {
         script_dir=$(get_script_dir)
     fi
     
-    REPO_ROOT="$(cd "$script_dir/../../.." && pwd)"
-    GAS_ROOT="$REPO_ROOT/GoogleAppsScripts"
+    # Determine repo root based on script location
+    # If script is in scripts/deployment/, go up 2 levels
+    # If script is in scripts/deployment/google/, go up 3 levels
+    if [[ "$script_dir" == */scripts/deployment/google ]]; then
+        REPO_ROOT="$(cd "$script_dir/../../.." && pwd)"
+    else
+        REPO_ROOT="$(cd "$script_dir/../.." && pwd)"
+    fi
+    
+    GAS_ROOT="$REPO_ROOT/google-apps-scripts"
     PROJECT_DIR="$GAS_ROOT/projects/$project_name"
 }
 
@@ -340,7 +423,7 @@ prompt_user_confirmation() {
             log_error "❌ Remote is ahead of local - cannot deploy"
             log_error "Remote has changes not in your local code"
             if [ -n "$project_name" ]; then
-                log_error "Pull remote changes first: bash scripts/deployment/pull_google.sh $project_name"
+                log_error "Pull remote changes first: bash scripts/deployment/pull $project_name"
             fi
             return 1
         fi
@@ -354,7 +437,7 @@ prompt_user_confirmation() {
         log_warning "Proceeding will overwrite remote changes"
         if [ -n "$project_name" ]; then
             log_info "💡 To pull remote changes first, run:"
-            log_info "   bash scripts/deployment/pull_google.sh $project_name"
+            log_info "   bash scripts/deployment/pull $project_name"
         fi
         echo ""
         read -p "Continue anyway and overwrite remote? (y/N): " -n 1 -r
@@ -371,26 +454,30 @@ prompt_user_confirmation() {
     if [ "$has_changes" = false ]; then
         log_warning "No changes detected between local and remote"
         if [ "$is_dry_run" = true ]; then
-            log_info "🔍 DRY RUN: Would prompt '${action^} anyway? (y/N)'"
+            local action_cap="$(echo "${action:0:1}" | tr '[:lower:]' '[:upper:]')${action:1}"
+            log_info "🔍 DRY RUN: Would prompt '${action_cap} anyway? (y/N)'"
             return 0
         else
-            read -p "${action^} anyway? (y/N): " -n 1 -r
+            local action_cap="$(echo "${action:0:1}" | tr '[:lower:]' '[:upper:]')${action:1}"
+            read -p "${action_cap} anyway? (y/N): " -n 1 -r
             echo ""
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                log_info "${action^} cancelled"
+                log_info "${action_cap} cancelled"
                 return 1
             fi
         fi
     else
         log_warning "Changes detected between local and remote"
         if [ "$is_dry_run" = true ]; then
-            log_info "🔍 DRY RUN: Would prompt '${action^} changes? (Y/n)' (default: yes)"
+            local action_cap="$(echo "${action:0:1}" | tr '[:lower:]' '[:upper:]')${action:1}"
+            log_info "🔍 DRY RUN: Would prompt '${action_cap} changes? (Y/n)' (default: yes)"
             return 0
         else
-            read -p "${action^} changes? (Y/n): " -n 1 -r
+            local action_cap="$(echo "${action:0:1}" | tr '[:lower:]' '[:upper:]')${action:1}"
+            read -p "${action_cap} changes? (Y/n): " -n 1 -r
             echo ""
             if [[ $REPLY =~ ^[Nn]$ ]]; then
-                log_info "${action^} cancelled"
+                log_info "${action_cap} cancelled"
                 return 1
             fi
         fi
@@ -550,14 +637,11 @@ copy_build_artifacts() {
         cp "$build_dir/appsscript.json" "$temp_build_dir/appsscript.json"
     fi
     
-    # Copy all HTML files from build/ (build.js now copies them there)
+    # Copy all HTML files from build/ flat to temp root (GAS requires HTML at project root)
     if [ -d "$build_dir" ]; then
         find "$build_dir" -name "*.html" -type f | while read -r html_file; do
-            rel_path="${html_file#$build_dir/}"
-            dest_path="$temp_build_dir/$rel_path"
-            dest_dir=$(dirname "$dest_path")
-            mkdir -p "$dest_dir"
-            cp "$html_file" "$dest_path"
+            filename=$(basename "$html_file")
+            cp "$html_file" "$temp_build_dir/$filename"
         done
     fi
     
@@ -621,17 +705,15 @@ run_comparison() {
     local compare_cmd=""
     
     if [ "$compare_type" = "push" ]; then
-        compare_script="$REPO_ROOT/scripts/file_comparison/compare_project_remote_with_local.py"
+        compare_script="$REPO_ROOT/scripts/file_comparison/compare_gas_remote_with_local.js"
         if [ ! -f "$compare_script" ]; then
             log_error "Comparison script not found: $compare_script"
             return 1
         fi
-        # Extract project name from local_path if not provided
         if [ -z "$project_name" ]; then
             project_name=$(basename "$local_path")
         fi
-        # Use JSON output for structured parsing
-        compare_cmd="python3 \"$compare_script\" --remote-origin-type google --project-name \"$project_name\" --local-path \"$local_path\" --output-format json --keep-temp 2>&1"
+        compare_cmd="node \"$compare_script\" --project-name \"$project_name\" --local-path \"$local_path\" 2>&1"
     else
         compare_script="$REPO_ROOT/scripts/file_comparison/compare_at_path.py"
         if [ ! -f "$compare_script" ]; then

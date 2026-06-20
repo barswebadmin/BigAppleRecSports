@@ -1,0 +1,27 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Delegate
+description: Settings for a delegate. Delegates can read, send, and delete messages,
+  as well as view and add contacts, for the delegator's account. See "Set up mail
+  delegation" for more information about delegates.
+type: object
+properties:
+  delegateEmail:
+    description: The email address of the delegate.
+    type: string
+  verificationStatus:
+    description: Indicates whether this address has been verified and can act as a
+      delegate for the account. Read-only.
+    type: string
+    enumDescriptions:
+    - Unspecified verification status.
+    - The address can act a delegate for the account.
+    - A verification request was mailed to the address, and the owner has not yet
+      accepted it.
+    - A verification request was mailed to the address, and the owner rejected it.
+    - A verification request was mailed to the address, and it expired without verification.
+    enum:
+    - verificationStatusUnspecified
+    - accepted
+    - pending
+    - rejected
+    - expired

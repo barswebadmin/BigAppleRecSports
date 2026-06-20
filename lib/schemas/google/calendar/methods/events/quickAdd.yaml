@@ -1,0 +1,46 @@
+description: Creates an event based on a simple text string.
+httpMethod: POST
+path: calendars/{calendarId}/events/quickAdd
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.app.created
+- https://www.googleapis.com/auth/calendar.events
+- https://www.googleapis.com/auth/calendar.events.owned
+parameters:
+  calendarId:
+    type: string
+    description: Calendar identifier. To retrieve calendar IDs call the calendarList.list
+      method. If you want to access the primary calendar of the currently logged in
+      user, use the "primary" keyword.
+    required: true
+    location: path
+  sendNotifications:
+    type: boolean
+    description: 'Deprecated. Please use sendUpdates instead.
+
+
+      Whether to send notifications about the creation of the event. Note that some
+      emails might still be sent even if you set the value to false. The default is
+      false.'
+    location: query
+  sendUpdates:
+    type: string
+    description: Guests who should receive notifications about the creation of the
+      new event.
+    enum:
+    - all
+    - externalOnly
+    - none
+    enumDescriptions:
+    - Notifications are sent to all guests.
+    - Notifications are sent to non-Google Calendar guests only.
+    - No notifications are sent. For calendar migration tasks, consider using the
+      Events.import method instead.
+    location: query
+  text:
+    type: string
+    description: The text describing the event to be created.
+    required: true
+    location: query
+response:
+  $ref: Event

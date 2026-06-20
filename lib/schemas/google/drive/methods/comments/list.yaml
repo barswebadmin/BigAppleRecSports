@@ -1,0 +1,43 @@
+description: 'Lists a file''s comments. For more information, see [Manage comments
+  and replies](https://developers.google.com/workspace/drive/api/guides/manage-comments).
+  Required: The `fields` parameter must be set. To return the exact fields you need,
+  see [Return specific fields](https://developers.google.com/workspace/drive/api/guides/fields-parameter).'
+httpMethod: GET
+path: files/{fileId}/comments
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  includeDeleted:
+    description: Whether to include deleted comments. Deleted comments will not include
+      their original content.
+    default: 'false'
+    location: query
+    type: boolean
+  pageSize:
+    description: The maximum number of comments to return per page.
+    default: '20'
+    minimum: '1'
+    maximum: '100'
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: The token for continuing a previous list request on the next page.
+      This should be set to the value of 'nextPageToken' from the previous response.
+    location: query
+    type: string
+  startModifiedTime:
+    description: The minimum value of 'modifiedTime' for the result comments (RFC
+      3339 date-time).
+    location: query
+    type: string
+response:
+  $ref: CommentList

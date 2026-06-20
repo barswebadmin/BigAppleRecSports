@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchCreatePrintServersResponse
+description: ''
+type: object
+properties:
+  printServers:
+    description: A list of successfully created print servers with their IDs populated.
+    type: array
+    items:
+      $ref: PrintServer
+  failures:
+    description: A list of create failures. `PrintServer` IDs are not populated, as
+      print servers were not created.
+    type: array
+    items:
+      $ref: PrintServerFailureInfo

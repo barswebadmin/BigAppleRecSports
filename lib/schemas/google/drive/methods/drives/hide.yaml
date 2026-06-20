@@ -1,0 +1,14 @@
+description: Hides a shared drive from the default view. For more information, see
+  [Manage shared drives](https://developers.google.com/workspace/drive/api/guides/manage-shareddrives).
+httpMethod: POST
+path: drives/{driveId}/hide
+scopes:
+- https://www.googleapis.com/auth/drive
+parameters:
+  driveId:
+    description: The ID of the shared drive.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Drive

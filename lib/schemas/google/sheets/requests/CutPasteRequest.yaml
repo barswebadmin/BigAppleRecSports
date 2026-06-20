@@ -1,0 +1,31 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CutPasteRequest
+description: Moves data from the source to the destination.
+type: object
+properties:
+  pasteType:
+    description: What kind of data to paste. All the source data will be cut, regardless
+      of what is pasted.
+    enum:
+    - PASTE_NORMAL
+    - PASTE_VALUES
+    - PASTE_FORMAT
+    - PASTE_NO_BORDERS
+    - PASTE_FORMULA
+    - PASTE_DATA_VALIDATION
+    - PASTE_CONDITIONAL_FORMATTING
+    enumDescriptions:
+    - Paste values, formulas, formats, and merges.
+    - Paste the values ONLY without formats, formulas, or merges.
+    - Paste the format and data validation only.
+    - Like `PASTE_NORMAL` but without borders.
+    - Paste the formulas only.
+    - Paste the data validation only.
+    - Paste the conditional formatting rules only.
+    type: string
+  destination:
+    $ref: GridCoordinate
+    description: The top-left coordinate where the data should be pasted.
+  source:
+    $ref: GridRange
+    description: The source data to cut.

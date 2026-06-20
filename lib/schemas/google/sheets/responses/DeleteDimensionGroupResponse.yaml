@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteDimensionGroupResponse
+description: The result of deleting a group.
+type: object
+properties:
+  dimensionGroups:
+    description: All groups of a dimension after deleting a group from that dimension.
+    items:
+      $ref: DimensionGroup
+    type: array

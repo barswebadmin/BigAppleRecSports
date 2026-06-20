@@ -1,0 +1,38 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Building
+description: 'Public API: Resources.buildings'
+type: object
+properties:
+  buildingId:
+    description: Unique identifier for the building. The maximum length is 100 characters.
+    type: string
+  buildingName:
+    description: The building name as seen by users in Calendar. Must be unique for
+      the customer. For example, "NYC-CHEL". The maximum length is 100 characters.
+    type: string
+  description:
+    description: A brief description of the building. For example, "Chelsea Market".
+    type: string
+  coordinates:
+    description: The geographic coordinates of the center of the building, expressed
+      as latitude and longitude in decimal degrees.
+    $ref: BuildingCoordinates
+  kind:
+    description: Kind of resource this is.
+    default: admin#directory#resources#buildings#Building
+    type: string
+  etags:
+    description: ETag of the resource.
+    type: string
+  floorNames:
+    description: The display names for all floors in this building. The floors are
+      expected to be sorted in ascending order, from lowest floor to highest floor.
+      For example, ["B2", "B1", "L", "1", "2", "2M", "3", "PH"] Must contain at least
+      one entry.
+    type: array
+    items:
+      type: string
+  address:
+    description: The postal address of the building. See [`PostalAddress`](/my-business/reference/rest/v4/PostalAddress)
+      for details. Note that only a single address line and region code are required.
+    $ref: BuildingAddress

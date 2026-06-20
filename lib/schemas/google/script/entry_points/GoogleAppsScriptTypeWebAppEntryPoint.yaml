@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GoogleAppsScriptTypeWebAppEntryPoint
+description: A web application entry point.
+type: object
+properties:
+  url:
+    description: The URL for the web application.
+    type: string
+  entryPointConfig:
+    $ref: GoogleAppsScriptTypeWebAppConfig
+    description: The entry point's configuration.

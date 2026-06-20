@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchDeletePrintersRequest
+description: Request for deleting existing printers in batch.
+type: object
+properties:
+  printerIds:
+    description: A list of Printer.id that should be deleted. Max 100 at a time.
+    type: array
+    items:
+      type: string

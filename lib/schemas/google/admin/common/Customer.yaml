@@ -1,0 +1,40 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Customer
+description: ''
+type: object
+properties:
+  id:
+    description: The unique ID for the customer's Google Workspace account. (Readonly)
+    type: string
+  customerDomain:
+    description: The customer's primary domain name string. Do not include the `www`
+      prefix when creating a new customer.
+    type: string
+  kind:
+    description: 'Identifies the resource as a customer. Value: `admin#directory#customer`'
+    default: admin#directory#customer
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  alternateEmail:
+    description: The customer's secondary contact email address. This email address
+      cannot be on the same domain as the `customerDomain`
+    type: string
+  customerCreationTime:
+    description: The customer's creation time (Readonly)
+    type: string
+    format: date-time
+  postalAddress:
+    description: The customer's postal address information.
+    $ref: CustomerPostalAddress
+  phoneNumber:
+    description: The customer's contact phone number in [E.164](https://en.wikipedia.org/wiki/E.164)
+      format.
+    type: string
+  language:
+    description: The customer's ISO 639-2 language code. See the [Language Codes](https://developers.google.com/workspace/admin/directory/v1/languages)
+      page for the list of supported codes. Valid language codes outside the supported
+      set will be accepted by the API but may lead to unexpected behavior. The default
+      value is `en`.
+    type: string

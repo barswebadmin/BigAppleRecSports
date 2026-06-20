@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Draft
+description: A draft email in the user's mailbox.
+type: object
+properties:
+  id:
+    description: The immutable ID of the draft.
+    annotations:
+      required:
+      - gmail.users.drafts.send
+    type: string
+  message:
+    description: The message content of the draft.
+    $ref: Message

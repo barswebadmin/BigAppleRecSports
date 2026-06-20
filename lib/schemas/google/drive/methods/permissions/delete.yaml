@@ -1,0 +1,47 @@
+description: Deletes a permission. For more information, see [Share files, folders,
+  and drives](https://developers.google.com/workspace/drive/api/guides/manage-sharing).
+  **Warning:** Concurrent permissions operations on the same file aren't supported;
+  only the last update is applied.
+httpMethod: DELETE
+path: files/{fileId}/permissions/{permissionId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+parameters:
+  fileId:
+    description: The ID of the file or shared drive.
+    location: path
+    required: true
+    type: string
+  permissionId:
+    description: The ID of the permission.
+    location: path
+    required: true
+    type: string
+  supportsAllDrives:
+    description: Whether the requesting application supports both My Drives and shared
+      drives.
+    default: 'false'
+    location: query
+    type: boolean
+  supportsTeamDrives:
+    description: 'Deprecated: Use `supportsAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  useDomainAdminAccess:
+    description: 'Issue the request as a domain administrator. If set to `true`, and
+      if the following additional conditions are met, the requester is granted access:
+      1. The file ID parameter refers to a shared drive. 2. The requester is an administrator
+      of the domain to which the shared drive belongs. For more information, see [Manage
+      shared drives as domain administrators](https://developers.google.com/workspace/drive/api/guides/manage-shareddrives#manage-administrators).'
+    default: 'false'
+    location: query
+    type: boolean
+  enforceExpansiveAccess:
+    description: 'Deprecated: All requests use the expansive access rules.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean

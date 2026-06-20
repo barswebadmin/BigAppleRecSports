@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserAlias
+description: The Directory API manages aliases, which are alternative email addresses.
+type: object
+properties:
+  id:
+    description: The unique ID for the user.
+    type: string
+  primaryEmail:
+    description: The user's primary email address.
+    type: string
+  alias:
+    description: The alias email address.
+    type: string
+  kind:
+    description: The type of the API resource. For Alias resources, the value is `admin#directory#alias`.
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string

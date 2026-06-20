@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Info
+description: The general information for a form.
+type: object
+properties:
+  description:
+    type: string
+    description: The description of the form.
+  documentTitle:
+    readOnly: true
+    description: Output only. The title of the document which is visible in Drive.
+      If Info.title is empty, `document_title` may appear in its place in the Google
+      Forms UI and be visible to responders. `document_title` can be set on create,
+      but cannot be modified by a batchUpdate request. Please use the [Google Drive
+      API](https://developers.google.com/drive/api/v3/reference/files/update) if you
+      need to programmatically update `document_title`.
+    type: string
+  title:
+    description: Required. The title of the form which is visible to responders.
+    type: string

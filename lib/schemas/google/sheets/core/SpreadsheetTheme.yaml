@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SpreadsheetTheme
+description: Represents spreadsheet theme
+type: object
+properties:
+  primaryFontFamily:
+    description: Name of the primary font family.
+    type: string
+  themeColors:
+    type: array
+    description: The spreadsheet theme color pairs. To update you must provide all
+      theme color pairs.
+    items:
+      $ref: ThemeColorPair

@@ -1,0 +1,45 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: EventWorkingLocationProperties
+description: ''
+type: object
+properties:
+  customLocation:
+    type: object
+    description: If present, specifies that the user is working from a custom location.
+    properties:
+      label:
+        type: string
+        description: An optional extra label for additional information.
+  homeOffice:
+    type: any
+    description: If present, specifies that the user is working at home.
+  officeLocation:
+    type: object
+    description: If present, specifies that the user is working from an office.
+    properties:
+      buildingId:
+        type: string
+        description: An optional building identifier. This should reference a building
+          ID in the organization's Resources database.
+      deskId:
+        type: string
+        description: An optional desk identifier.
+      floorId:
+        type: string
+        description: An optional floor identifier.
+      floorSectionId:
+        type: string
+        description: An optional floor section identifier.
+      label:
+        type: string
+        description: The office name that's displayed in Calendar Web and Mobile clients.
+          We recommend you reference a building name in the organization's Resources
+          database.
+  type:
+    type: string
+    description: "Type of the working location. Possible values are:  \n- \"homeOffice\"\
+      \ - The user is working at home. \n- \"officeLocation\" - The user is working\
+      \ from an office. \n- \"customLocation\" - The user is working from a custom\
+      \ location.  Any details are specified in a sub-field of the specified name,\
+      \ but this field may be missing if empty. Any other fields are ignored.\nRequired\
+      \ when adding working location properties."

@@ -1,0 +1,22 @@
+description: Creates a reply to a comment. For more information, see [Manage comments
+  and replies](https://developers.google.com/workspace/drive/api/guides/manage-comments).
+httpMethod: POST
+path: files/{fileId}/comments/{commentId}/replies
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+request:
+  $ref: Reply
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  commentId:
+    description: The ID of the comment.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Reply

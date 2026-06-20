@@ -41,6 +41,11 @@ jobs:
         with:
           python-version: ${{ steps.python-version.outputs.version }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
       - name: Install dependencies
         run: python scripts/ci/install_dependencies.py backend
 
@@ -50,4 +55,4 @@ jobs:
 
       - name: Run backend tests
         if: steps.compile.outcome == 'success'
-        run: python scripts/ci/run_script.py scripts.testing.run_tests run_backend_tests
+        run: python backend/tests/run_tests.py

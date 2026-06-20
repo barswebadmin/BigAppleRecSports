@@ -1,0 +1,28 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserIm
+description: JSON template for instant messenger of an user.
+type: object
+properties:
+  customProtocol:
+    description: Custom protocol.
+    type: string
+  customType:
+    description: Custom type.
+    type: string
+  im:
+    description: Instant messenger id.
+    type: string
+  primary:
+    description: If this is user's primary im. Only one entry could be marked as primary.
+    type: boolean
+  protocol:
+    description: Protocol used in the instant messenger. It should be one of the values
+      from ImProtocolTypes map. Similar to type it can take a CUSTOM value and specify
+      the custom name in customProtocol field.
+    type: string
+  type:
+    description: Each entry can have a type which indicates standard types of that
+      entry. For example instant messengers could be of home work etc. In addition
+      to the standard type an entry can have a custom type and can take any value.
+      Such types should have the CUSTOM value as type and also have a customType value.
+    type: string

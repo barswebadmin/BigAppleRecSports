@@ -1,0 +1,9 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddTableResponse
+description: The result of adding a table.
+type: object
+properties:
+  table:
+    $ref: Table
+    description: Output only. The table that was added.
+    readOnly: true

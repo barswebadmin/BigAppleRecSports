@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateChartSpecRequest
+description: Updates a chart's specifications. (This does not move or resize a chart.
+  To move or resize a chart, use UpdateEmbeddedObjectPositionRequest.)
+type: object
+properties:
+  chartId:
+    description: The ID of the chart to update.
+    format: int32
+    type: integer
+  spec:
+    $ref: ChartSpec
+    description: The specification to apply to the chart.

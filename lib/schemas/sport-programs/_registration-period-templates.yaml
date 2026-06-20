@@ -1,0 +1,61 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "RegistrationDecisionConfig"
+description: |
+  Decision data the UpdateRegistration lambda consumes at runtime (via SSM with
+  TTL caching) to figure out title bracket, required tags, and target status
+  when transitioning a season into a given period.
+
+  Two top-level sections:
+    - divisions: per-division substitution tokens (e.g. WTNB / TNB prefix)
+    - periods:   per-period decision data, keyed by period name
+
+  Adding a new period name (e.g. "alumni") = adding an entry under periods.
+  Adding a new division = adding an entry under divisions and ensuring its
+  tokens cover anything referenced by period displayBracket templates.
+
+type: object
+properties:
+  divisions:
+    type: object
+    description: |
+      Substitution tokens used by str.format() in period.displayBracket.
+      Keys are division values (e.g. "open", "wtnb"); each is a flat map of
+      token name -> token value.
+    additionalProperties:
+      type: object
+      additionalProperties:
+        type: string
+  periods:
+    type: object
+    description: "Period decision data, keyed by period name."
+    additionalProperties:
+      $ref: "#/definitions/PeriodTemplate"
+required: [divisions, periods]
+
+definitions:
+  PeriodTemplate:
+    type: object
+    properties:
+      displayBracket:
+        type: string
+        description: |
+          Bracket text shown in the product title. Supports str.format()
+          substitution with `division.<token>` placeholders that resolve via
+          the top-level divisions map. Periods that don't vary by division
+          contain no placeholders and pass through unchanged.
+        examples:
+          - "[Vet Registration Open]"
+          - "[{division.bipoc_prefix}+ / BIPOC Registration Open]"
+      requiredTags:
+        type: array
+        description: "Tags to add to the product when this period activates."
+        items:
+          type: string
+      statusValue:
+        type: string
+        description: "Value to set RegularSeason.status to when this period activates."
+      isClosingPeriod:
+        type: boolean
+        default: false
+        description: "True for periods that represent registration-closed states."
+    required: [displayBracket, requiredTags, statusValue]

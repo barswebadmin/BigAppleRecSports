@@ -1,0 +1,32 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ResolveAccessProposalRequest
+description: Request message for resolving an AccessProposal on a file.
+type: object
+properties:
+  role:
+    description: 'Optional. The roles that the approver has allowed, if any. For more
+      information, see [Roles and permissions](https://developers.google.com/workspace/drive/api/guides/ref-roles).
+      Note: This field is required for the `ACCEPT` action.'
+    type: array
+    items:
+      type: string
+  view:
+    description: Optional. Indicates the view for this access proposal. This should
+      only be set when the proposal belongs to a view. Only `published` is supported.
+    type: string
+  action:
+    description: Required. The action to take on the access proposal.
+    type: string
+    enumDescriptions:
+    - Unspecified action
+    - 'The user accepts the access proposal. Note: If this action is used, the `role`
+      field must have at least one value.'
+    - The user denies the access proposal.
+    enum:
+    - ACTION_UNSPECIFIED
+    - ACCEPT
+    - DENY
+  sendNotification:
+    description: Optional. Whether to send an email to the requester when the access
+      proposal is denied or accepted.
+    type: boolean

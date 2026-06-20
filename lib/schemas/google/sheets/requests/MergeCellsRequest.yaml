@@ -1,0 +1,19 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MergeCellsRequest
+description: Merges all cells in the range.
+type: object
+properties:
+  range:
+    $ref: GridRange
+    description: The range of cells to merge.
+  mergeType:
+    description: How the cells should be merged.
+    enum:
+    - MERGE_ALL
+    - MERGE_COLUMNS
+    - MERGE_ROWS
+    enumDescriptions:
+    - Create a single merge from the range
+    - Create a merge for each column in the range
+    - Create a merge for each row in the range
+    type: string

@@ -1,0 +1,16 @@
+description: Updates a group's properties. This method supports [patch semantics](https://developers.google.com/workspace/admin/directory/v1/guides/performance#patch).
+httpMethod: PATCH
+path: admin/directory/v1/groups/{groupKey}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.group
+request:
+  $ref: Group
+parameters:
+  groupKey:
+    description: Identifies the group in the API request. The value can be the group's
+      email address, group alias, or the unique group ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Group

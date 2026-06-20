@@ -1,0 +1,19 @@
+description: Removes a mobile device.
+httpMethod: DELETE
+path: admin/directory/v1/customer/{customerId}/devices/mobile/{resourceId}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.device.mobile
+parameters:
+  customerId:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's `customerId`. The `customerId` is also returned as part of the
+      [Users resource](https://developers.google.com/workspace/admin/directory/v1/reference/users).
+    location: path
+    required: true
+    type: string
+  resourceId:
+    description: The unique ID the API service uses to identify the mobile device.
+    location: path
+    required: true
+    type: string

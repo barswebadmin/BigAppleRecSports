@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ConferenceProperties
+description: ''
+type: object
+properties:
+  allowedConferenceSolutionTypes:
+    type: array
+    description: "The types of conference solutions that are supported for this calendar.\n\
+      The possible values are:  \n- \"eventHangout\" \n- \"eventNamedHangout\" \n\
+      - \"hangoutsMeet\"  Optional."
+    items:
+      type: string

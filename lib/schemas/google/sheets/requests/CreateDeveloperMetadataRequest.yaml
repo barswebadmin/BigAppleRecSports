@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CreateDeveloperMetadataRequest
+description: A request to create developer metadata.
+type: object
+properties:
+  developerMetadata:
+    description: The developer metadata to create.
+    $ref: DeveloperMetadata

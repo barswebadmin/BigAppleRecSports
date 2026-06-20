@@ -1,0 +1,33 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BuildingAddress
+description: 'Public API: Resources.buildings'
+type: object
+properties:
+  regionCode:
+    description: Required. CLDR region code of the country/region of the address.
+    type: string
+  languageCode:
+    description: Optional. BCP-47 language code of the contents of this address (if
+      known).
+    type: string
+  postalCode:
+    description: Optional. Postal code of the address.
+    type: string
+  administrativeArea:
+    description: Optional. Highest administrative subdivision which is used for postal
+      addresses of a country or region.
+    type: string
+  locality:
+    description: 'Optional. Generally refers to the city/town portion of the address.
+      Examples: US city, IT comune, UK post town. In regions of the world where localities
+      are not well defined or do not fit into this structure well, leave locality
+      empty and use addressLines.'
+    type: string
+  sublocality:
+    description: Optional. Sublocality of the address.
+    type: string
+  addressLines:
+    description: Unstructured address lines describing the lower levels of an address.
+    type: array
+    items:
+      type: string

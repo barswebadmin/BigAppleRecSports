@@ -1,0 +1,110 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Shopify GraphQL Request/Response"
+description: "Typed schemas for Shopify Admin GraphQL API transport"
+
+definitions:
+    GqlRequest:
+        type: object
+        properties:
+            query:
+                type: string
+            variables:
+                type: object
+                additionalProperties: true
+        required: [query, variables]
+
+    GqlResponse:
+        description: >
+            Top-level GraphQL response. Both data and errors may be present
+            simultaneously (partial success). Mutations nest userErrors inside
+            their data key (e.g. data.customerCreate.userErrors).
+        type: object
+        properties:
+            data:
+                type: object
+                additionalProperties: true
+            errors:
+                type: array
+                items:
+                    $ref: "#/definitions/GqlError"
+            extensions:
+                type: object
+                properties:
+                    cost:
+                        type: object
+                        properties:
+                            requestedQueryCost:
+                                type: integer
+                            actualQueryCost:
+                                type: integer
+                            throttleStatus:
+                                type: object
+                                properties:
+                                    maximumAvailable:
+                                        type: number
+                                    currentlyAvailable:
+                                        type: integer
+                                    restoreRate:
+                                        type: number
+
+    GqlError:
+        description: >
+            GraphQL-level error. Applies to both queries and mutations.
+            ACCESS_DENIED means insufficient scopes. undefinedField means
+            the query references a field that doesn't exist on the type.
+        type: object
+        properties:
+            message:
+                type: string
+            locations:
+                type: array
+                items:
+                    type: object
+                    properties:
+                        line:
+                            type: integer
+                        column:
+                            type: integer
+            path:
+                type: array
+                items:
+                    type: string
+            extensions:
+                type: object
+                properties:
+                    code:
+                        type: string
+                        enum:
+                            [
+                                ACCESS_DENIED,
+                                INTERNAL_ERROR,
+                                THROTTLED,
+                                undefinedField,
+                            ]
+                    typeName:
+                        type: string
+                    fieldName:
+                        type: string
+        required: [message]
+
+    userError:
+        type: object
+        properties:
+            field:
+                type: string
+            message:
+                type: string
+        required: [field, message]
+
+    responseKind:
+        type: string
+        enum:
+            - OK
+            - NO_CONTENT
+            - NOT_FOUND
+            - FORBIDDEN
+            - BAD_REQUEST
+            - NOT_ACCEPTABLE
+            - UNPROCESSABLE_ENTITY
+            - MUTATION_ERROR
+            - UNEXPECTED

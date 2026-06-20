@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: EmbeddedObjectPosition
+description: The position of an embedded object such as a chart.
+type: object
+properties:
+  overlayPosition:
+    description: The position at which the object is overlaid on top of a grid.
+    $ref: OverlayPosition
+  newSheet:
+    type: boolean
+    description: If true, the embedded object is put on a new sheet whose ID is chosen
+      for you. Used only when writing.
+  sheetId:
+    description: The sheet this is on. Set only if the embedded object is on its own
+      sheet. Must be non-negative.
+    format: int32
+    type: integer

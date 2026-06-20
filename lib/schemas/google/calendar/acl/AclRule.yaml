@@ -1,0 +1,55 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AclRule
+description: ''
+type: object
+properties:
+  etag:
+    type: string
+    description: ETag of the resource.
+  id:
+    type: string
+    description: Identifier of the Access Control List (ACL) rule. See Sharing calendars.
+  kind:
+    type: string
+    description: Type of the resource ("calendar#aclRule").
+    default: calendar#aclRule
+  role:
+    type: string
+    description: "The role assigned to the scope. Possible values are:  \n- \"none\"\
+      \ - Provides no access. \n- \"freeBusyReader\" - Provides read access to free/busy\
+      \ information. \n- \"reader\" - Provides read access to the calendar. Private\
+      \ events will appear to users with reader access, but event details will be\
+      \ hidden. \n- \"writer\" - Provides read and write access to the calendar. Private\
+      \ events will appear to users with writer access, and event details will be\
+      \ visible. Provides read access to the calendar's ACLs. \n- \"owner\" - Provides\
+      \ manager access to the calendar. This role has all of the permissions of the\
+      \ writer role with the additional ability to modify access levels of other users.\n\
+      Important: the owner role is different from the calendar's data owner. A calendar\
+      \ has a single data owner, but can have multiple users with owner role."
+    annotations:
+      required:
+      - calendar.acl.insert
+  scope:
+    type: object
+    description: The extent to which calendar access is granted by this ACL rule.
+    properties:
+      type:
+        type: string
+        description: "The type of the scope. Possible values are:  \n- \"default\"\
+          \ - The public scope. This is the default value. \n- \"user\" - Limits the\
+          \ scope to a single user. \n- \"group\" - Limits the scope to a group. \n\
+          - \"domain\" - Limits the scope to a domain.  Note: The permissions granted\
+          \ to the \"default\", or public, scope apply to any user, authenticated\
+          \ or not."
+        annotations:
+          required:
+          - calendar.acl.insert
+          - calendar.acl.update
+      value:
+        type: string
+        description: The email address of a user or group, or the name of a domain,
+          depending on the scope type. Omitted for type "default".
+    annotations:
+      required:
+      - calendar.acl.insert
+      - calendar.acl.update

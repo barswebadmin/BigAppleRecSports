@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddConditionalFormatRuleRequest
+description: Adds a new conditional format rule at the given index. All subsequent
+  rules' indexes are incremented.
+type: object
+properties:
+  index:
+    description: The zero-based index where the rule should be inserted.
+    format: int32
+    type: integer
+  rule:
+    description: The rule to add.
+    $ref: ConditionalFormatRule

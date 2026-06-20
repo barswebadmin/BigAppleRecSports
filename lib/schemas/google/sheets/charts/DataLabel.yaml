@@ -1,0 +1,56 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataLabel
+description: Settings for one set of data labels. Data labels are annotations that
+  appear next to a set of data, such as the points on a line chart, and provide additional
+  information about what the data represents, such as a text representation of the
+  value behind that point on the graph.
+type: object
+properties:
+  type:
+    enum:
+    - DATA_LABEL_TYPE_UNSPECIFIED
+    - NONE
+    - DATA
+    - CUSTOM
+    description: The type of the data label.
+    type: string
+    enumDescriptions:
+    - The data label type is not specified and will be interpreted depending on the
+      context of the data label within the chart.
+    - The data label is not displayed.
+    - The data label is displayed using values from the series data.
+    - The data label is displayed using values from a custom data source indicated
+      by customLabelData.
+  textFormat:
+    description: The text format used for the data label. The link field is not supported.
+    $ref: TextFormat
+  customLabelData:
+    description: Data to use for custom labels. Only used if type is set to CUSTOM.
+      This data must be the same length as the series or other element this data label
+      is applied to. In addition, if the series is split into multiple source ranges,
+      this source data must come from the next column in the source data. For example,
+      if the series is B2:B4,E6:E8 then this data must come from C2:C4,F6:F8.
+    $ref: ChartData
+  placement:
+    description: The placement of the data label relative to the labeled data.
+    enum:
+    - DATA_LABEL_PLACEMENT_UNSPECIFIED
+    - CENTER
+    - LEFT
+    - RIGHT
+    - ABOVE
+    - BELOW
+    - INSIDE_END
+    - INSIDE_BASE
+    - OUTSIDE_END
+    enumDescriptions:
+    - The positioning is determined automatically by the renderer.
+    - Center within a bar or column, both horizontally and vertically.
+    - To the left of a data point.
+    - To the right of a data point.
+    - Above a data point.
+    - Below a data point.
+    - Inside a bar or column at the end (top if positive, bottom if negative).
+    - Inside a bar or column at the base.
+    - Outside a bar or column at the end.
+    type: string

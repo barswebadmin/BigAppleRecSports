@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ExtraMaterial
+description: Supplementary material to the feedback.
+type: object
+properties:
+  link:
+    description: Text feedback.
+    $ref: TextLink
+  video:
+    description: Video feedback.
+    $ref: VideoLink

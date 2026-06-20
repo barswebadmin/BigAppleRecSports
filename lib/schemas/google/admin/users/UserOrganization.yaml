@@ -1,0 +1,46 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserOrganization
+description: JSON template for an organization entry.
+type: object
+properties:
+  costCenter:
+    description: The cost center of the users department.
+    type: string
+  customType:
+    description: Custom type.
+    type: string
+  department:
+    description: Department within the organization.
+    type: string
+  description:
+    description: Description of the organization.
+    type: string
+  domain:
+    description: The domain to which the organization belongs to.
+    type: string
+  fullTimeEquivalent:
+    description: The full-time equivalent millipercent within the organization (100000
+      = 100%).
+    type: integer
+    format: int32
+  location:
+    description: Location of the organization. This need not be fully qualified address.
+    type: string
+  name:
+    description: Name of the organization
+    type: string
+  primary:
+    description: If it user's primary organization.
+    type: boolean
+  symbol:
+    description: Symbol of the organization.
+    type: string
+  title:
+    description: Title (designation) of the user in the organization.
+    type: string
+  type:
+    description: Each entry can have a type which indicates standard types of that
+      entry. For example organization could be of school work etc. In addition to
+      the standard type an entry can have a custom type and can give it any name.
+      Such types should have the CUSTOM value as type and also have a CustomType value.
+    type: string

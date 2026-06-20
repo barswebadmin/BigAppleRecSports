@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddNamedRangeResponse
+description: The result of adding a named range.
+type: object
+properties:
+  namedRange:
+    $ref: NamedRange
+    description: The named range to add.

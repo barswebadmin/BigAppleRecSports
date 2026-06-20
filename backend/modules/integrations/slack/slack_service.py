@@ -4,13 +4,14 @@ Provides a clean interface to all Slack functionality organized by concern.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 
 # Slack SDK
 from slack_sdk import WebClient
 
 # Our systems
-from config import config
+from config import Config
+config = Config()
 # from models.slack import Slack, RefundType, SlackMessageType
 
 # Existing services
@@ -20,13 +21,6 @@ from config import config
 
 from .client.slack_security import SlackSecurity
 from .parsers.message_parsers import SlackMessageParsers
-from .builders import (
-    SlackMessageBuilder,
-    # ModernMessageBuilder,
-    # SlackCacheManager,
-    # SlackMetadataBuilder,
-    # SlackOrderHandlers,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -60,12 +54,6 @@ class SlackService:
         # self.slack_security = SlackSecurity(self.config.SlackBot.get_signing_secret())
 
         # Initialize helper components
-        self.message_builder = SlackMessageBuilder(self.config.SlackGroup.all())
-        # self.refunds_utils = SlackRefundsUtils(
-        #     self.orders_service, 
-        #     self._get_settings(),
-        #     self.message_builder
-        # )
         self.message_parsers = SlackMessageParsers()
         
         # Initialize modern utility classes
@@ -98,7 +86,7 @@ class SlackService:
         Raises:
             ValueError: If identifier format is invalid
         """
-        import validators
+        from validator_collection import is_email
         import re
         from modules.integrations.slack.models.slack_user import SlackUser
         
@@ -109,7 +97,7 @@ class SlackService:
         params: Dict[str, Any] = {}
         
         # Check if it's a valid email
-        if validators.email(identifier):
+        if is_email(identifier):
             params["email"] = identifier
             return params
         
@@ -336,6 +324,29 @@ class SlackService:
         service = self.get_usergroup_service(bot_name)
         return UsergroupProvisioner(service)
     
+    def lookup_group(
+        self,
+        identifier: str,
+        bot_name: str = 'leadership'
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Look up a Slack usergroup by handle or ID.
+        
+        Args:
+            identifier: Group handle (with or without @) or group ID (e.g., 'S03LZKQSHEU')
+            bot_name: Name of the bot to use (default: 'leadership')
+        
+        Returns:
+            Group dict if found, None otherwise
+        """
+        service = self.get_usergroup_service(bot_name)
+        
+        if identifier.startswith('S') and len(identifier) == 11 and identifier.isalnum():
+            return service.get_group_by_id(identifier)
+        else:
+            handle = identifier.lstrip('@')
+            return service.get_group_by_handle(handle)
+    
     def resolve_group_identifier(self, identifier: Dict[str, Any], bot_name: str = 'leadership') -> Optional[Dict[str, Any]]:
         """Resolve a group identifier dict to a group dict.
         
@@ -399,6 +410,235 @@ class SlackService:
                         return user_dict
         
         return None
+    
+    def lookup_user(
+        self,
+        identifier: Dict[str, Any],
+        bot_name: str = 'leadership'
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Look up a Slack user by identifier.
+        
+        Args:
+            identifier: Dict with keys: "email", "user_id", "handle", or "display_name"
+            bot_name: Name of the bot to use (default: 'leadership')
+        
+        Returns:
+            User dict if found, None otherwise
+        """
+        return self.resolve_user_identifier(identifier, bot_name)
+    
+    def list_users(
+        self,
+        bot_name: str = 'leadership',
+        include_bots: bool = False,
+        include_deleted: bool = False
+    ) -> List[Dict[str, Any]]:
+        """
+        List all Slack users with optional filtering.
+        
+        Args:
+            bot_name: Name of the bot to use (default: 'leadership')
+            include_bots: If True, include bot accounts
+            include_deleted: If True, include deleted users
+        
+        Returns:
+            List of user dicts
+        """
+        from .user_lookup import list_all_users
+        
+        client = self.get_web_client(bot_name)
+        users = list_all_users(client)
+        
+        if not include_bots:
+            users = [u for u in users if not u.get('is_bot', False)]
+        
+        if not include_deleted:
+            users = [u for u in users if not u.get('deleted', False)]
+        
+        return users
+    
+    def update_user_profile(
+        self,
+        user_id: str,
+        profile_updates: Dict[str, Any],
+        bot_name: str = 'leadership'
+    ) -> Dict[str, Any]:
+        """
+        Update a Slack user's profile.
+        
+        Args:
+            user_id: Slack user ID
+            profile_updates: Dict of profile fields to update
+            bot_name: Name of the bot to use (default: 'leadership')
+        
+        Returns:
+            Dict with keys: 'success' (bool), 'response' (dict), 'error' (str, if failed), 'scope_info' (dict, if error)
+        """
+        import os
+        from .client.main import SlackClient, SlackUserProfileUpdate
+        
+        bot_name = bot_name.lower()
+        
+        bot_map = {
+            'dev': self.config.Slack.Bots.Dev,
+            'exec': self.config.Slack.Bots.Exec,
+            'leadership': self.config.Slack.Bots.Leadership,
+            'payment_assistance': self.config.Slack.Bots.PaymentAssistance,
+            'refunds': self.config.Slack.Bots.Refunds,
+            'registrations': self.config.Slack.Bots.Registrations,
+            'web': self.config.Slack.Bots.Web,
+        }
+        
+        bot = bot_map.get(bot_name)
+        if not bot:
+            available = ', '.join(bot_map.keys())
+            raise ValueError(
+                f"Unknown bot: {bot_name}. Available: {available}"
+            )
+        
+        user_token_env_map = {
+            'leadership': 'SLACK.LEADERSHIP_BOT.USER_TOKEN',
+        }
+        
+        user_token = None
+        if bot_name in user_token_env_map:
+            user_token = os.getenv(user_token_env_map[bot_name])
+        
+        client = SlackClient(token=bot.token, user_token=user_token)
+        
+        profile_update: SlackUserProfileUpdate = profile_updates  # type: ignore[assignment]
+        
+        result = client.update_user_profile(
+            user_id=user_id,
+            profile=profile_update
+        )
+        
+        return result  # type: ignore[return-value]
+    
+    def extract_pronouns_from_display_name(self, display_name: str) -> Optional[str]:
+        """
+        Extract pronouns from display_name if present (typically in parentheses).
+        
+        Args:
+            display_name: Display name string that may contain pronouns in parentheses
+        
+        Returns:
+            Extracted pronouns string, or None if not found
+        """
+        import re
+        
+        if not display_name:
+            return None
+        
+        match = re.search(r'\(([^)]+)\)', display_name)
+        if match:
+            return match.group(1)
+        return None
+    
+    def append_pronouns_to_display_name(
+        self,
+        display_name: str,
+        pronouns: Optional[str] = None
+    ) -> str:
+        """
+        Append or replace pronouns in display_name.
+        
+        If pronouns are provided, removes any existing parentheses and appends new ones.
+        If pronouns are None/empty, removes existing parentheses.
+        
+        Args:
+            display_name: Current display_name (may already have pronouns in parentheses)
+            pronouns: New pronouns to append, or None to remove
+        
+        Returns:
+            Updated display_name with pronouns appended or removed
+        """
+        import re
+        
+        if not display_name:
+            return display_name
+        
+        base_name = re.sub(r'\s*\([^)]+\)\s*$', '', display_name).rstrip()
+        
+        if not pronouns:
+            return base_name
+        
+        return f"{base_name} ({pronouns})"
+    
+    def sync_pronouns_with_display_name(
+        self,
+        profile_updates: Dict[str, Any],
+        current_profile: Dict[str, Any],
+        pronouns: Optional[str] = None
+    ) -> None:
+        """
+        Sync pronouns with display_name in profile_updates.
+        
+        If pronouns are provided, updates display_name to include them.
+        If display_name is updated and pronouns exist, preserves pronouns in display_name.
+        
+        Args:
+            profile_updates: Dictionary of profile updates to modify (modified in place)
+            current_profile: Current user profile dict
+            pronouns: Optional new pronouns value (if None, uses current profile pronouns)
+        """
+        if pronouns is None:
+            profile = current_profile.get('profile', {}) if isinstance(current_profile, dict) else getattr(current_profile, 'profile', {})
+            pronouns = profile.get('pronouns') if isinstance(profile, dict) else getattr(profile, 'pronouns', None)
+        
+        display_name_to_update = profile_updates.get('display_name')
+        if not display_name_to_update:
+            if isinstance(current_profile, dict):
+                profile = current_profile.get('profile', {})
+                display_name_to_update = profile.get('display_name', '') if isinstance(profile, dict) else ''
+            else:
+                display_name_to_update = getattr(current_profile, 'display_name', '') or ''
+        
+        updated_display_name = self.append_pronouns_to_display_name(display_name_to_update, pronouns)
+        
+        if updated_display_name:
+            profile_updates["display_name"] = updated_display_name
+            profile_updates["display_name_normalized"] = updated_display_name
+    
+    def build_profile_updates(
+        self,
+        profile_fields: Dict[str, Any],
+        current_user: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Build profile_updates dictionary from field values.
+        
+        Handles special formatting (e.g., status_emoji) and syncs pronouns with display_name.
+        
+        Args:
+            profile_fields: Dictionary of field values from command-line flags or other input
+            current_user: Current user dict
+        
+        Returns:
+            Dictionary of profile updates ready for API call
+        """
+        profile_updates = {}
+        
+        for field, value in profile_fields.items():
+            if value:
+                if field == 'status_emoji':
+                    emoji = value
+                    if not emoji.startswith(":"):
+                        emoji = f":{emoji}"
+                    if not emoji.endswith(":"):
+                        emoji = f"{emoji}:"
+                    profile_updates[field] = emoji
+                else:
+                    profile_updates[field] = value
+        
+        if 'pronouns' in profile_updates:
+            self.sync_pronouns_with_display_name(profile_updates, current_user, profile_updates['pronouns'])
+        
+        if 'display_name' in profile_updates and 'pronouns' not in profile_updates:
+            self.sync_pronouns_with_display_name(profile_updates, current_user)
+        
+        return profile_updates
 
     # ============================================================================
     # CONVENIENCE METHODS FOR TESTING
@@ -453,63 +693,10 @@ class SlackService:
         view = payload.get("view", {})
         callback_id = view.get("callback_id")
 
-        if callback_id == "edit_request_details_submission":
-            return await self.handle_edit_request_details_submission(payload)
-        elif callback_id == "deny_refund_request_modal_submission":
-            return await self.handle_deny_refund_request_modal_submission(payload)
-        elif callback_id == "restock_confirmation_modal":
-            return await self.handle_restock_confirmation_submission(payload)
-        elif callback_id == "custom_refund_submit":
-            return await self._handle_custom_refund_submission(payload)
-        else:
-            logger.warning(f"Unknown modal callback_id: {callback_id}")
-            return {"response_action": "clear"}
+        return {"text": "✅ Modal submission received"}
 
-    async def _handle_custom_refund_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle custom refund modal submission."""
-        logger.info("Processing custom refund modal submission")
 
-        # Extract values from the modal input
-        values = payload["view"]["state"]["values"]
-        refund_amount = values["refund_input_block"]["custom_refund_amount"]["value"]
 
-        # Extract metadata
-        private_metadata = payload["view"].get("private_metadata")
-        if not private_metadata:
-            raise ValueError("Missing private_metadata in view submission")
-
-        import json
-        metadata = json.loads(private_metadata)
-
-        # Extract requestor information from metadata or Slack user
-        slack_user_name = metadata.get("slack_user_name", "Unknown User")
-        requestor_name = {
-            "first": metadata.get("requestor_first_name", ""),
-            "last": metadata.get("requestor_last_name", ""),
-        }
-        requestor_email = metadata.get("requestor_email", "")
-
-        # Build the request_data to match what process_refund expects
-        request_data = {
-            "orderId": metadata["orderId"],
-            "rawOrderNumber": metadata["rawOrderNumber"],
-            "refundAmount": refund_amount,
-            "refundType": metadata["refundType"],
-            "orderCancelled": "false",
-        }
-
-        # Call process_refund with the updated amount
-        return await self.handle_process_refund(
-            request_data=request_data,
-            channel_id=metadata["channel_id"],
-            requestor_name=requestor_name,
-            requestor_email=requestor_email,
-            thread_ts=metadata["thread_ts"],
-            slack_user_name=slack_user_name,
-            current_message_full_text=metadata["current_message_full_text"],
-            slack_user_id=payload["user"]["id"],
-            trigger_id=payload.get("trigger_id", ""),
-        )
 
     async def _handle_button_action(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Handle button action events."""
@@ -552,13 +739,6 @@ class SlackService:
 
         # Extract metadata from the original message
         message_metadata = payload.get("message", {}).get("metadata", {})
-        original_channel = None
-        original_mention = None
-
-        if message_metadata and message_metadata.get("event_type") == "refund_request":
-            event_payload = message_metadata.get("event_payload", {})
-            original_channel = event_payload.get("originalChannel")
-            original_mention = event_payload.get("originalMention")
 
         # Extract current message content for data preservation
         current_message_blocks = payload.get("message", {}).get("blocks", [])
@@ -575,189 +755,13 @@ class SlackService:
         logger.info(f"Button clicked: {action_id} with data: {request_data}")
 
         # Route to appropriate handler based on action_id
-        return await self._route_button_action(
-            action_id=action_id,
-            request_data=request_data,
-            channel_id=channel_id,
-            requestor_name=requestor_name,
-            requestor_email=requestor_email,
-            thread_ts=thread_ts,
-            slack_user_id=slack_user_id,
-            slack_user_name=slack_user_name,
-            current_message_full_text=current_message_full_text,
-            trigger_id=trigger_id,
-            original_channel=original_channel,
-            original_mention=original_mention,
-        )
+        # Refund-related actions removed - functionality deprecated
+        logger.warning(f"Refund-related action '{action_id}' received but functionality has been removed")
+        return {
+            "response_type": "ephemeral",
+            "text": f"Refund functionality has been removed. Action '{action_id}' is no longer supported.",
+        }
 
-    async def _route_button_action(self, action_id: str, request_data: Dict[str, Any], 
-                                 channel_id: str, requestor_name: Dict[str, str], 
-                                 requestor_email: str, thread_ts: str, slack_user_id: str, 
-                                 slack_user_name: str, current_message_full_text: str, 
-                                 trigger_id: Optional[str], original_channel: Optional[str] = None, 
-                                 original_mention: Optional[str] = None) -> Dict[str, Any]:
-        """Route button actions to appropriate handlers."""
-        
-        # === STEP 1 HANDLERS: INITIAL DECISION (Cancel Order / Proceed Without Canceling) ===
-        if action_id == "cancel_order":
-            return await self.handle_cancel_order(
-                request_data, channel_id, requestor_name, requestor_email,
-                thread_ts, slack_user_id, slack_user_name, current_message_full_text, trigger_id or ""
-            )
-
-        elif action_id == "proceed_without_cancel":
-            return await self.handle_proceed_without_cancel(
-                request_data, channel_id, requestor_name, requestor_email,
-                thread_ts, slack_user_id, slack_user_name, current_message_full_text,
-                trigger_id or "", original_channel or "", original_mention or ""
-            )
-
-
-        # === STEP 2 HANDLERS: REFUND DECISION (Process / Custom / No Refund) ===
-        elif action_id == "process_refund":
-            return await self.handle_process_refund(
-                request_data=request_data, channel_id=channel_id,
-                requestor_name=requestor_name, requestor_email=requestor_email,
-                thread_ts=thread_ts, slack_user_name=slack_user_name,
-                current_message_full_text=current_message_full_text,
-                slack_user_id=slack_user_id, trigger_id=trigger_id or ""
-            )
-
-        elif action_id == "custom_refund_amount":
-            return await self.handle_custom_refund_amount(
-                request_data=request_data, channel_id=channel_id, thread_ts=thread_ts,
-                requestor_name=requestor_name, requestor_email=requestor_email,
-                slack_user_name=slack_user_name, current_message_full_text=current_message_full_text,
-                slack_user_id=slack_user_id, trigger_id=trigger_id or ""
-            )
-
-        elif action_id == "no_refund":
-            return await self.handle_no_refund(
-                request_data, channel_id, requestor_name, requestor_email,
-                thread_ts, slack_user_name, slack_user_id, current_message_full_text, trigger_id or ""
-            )
-
-        # === EMAIL MISMATCH HANDLERS ===
-        elif action_id == "edit_request_details":
-            return await self.handle_edit_request_details(
-                request_data=request_data, channel_id=channel_id, thread_ts=thread_ts,
-                slack_user_name=slack_user_name, slack_user_id=slack_user_id,
-                trigger_id=trigger_id or "", current_message_full_text=current_message_full_text
-            )
-
-        # === STEP 3 HANDLERS: RESTOCK INVENTORY (Restock / Do Not Restock) ===
-        elif action_id and (action_id.startswith("confirm_restock") or action_id == "confirm_do_not_restock"):
-            return await self.handle_restock_confirmation_request(
-                request_data, action_id, trigger_id or "", channel_id, thread_ts, current_message_full_text
-            )
-        elif action_id and (action_id.startswith("restock") or action_id == "do_not_restock"):
-            return await self.handle_restock_inventory(
-                request_data, action_id, channel_id, thread_ts,
-                slack_user_name, current_message_full_text, trigger_id or ""
-            )
-        else:
-            if not action_id:
-                raise ValueError("Missing action_id in request")
-            logger.warning(f"Unknown action_id: {action_id}")
-            return {
-                "response_type": "ephemeral",
-                "text": f"Unknown action: {action_id}",
-            }
-
-    # === DELEGATED HANDLER METHODS ===
-    # These methods delegate to the SlackRefundsUtils for backward compatibility
-    
-    async def handle_edit_request_details_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle edit request details modal submission."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_edit_request_details_submission not implemented")
-        return {"response_action": "clear"}
-
-    async def handle_deny_refund_request_modal_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle deny refund request modal submission."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_deny_refund_request_modal_submission not implemented")
-        return {"response_action": "clear"}
-
-    async def handle_restock_confirmation_submission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle restock confirmation modal submission."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_restock_confirmation_submission not implemented")
-        return {"response_action": "clear"}
-
-    async def handle_process_refund(self, request_data: Dict[str, Any], channel_id: str, 
-                                  requestor_name: Dict[str, str], requestor_email: str, 
-                                  thread_ts: str, slack_user_name: str, 
-                                  current_message_full_text: str, slack_user_id: str, 
-                                  trigger_id: str) -> Dict[str, Any]:
-        """Handle process refund action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_process_refund not implemented")
-        return {"text": "Process refund functionality not yet implemented"}
-
-    async def handle_cancel_order(self, request_data: Dict[str, Any], channel_id: str, 
-                                requestor_name: Dict[str, str], requestor_email: str, 
-                                thread_ts: str, slack_user_id: str, slack_user_name: str, 
-                                current_message_full_text: str, trigger_id: str) -> Dict[str, Any]:
-        """Handle cancel order action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_cancel_order not implemented")
-        return {"text": "Cancel order functionality not yet implemented"}
-
-    async def handle_proceed_without_cancel(self, request_data: Dict[str, Any], channel_id: str, 
-                                          requestor_name: Dict[str, str], requestor_email: str, 
-                                          thread_ts: str, slack_user_id: str, slack_user_name: str, 
-                                          current_message_full_text: str, trigger_id: str, 
-                                          original_channel: str, original_mention: str) -> Dict[str, Any]:
-        """Handle proceed without cancel action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_proceed_without_cancel not implemented")
-        return {"text": "Proceed without cancel functionality not yet implemented"}
-
-
-    async def handle_custom_refund_amount(self, request_data: Dict[str, Any], channel_id: str, 
-                                        thread_ts: str, requestor_name: Dict[str, str], 
-                                        requestor_email: str, slack_user_name: str, 
-                                        current_message_full_text: str, slack_user_id: str, 
-                                        trigger_id: str) -> Dict[str, Any]:
-        """Handle custom refund amount action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_custom_refund_amount not implemented")
-        return {"text": "Custom refund amount functionality not yet implemented"}
-
-    async def handle_no_refund(self, request_data: Dict[str, Any], channel_id: str, 
-                             requestor_name: Dict[str, str], requestor_email: str, 
-                             thread_ts: str, slack_user_name: str, slack_user_id: str, 
-                             current_message_full_text: str, trigger_id: str) -> Dict[str, Any]:
-        """Handle no refund action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_no_refund not implemented")
-        return {"text": "No refund functionality not yet implemented"}
-
-    async def handle_edit_request_details(self, request_data: Dict[str, Any], channel_id: str, 
-                                        thread_ts: str, slack_user_name: str, slack_user_id: str, 
-                                        trigger_id: str, current_message_full_text: str) -> Dict[str, Any]:
-        """Handle edit request details action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_edit_request_details not implemented")
-        return {"text": "Edit request details functionality not yet implemented"}
-
-    async def handle_restock_confirmation_request(self, request_data: Dict[str, Any], 
-                                                action_id: str, trigger_id: str, 
-                                                channel_id: str, thread_ts: str, 
-                                                current_message_full_text: str) -> Dict[str, Any]:
-        """Handle restock confirmation request action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_restock_confirmation_request not implemented")
-        return {"text": "Restock confirmation request functionality not yet implemented"}
-
-    async def handle_restock_inventory(self, request_data: Dict[str, Any], action_id: str, 
-                                     channel_id: str, thread_ts: str, slack_user_name: str, 
-                                     current_message_full_text: str, trigger_id: str) -> Dict[str, Any]:
-        """Handle restock inventory action."""
-        # This method should be implemented in SlackRefundsUtils
-        logger.warning("handle_restock_inventory not implemented")
-        return {"text": "Restock inventory functionality not yet implemented"}
 
 
 

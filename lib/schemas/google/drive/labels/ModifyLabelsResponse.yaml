@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ModifyLabelsResponse
+description: Response to a `ModifyLabels` request. This contains only those labels
+  which were added or updated by the request.
+type: object
+properties:
+  modifiedLabels:
+    description: The list of labels which were added or updated by the request.
+    type: array
+    items:
+      $ref: Label
+  kind:
+    description: This is always `"drive#modifyLabelsResponse"`.
+    type: string

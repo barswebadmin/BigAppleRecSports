@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchClearValuesByDataFilterRequest
+description: The request for clearing more than one range selected by a DataFilter
+  in a spreadsheet.
+type: object
+properties:
+  dataFilters:
+    description: The DataFilters used to determine which ranges to clear.
+    items:
+      $ref: DataFilter
+    type: array

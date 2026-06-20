@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Padding
+description: The amount of padding around the cell, in pixels. When updating padding,
+  every field must be specified.
+type: object
+properties:
+  right:
+    type: integer
+    description: The right padding of the cell.
+    format: int32
+  top:
+    type: integer
+    description: The top padding of the cell.
+    format: int32
+  bottom:
+    description: The bottom padding of the cell.
+    format: int32
+    type: integer
+  left:
+    description: The left padding of the cell.
+    format: int32
+    type: integer

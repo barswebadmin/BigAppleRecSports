@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Video
+description: Data representing a video.
+type: object
+properties:
+  youtubeUri:
+    type: string
+    description: Required. A YouTube URI.
+  properties:
+    $ref: MediaProperties
+    description: Properties of a video.

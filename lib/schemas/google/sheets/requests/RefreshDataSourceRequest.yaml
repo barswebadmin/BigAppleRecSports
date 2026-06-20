@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RefreshDataSourceRequest
+description: Refreshes one or multiple data source objects in the spreadsheet by the
+  specified references. The request requires an additional `bigquery.readonly` OAuth
+  scope if you are refreshing a BigQuery data source. If there are multiple refresh
+  requests referencing the same data source objects in one batch, only the last refresh
+  request is processed, and all those requests will have the same response accordingly.
+type: object
+properties:
+  dataSourceId:
+    description: Reference to a DataSource. If specified, refreshes all associated
+      data source objects for the data source.
+    type: string
+  isAll:
+    description: Refreshes all existing data source objects in the spreadsheet.
+    type: boolean
+  force:
+    type: boolean
+    description: Refreshes the data source objects regardless of the current state.
+      If not set and a referenced data source object was in error state, the refresh
+      will fail immediately.
+  references:
+    $ref: DataSourceObjectReferences
+    description: References to data source objects to refresh.

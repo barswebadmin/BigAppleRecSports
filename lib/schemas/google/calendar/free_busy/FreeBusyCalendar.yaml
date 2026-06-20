@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FreeBusyCalendar
+description: ''
+type: object
+properties:
+  busy:
+    type: array
+    description: List of time ranges during which this calendar should be regarded
+      as busy.
+    items:
+      $ref: TimePeriod
+  errors:
+    type: array
+    description: Optional error(s) (if computation for the calendar failed).
+    items:
+      $ref: Error

@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Borders
+description: The borders of the cell.
+type: object
+properties:
+  top:
+    $ref: Border
+    description: The top border of the cell.
+  bottom:
+    description: The bottom border of the cell.
+    $ref: Border
+  left:
+    $ref: Border
+    description: The left border of the cell.
+  right:
+    $ref: Border
+    description: The right border of the cell.

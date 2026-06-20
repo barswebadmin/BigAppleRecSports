@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchDeletePrintersResponse
+description: Response for deleting existing printers in batch.
+type: object
+properties:
+  printerIds:
+    description: A list of Printer.id that were successfully deleted.
+    type: array
+    items:
+      type: string
+  failedPrinters:
+    description: A list of update failures.
+    type: array
+    items:
+      $ref: FailureInfo

@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataSourceColumn
+description: A column in a data source.
+type: object
+properties:
+  reference:
+    $ref: DataSourceColumnReference
+    description: The column reference.
+  formula:
+    description: The formula of the calculated column.
+    type: string

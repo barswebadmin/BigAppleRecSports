@@ -1,0 +1,66 @@
+title: "Season Schedule"
+description: "Scheduling and timing details for sport programs"
+type: object
+properties:
+  # Timing details
+  startTime:
+    $ref: "../primitives/isoTime.yaml#/"
+  endTime:
+    $ref: "../primitives/isoTime.yaml#/"
+
+  sessions:
+    type: object
+    description: "For leagues with multiple sessions (e.g., Sunday bowling)"
+    properties:
+      session1:
+        type: object
+        properties:
+          start:
+            $ref: "../primitives/isoTime.yaml#/"
+          end:
+            $ref: "../primitives/isoTime.yaml#/"
+      session2:
+        type: object
+        properties:
+          start:
+            $ref: "../primitives/isoTime.yaml#/"
+          end:
+            $ref: "../primitives/isoTime.yaml#/"
+
+  adjustedSchedules:
+    type: array
+    description: "Specific dates with different start/end times (e.g., holiday games)"
+    items:
+      type: object
+      properties:
+        date:
+          $ref: "../primitives/isoDate.yaml#/"
+        startTime:
+          $ref: "../primitives/isoTime.yaml#/"
+        endTime:
+          $ref: "../primitives/isoTime.yaml#/"
+      required: [date, startTime, endTime]
+
+  # Program dates
+  numberOfWeeks:
+    type: integer
+  startDate:
+    $ref: "../primitives/isoDate.yaml#/"
+  endDate:
+    $ref: "../primitives/isoDate.yaml#/"
+  offDates:
+    type: array
+    items:
+      $ref: "../primitives/isoDate.yaml#/"
+  newbieOrientation:
+    $ref: "../primitives/flexibleDate.yaml#/"
+  scoutNight:
+    $ref: "../primitives/flexibleDate.yaml#/"
+  rainDate:
+    $ref: "../primitives/isoDate.yaml#/"
+  openingParty:
+    $ref: "../primitives/flexibleDate.yaml#/"
+  closingParty:
+    $ref: "../primitives/flexibleDate.yaml#/"
+
+required: []

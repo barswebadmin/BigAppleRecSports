@@ -1,12 +1,20 @@
 name: Deploy AWS Lambda Functions
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'lambda/functions/**'
-      - '.github/workflows/deploy-aws.yml'
+  # Auto-deploy off: merge to main no longer triggers Lambda deploys. Re-enable when ready.
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'lambda/functions/**'
+  #     - '.github/workflows/deploy-aws.yml'
+
   workflow_dispatch:
+    inputs:
+      function:
+        description: 'Function name to deploy (or "all" for all functions)'
+        required: true
+        default: 'all'
+        type: string
 
 # TODO: Future enhancement - Add pull_request trigger for preview/staging deployments
 # This would allow testing Lambda deployments before merging PRs.
@@ -23,12 +31,6 @@ on:
 #     paths:
 #       - 'lambda/functions/**'
 #     types: [opened, synchronize, reopened]
-    inputs:
-      function:
-        description: 'Function name to deploy (or "all" for all functions)'
-        required: true
-        default: 'all'
-        type: string
 
 jobs:
   deploy:
@@ -57,6 +59,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ steps.python-version.outputs.version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -109,5 +116,4 @@ jobs:
           echo "Functions to deploy: $CHANGED_FUNCTIONS"
           
           # Deploy using unified script (handles space-separated list)
-          # Version increment and commit happens inside deploy_aws.sh
-          bash scripts/deployment/deploy_aws.sh --batch $CHANGED_FUNCTIONS
+          bash scripts/deploy lambda --batch $CHANGED_FUNCTIONS

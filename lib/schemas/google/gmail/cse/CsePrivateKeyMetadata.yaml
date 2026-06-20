@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CsePrivateKeyMetadata
+description: Metadata for a private key instance.
+type: object
+properties:
+  privateKeyMetadataId:
+    description: Output only. The immutable ID for the private key metadata instance.
+    readOnly: true
+    type: string
+  kaclsKeyMetadata:
+    description: Metadata for a private key instance managed by an external key access
+      control list service.
+    $ref: KaclsKeyMetadata
+  hardwareKeyMetadata:
+    description: Metadata for hardware keys.
+    $ref: HardwareKeyMetadata

@@ -1,0 +1,9 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: TableColumnDataValidationRule
+description: A data validation rule for a column in a table.
+type: object
+properties:
+  condition:
+    $ref: BooleanCondition
+    description: The condition that data in the cell must match. Valid only if the
+      [BooleanCondition.type] is ONE_OF_LIST.

@@ -1,0 +1,47 @@
+description: Gets the specified thread.
+httpMethod: GET
+path: gmail/v1/users/{userId}/threads/{id}
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.addons.current.message.action
+- https://www.googleapis.com/auth/gmail.addons.current.message.metadata
+- https://www.googleapis.com/auth/gmail.addons.current.message.readonly
+- https://www.googleapis.com/auth/gmail.metadata
+- https://www.googleapis.com/auth/gmail.modify
+- https://www.googleapis.com/auth/gmail.readonly
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  id:
+    description: The ID of the thread to retrieve.
+    location: path
+    required: true
+    type: string
+  format:
+    description: The format to return the messages in.
+    default: full
+    location: query
+    type: string
+    enumDescriptions:
+    - Returns the full email message data with body content parsed in the `payload`
+      field; the `raw` field is not used. Format cannot be used when accessing the
+      api using the gmail.metadata scope.
+    - Returns only email message IDs, labels, and email headers.
+    - Returns only email message IDs and labels; does not return the email headers,
+      body, or payload.
+    enum:
+    - full
+    - metadata
+    - minimal
+  metadataHeaders:
+    description: When given and format is METADATA, only include headers specified.
+    location: query
+    repeated: true
+    type: string
+response:
+  $ref: Thread

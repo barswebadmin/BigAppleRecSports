@@ -1,0 +1,82 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BasicChartSeries
+description: A single series of data in a chart. For example, if charting stock prices
+  over time, multiple series may exist, one for the "Open Price", "High Price", "Low
+  Price" and "Close Price".
+type: object
+properties:
+  targetAxis:
+    description: The minor axis that will specify the range of values for this series.
+      For example, if charting stocks over time, the "Volume" series may want to be
+      pinned to the right with the prices pinned to the left, because the scale of
+      trading volume is different than the scale of prices. It is an error to specify
+      an axis that isn't a valid minor axis for the chart's type.
+    enum:
+    - BASIC_CHART_AXIS_POSITION_UNSPECIFIED
+    - BOTTOM_AXIS
+    - LEFT_AXIS
+    - RIGHT_AXIS
+    enumDescriptions:
+    - Default value, do not use.
+    - The axis rendered at the bottom of a chart. For most charts, this is the standard
+      major axis. For bar charts, this is a minor axis.
+    - The axis rendered at the left of a chart. For most charts, this is a minor axis.
+      For bar charts, this is the standard major axis.
+    - The axis rendered at the right of a chart. For most charts, this is a minor
+      axis. For bar charts, this is an unusual major axis.
+    type: string
+  colorStyle:
+    description: The color for elements (such as bars, lines, and points) associated
+      with this series. If empty, a default color is used. If color is also set, this
+      field takes precedence.
+    $ref: ColorStyle
+  styleOverrides:
+    description: Style override settings for series data points.
+    items:
+      $ref: BasicSeriesDataPointStyleOverride
+    type: array
+  color:
+    description: 'The color for elements (such as bars, lines, and points) associated
+      with this series. If empty, a default color is used. Deprecated: Use color_style.'
+    deprecated: true
+    $ref: Color
+  pointStyle:
+    $ref: PointStyle
+    description: The style for points associated with this series. Valid only if the
+      chartType is AREA, LINE, or SCATTER. COMBO charts are also supported if the
+      series chart type is AREA, LINE, or SCATTER. If empty, a default point style
+      is used.
+  type:
+    enum:
+    - BASIC_CHART_TYPE_UNSPECIFIED
+    - BAR
+    - LINE
+    - AREA
+    - COLUMN
+    - SCATTER
+    - COMBO
+    - STEPPED_AREA
+    description: The type of this series. Valid only if the chartType is COMBO. Different
+      types will change the way the series is visualized. Only LINE, AREA, and COLUMN
+      are supported.
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - A bar chart.
+    - A line chart.
+    - An area chart.
+    - A column chart.
+    - A scatter chart.
+    - A combo chart.
+    - A stepped area chart.
+  lineStyle:
+    $ref: LineStyle
+    description: The line style of this series. Valid only if the chartType is AREA,
+      LINE, or SCATTER. COMBO charts are also supported if the series chart type is
+      AREA or LINE.
+  series:
+    $ref: ChartData
+    description: The data being visualized in this chart series.
+  dataLabel:
+    $ref: DataLabel
+    description: Information about the data labels for this series.

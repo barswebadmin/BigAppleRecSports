@@ -1,0 +1,22 @@
+description: Returns all developer metadata matching the specified DataFilter. For
+  more information, see [Read, write, and search metadata](https://developers.google.com/workspace/sheets/api/guides/metadata).
+  If the provided DataFilter represents a DeveloperMetadataLookup object, this will
+  return all DeveloperMetadata entries selected by it. If the DataFilter represents
+  a location in a spreadsheet, this will return all developer metadata associated
+  with locations intersecting that region.
+httpMethod: POST
+path: v4/spreadsheets/{spreadsheetId}/developerMetadata:search
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+request:
+  $ref: SearchDeveloperMetadataRequest
+parameters:
+  spreadsheetId:
+    location: path
+    type: string
+    required: true
+    description: The ID of the spreadsheet to retrieve metadata from.
+response:
+  $ref: SearchDeveloperMetadataResponse

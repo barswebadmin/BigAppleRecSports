@@ -1,0 +1,32 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchUpdateValuesResponse
+description: The response when updating a range of values in a spreadsheet.
+type: object
+properties:
+  totalUpdatedSheets:
+    type: integer
+    description: The total number of sheets where at least one cell in the sheet was
+      updated.
+    format: int32
+  totalUpdatedColumns:
+    type: integer
+    description: The total number of columns where at least one cell in the column
+      was updated.
+    format: int32
+  responses:
+    type: array
+    description: One UpdateValuesResponse per requested range, in the same order as
+      the requests appeared.
+    items:
+      $ref: UpdateValuesResponse
+  spreadsheetId:
+    description: The spreadsheet the updates were applied to.
+    type: string
+  totalUpdatedRows:
+    type: integer
+    description: The total number of rows where at least one cell in the row was updated.
+    format: int32
+  totalUpdatedCells:
+    type: integer
+    description: The total number of cells updated.
+    format: int32

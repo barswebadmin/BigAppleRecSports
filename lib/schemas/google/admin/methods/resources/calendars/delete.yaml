@@ -1,0 +1,18 @@
+description: Deletes a calendar resource.
+httpMethod: DELETE
+path: admin/directory/v1/customer/{customer}/resources/calendars/{calendarResourceId}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.resource.calendar
+parameters:
+  customer:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's customer ID.
+    location: path
+    required: true
+    type: string
+  calendarResourceId:
+    description: The unique ID of the calendar resource to delete.
+    location: path
+    required: true
+    type: string

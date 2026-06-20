@@ -38,7 +38,11 @@ AFFECTED_FILES=()
 
 # Get list of Google Apps Script projects dynamically
 GAS_ROOT=$(get_gas_root "$SCRIPT_DIR")
-mapfile -t GAS_PROJECTS < <(discover_gas_projects "$GAS_ROOT")
+# Portable to bash 3.2 (macOS default); `mapfile`/`readarray` is bash 4+ only.
+GAS_PROJECTS=()
+while IFS= read -r _gas_project; do
+    [ -n "$_gas_project" ] && GAS_PROJECTS+=("$_gas_project")
+done < <(discover_gas_projects "$GAS_ROOT")
 
 if [ ${#GAS_PROJECTS[@]} -eq 0 ]; then
     log_warning "No GAS projects found in $GAS_ROOT/projects"
@@ -49,16 +53,16 @@ log_info "Scanning ${#GAS_PROJECTS[@]} Google Apps Script projects..."
 
 # Check each project for doGet/doPost changes
 for project in "${GAS_PROJECTS[@]}"; do
-    if [ ! -d "GoogleAppsScripts/$project" ]; then
+    if [ ! -d "google-apps-scripts/$project" ]; then
         log_warning "Project directory not found: $project (skipping)"
         continue
     fi
     
     # Get changed .gs files in this project
     if [ "$COMMIT_RANGE" == "--cached" ]; then
-        CHANGED_FILES=$(git diff --cached --name-only | grep "^GoogleAppsScripts/$project/.*\.gs$" || true)
+        CHANGED_FILES=$(git diff --cached --name-only | grep "^google-apps-scripts/$project/.*\.gs$" || true)
     else
-        CHANGED_FILES=$(git diff --name-only $COMMIT_RANGE | grep "^GoogleAppsScripts/$project/.*\.gs$" || true)
+        CHANGED_FILES=$(git diff --name-only $COMMIT_RANGE | grep "^google-apps-scripts/$project/.*\.gs$" || true)
     fi
     
     if [ -z "$CHANGED_FILES" ]; then
@@ -124,15 +128,15 @@ echo ""
 
 for project in "${PROJECTS_WITH_CHANGES[@]}"; do
     echo "📦 Project: $project"
-    echo "   📁 Directory: GoogleAppsScripts/projects/$project"
+    echo "   📁 Directory: google-apps-scripts/projects/$project"
     echo "   🚀 Deploy command: make clasp deploy $project"
     echo "   🌐 Web app functions will NOT work until deployed!"
     echo ""
 done
 
 echo "🔧 Deployment Options:"
-echo "  1. Manual: cd GoogleAppsScripts/projects/[project] && clasp deploy"
-echo "  2. Script: bash scripts/deployment/deploy_google.sh [project]"
+echo "  1. Manual: cd google-apps-scripts/projects/[project] && clasp deploy"
+echo "  2. Script: bash scripts/deployment/deploy [project]"
 echo "  3. Makefile: make clasp deploy [project]"
 echo "  4. Auto: Merge to master branch (triggers auto-deployment)"
 echo ""

@@ -1,0 +1,30 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Project
+description: The script project resource.
+type: object
+properties:
+  updateTime:
+    description: When the script was last updated.
+    type: string
+    format: google-datetime
+  title:
+    description: The title for the project.
+    type: string
+  createTime:
+    description: When the script was created.
+    type: string
+    format: google-datetime
+  parentId:
+    description: The parent's Drive ID that the script will be attached to. This is
+      usually the ID of a Google Document or Google Sheet. This field is optional,
+      and if not set, a stand-alone script will be created.
+    type: string
+  scriptId:
+    description: The script project's Drive ID.
+    type: string
+  creator:
+    description: User who originally created the script.
+    $ref: GoogleAppsScriptTypeUser
+  lastModifyUser:
+    $ref: GoogleAppsScriptTypeUser
+    description: User who last modified the script.

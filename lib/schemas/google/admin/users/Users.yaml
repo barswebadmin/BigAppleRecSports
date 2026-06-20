@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Users
+description: ''
+type: object
+properties:
+  kind:
+    description: Kind of resource this is.
+    default: admin#directory#users
+    type: string
+  trigger_event:
+    description: Event that triggered this response (only used in case of Push Response)
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  users:
+    description: A list of user objects.
+    type: array
+    items:
+      $ref: User
+  nextPageToken:
+    description: Token used to access next page of this result. The page token is
+      only valid for three days.
+    type: string

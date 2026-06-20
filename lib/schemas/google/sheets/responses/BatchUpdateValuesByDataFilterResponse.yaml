@@ -1,0 +1,31 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchUpdateValuesByDataFilterResponse
+description: The response when updating a range of values in a spreadsheet.
+type: object
+properties:
+  totalUpdatedSheets:
+    type: integer
+    description: The total number of sheets where at least one cell in the sheet was
+      updated.
+    format: int32
+  totalUpdatedColumns:
+    type: integer
+    description: The total number of columns where at least one cell in the column
+      was updated.
+    format: int32
+  responses:
+    type: array
+    description: The response for each range updated.
+    items:
+      $ref: UpdateValuesByDataFilterResponse
+  spreadsheetId:
+    type: string
+    description: The spreadsheet the updates were applied to.
+  totalUpdatedRows:
+    type: integer
+    description: The total number of rows where at least one cell in the row was updated.
+    format: int32
+  totalUpdatedCells:
+    type: integer
+    description: The total number of cells updated.
+    format: int32

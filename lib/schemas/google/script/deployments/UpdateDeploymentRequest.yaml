@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateDeploymentRequest
+description: Request with deployment information to update an existing deployment.
+type: object
+properties:
+  deploymentConfig:
+    description: The deployment configuration.
+    $ref: DeploymentConfig

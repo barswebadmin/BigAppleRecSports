@@ -1,0 +1,49 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "PaymentPlan"
+description: "Payment plan for splitting order payments into multiple installments"
+allOf:
+  - $ref: "../primitives/dbRecordBase.yaml#/"
+  - type: object
+    properties:
+      orderId:
+        allOf:
+          - $ref: "../primitives/foreignKey.yaml#/"
+          - properties:
+              table:
+                const: "orders"
+        description: "Foreign key reference to the associated Order"
+
+      memberId:
+        allOf:
+          - $ref: "../primitives/foreignKey.yaml#/"
+          - properties:
+              table:
+                const: "members"
+        description: "Foreign key reference to the member with this payment plan"
+
+      payments:
+        type: array
+        items:
+          type: object
+          properties:
+            dueDate:
+              $ref: "../primitives/isoDateTime.yaml#/"
+              description: "When this payment is due"
+
+            amountDue:
+              type: number
+              minimum: 0
+              description: "Amount due for this payment"
+
+            status:
+              type: string
+              enum: [pending, completed, overdue, cancelled]
+              default: pending
+              description: "Status of this individual payment"
+
+          required: [dueDate, amountDue, status]
+        description: "List of individual payments in this plan"
+
+    required: [orderId, memberId, payments]
+
+additionalProperties: true

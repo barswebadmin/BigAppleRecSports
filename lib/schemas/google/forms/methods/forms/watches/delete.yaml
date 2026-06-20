@@ -1,0 +1,23 @@
+description: Delete a watch.
+httpMethod: DELETE
+path: v1/forms/{formId}/watches/{watchId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.readonly
+- https://www.googleapis.com/auth/forms.body
+- https://www.googleapis.com/auth/forms.body.readonly
+- https://www.googleapis.com/auth/forms.responses.readonly
+parameters:
+  formId:
+    location: path
+    required: true
+    description: Required. The ID of the Form.
+    type: string
+  watchId:
+    location: path
+    required: true
+    description: Required. The ID of the Watch to delete.
+    type: string
+response:
+  $ref: Empty

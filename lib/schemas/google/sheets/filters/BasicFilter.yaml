@@ -1,0 +1,34 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BasicFilter
+description: The default filter associated with a sheet. For more information, see
+  [Manage data visibility with filters](https://developers.google.com/workspace/sheets/api/guides/filters).
+type: object
+properties:
+  range:
+    description: The range the filter covers.
+    $ref: GridRange
+  criteria:
+    type: object
+    description: The criteria for showing/hiding values per column. The map's key
+      is the column index, and the value is the criteria for that column. This field
+      is deprecated in favor of filter_specs.
+    deprecated: true
+    additionalProperties:
+      $ref: FilterCriteria
+  tableId:
+    description: The table this filter is backed by, if any. When writing, only one
+      of range or table_id may be set.
+    type: string
+  sortSpecs:
+    type: array
+    description: The sort order per column. Later specifications are used when values
+      are equal in the earlier specifications.
+    items:
+      $ref: SortSpec
+  filterSpecs:
+    description: The filter criteria per column. Both criteria and filter_specs are
+      populated in responses. If both fields are specified in an update request, this
+      field takes precedence.
+    items:
+      $ref: FilterSpec
+    type: array

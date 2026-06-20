@@ -1,0 +1,15 @@
+description: Creates a role assignment.
+httpMethod: POST
+path: admin/directory/v1/customer/{customer}/roleassignments
+scopes:
+- https://www.googleapis.com/auth/admin.directory.rolemanagement
+request:
+  $ref: RoleAssignment
+parameters:
+  customer:
+    description: Immutable ID of the Google Workspace account.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: RoleAssignment

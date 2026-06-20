@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: EmbeddedObjectBorder
+description: A border along an embedded object.
+type: object
+properties:
+  color:
+    description: 'The color of the border. Deprecated: Use color_style.'
+    deprecated: true
+    $ref: Color
+  colorStyle:
+    description: The color of the border. If color is also set, this field takes precedence.
+    $ref: ColorStyle

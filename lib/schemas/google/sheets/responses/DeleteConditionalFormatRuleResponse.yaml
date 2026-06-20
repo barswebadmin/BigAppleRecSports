@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteConditionalFormatRuleResponse
+description: The result of deleting a conditional format rule.
+type: object
+properties:
+  rule:
+    $ref: ConditionalFormatRule
+    description: The rule that was deleted.

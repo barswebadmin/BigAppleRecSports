@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ChipRun
+description: The run of a chip. The chip continues until the start index of the next
+  run.
+type: object
+properties:
+  chip:
+    $ref: Chip
+    description: Optional. The chip of this run.
+  startIndex:
+    description: Required. The zero-based character index where this run starts, in
+      UTF-16 code units.
+    format: int32
+    type: integer

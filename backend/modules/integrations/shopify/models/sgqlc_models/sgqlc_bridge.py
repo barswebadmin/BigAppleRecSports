@@ -14,7 +14,7 @@ from typing import Type, Dict, Any, Optional, List, get_origin, get_args
 from pydantic import BaseModel
 from sgqlc.types import Type as SGQLCType, Field, list_of, map_python_to_graphql
 from sgqlc.types.relay import Connection as SGQLCConnection, connection_args
-from backend.modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection as PydanticConnection
+from modules.integrations.shopify.models.sgqlc_models.common_pydantic import Connection as PydanticConnection
 
 # Cache for generated sgqlc types
 _sgqlc_type_cache: Dict[Type[BaseModel], Type[SGQLCType]] = {}
@@ -70,6 +70,20 @@ def _is_pydantic_model(annotation: Any) -> bool:
 def _resolve_type_name(type_name: str) -> Optional[Type[BaseModel]]:
     """Resolve a type name string to an actual BaseModel class using models namespace."""
     try:
+        # Try sgqlc_models module first (where our Pydantic models are)
+        from modules.integrations.shopify.models import sgqlc_models
+        # Check product_pydantic, customer_pydantic, etc. for the model
+        for module_name in ['product_pydantic', 'customer_pydantic', 'order_pydantic', 'common_pydantic']:
+            try:
+                module = getattr(sgqlc_models, module_name, None)
+                if module and hasattr(module, type_name):
+                    target_type = getattr(module, type_name)
+                    if isinstance(target_type, type) and issubclass(target_type, BaseModel):
+                        return target_type
+            except (AttributeError, TypeError):
+                continue
+        
+        # Fallback to generic models module
         if 'models' in sys.modules:
             models_module = sys.modules['models']
             if hasattr(models_module, type_name):
@@ -91,8 +105,47 @@ def _extract_connection_inner_type(annotation: Any) -> Optional[Type[BaseModel]]
     origin = get_origin(annotation)
     if origin is not None:
         args = get_args(annotation)
-        # Look for Connection in args
+        # Check if origin itself is Connection (e.g., Connection[Collection])
+        if origin is PydanticConnection:
+            if args and len(args) > 0:
+                inner = args[0]
+                if isinstance(inner, type) and issubclass(inner, BaseModel):
+                    return inner
+        
+        # Look for Connection in args (e.g., Optional[Connection[Collection]])
         for arg in args:
+            # Check if arg is a generic Connection type
+            arg_origin = get_origin(arg) if arg is not None else None
+            if arg_origin is PydanticConnection:
+                arg_args = get_args(arg)
+                if arg_args and len(arg_args) > 0:
+                    inner = arg_args[0]
+                    if isinstance(inner, type) and issubclass(inner, BaseModel):
+                        return inner
+            
+            # Check if arg is a concrete Connection class (Pydantic creates concrete classes)
+            # For Pydantic models, check string representation to extract inner type
+            if arg is not None:
+                arg_str = str(arg)
+                if 'Connection[' in arg_str:
+                    match = re.search(r'Connection\[([^\]]+)\]', arg_str)
+                    if match:
+                        inner_type_str = match.group(1).strip().split('.')[-1]
+                        # Try to resolve from product_pydantic module directly
+                        try:
+                            from modules.integrations.shopify.models.sgqlc_models import product_pydantic
+                            if hasattr(product_pydantic, inner_type_str):
+                                resolved = getattr(product_pydantic, inner_type_str)
+                                if isinstance(resolved, type) and issubclass(resolved, BaseModel):
+                                    return resolved
+                        except (ImportError, AttributeError, TypeError):
+                            pass
+                        # Fallback to _resolve_type_name
+                        resolved = _resolve_type_name(inner_type_str)
+                        if resolved:
+                            return resolved
+            
+            # Fallback: check if arg is a Connection class instance
             if isinstance(arg, type) and issubclass(arg, PydanticConnection):
                 # Try to extract from Connection's __args__
                 # Type ignore: __args__ is a typing attribute that exists at runtime
@@ -102,12 +155,6 @@ def _extract_connection_inner_type(annotation: Any) -> Optional[Type[BaseModel]]
                         inner = inner_args[0]
                         if isinstance(inner, type) and issubclass(inner, BaseModel):
                             return inner
-                # Fallback: try string representation
-                arg_str = str(arg)
-                match = re.search(r'Connection\[([^\]]+)\]', arg_str)
-                if match:
-                    inner_type_str = match.group(1).strip().split('.')[-1]
-                    return _resolve_type_name(inner_type_str)
     
     # Fallback to string parsing for forward references
     annotation_str = str(annotation)

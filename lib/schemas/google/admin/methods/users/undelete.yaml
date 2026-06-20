@@ -1,0 +1,13 @@
+description: Undeletes a deleted user.
+httpMethod: POST
+path: admin/directory/v1/users/{userKey}/undelete
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+request:
+  $ref: UserUndelete
+parameters:
+  userKey:
+    description: The immutable id of the user
+    location: path
+    required: true
+    type: string

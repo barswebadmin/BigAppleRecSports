@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateDimensionPropertiesRequest
+description: Updates properties of dimensions within the specified range.
+type: object
+properties:
+  properties:
+    description: Properties to update.
+    $ref: DimensionProperties
+  range:
+    description: The rows or columns to update.
+    $ref: DimensionRange
+  fields:
+    description: The fields that should be updated. At least one field must be specified.
+      The root `properties` is implied and should not be specified. A single `"*"`
+      can be used as short-hand for listing every field.
+    format: google-fieldmask
+    type: string
+  dataSourceSheetRange:
+    $ref: DataSourceSheetDimensionRange
+    description: The columns on a data source sheet to update.

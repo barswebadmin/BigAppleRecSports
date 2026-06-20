@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: KaclsKeyMetadata
+description: Metadata for private keys managed by an external key access control list
+  service. For details about managing key access, see [Google Workspace CSE API Reference](https://developers.google.com/workspace/cse/reference).
+type: object
+properties:
+  kaclsUri:
+    description: The URI of the key access control list service that manages the private
+      key.
+    type: string
+  kaclsData:
+    description: 'Opaque data generated and used by the key access control list service.
+      Maximum size: 8 KiB.'
+    type: string

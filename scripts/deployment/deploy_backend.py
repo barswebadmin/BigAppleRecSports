@@ -41,10 +41,17 @@ import sys
 import subprocess
 import argparse
 import time
+import re
+import json
+import urllib.request
 from pathlib import Path
 from typing import Optional
 
-project_root = Path(__file__).parent.parent.parent
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
+project_root = get_repo_root()
 
 # Add project root to path for imports
 if str(project_root) not in sys.path:
@@ -54,7 +61,7 @@ try:
     import requests
 except ImportError:
     print("❌ Missing required dependencies. Install with:")
-    print("   pip install requests")
+    print("   uv sync")
     sys.exit(1)
 
 
@@ -69,7 +76,7 @@ def validate_requirements() -> bool:
     print("🔍 Validating backend/requirements.txt...")
     try:
         result = subprocess.run(
-            ["pip", "install", "--dry-run", "-r", str(requirements_file)],
+            ["uv", "tree", "--depth", "1"],
             capture_output=True,
             text=True,
             timeout=60
@@ -188,9 +195,15 @@ def increment_backend_version() -> bool:
     
     print("\n📈 Incrementing backend version after successful deployment...")
     
-    # Determine bump type from commit messages
-    bump_type = "patch"  # Default
+    # Determine bump type from PR title (if available) or commit messages
+    # Default to "build" to increment build number without changing semantic version
+    # Only change semantic version if PR title or commit message explicitly indicates it
+    bump_type = "build"  # Default - just increment build number
+    
+    pr_title = None
+    # Try to get PR title from merge commit
     try:
+        # Get merge commit message
         result = subprocess.run(
             ["git", "log", "-1", "--pretty=%B"],
             capture_output=True,
@@ -198,15 +211,68 @@ def increment_backend_version() -> bool:
             timeout=5
         )
         if result.returncode == 0:
-            commit_msg = result.stdout.lower()
-            if any(kw in commit_msg for kw in ["breaking", "major"]):
-                bump_type = "major"
-            elif any(kw in commit_msg for kw in ["feat:", "feature:", "add:", "new:"]):
-                bump_type = "minor"
-            elif any(kw in commit_msg for kw in ["fix:", "bugfix:", "patch:", "hotfix:"]):
-                bump_type = "patch"
-    except Exception:
-        pass  # Default to patch if we can't determine
+            commit_msg = result.stdout
+            
+            # Extract PR number from merge commit (format: "Merge pull request #123 from ...")
+            pr_match = re.search(r'Merge pull request #(\d+)', commit_msg)
+            if pr_match:
+                pr_number = pr_match.group(1)
+                # Try to get PR title using GitHub CLI
+                try:
+                    gh_result = subprocess.run(
+                        ["gh", "pr", "view", pr_number, "--json", "title", "--jq", ".title"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                    if gh_result.returncode == 0 and gh_result.stdout.strip():
+                        pr_title = gh_result.stdout.strip()
+                        print(f"📋 Found PR title: {pr_title}")
+                except (subprocess.TimeoutExpired, FileNotFoundError):
+                    # GitHub CLI not available, try GitHub API directly
+                    try:
+                        github_token = os.getenv("GITHUB_TOKEN")
+                        if github_token:
+                            repo = os.getenv("GITHUB_REPOSITORY", "bigapplerecsports/BigAppleRecSports")
+                            url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
+                            req = urllib.request.Request(url)
+                            req.add_header("Authorization", f"token {github_token}")
+                            req.add_header("Accept", "application/vnd.github.v3+json")
+                            with urllib.request.urlopen(req, timeout=10) as response:
+                                pr_data = json.loads(response.read())
+                                pr_title = pr_data.get("title", "")
+                                if pr_title:
+                                    print(f"📋 Found PR title via API: {pr_title}")
+                    except Exception:
+                        # API call failed, fall back to commit message
+                        pass
+                except Exception:
+                    # Other error, fall back to commit message
+                    pass
+            
+            # Check PR title for version keywords (case-insensitive)
+            # Look for "major", "minor", or "patch" as standalone words or in brackets/colons
+            if pr_title:
+                pr_title_lower = pr_title.lower()
+                # Use word boundaries to match standalone words
+                if re.search(r'\b(major|breaking)\b', pr_title_lower) or '[major]' in pr_title_lower or '[breaking]' in pr_title_lower:
+                    bump_type = "major"
+                elif re.search(r'\bminor\b', pr_title_lower) or '[minor]' in pr_title_lower:
+                    bump_type = "minor"
+                elif re.search(r'\bpatch\b', pr_title_lower) or '[patch]' in pr_title_lower:
+                    bump_type = "patch"
+            else:
+                # Fallback: check commit message for keywords
+                commit_msg_lower = commit_msg.lower()
+                if any(kw in commit_msg_lower for kw in ["breaking", "major"]):
+                    bump_type = "major"
+                elif any(kw in commit_msg_lower for kw in ["feat:", "feature:", "add:", "new:"]):
+                    bump_type = "minor"
+                elif any(kw in commit_msg_lower for kw in ["fix:", "bugfix:", "patch:", "hotfix:"]):
+                    bump_type = "patch"
+    except Exception as e:
+        print(f"⚠️  Could not determine bump type from PR/commit: {e}")
+        pass  # Default to build if we can't determine
     
     # Get commit messages for changelog
     try:

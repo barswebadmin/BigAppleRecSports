@@ -1,0 +1,23 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PersonProperties
+description: Properties specific to a linked person.
+type: object
+properties:
+  email:
+    description: Required. The email address linked to this person. This field is
+      always present.
+    type: string
+  displayFormat:
+    enumDescriptions:
+    - Default value, do not use.
+    - Default display format.
+    - Last name, first name display format.
+    - Email display format.
+    type: string
+    description: Optional. The display format of the person chip. If not set, the
+      default display format is used.
+    enum:
+    - DISPLAY_FORMAT_UNSPECIFIED
+    - DEFAULT
+    - LAST_NAME_COMMA_FIRST_NAME
+    - EMAIL

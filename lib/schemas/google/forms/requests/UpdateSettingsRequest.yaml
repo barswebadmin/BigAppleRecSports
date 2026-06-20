@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateSettingsRequest
+description: Update Form's FormSettings.
+type: object
+properties:
+  settings:
+    description: Required. The settings to update with.
+    $ref: FormSettings
+  updateMask:
+    type: string
+    format: google-fieldmask
+    description: Required. Only values named in this mask are changed. At least one
+      field must be specified. The root `settings` is implied and should not be specified.
+      A single `"*"` can be used as short-hand for updating every field.

@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListUserProcessesResponse
+description: Response with the list of Process resources.
+type: object
+properties:
+  processes:
+    items:
+      $ref: GoogleAppsScriptTypeProcess
+    description: List of processes matching request parameters.
+    type: array
+  nextPageToken:
+    description: Token for the next page of results. If empty, there are no more pages
+      remaining.
+    type: string

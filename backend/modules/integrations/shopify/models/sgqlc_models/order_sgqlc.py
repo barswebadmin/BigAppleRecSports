@@ -4,11 +4,12 @@ Direct sgqlc Type definitions for Order models.
 These are separate from Pydantic models and defined directly using sgqlc's Type system.
 """
 
+from typing import TYPE_CHECKING, cast, Any, Protocol, runtime_checkable
 from sgqlc.types import Type, Field, String, Int, list_of
 from sgqlc.types.relay import Connection, connection_args
 
 # Import Customer for Order.customer field
-from backend.modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import Customer
+from modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import Customer
 
 
 class MoneySet(Type):
@@ -65,6 +66,7 @@ class LineItem(Type):
     originalTotalSet = Field(MoneySetWrapper)
     discountedTotalSet = Field(MoneySetWrapper)
     customAttributes = Field(list_of(CustomAttribute))
+    product = Field('Product')  # Forward reference to Product type
     variant = Field(LineItemVariant)
 
 
@@ -78,11 +80,11 @@ class RefundLineItem(Type):
 class RefundTransaction(Type):
     """Transaction within a refund."""
     id = Field(String)
+    createdAt = Field(String)
     kind = Field(String)
     status = Field(String)
     amount = Field(String)
     gateway = Field(String)
-    createdAt = Field(String)
 
 
 class BillingAddress(Type):
@@ -114,11 +116,11 @@ class ShippingAddress(Type):
 class Transaction(Type):
     """Transaction model for Shopify orders."""
     id = Field(String)
+    createdAt = Field(String)
     kind = Field(String)
     gateway = Field(String)
     status = Field(String)
     amount = Field(String)
-    createdAt = Field(String)
     parentTransaction = Field('Transaction')  # Self-reference
 
 
@@ -128,12 +130,17 @@ class Refund(Type):
     createdAt = Field(String)
     note = Field(String)
     totalRefundedSet = Field(MoneySetWrapper)
-    refundLineItems = Field('RefundLineItemConnection')  # Forward reference
-    transactions = Field('RefundTransactionConnection')  # Connection, not a list
+    refundLineItems = Field('RefundLineItemConnection', args=connection_args())  # Forward reference with connection args
+    transactions = Field('RefundTransactionConnection', args=connection_args())  # Connection with connection args
 
 
 class Order(Type):
-    """Order sgqlc Type."""
+    """Order sgqlc Type.
+    
+    Note: At runtime, accessing attributes (e.g., order.id, order.name) returns
+    actual values (str, list, etc.), not Field objects. The Field assignments are
+    only used for GraphQL query generation.
+    """
     id = Field(String)
     name = Field(String)
     email = Field(String)

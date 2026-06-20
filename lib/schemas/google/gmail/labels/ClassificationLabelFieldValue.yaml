@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ClassificationLabelFieldValue
+description: Field values for a classification label.
+type: object
+properties:
+  fieldId:
+    description: Required. The field ID for the Classification Label Value. Maps to
+      the ID field of the Google Drive `Label.Field` object.
+    type: string
+  selection:
+    description: Selection choice ID for the selection option. Should only be set
+      if the field type is `SELECTION` in the Google Drive `Label.Field` object. Maps
+      to the id field of the Google Drive `Label.Field.SelectionOptions` resource.
+    type: string

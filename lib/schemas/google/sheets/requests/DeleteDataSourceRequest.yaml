@@ -1,0 +1,9 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteDataSourceRequest
+description: Deletes a data source. The request also deletes the associated data source
+  sheet, and unlinks all associated data source objects.
+type: object
+properties:
+  dataSourceId:
+    type: string
+    description: The ID of the data source to delete.

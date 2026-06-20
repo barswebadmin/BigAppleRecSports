@@ -1,0 +1,91 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Leadership Role"
+description: "A leadership role assignment linking a User to a position."
+
+allOf:
+    - $ref: "../primitives/dbRecordBase.yaml#/"
+    - type: object
+        properties:
+            userId:
+                allOf:
+                    - $ref: "../primitives/foreignKey.yaml#/"
+                    - properties:
+                        table:
+                            const: "users"
+
+            title:
+                type: string
+                enum:
+                    - "Commissioner"
+                    - "Assistant Commissioner"
+                    - "Social Chair"
+                    - "Referee Coordinator"
+                    - "Treasurer"
+                    - "Secretary"
+                    - "Board Member"
+
+            role_key:
+                type: string
+
+            department:
+                type: string
+                enum:
+                    - "Kickball"
+                    - "Dodgeball"
+                    - "Bowling"
+                    - "Pickleball"
+                    - "Operations"
+                    - "Finance"
+                    - "Marketing"
+                    - "Technology"
+
+            level:
+                type: string
+
+            day:
+                type: string
+
+            division:
+                type: string
+
+            reportsTo:
+                type: string
+                enum:
+                    - "President"
+                    - "Vice President"
+                    - "Commissioner"
+                    - "Board"
+
+            electedOn:
+                $ref: "../primitives/isoDate.yaml#/"
+
+            startedOn:
+                $ref: "../primitives/isoDate.yaml#/"
+
+            endedOn:
+                $ref: "../primitives/isoDate.yaml#/"
+
+            googleUserId:
+                type: string
+
+            slackUserId:
+                type: string
+
+            shopifyUserId:
+                type: string
+
+            status:
+                type: string
+                enum: ["active", "on_leave", "former", "removed"]
+                default: "active"
+
+        required:
+            - userId
+            - title
+            - role_key
+            - department
+            - reportsTo
+            - startedOn
+            - status
+
+additionalProperties: true

@@ -1,0 +1,35 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: NumberFormat
+description: The number format of a cell.
+type: object
+properties:
+  type:
+    enum:
+    - NUMBER_FORMAT_TYPE_UNSPECIFIED
+    - TEXT
+    - NUMBER
+    - PERCENT
+    - CURRENCY
+    - DATE
+    - TIME
+    - DATE_TIME
+    - SCIENTIFIC
+    description: The type of the number format. When writing, this field must be set.
+    type: string
+    enumDescriptions:
+    - The number format is not specified and is based on the contents of the cell.
+      Do not explicitly use this.
+    - Text formatting, e.g `1000.12`
+    - Number formatting, e.g, `1,000.12`
+    - Percent formatting, e.g `10.12%`
+    - Currency formatting, e.g `$1,000.12`
+    - Date formatting, e.g `9/26/2008`
+    - Time formatting, e.g `3:59:00 PM`
+    - Date+Time formatting, e.g `9/26/08 15:59:00`
+    - Scientific number formatting, e.g `1.01E+03`
+  pattern:
+    description: Pattern string used for formatting. If not set, a default pattern
+      based on the spreadsheet's locale will be used if necessary for the given type.
+      See the [Date and Number Formats guide](https://developers.google.com/workspace/sheets/api/guides/formats)
+      for more information about the supported patterns.
+    type: string

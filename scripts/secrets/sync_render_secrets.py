@@ -35,18 +35,19 @@ import argparse
 from pathlib import Path
 from typing import Dict, Optional
 
-# Add project root to path for imports
-project_root = Path(__file__).parent.parent.parent
+import sys
+from pathlib import Path
+
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
+project_root = get_repo_root()
 sys.path.insert(0, str(project_root))
 
-try:
-    import requests
-    import boto3
-    from botocore.exceptions import ClientError, BotoCoreError
-except ImportError:
-    print("❌ Missing required dependencies. Install with:")
-    print("   pip install requests boto3")
-    sys.exit(1)
+import requests
+import boto3
+from botocore.exceptions import ClientError, BotoCoreError
 
 
 def load_env_file(env_path: Optional[Path] = None) -> Dict[str, str]:
@@ -91,7 +92,7 @@ def _ssm_param_to_env_var(param_name: str) -> str:
         /shopify/store_id -> SHOPIFY.STORE_ID
         /slack/bot.dev.token -> SLACK.BOT.DEV.TOKEN
         /lambda/url.schedule_product_changes -> LAMBDA.URL.SCHEDULE_PRODUCT_CHANGES
-        /google/url.web_app.refunds -> GOOGLE.URL.WEB_APP.REFUNDS
+        /google/url.web_app.refunds -> google.url.web_app.refunds
     """
     name = param_name.lstrip("/")
     parts = name.split("/", 1)

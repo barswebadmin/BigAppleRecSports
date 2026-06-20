@@ -1,0 +1,23 @@
+description: Takes an action that affects a mobile device. For example, remotely wiping
+  a device.
+httpMethod: POST
+path: admin/directory/v1/customer/{customerId}/devices/mobile/{resourceId}/action
+scopes:
+- https://www.googleapis.com/auth/admin.directory.device.mobile
+- https://www.googleapis.com/auth/admin.directory.device.mobile.action
+request:
+  $ref: MobileDeviceAction
+parameters:
+  customerId:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's `customerId`. The `customerId` is also returned as part of the
+      [Users resource](https://developers.google.com/workspace/admin/directory/v1/reference/users).
+    location: path
+    required: true
+    type: string
+  resourceId:
+    description: The unique ID the API service uses to identify the mobile device.
+    location: path
+    required: true
+    type: string

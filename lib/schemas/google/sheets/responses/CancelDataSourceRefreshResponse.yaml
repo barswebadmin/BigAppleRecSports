@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CancelDataSourceRefreshResponse
+description: The response from cancelling one or multiple data source object refreshes.
+type: object
+properties:
+  statuses:
+    description: The cancellation statuses of refreshes of all data source objects
+      specified in the request. If is_all is specified, the field contains only those
+      in failure status. Refreshing and canceling refresh the same data source object
+      is also not allowed in the same `batchUpdate`.
+    items:
+      $ref: CancelDataSourceRefreshStatus
+    type: array

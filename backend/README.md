@@ -41,7 +41,7 @@ backend/
 1. **Install Dependencies**
    ```bash
    cd backend
-   pip install -r requirements.txt
+   uv sync
    ```
 
 2. **Environment Configuration**
@@ -125,7 +125,7 @@ Business logic for leadership processing:
 
 ## Deployment (Render)
 
-This app is configured for deployment on [Render](https://render.com) using the `render.yaml` configuration.
+This app is configured for deployment on [Render](https://render.com) using the `render.yaml` configuration at the repository root.
 
 ### Deploy Steps:
 1. **Connect Repository**: Link your GitHub repository to Render

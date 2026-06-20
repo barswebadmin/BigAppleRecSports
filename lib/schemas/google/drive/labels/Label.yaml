@@ -1,0 +1,19 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Label
+description: Representation of label and label fields.
+type: object
+properties:
+  id:
+    description: The ID of the label.
+    type: string
+  revisionId:
+    description: The revision ID of the label.
+    type: string
+  kind:
+    description: This is always drive#label
+    type: string
+  fields:
+    description: A map of the fields on the label, keyed by the field's ID.
+    type: object
+    additionalProperties:
+      $ref: LabelField

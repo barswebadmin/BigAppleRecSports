@@ -1,0 +1,49 @@
+description: Lists the messages in the user's mailbox. For example usage, see [List
+  Gmail messages](https://developers.google.com/workspace/gmail/api/guides/list-messages).
+httpMethod: GET
+path: gmail/v1/users/{userId}/messages
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.metadata
+- https://www.googleapis.com/auth/gmail.modify
+- https://www.googleapis.com/auth/gmail.readonly
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  maxResults:
+    description: Maximum number of messages to return. This field defaults to 100.
+      The maximum allowed value for this field is 500.
+    default: '100'
+    location: query
+    type: integer
+    format: uint32
+  pageToken:
+    description: Page token to retrieve a specific page of results in the list.
+    location: query
+    type: string
+  q:
+    description: 'Only return messages matching the specified query. Supports the
+      same query format as the Gmail search box. For example, `"from:someuser@example.com
+      rfc822msgid: is:unread"`. Parameter cannot be used when accessing the api using
+      the gmail.metadata scope.'
+    location: query
+    type: string
+  labelIds:
+    description: Only return messages with labels that match all of the specified
+      label IDs. Messages in a thread might have labels that other messages in the
+      same thread don't have. To learn more, see [Manage labels on messages and threads](https://developers.google.com/workspace/gmail/api/guides/labels#manage_labels_on_messages_threads).
+    location: query
+    repeated: true
+    type: string
+  includeSpamTrash:
+    description: Include messages from `SPAM` and `TRASH` in the results.
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: ListMessagesResponse

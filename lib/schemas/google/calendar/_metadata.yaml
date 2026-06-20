@@ -1,0 +1,47 @@
+api: calendar
+version: v3
+title: Calendar API
+description: Manipulates events and other calendar data.
+baseUrl: https://www.googleapis.com/calendar/v3/
+documentationLink: https://developers.google.com/workspace/calendar/firstapp
+generated: auto-generated from Google Discovery API
+schemas:
+- Acl
+- AclRule
+- Calendar
+- CalendarList
+- CalendarListEntry
+- CalendarNotification
+- Channel
+- ColorDefinition
+- Colors
+- ConferenceData
+- ConferenceParameters
+- ConferenceParametersAddOnParameters
+- ConferenceProperties
+- ConferenceRequestStatus
+- ConferenceSolution
+- ConferenceSolutionKey
+- CreateConferenceRequest
+- EntryPoint
+- Error
+- Event
+- EventAttachment
+- EventAttendee
+- EventBirthdayProperties
+- EventDateTime
+- EventFocusTimeProperties
+- EventLabel
+- EventOutOfOfficeProperties
+- EventReminder
+- EventWorkingLocationProperties
+- Events
+- FreeBusyCalendar
+- FreeBusyGroup
+- FreeBusyRequest
+- FreeBusyRequestItem
+- FreeBusyResponse
+- LabelProperties
+- Setting
+- Settings
+- TimePeriod

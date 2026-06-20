@@ -1,0 +1,18 @@
+description: Adds an organizational unit.
+httpMethod: POST
+path: admin/directory/v1/customer/{customerId}/orgunits
+scopes:
+- https://www.googleapis.com/auth/admin.directory.orgunit
+request:
+  $ref: OrgUnit
+parameters:
+  customerId:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's `customerId`. The `customerId` is also returned as part of the
+      [Users resource](https://developers.google.com/workspace/admin/directory/v1/reference/users).
+    location: path
+    required: true
+    type: string
+response:
+  $ref: OrgUnit

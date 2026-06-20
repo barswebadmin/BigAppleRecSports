@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Error
+description: ''
+type: object
+properties:
+  domain:
+    type: string
+    description: Domain, or broad category, of the error.
+  reason:
+    type: string
+    description: "Specific reason for the error. Some of the possible values are:\
+      \  \n- \"groupTooBig\" - The group of users requested is too large for a single\
+      \ query. \n- \"tooManyCalendarsRequested\" - The number of calendars requested\
+      \ is too large for a single query. \n- \"notFound\" - The requested resource\
+      \ was not found. \n- \"internalError\" - The API service has encountered an\
+      \ internal error.  Additional error types may be added in the future, so clients\
+      \ should gracefully handle additional error statuses not included in this list."

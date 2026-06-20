@@ -1,70 +1,223 @@
-[build-system]
-requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "bars"
+name = "bars-monorepo"
 version = "1.0.0"
-description = "Big Apple Rec Sports - Backend & CLI"
-requires-python = ">=3.11,<3.12"
+description = "Big Apple Rec Sports - Monorepo Development Tools"
+requires-python = ">=3.14"
+readme = "README.md"
+
 dependencies = [
-    "click>=8.1.7",
-    "rich>=13.7.0",
-    "questionary>=2.0.0",
-    "validators>=0.35.0",
-    "sgqlc>=17.0",
-    "google-api-python-client>=2.154.0",
-    "google-auth>=2.37.0",
-    "google-auth-httplib2>=0.2.0",
-    "google-auth-oauthlib>=1.2.1",
+    # Config / settings
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+
+    # Data manipulation
+    "python-benedict[io,parse]>=0.37.0",
+    "python-box>=7.4.1",
+    "glom>=25.12.0",
+    "caseutil>=0.7.2",
     "python-dateutil>=2.9.0",
-    "python-dotenv>=1.0.1",
+    "anyio",
+    "anytree>=2.13.0",
+    "python-fsutil>=0.16.1",
+    "polars",
+
+    # HTTP + cloud clients
+    "google-auth>=2.49.1",
+    "google-api-python-client>=2.192.0",
+    "boto3>=1.34.0",
+    "httpx[cli,http2]",
+    "httpx-retries>=0.4.6",
+    "aiohttp>=3.9",
+    "gql>=4.0.0",
+    "autoregistry>=1.3.0",
+    "tldextract>=5.3.1",
+    "beautifulsoup4>=4.12",
+
+    # CLI / interactive tools
+    "cyclopts>=4.5.1",
+    "rich>=13",
+    "pyperclip>=1.11.0",
+    "questionary",
+    "prompt-toolkit>=3.0.52",
 ]
 
-[project.scripts]
-bars = "bars_cli.main:cli"
+[project.optional-dependencies]
+firebase = [
+    "firebase-admin>=7.2.0",
+]
+dev = [
+    # Linting & formatting
+    "ruff>=0.1.0",
 
-[tool.setuptools]
-packages = ["bars_cli", "bars_cli.commands"]
+    # Type checking
+    "mypy>=1.0.0",
+    "pyright>=1.1.409",
 
-[tool.pyright]
-extraPaths = [
-    "./lambda-layers/bars-common-utils/python",
-    "./lambda-functions/MoveInventoryLambda",
-    "./lambda-functions/shopifyProductUpdateHandler", 
-    "./lambda-functions/createScheduledPriceChanges",
-    "./lambda-functions/schedulePriceChanges",
-    "./lambda-functions/CreateScheduleLambda",
-    "./lambda-functions/changePricesOfOpenAndWaitlistVariants"
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+    "pytest-rich",
+    "hypothesis",
+
+    # Import analysis
+    "import-linter>=2.6",
+    "knot-imports>=0.1.0",
+
+    # AWS mocking (for lambda tests)
+    "moto>=4.0.0",
+
+    # Pre-commit hooks
+    "pre-commit>=3.0.0",
 ]
 
-stubPath = "backend/typings"
+[dependency-groups]
+dev = [
+    "boto3-stubs[scheduler]>=1.43.33",
+]
 
-typeCheckingMode = "basic"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-# Use local stubs for untyped third-party libs without requiring the package at runtime
-reportMissingImports = "none"
-reportMissingModuleSource = "none"
+# =============================================================================
+# UV SOURCES CONFIGURATION
+# =============================================================================
+[tool.uv.sources]
+# Centralized local package resolution for monorepo.
+# Workspace members can be referenced by name from any other member via
+# `<name> = { workspace = true }` in that member's [tool.uv.sources]; the
+# entries below only exist for the root project's own dependencies.
+bars-shared-utilities = { workspace = true }
 
-[tool.pytest.ini_options]
-pythonpath = [
+[tool.uv.workspace]
+# `backend` and `backend/registrations` are excluded: backend pins 10 deps to
+# exact versions that conflict with the rest of the monorepo's resolution.
+# They stay standalone projects with their own [tool.uv.sources] path entries.
+# When backend's pins are relaxed it can be added here as a member.
+members = [
+    "lib/clients/shopify-client",
+    "scripts",
+    "shared_utilities",
+    "aws/lambda/functions/AwsRouter",
+    "aws/lambda/functions/ShopifyProductUpdates",
+    "aws/lambda/functions/ShopifyRefundHandler",
+]
+exclude = [
     "backend",
-    "./lambda-layers/bars-common-utils/python",
-    "./lambda-functions/MoveInventoryLambda",
-    "./lambda-functions/shopifyProductUpdateHandler",
-    "./lambda-functions/createScheduledPriceChanges", 
-    "./lambda-functions/schedulePriceChanges",
-    "./lambda-functions/CreateScheduleLambda",
-    "./lambda-functions/changePricesOfOpenAndWaitlistVariants"
+    "slack-apps",
 ]
 
-testpaths = ["lambda-functions/tests", "backend/routers/tests"]
-addopts = "-v --tb=short" 
+# =============================================================================
+# RUFF CONFIGURATION (applies to all projects)
+# =============================================================================
+[tool.ruff]
+line-length = 120
+target-version = "py314"
 
-[tool.ariadne-codegen]
-schema_path = "backend/modules/integrations/shopify/core/fetched_schema.json"
-queries_path = "backend/modules/integrations/shopify/builders"
-target_package_path = "backend/modules/integrations/shopify/generated_client"
-client_name = "ShopifyGeneratedClient"
-python_version = "3.11"
-include_comments = true 
+# Exclude common directories
+exclude = [
+    ".git",
+    ".venv",
+    ".venvs",
+    "__pycache__",
+    "node_modules",
+    ".pytest_cache",
+    ".ruff_cache",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+]
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
+
+# =============================================================================
+# PYTEST CONFIGURATION (monorepo-wide)
+# =============================================================================
+[tool.pytest.ini_options]
+# Test discovery paths for all projects
+testpaths = [
+    "backend/tests",
+    "backend/routers/tests",
+    "lambda/functions/tests",
+    "shared_utilities/tests",
+    "lib/tests",
+]
+
+# Python path for imports
+pythonpath = [
+    ".",
+    "backend",
+    "lambda/functions",
+    "lambda/layers/bars_common_utils",
+    "shared_utilities",
+]
+
+# Test execution options
+addopts = [
+    "-v",                    # Verbose output
+    "--tb=short",            # Short traceback format
+    "--strict-markers",      # Strict marker validation
+    "--strict-config",       # Strict config validation
+]
+
+# Test markers
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# =============================================================================
+# COVERAGE CONFIGURATION
+# =============================================================================
+[tool.coverage.run]
+source = [
+    "backend",
+    "lambda/functions",
+    "shared_utilities",
+]
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+    "*/node_modules/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+# =============================================================================
+# MYPY CONFIGURATION
+# =============================================================================
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradually enable
+ignore_missing_imports = true
+
+# Per-module options
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+

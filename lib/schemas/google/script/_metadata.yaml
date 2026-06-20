@@ -1,0 +1,39 @@
+api: script
+version: v1
+title: Apps Script API
+description: 'Manages and executes Google Apps Script projects. '
+baseUrl: https://script.googleapis.com/
+documentationLink: https://developers.google.com/apps-script/api/
+generated: auto-generated from Google Discovery API
+schemas:
+- Empty
+- GoogleAppsScriptTypeFunction
+- EntryPoint
+- Deployment
+- GoogleAppsScriptTypeWebAppEntryPoint
+- Project
+- GoogleAppsScriptTypeWebAppConfig
+- GoogleAppsScriptTypeExecutionApiConfig
+- ListDeploymentsResponse
+- MetricsValue
+- ScriptStackTraceElement
+- GoogleAppsScriptTypeFunctionSet
+- DeploymentConfig
+- ListUserProcessesResponse
+- GoogleAppsScriptTypeProcess
+- GoogleAppsScriptTypeExecutionApiEntryPoint
+- Operation
+- ListScriptProcessesResponse
+- ListVersionsResponse
+- File
+- ExecutionRequest
+- Content
+- ExecutionResponse
+- GoogleAppsScriptTypeUser
+- UpdateDeploymentRequest
+- Version
+- Status
+- GoogleAppsScriptTypeAddOnEntryPoint
+- Metrics
+- CreateProjectRequest
+- ExecutionError

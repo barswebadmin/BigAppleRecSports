@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Thread
+description: A collection of messages representing a conversation.
+type: object
+properties:
+  id:
+    description: The unique ID of the thread.
+    type: string
+  snippet:
+    description: A short part of the message text.
+    type: string
+  historyId:
+    description: The ID of the last history record that modified this thread.
+    type: string
+    format: uint64
+  messages:
+    description: The list of messages in the thread.
+    type: array
+    items:
+      $ref: Message

@@ -1,0 +1,32 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ConditionValue
+description: The value of the condition.
+type: object
+properties:
+  relativeDate:
+    description: A relative date (based on the current date). Valid only if the type
+      is DATE_BEFORE, DATE_AFTER, DATE_ON_OR_BEFORE or DATE_ON_OR_AFTER. Relative
+      dates are not supported in data validation. They are supported only in conditional
+      formatting and conditional filters.
+    enum:
+    - RELATIVE_DATE_UNSPECIFIED
+    - PAST_YEAR
+    - PAST_MONTH
+    - PAST_WEEK
+    - YESTERDAY
+    - TODAY
+    - TOMORROW
+    enumDescriptions:
+    - Default value, do not use.
+    - The value is one year before today.
+    - The value is one month before today.
+    - The value is one week before today.
+    - The value is yesterday.
+    - The value is today.
+    - The value is tomorrow.
+    type: string
+  userEnteredValue:
+    type: string
+    description: A value the condition is based on. The value is parsed as if the
+      user typed into a cell. Formulas are supported (and must begin with an `=` or
+      a '+').

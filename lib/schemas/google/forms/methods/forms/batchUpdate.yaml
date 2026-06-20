@@ -1,0 +1,17 @@
+description: Change the form with a batch of updates.
+httpMethod: POST
+path: v1/forms/{formId}:batchUpdate
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/forms.body
+request:
+  $ref: BatchUpdateFormRequest
+parameters:
+  formId:
+    location: path
+    required: true
+    description: Required. The form ID.
+    type: string
+response:
+  $ref: BatchUpdateFormResponse

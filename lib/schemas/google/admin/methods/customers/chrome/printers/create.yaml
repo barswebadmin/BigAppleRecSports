@@ -1,0 +1,16 @@
+description: Creates a printer under given Organization Unit.
+httpMethod: POST
+path: admin/directory/v1/{+parent}/chrome/printers
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+request:
+  $ref: Printer
+parameters:
+  parent:
+    description: 'Required. The name of the customer. Format: customers/{customer_id}'
+    pattern: ^customers/[^/]+$
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Printer

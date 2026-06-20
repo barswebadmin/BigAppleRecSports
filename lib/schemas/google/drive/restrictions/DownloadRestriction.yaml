@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DownloadRestriction
+description: A restriction for copy and download of the file.
+type: object
+properties:
+  restrictedForReaders:
+    description: Whether download and copy is restricted for readers.
+    type: boolean
+  restrictedForWriters:
+    description: Whether download and copy is restricted for writers. If `true`, download
+      is also restricted for readers.
+    type: boolean

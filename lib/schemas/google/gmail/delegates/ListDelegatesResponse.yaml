@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListDelegatesResponse
+description: Response for the ListDelegates method.
+type: object
+properties:
+  delegates:
+    description: List of the user's delegates (with any verification status). If an
+      account doesn't have delegates, this field doesn't appear.
+    type: array
+    items:
+      $ref: Delegate

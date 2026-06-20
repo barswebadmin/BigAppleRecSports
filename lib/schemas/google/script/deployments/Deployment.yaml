@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Deployment
+description: Representation of a single script deployment.
+type: object
+properties:
+  updateTime:
+    description: Last modified date time stamp.
+    type: string
+    format: google-datetime
+  entryPoints:
+    description: The deployment's entry points.
+    type: array
+    items:
+      $ref: EntryPoint
+  deploymentId:
+    description: The deployment ID for this deployment.
+    type: string
+  deploymentConfig:
+    $ref: DeploymentConfig
+    description: The deployment configuration.

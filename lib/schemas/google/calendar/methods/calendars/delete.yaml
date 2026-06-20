@@ -1,0 +1,16 @@
+description: Deletes a secondary calendar. Use calendars.clear for clearing all events
+  on primary calendars.
+httpMethod: DELETE
+path: calendars/{calendarId}
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.app.created
+- https://www.googleapis.com/auth/calendar.calendars
+parameters:
+  calendarId:
+    type: string
+    description: Calendar identifier. To retrieve calendar IDs call the calendarList.list
+      method. If you want to access the primary calendar of the currently logged in
+      user, use the "primary" keyword.
+    required: true
+    location: path

@@ -1,38 +1,43 @@
 """Slack Channel models for conversations.info API responses"""
 
 from typing import List, Optional, Any
-from pydantic import field_validator
-from shared.model_config import ApiModel
+from pydantic import BaseModel, field_validator
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 
-class SlackChannelPurpose(ApiModel):
+class SlackChannelPurpose(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Slack channel purpose information"""
     value: str
     creator: str
     last_set: int
 
 
-class SlackChannelTopic(ApiModel):
+class SlackChannelTopic(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Slack channel topic information"""
     value: str
     creator: str
     last_set: int
 
 
-class SlackChannelTab(ApiModel):
+class SlackChannelTab(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Slack channel tab information"""
     type: str
     label: Optional[str] = None
     id: Optional[str] = None
 
 
-class SlackChannelProperties(ApiModel):
+class SlackChannelProperties(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Slack channel properties"""
     tabs: Optional[List[SlackChannelTab]] = None
     tabz: Optional[List[SlackChannelTab]] = None
 
 
-class SlackChannel(ApiModel):
+class SlackChannel(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """Slack channel information from conversations.info API"""
     id: str
     name: str

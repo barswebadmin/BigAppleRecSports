@@ -1,0 +1,12 @@
+description: Deletes a group.
+httpMethod: DELETE
+path: admin/directory/v1/groups/{groupKey}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.group
+parameters:
+  groupKey:
+    description: Identifies the group in the API request. The value can be the group's
+      email address, group alias, or the unique group ID.
+    location: path
+    required: true
+    type: string

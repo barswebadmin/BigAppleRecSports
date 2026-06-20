@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ConferenceSolution
+description: ''
+type: object
+properties:
+  iconUri:
+    type: string
+    description: The user-visible icon for this solution.
+  key:
+    $ref: ConferenceSolutionKey
+    description: The key which can uniquely identify the conference solution for this
+      event.
+  name:
+    type: string
+    description: The user-visible name of this solution. Not localized.

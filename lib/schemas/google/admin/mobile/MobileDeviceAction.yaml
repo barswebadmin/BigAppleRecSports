@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MobileDeviceAction
+description: ''
+type: object
+properties:
+  action:
+    description: The action to be performed on the device.
+    annotations:
+      required:
+      - directory.mobiledevices.action
+    type: string

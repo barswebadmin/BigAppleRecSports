@@ -11,12 +11,15 @@ import base64
 import logging
 from typing import Optional
 
+from config import config
+
 logger = logging.getLogger(__name__)
 
 
 class ShopifySecurity:
-    def __init__(self, webhook_secret: Optional[str] = None):
-        self.webhook_secret = webhook_secret
+    def __init__(self):
+        self.webhook_secret = config['SHOPIFY']['WEBHOOK']['SECRET']
+        self.env = config['ENVIRONMENT']
 
     def verify_shopify_webhook(self, body: bytes, signature: str) -> bool:
         """Verify Shopify webhook using base64(HMAC-SHA256(body, secret)).
@@ -24,20 +27,9 @@ class ShopifySecurity:
         """
         try:
             secret = self.webhook_secret
-            secret_source = "explicit"
-            # Determine environment and choose correct secret env var
-            env = os.getenv("ENVIRONMENT", "dev").lower()
-            is_prod = env == "production"
-            if not secret:
-                if env in ("staging", "production"):
-                    secret = os.getenv("SHOPIFY_SECRET_WEBHOOK")
-                    secret_source = "SHOPIFY_SECRET_WEBHOOK"
-                else:
-                    secret = os.getenv("SHOPIFY_DEV_SECRET_WEBHOOK")
-                    secret_source = "SHOPIFY_DEV_SECRET_WEBHOOK"
 
             if not secret:
-                if not is_prod:
+                if self.env != 'production':
                     logger.warning("Missing webhook secret - skipping verification in non-production")
                     return True
                 logger.error("Missing webhook secret - rejecting request")
@@ -48,7 +40,11 @@ class ShopifySecurity:
                 return False
 
             expected = hmac.new(secret.encode('utf-8'), body, hashlib.sha256).digest()
-            received = base64.b64decode(signature)
+            try:
+                received = base64.b64decode(signature)
+            except Exception:
+                logger.warning("Invalid webhook signature encoding - rejecting request")
+                return False
 
             # TEMP DIAGNOSTIC (masked)
             try:
@@ -57,8 +53,6 @@ class ShopifySecurity:
                 masked_sig = f"{signature[:4]}...{signature[-4:]}" if signature else "<none>"
                 logger.info(
                     "Shopify HMAC verify: env=%s source=%s have_secret=%s secret_len=%s body_len=%s expected=%s provided=%s",
-                    env,
-                    secret_source,
                     bool(secret),
                     len(secret or ""),
                     len(body or b""),

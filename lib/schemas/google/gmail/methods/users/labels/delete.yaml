@@ -1,0 +1,21 @@
+description: Immediately and permanently deletes the specified label and removes it
+  from any messages and threads that it is applied to.
+httpMethod: DELETE
+path: gmail/v1/users/{userId}/labels/{id}
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.labels
+- https://www.googleapis.com/auth/gmail.modify
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  id:
+    description: The ID of the label to delete.
+    location: path
+    required: true
+    type: string

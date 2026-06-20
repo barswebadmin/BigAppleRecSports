@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListPrintersResponse
+description: Response for listing printers.
+type: object
+properties:
+  printers:
+    description: List of printers. If `org_unit_id` was given in the request, then
+      only printers visible for this OU will be returned. If `org_unit_id` was not
+      given in the request, then all printers will be returned.
+    type: array
+    items:
+      $ref: Printer
+  nextPageToken:
+    description: A token, which can be sent as `page_token` to retrieve the next page.
+      If this field is omitted, there are no subsequent pages.
+    type: string

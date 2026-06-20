@@ -18,7 +18,7 @@ Complete deployment procedures for all BARS components.
 Deploys automatically when pushing to `main` branch with changes to:
 - `backend/**`
 - `requirements.txt`
-- `render.yaml`
+- `render.yaml` (repository root)
 - `shared-utilities/**`
 
 ### Manual Deployment
@@ -120,9 +120,9 @@ Functions deployed:
 - **shopifyProductUpdateHandler** - Automatically updates product images to "sold out" versions when all relevant variants are out of stock
 - **changePricesOfOpenAndWaitlistVariants** - Price management for open and waitlist variants
 - **MoveInventoryLambda** - Inventory transfers between variants
-- **setProductLiveByAddingInventory** - Product activation by adding inventory
-- **createScheduledPriceChanges** - Schedule price changes for products
-- **ScheduleChangesForShopifyProductsLambda** - Process scheduled product changes
+- **updateRegistrationStatus** - Unified product go-live / status update / close-reg (title, image, tags, inventory with soft-handoff, Slack)
+- **ScheduleChangesForShopifyProductsLambda** - Creates EventBridge schedules for inventory moves, price changes, and go-live
+- **SchedulerAPI** - HTTP Function URL for generic EventBridge schedule CRUD
 
 ### Function Architecture
 Each function follows BARS patterns:
@@ -150,15 +150,12 @@ For safety, lambda layers require manual deployment:
 
 ### Local Testing
 ```bash
-# Setup lambda development
-python3 scripts/setup_local_development.py
-
 # Test specific function
-cd lambda-functions/shopifyProductUpdateHandler
-python3 lambda_function.py
+cd lambda/functions/shopifyProductUpdateHandler
+python3 main.py
 
 # Run lambda test suite
-cd lambda-functions
+cd lambda/functions
 python3 tests/run_tests.py unit
 ```
 
@@ -175,7 +172,7 @@ SHOPIFY_WEBHOOK_SECRET=your_webhook_secret
 ### Prerequisites
 ```bash
 # Install clasp globally
-npm install -g @google/clasp
+pnpm add -g @google/clasp
 
 # Setup authentication
 bash scripts/deployment/google/setup_auth.sh
@@ -184,13 +181,13 @@ bash scripts/deployment/google/setup_auth.sh
 ### Deploy Individual Project
 ```bash
 # Deploy specific project (from repo root)
-bash scripts/deployment/deploy_google.sh process-refunds-exchanges      # Refund and exchange workflows
-bash scripts/deployment/deploy_google.sh parse-registration-info        # Registration data parsing
-bash scripts/deployment/deploy_google.sh leadership-discount-codes      # Leadership discount management
-bash scripts/deployment/deploy_google.sh product-variant-creation       # Shopify product creation
-bash scripts/deployment/deploy_google.sh add-sold-out-product-to-waitlist  # Waitlist form management
-bash scripts/deployment/deploy_google.sh payment-assistance-tags        # Payment assistance processing
-bash scripts/deployment/deploy_google.sh waitlist-script               # Waitlist functionality
+bash scripts/deployment/deploy process-refunds-exchanges      # Refund and exchange workflows
+bash scripts/deployment/deploy parse-registration-info        # Registration data parsing
+bash scripts/deployment/deploy leadership-discount-codes      # Leadership discount management
+bash scripts/deployment/deploy product-variant-creation       # Shopify product creation
+bash scripts/deployment/deploy add-sold-out-product-to-waitlist  # Waitlist form management
+bash scripts/deployment/deploy payment-assistance-tags        # Payment assistance processing
+bash scripts/deployment/deploy waitlist-script               # Waitlist functionality
 ```
 
 ### Script Architecture
@@ -211,9 +208,9 @@ Each of the 7 scripts follows consistent patterns:
 ### Deploy All Projects
 ```bash
 # Deploy all projects (from repo root)
-for project in GoogleAppsScripts/projects/*/; do
+for project in google-apps-scripts/projects/*/; do
   project_name=$(basename "$project")
-  bash scripts/deployment/deploy_google.sh "$project_name"
+  bash scripts/deployment/deploy "$project_name"
 done
 ```
 
@@ -317,7 +314,7 @@ All deployments send notifications:
 # 3. Restore previous version
 
 # Via clasp (from project directory)
-cd GoogleAppsScripts/projects/[project-name]
+cd google-apps-scripts/projects/[project-name]
 clasp versions  # List versions
 clasp version [version_number]  # Restore version
 ```
@@ -417,7 +414,7 @@ If issues occur in production:
 - Demonstrated automatic version increment system
 
 #### 📁 Files Changed
-- `backend/main.py`, `backend/config.py`, `render.yaml`
+- `backend/main.py`, `backend/config.py`, `render.yaml` (repo root)
 - Enhanced security measures and monitoring endpoints
 - Improved development experience with hot reload
 

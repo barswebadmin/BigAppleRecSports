@@ -1,0 +1,16 @@
+description: Changes the status of a batch of ChromeOS devices. For more information
+  about changing a ChromeOS device state [Repair, repurpose, or retire ChromeOS devices](https://support.google.com/chrome/a/answer/3523633).
+httpMethod: POST
+path: admin/directory/v1/customer/{customerId}/devices/chromeos:batchChangeStatus
+scopes:
+- https://www.googleapis.com/auth/admin.directory.device.chromeos
+request:
+  $ref: BatchChangeChromeOsDeviceStatusRequest
+parameters:
+  customerId:
+    description: Required. Immutable ID of the Google Workspace account.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: BatchChangeChromeOsDeviceStatusResponse

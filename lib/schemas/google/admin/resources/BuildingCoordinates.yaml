@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BuildingCoordinates
+description: 'Public API: Resources.buildings'
+type: object
+properties:
+  latitude:
+    description: Latitude in decimal degrees.
+    type: number
+    format: double
+  longitude:
+    description: Longitude in decimal degrees.
+    type: number
+    format: double

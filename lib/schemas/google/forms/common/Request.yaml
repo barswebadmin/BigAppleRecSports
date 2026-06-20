@@ -1,0 +1,23 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Request
+description: The kinds of update requests that can be made.
+type: object
+properties:
+  updateFormInfo:
+    $ref: UpdateFormInfoRequest
+    description: Update Form's Info.
+  updateSettings:
+    $ref: UpdateSettingsRequest
+    description: Updates the Form's settings.
+  moveItem:
+    description: Move an item to a specified location.
+    $ref: MoveItemRequest
+  updateItem:
+    description: Update an item.
+    $ref: UpdateItemRequest
+  deleteItem:
+    description: Delete an item.
+    $ref: DeleteItemRequest
+  createItem:
+    description: Create a new item.
+    $ref: CreateItemRequest

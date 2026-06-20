@@ -8,7 +8,7 @@ and waitlist registration identification.
 import json
 import logging
 from typing import Dict, Any, Optional
-from backend.config import config
+from config import config
 from new_structure_target.clients.shopify.builders.shopify_url_builders import build_order_url
 from new_structure_target.clients.slack.builders.message_builder import SlackMessageBuilder
 

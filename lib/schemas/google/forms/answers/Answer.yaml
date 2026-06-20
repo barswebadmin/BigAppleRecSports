@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Answer
+description: The submitted answer for a question.
+type: object
+properties:
+  fileUploadAnswers:
+    description: Output only. The answers to a file upload question.
+    readOnly: true
+    $ref: FileUploadAnswers
+  questionId:
+    type: string
+    description: Output only. The question's ID. See also Question.question_id.
+    readOnly: true
+  grade:
+    readOnly: true
+    $ref: Grade
+    description: Output only. The grade for the answer if the form was a quiz.
+  textAnswers:
+    readOnly: true
+    $ref: TextAnswers
+    description: Output only. The specific answers as text.

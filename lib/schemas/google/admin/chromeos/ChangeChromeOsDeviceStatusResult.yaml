@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ChangeChromeOsDeviceStatusResult
+description: The result of a single ChromeOS device for a Change state operation.
+type: object
+properties:
+  deviceId:
+    description: The unique ID of the ChromeOS device.
+    type: string
+  error:
+    description: The error result of the operation in case of failure.
+    $ref: Status
+  response:
+    description: The device could change its status successfully.
+    $ref: ChangeChromeOsDeviceStatusSucceeded

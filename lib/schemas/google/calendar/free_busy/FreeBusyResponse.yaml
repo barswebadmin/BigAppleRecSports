@@ -1,0 +1,29 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FreeBusyResponse
+description: ''
+type: object
+properties:
+  calendars:
+    type: object
+    description: List of free/busy information for calendars.
+    additionalProperties:
+      $ref: FreeBusyCalendar
+      description: Free/busy expansions for a single calendar.
+  groups:
+    type: object
+    description: Expansion of groups.
+    additionalProperties:
+      $ref: FreeBusyGroup
+      description: List of calendars that are members of this group.
+  kind:
+    type: string
+    description: Type of the resource ("calendar#freeBusy").
+    default: calendar#freeBusy
+  timeMax:
+    type: string
+    description: The end of the interval.
+    format: date-time
+  timeMin:
+    type: string
+    description: The start of the interval.
+    format: date-time

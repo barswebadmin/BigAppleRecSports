@@ -1,0 +1,136 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BooleanCondition
+description: A condition that can evaluate to true or false. BooleanConditions are
+  used by conditional formatting, data validation, and the criteria in filters.
+type: object
+properties:
+  type:
+    type: string
+    enumDescriptions:
+    - The default value, do not use.
+    - The cell's value must be greater than the condition's value. Supported by data
+      validation, conditional formatting and filters. Requires a single ConditionValue.
+    - The cell's value must be greater than or equal to the condition's value. Supported
+      by data validation, conditional formatting and filters. Requires a single ConditionValue.
+    - The cell's value must be less than the condition's value. Supported by data
+      validation, conditional formatting and filters. Requires a single ConditionValue.
+    - The cell's value must be less than or equal to the condition's value. Supported
+      by data validation, conditional formatting and filters. Requires a single ConditionValue.
+    - The cell's value must be equal to the condition's value. Supported by data validation,
+      conditional formatting and filters. Requires a single ConditionValue for data
+      validation, conditional formatting, and filters on non-data source objects and
+      at least one ConditionValue for filters on data source objects.
+    - The cell's value must be not equal to the condition's value. Supported by data
+      validation, conditional formatting and filters. Requires a single ConditionValue
+      for data validation, conditional formatting, and filters on non-data source
+      objects and at least one ConditionValue for filters on data source objects.
+    - The cell's value must be between the two condition values. Supported by data
+      validation, conditional formatting and filters. Requires exactly two ConditionValues.
+    - The cell's value must not be between the two condition values. Supported by
+      data validation, conditional formatting and filters. Requires exactly two ConditionValues.
+    - The cell's value must contain the condition's value. Supported by data validation,
+      conditional formatting and filters. Requires a single ConditionValue.
+    - The cell's value must not contain the condition's value. Supported by data validation,
+      conditional formatting and filters. Requires a single ConditionValue.
+    - The cell's value must start with the condition's value. Supported by conditional
+      formatting and filters. Requires a single ConditionValue.
+    - The cell's value must end with the condition's value. Supported by conditional
+      formatting and filters. Requires a single ConditionValue.
+    - The cell's value must be exactly the condition's value. Supported by data validation,
+      conditional formatting and filters. Requires a single ConditionValue for data
+      validation, conditional formatting, and filters on non-data source objects and
+      at least one ConditionValue for filters on data source objects.
+    - The cell's value must be a valid email address. Supported by data validation.
+      Requires no ConditionValues.
+    - The cell's value must be a valid URL. Supported by data validation. Requires
+      no ConditionValues.
+    - The cell's value must be the same date as the condition's value. Supported by
+      data validation, conditional formatting and filters. Requires a single ConditionValue
+      for data validation, conditional formatting, and filters on non-data source
+      objects and at least one ConditionValue for filters on data source objects.
+    - The cell's value must be before the date of the condition's value. Supported
+      by data validation, conditional formatting and filters. Requires a single ConditionValue
+      that may be a relative date.
+    - The cell's value must be after the date of the condition's value. Supported
+      by data validation, conditional formatting and filters. Requires a single ConditionValue
+      that may be a relative date.
+    - The cell's value must be on or before the date of the condition's value. Supported
+      by data validation. Requires a single ConditionValue that may be a relative
+      date.
+    - The cell's value must be on or after the date of the condition's value. Supported
+      by data validation. Requires a single ConditionValue that may be a relative
+      date.
+    - The cell's value must be between the dates of the two condition values. Supported
+      by data validation. Requires exactly two ConditionValues.
+    - The cell's value must be outside the dates of the two condition values. Supported
+      by data validation. Requires exactly two ConditionValues.
+    - The cell's value must be a date. Supported by data validation. Requires no ConditionValues.
+    - The cell's value must be listed in the grid in condition value's range. Supported
+      by data validation. Requires a single ConditionValue, and the value must be
+      a valid range in A1 notation.
+    - The cell's value must be in the list of condition values. Supported by data
+      validation. Supports any number of condition values, one per item in the list.
+      Formulas are not supported in the values.
+    - The cell's value must be empty. Supported by conditional formatting and filters.
+      Requires no ConditionValues.
+    - The cell's value must not be empty. Supported by conditional formatting and
+      filters. Requires no ConditionValues.
+    - The condition's formula must evaluate to true. Supported by data validation,
+      conditional formatting and filters. Not supported by data source sheet filters.
+      Requires a single ConditionValue.
+    - The cell's value must be TRUE/FALSE or in the list of condition values. Supported
+      by data validation. Renders as a cell checkbox. Supports zero, one or two ConditionValues.
+      No values indicates the cell must be TRUE or FALSE, where TRUE renders as checked
+      and FALSE renders as unchecked. One value indicates the cell will render as
+      checked when it contains that value and unchecked when it is blank. Two values
+      indicate that the cell will render as checked when it contains the first value
+      and unchecked when it contains the second value. For example, ["Yes","No"] indicates
+      that the cell will render a checked box when it has the value "Yes" and an unchecked
+      box when it has the value "No".
+    - The cell's value must be exactly not the condition's value. Supported by filters
+      on data source objects. Requires at least one ConditionValue.
+    - The cell's value must be exactly not the condition's value. Supported by filters
+      on data source objects. Requires at least one ConditionValue.
+    - The cell's value must follow the pattern specified. Requires a single ConditionValue.
+    enum:
+    - CONDITION_TYPE_UNSPECIFIED
+    - NUMBER_GREATER
+    - NUMBER_GREATER_THAN_EQ
+    - NUMBER_LESS
+    - NUMBER_LESS_THAN_EQ
+    - NUMBER_EQ
+    - NUMBER_NOT_EQ
+    - NUMBER_BETWEEN
+    - NUMBER_NOT_BETWEEN
+    - TEXT_CONTAINS
+    - TEXT_NOT_CONTAINS
+    - TEXT_STARTS_WITH
+    - TEXT_ENDS_WITH
+    - TEXT_EQ
+    - TEXT_IS_EMAIL
+    - TEXT_IS_URL
+    - DATE_EQ
+    - DATE_BEFORE
+    - DATE_AFTER
+    - DATE_ON_OR_BEFORE
+    - DATE_ON_OR_AFTER
+    - DATE_BETWEEN
+    - DATE_NOT_BETWEEN
+    - DATE_IS_VALID
+    - ONE_OF_RANGE
+    - ONE_OF_LIST
+    - BLANK
+    - NOT_BLANK
+    - CUSTOM_FORMULA
+    - BOOLEAN
+    - TEXT_NOT_EQ
+    - DATE_NOT_EQ
+    - FILTER_EXPRESSION
+    description: The type of condition.
+  values:
+    description: The values of the condition. The number of supported values depends
+      on the condition type. Some support zero values, others one or two values, and
+      ConditionType.ONE_OF_LIST supports an arbitrary number of values.
+    items:
+      $ref: ConditionValue
+    type: array

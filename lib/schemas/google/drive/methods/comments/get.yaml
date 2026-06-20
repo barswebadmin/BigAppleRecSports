@@ -1,0 +1,30 @@
+description: 'Gets a comment by ID. For more information, see [Manage comments and
+  replies](https://developers.google.com/workspace/drive/api/guides/manage-comments).
+  Required: The `fields` parameter must be set. To return the exact fields you need,
+  see [Return specific fields](https://developers.google.com/workspace/drive/api/guides/fields-parameter).'
+httpMethod: GET
+path: files/{fileId}/comments/{commentId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  commentId:
+    description: The ID of the comment.
+    location: path
+    required: true
+    type: string
+  includeDeleted:
+    description: Whether to return deleted comments. Deleted comments will not include
+      their original content.
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: Comment

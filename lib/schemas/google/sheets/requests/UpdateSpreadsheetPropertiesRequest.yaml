@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateSpreadsheetPropertiesRequest
+description: Updates properties of a spreadsheet.
+type: object
+properties:
+  properties:
+    $ref: SpreadsheetProperties
+    description: The properties to update.
+  fields:
+    description: The fields that should be updated. At least one field must be specified.
+      The root 'properties' is implied and should not be specified. A single `"*"`
+      can be used as short-hand for listing every field.
+    format: google-fieldmask
+    type: string

@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RatingQuestion
+description: A rating question. The user has a range of icons to choose from.
+type: object
+properties:
+  ratingScaleLevel:
+    type: integer
+    format: int32
+    description: Required. The rating scale level of the rating question.
+  iconType:
+    description: Required. The icon type to use for the rating.
+    enum:
+    - RATING_ICON_TYPE_UNSPECIFIED
+    - STAR
+    - HEART
+    - THUMB_UP
+    type: string
+    enumDescriptions:
+    - Default value. Unused.
+    - A star icon.
+    - A heart icon.
+    - A thumbs down icon.

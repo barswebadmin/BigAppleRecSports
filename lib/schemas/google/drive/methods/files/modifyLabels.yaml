@@ -1,0 +1,19 @@
+description: Modifies the set of labels applied to a file. For more information, see
+  [Set a label field on a file](https://developers.google.com/workspace/drive/api/guides/set-label).
+  Returns a list of the labels that were added or modified.
+httpMethod: POST
+path: files/{fileId}/modifyLabels
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.metadata
+request:
+  $ref: ModifyLabelsRequest
+parameters:
+  fileId:
+    description: The ID of the file to which the labels belong.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: ModifyLabelsResponse

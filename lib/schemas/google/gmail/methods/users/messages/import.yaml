@@ -1,0 +1,52 @@
+description: Imports a message into only this user's mailbox, with standard email
+  delivery scanning and classification similar to receiving via SMTP. This method
+  doesn't perform SPF checks, so it might not work for some spam messages, such as
+  those attempting to perform domain spoofing. This method does not send a message.
+  Note that the maximum size of the message is 150MB.
+httpMethod: POST
+path: gmail/v1/users/{userId}/messages/import
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.insert
+- https://www.googleapis.com/auth/gmail.modify
+request:
+  $ref: Message
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  internalDateSource:
+    description: Source for Gmail's internal date of the message.
+    default: dateHeader
+    location: query
+    type: string
+    enumDescriptions:
+    - Internal message date set to current time when received by Gmail.
+    - Internal message time based on 'Date' header in email, when valid.
+    enum:
+    - receivedTime
+    - dateHeader
+  neverMarkSpam:
+    description: Ignore the Gmail spam classifier decision and never mark this email
+      as SPAM in the mailbox.
+    default: 'false'
+    location: query
+    type: boolean
+  processForCalendar:
+    description: Process calendar invites in the email and add any extracted meetings
+      to the Google Calendar for this user.
+    default: 'false'
+    location: query
+    type: boolean
+  deleted:
+    description: Mark the email as permanently deleted (not TRASH) and only visible
+      in Google Vault to a Vault administrator. Only used for Google Workspace accounts.
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: Message

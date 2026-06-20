@@ -1,0 +1,19 @@
+description: Immediately and permanently deletes the specified message. This operation
+  cannot be undone. Prefer `messages.trash` instead.
+httpMethod: DELETE
+path: gmail/v1/users/{userId}/messages/{id}
+scopes:
+- https://mail.google.com/
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  id:
+    description: The ID of the message to delete.
+    location: path
+    required: true
+    type: string

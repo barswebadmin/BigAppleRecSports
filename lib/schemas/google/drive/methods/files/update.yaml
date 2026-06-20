@@ -1,0 +1,83 @@
+description: ' Updates a file''s metadata, content, or both. When calling this method,
+  only populate fields in the request that you want to modify. When updating fields,
+  some fields might be changed automatically, such as `modifiedDate`. This method
+  supports patch semantics. This method supports an */upload* URI and accepts uploaded
+  media with the following characteristics: - *Maximum file size:* 5,120 GB - *Accepted
+  Media MIME types:* `*/*` (Specify a valid MIME type, rather than the literal `*/*`
+  value. The literal `*/*` is only used to indicate that any valid MIME type can be
+  uploaded. For more information, see [Google Workspace and Google Drive supported
+  MIME types](/workspace/drive/api/guides/mime-types).) For more information on uploading
+  files, see [Upload file data](/workspace/drive/api/guides/manage-uploads).'
+httpMethod: PATCH
+path: files/{fileId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.scripts
+request:
+  $ref: File
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  addParents:
+    description: A comma-separated list of parent IDs to add.
+    location: query
+    type: string
+  enforceSingleParent:
+    description: 'Deprecated: Adding files to multiple folders is no longer supported.
+      Use shortcuts instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  keepRevisionForever:
+    description: Whether to set the `keepForever` field in the new head revision.
+      This is only applicable to files with binary content in Google Drive. Only 200
+      revisions for the file can be kept forever. If the limit is reached, try deleting
+      pinned revisions.
+    default: 'false'
+    location: query
+    type: boolean
+  ocrLanguage:
+    description: A language hint for OCR processing during image import (ISO 639-1
+      code).
+    location: query
+    type: string
+  removeParents:
+    description: A comma-separated list of parent IDs to remove.
+    location: query
+    type: string
+  supportsAllDrives:
+    description: Whether the requesting application supports both My Drives and shared
+      drives.
+    default: 'false'
+    location: query
+    type: boolean
+  supportsTeamDrives:
+    description: 'Deprecated: Use `supportsAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  useContentAsIndexableText:
+    description: Whether to use the uploaded content as indexable text.
+    default: 'false'
+    location: query
+    type: boolean
+  includePermissionsForView:
+    description: Specifies which additional view's permissions to include in the response.
+      Only `published` is supported.
+    location: query
+    type: string
+  includeLabels:
+    description: A comma-separated list of IDs of labels to include in the `labelInfo`
+      part of the response.
+    location: query
+    type: string
+response:
+  $ref: File

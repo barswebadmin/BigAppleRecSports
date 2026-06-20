@@ -1,0 +1,42 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeveloperMetadata
+description: Developer metadata associated with a location or object in a spreadsheet.
+  For more information, see [Read, write, and search metadata](https://developers.google.com/workspace/sheets/api/guides/metadata).
+  Developer metadata may be used to associate arbitrary data with various parts of
+  a spreadsheet and it will remain associated at those locations as they move around
+  and the spreadsheet is edited. For example, if developer metadata is associated
+  with row 5 and another row is then subsequently inserted above row 5, that original
+  metadata is still associated with the row it was first associated with (what is
+  now row 6). If the associated object is deleted then its metadata is deleted too.
+type: object
+properties:
+  metadataId:
+    description: The spreadsheet-scoped unique ID that identifies the metadata. IDs
+      may be specified when metadata is created, otherwise one will be randomly generated
+      and assigned. Must be positive.
+    format: int32
+    type: integer
+  location:
+    $ref: DeveloperMetadataLocation
+    description: The location where the metadata is associated.
+  metadataValue:
+    description: Data associated with the metadata's key.
+    type: string
+  metadataKey:
+    type: string
+    description: The metadata key. There may be multiple metadata in a spreadsheet
+      with the same key. Developer metadata must always have a key specified.
+  visibility:
+    enumDescriptions:
+    - Default value.
+    - Document-visible metadata is accessible from any developer project with access
+      to the document.
+    - Project-visible metadata is only visible to and accessible by the developer
+      project that created the metadata.
+    type: string
+    description: The metadata visibility. Developer metadata must always have visibility
+      specified.
+    enum:
+    - DEVELOPER_METADATA_VISIBILITY_UNSPECIFIED
+    - DOCUMENT
+    - PROJECT

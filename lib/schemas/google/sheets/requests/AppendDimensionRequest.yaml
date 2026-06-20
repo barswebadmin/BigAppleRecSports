@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AppendDimensionRequest
+description: Appends rows or columns to the end of a sheet.
+type: object
+properties:
+  dimension:
+    description: Whether rows or columns should be appended.
+    enum:
+    - DIMENSION_UNSPECIFIED
+    - ROWS
+    - COLUMNS
+    enumDescriptions:
+    - The default value, do not use.
+    - Operates on the rows of a sheet.
+    - Operates on the columns of a sheet.
+    type: string
+  sheetId:
+    description: The sheet to append rows or columns to.
+    format: int32
+    type: integer
+  length:
+    description: The number of rows or columns to append.
+    format: int32
+    type: integer

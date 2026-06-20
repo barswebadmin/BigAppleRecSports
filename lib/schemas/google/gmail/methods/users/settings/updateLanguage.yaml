@@ -1,0 +1,21 @@
+description: Updates language settings. If successful, the return object contains
+  the `displayLanguage` that was saved for the user, which may differ from the value
+  passed into the request. This is because the requested `displayLanguage` may not
+  be directly supported by Gmail but have a close variant that is, and so the variant
+  may be chosen and saved instead.
+httpMethod: PUT
+path: gmail/v1/users/{userId}/settings/language
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.basic
+request:
+  $ref: LanguageSettings
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: LanguageSettings

@@ -1,0 +1,47 @@
+description: Lists print server configurations.
+httpMethod: GET
+path: admin/directory/v1/{+parent}/chrome/printServers
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+- https://www.googleapis.com/auth/admin.chrome.printers.readonly
+parameters:
+  parent:
+    description: 'Required. The [unique ID](https://developers.google.com/workspace/admin/directory/reference/rest/v1/customers)
+      of the customer''s Google Workspace account. Format: `customers/{id}`'
+    pattern: ^customers/[^/]+$
+    location: path
+    required: true
+    type: string
+  pageSize:
+    description: The maximum number of objects to return (default `100`, max `100`).
+      The service might return fewer than this value.
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: A generated token to paginate results (the `next_page_token` from
+      a previous call).
+    location: query
+    type: string
+  orgUnitId:
+    description: If `org_unit_id` is present in the request, only print servers owned
+      or inherited by the organizational unit (OU) are returned. If the `PrintServer`
+      resource's `org_unit_id` matches the one in the request, the OU owns the server.
+      If `org_unit_id` is not specified in the request, all print servers are returned
+      or filtered against.
+    location: query
+    type: string
+  filter:
+    description: 'Search query in [Common Expression Language syntax](https://github.com/google/cel-spec).
+      Supported filters are `display_name`, `description`, and `uri`. Example: `printServer.displayName==''marketing-queue''`.'
+    location: query
+    type: string
+  orderBy:
+    description: Sort order for results. Supported values are `display_name`, `description`,
+      or `create_time`. Default order is ascending, but descending order can be returned
+      by appending "desc" to the `order_by` field. For instance, `orderBy=='description
+      desc'` returns the print servers sorted by description in descending order.
+    location: query
+    type: string
+response:
+  $ref: ListPrintServersResponse

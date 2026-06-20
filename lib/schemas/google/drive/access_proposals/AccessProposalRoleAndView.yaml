@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AccessProposalRoleAndView
+description: A wrapper for the role and view of an access proposal. For more information,
+  see [Roles and permissions](https://developers.google.com/workspace/drive/api/guides/ref-roles).
+type: object
+properties:
+  role:
+    description: 'The role that was proposed by the requester. The supported values
+      are: * `writer` * `commenter` * `reader`'
+    type: string
+  view:
+    description: Indicates the view for this access proposal. Only populated for proposals
+      that belong to a view. Only `published` is supported.
+    type: string

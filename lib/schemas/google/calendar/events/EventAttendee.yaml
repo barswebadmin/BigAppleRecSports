@@ -1,0 +1,57 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: EventAttendee
+description: ''
+type: object
+properties:
+  additionalGuests:
+    type: integer
+    description: Number of additional guests. Optional. The default is 0.
+    default: '0'
+    format: int32
+  comment:
+    type: string
+    description: The attendee's response comment. Optional.
+  displayName:
+    type: string
+    description: The attendee's name, if available. Optional.
+  email:
+    type: string
+    description: 'The attendee''s email address, if available. This field must be
+      present when adding an attendee. It must be a valid email address as per RFC5322.
+
+      Required when adding an attendee.'
+  id:
+    type: string
+    description: The attendee's Profile ID, if available.
+  optional:
+    type: boolean
+    description: Whether this is an optional attendee. Optional. The default is False.
+    default: 'false'
+  organizer:
+    type: boolean
+    description: Whether the attendee is the organizer of the event. Read-only. The
+      default is False.
+  resource:
+    type: boolean
+    description: Whether the attendee is a resource. Can only be set when the attendee
+      is added to the event for the first time. Subsequent modifications are ignored.
+      Optional. The default is False.
+    default: 'false'
+  responseStatus:
+    type: string
+    description: "The attendee's response status. Possible values are:  \n- \"needsAction\"\
+      \ - The attendee has not responded to the invitation (recommended for new events).\
+      \ \n- \"declined\" - The attendee has declined the invitation. \n- \"tentative\"\
+      \ - The attendee has tentatively accepted the invitation. \n- \"accepted\" -\
+      \ The attendee has accepted the invitation.  Warning: If you add an event using\
+      \ the values declined, tentative, or accepted, attendees with the \"Add invitations\
+      \ to my calendar\" setting set to \"When I respond to invitation in email\"\
+      \ or \"Only if the sender is known\" might have their response reset to needsAction\
+      \ and won't see an event in their calendar unless they change their response\
+      \ in the event invitation email. Furthermore, if more than 200 guests are invited\
+      \ to the event, response status is not propagated to the guests."
+  self:
+    type: boolean
+    description: Whether this entry represents the calendar on which this copy of
+      the event appears. Read-only. The default is False.
+    default: 'false'

@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchCreatePrintersResponse
+description: Response for adding new printers in batch.
+type: object
+properties:
+  printers:
+    description: A list of successfully created printers with their IDs populated.
+    type: array
+    items:
+      $ref: Printer
+  failures:
+    description: A list of create failures. Printer IDs are not populated, as printer
+      were not created.
+    type: array
+    items:
+      $ref: FailureInfo

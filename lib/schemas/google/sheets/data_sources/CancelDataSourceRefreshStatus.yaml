@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CancelDataSourceRefreshStatus
+description: The status of cancelling a single data source object refresh.
+type: object
+properties:
+  refreshCancellationStatus:
+    $ref: RefreshCancellationStatus
+    description: The cancellation status.
+  reference:
+    description: Reference to the data source object whose refresh is being cancelled.
+    $ref: DataSourceObjectReference

@@ -1,0 +1,19 @@
+description: Gets a specific app. For more information, see [Return user info](https://developers.google.com/workspace/drive/api/guides/user-info).
+httpMethod: GET
+path: apps/{appId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.apps.readonly
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  appId:
+    description: The ID of the app.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: App

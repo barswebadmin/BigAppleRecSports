@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CandlestickData
+description: The Candlestick chart data, each containing the low, open, close, and
+  high values for a series.
+type: object
+properties:
+  openSeries:
+    description: The range data (vertical axis) for the open/initial value for each
+      candle. This is the bottom of the candle body. If less than the close value
+      the candle will be filled. Otherwise the candle will be hollow.
+    $ref: CandlestickSeries
+  closeSeries:
+    description: The range data (vertical axis) for the close/final value for each
+      candle. This is the top of the candle body. If greater than the open value the
+      candle will be filled. Otherwise the candle will be hollow.
+    $ref: CandlestickSeries
+  lowSeries:
+    description: The range data (vertical axis) for the low/minimum value for each
+      candle. This is the bottom of the candle's center line.
+    $ref: CandlestickSeries
+  highSeries:
+    $ref: CandlestickSeries
+    description: The range data (vertical axis) for the high/maximum value for each
+      candle. This is the top of the candle's center line.

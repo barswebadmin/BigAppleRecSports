@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchDeletePrintServersResponse
+description: ''
+type: object
+properties:
+  printServerIds:
+    description: A list of print server IDs that were successfully deleted.
+    type: array
+    items:
+      type: string
+  failedPrintServers:
+    description: A list of update failures.
+    type: array
+    items:
+      $ref: PrintServerFailureInfo

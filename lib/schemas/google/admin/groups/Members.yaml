@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Members
+description: ''
+type: object
+properties:
+  kind:
+    description: Kind of resource this is.
+    default: admin#directory#members
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  members:
+    description: A list of member objects.
+    type: array
+    items:
+      $ref: Member
+  nextPageToken:
+    description: Token used to access next page of this result.
+    type: string

@@ -1,0 +1,12 @@
+description: Turns off 2-Step Verification for user.
+httpMethod: POST
+path: admin/directory/v1/users/{userKey}/twoStepVerification/turnOff
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user.security
+parameters:
+  userKey:
+    description: Identifies the user in the API request. The value can be the user's
+      primary email address, alias email address, or unique user ID.
+    location: path
+    required: true
+    type: string

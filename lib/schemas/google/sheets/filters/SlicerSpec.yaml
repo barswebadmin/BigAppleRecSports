@@ -1,0 +1,48 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SlicerSpec
+description: The specifications of a slicer.
+type: object
+properties:
+  textFormat:
+    $ref: TextFormat
+    description: The text format of title in the slicer. The link field is not supported.
+  backgroundColorStyle:
+    description: The background color of the slicer. If background_color is also set,
+      this field takes precedence.
+    $ref: ColorStyle
+  columnIndex:
+    description: The zero-based column index in the data table on which the filter
+      is applied to.
+    format: int32
+    type: integer
+  title:
+    type: string
+    description: The title of the slicer.
+  backgroundColor:
+    $ref: Color
+    description: 'The background color of the slicer. Deprecated: Use background_color_style.'
+    deprecated: true
+  horizontalAlignment:
+    enumDescriptions:
+    - The horizontal alignment is not specified. Do not use this.
+    - The text is explicitly aligned to the left of the cell.
+    - The text is explicitly aligned to the center of the cell.
+    - The text is explicitly aligned to the right of the cell.
+    type: string
+    description: The horizontal alignment of title in the slicer. If unspecified,
+      defaults to `LEFT`
+    enum:
+    - HORIZONTAL_ALIGN_UNSPECIFIED
+    - LEFT
+    - CENTER
+    - RIGHT
+  filterCriteria:
+    description: The filtering criteria of the slicer.
+    $ref: FilterCriteria
+  applyToPivotTables:
+    description: True if the filter should apply to pivot tables. If not set, default
+      to `True`.
+    type: boolean
+  dataRange:
+    $ref: GridRange
+    description: The data range of the slicer.

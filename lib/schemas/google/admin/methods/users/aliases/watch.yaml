@@ -1,0 +1,28 @@
+description: Watches for changes in users list.
+httpMethod: POST
+path: admin/directory/v1/users/{userKey}/aliases/watch
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+- https://www.googleapis.com/auth/admin.directory.user.alias
+- https://www.googleapis.com/auth/admin.directory.user.alias.readonly
+- https://www.googleapis.com/auth/admin.directory.user.readonly
+request:
+  $ref: Channel
+parameters:
+  userKey:
+    description: Email or immutable ID of the user
+    location: path
+    required: true
+    type: string
+  event:
+    description: Events to watch for.
+    location: query
+    type: string
+    enumDescriptions:
+    - Alias Created Event
+    - Alias Deleted Event
+    enum:
+    - add
+    - delete
+response:
+  $ref: Channel

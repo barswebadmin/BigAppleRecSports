@@ -1,422 +1,280 @@
-# 🏀 BigAppleRecSports (BARS)
+# BigAppleRecSports (BARS)
 
-A comprehensive system for managing recreational sports leagues including backend API, Google Apps Scripts automation, and AWS Lambda functions.
+Multi-language monorepo for managing recreational sports leagues.
 
-## 📦 Quick Start
+## Quick Start
 
 ```bash
-# Install dependencies
-make install
-
-# Start development server
+uv sync
 make start
-
-# Run tests
 make test-backend-unit
 ```
 
-## 🏗️ Architecture
+## Architecture
 
-- **Backend API** (FastAPI) - Handles refunds, orders, Slack integration
-- **Google Apps Scripts** - Form processing, spreadsheet automation
-- **Lambda Functions** - Shopify webhooks, inventory management
-- **Render Deployment** - Production hosting with auto-deployment
+- **Backend API** (FastAPI)
+- **Google Apps Scripts** (TypeScript/JavaScript)
+- **Lambda Functions** (Python)
+- **Slack Apps** (Deno)
+- **Shopify Apps** (Liquid templates)
 
-## 📦 Installation & Dependencies
+## Installation
 
-### Development Setup
+### Python Projects
 ```bash
-# Full development environment
-make install
-
-# Production dependencies only
-make install-prod
-
-# Manual installation
-pip install -r requirements.txt
+cd backend && uv sync
+cd lambda && uv sync
+cd shared_utilities && uv sync
 ```
 
-### Dependencies Overview
-All dependencies are managed in the root `requirements.txt`:
-- **Backend**: FastAPI, uvicorn, requests, pydantic
-- **Testing**: pytest, pytest-asyncio, httpx
-- **Lambda Functions**: typing-extensions (most use standard library)
-- **Google Apps Scripts**: No Python dependencies (uses GAS runtime)
-
-## 🚀 Development
-
-### Backend Development
+### JavaScript Projects
 ```bash
-# Start server with auto-reload
+cd google-apps-scripts && pnpm install
+```
+
+### Deno Projects
+```bash
+cd slack-apps
+# Dependencies auto-resolved from deno.json
+```
+
+## Development
+
+### Linting & Formatting (Ruff)
+
+All Python projects use Ruff for linting and formatting. Auto-format on save is currently **disabled** for manual control.
+
+**Manual Commands:**
+
+```bash
+# Format files
+ruff format backend/
+ruff format shared_utilities/
+
+# Check linter issues (no changes)
+ruff check backend/
+
+# Fix auto-fixable issues
+ruff check --fix backend/
+
+# Organize imports
+ruff check --select I --fix backend/
+```
+
+**Check Current Configuration:**
+
+```bash
+# View effective config for a project
+ruff check --show-settings backend/
+
+# List all available rules
+ruff rule --all
+```
+
+**Change Configuration:**
+
+Two layers control Ruff behavior:
+
+1. **IDE Automation** (`.vscode/settings.json`)
+   - `editor.formatOnSave` - Auto-format on save (currently `false`)
+   - `editor.codeActionsOnSave` - Auto-fix/organize imports (currently disabled)
+
+2. **Ruff Rules** (`pyproject.toml`)
+   - Root config applies globally (line-length: 120, rules: E/F/I/N/W)
+   - Override in project-specific `pyproject.toml` if needed
+
+**VSCode Manual Triggers:**
+
+- Format: `Shift+Option+F` or Command Palette → "Format Document"
+- Fix All: Command Palette → "Ruff: Fix all auto-fixable problems"
+- Organize Imports: Command Palette → "Ruff: Organize Imports"
+
+### Pre-commit Hook
+
+The repo ships a pre-commit hook at `.githooks/pre-commit` (enable once with
+`git config core.hooksPath .githooks`). It runs automatically on every `git commit`.
+
+**Staged-only isolation.** Before running any check, the hook moves your
+**unstaged modifications and untracked files** into a temp backup directory
+(`.git/pre-commit-backup`) and reverts the working tree to the staged version, so
+the checks see *exactly* what you're committing and nothing else. Everything is
+restored on exit (success or failure) via a trap. We deliberately do **not** use
+`git stash` — `stash pop` conflicts whenever the formatter rewrites a staged file
+and can silently leave work stashed on a partial commit.
+
+**What it checks, in order:**
+
+1. **Branch guard** — blocks direct commits to `main`.
+2. **Ruff (Python, staged files only)** — collects the staged `.py` files and:
+   - **Lints** them (report-only, no `--fix`, so your code is never edited by the
+     linter). On failures you get an interactive prompt to continue / retry / abort.
+   - **Formats** them, then re-stages only those files. Because it's scoped to
+     staged files, a commit can never sweep in reformatting of unrelated files.
+3. **Pydantic required-fields check** — `scripts/check_required_fields.py`.
+4. **CI workflow tests** — only when `.github/workflows/`, `shared-utilities/`, or
+   `lambda-functions/` are touched.
+5. **GAS endpoint detection** — warns (non-blocking) when `doGet`/`doPost` change.
+6. **Secret detection** — `scripts/detect_secrets.py`; blocks the commit on a hit.
+
+**Ruff rule sets applied** (from root `pyproject.toml`: `line-length = 120`,
+`target-version = "py314"`):
+
+| Code | Rule set | What it catches |
+| ---- | -------- | --------------- |
+| `E`  | pycodestyle errors | PEP 8 style errors (indentation, statement layout) |
+| `W`  | pycodestyle warnings | PEP 8 style warnings (e.g. trailing whitespace) |
+| `F`  | Pyflakes | Real bugs: unused imports/vars, undefined names, f-string issues |
+| `I`  | isort | Import ordering / grouping |
+| `N`  | pep8-naming | Naming conventions for classes, functions, constants |
+
+`E501` (line-too-long) is ignored — the formatter owns line width. Note that with
+`target-version = "py314"`, `ruff format` removes now-redundant parentheses in
+`except` clauses (PEP 758): `except (A, B):` → `except A, B:`, which is valid 3.14.
+
+> **TODO (future stage): no JS/TS formatter or linter yet.** The pre-commit hook
+> only handles Python (Ruff). JavaScript/TypeScript files — Deno Slack apps,
+> Google Apps Scripts, etc. — are **not** linted or formatted on commit, so style
+> can drift. A future stage should add one and wire it into the hook (staged-only,
+> mirroring the Ruff setup). Recommended options:
+>
+> - **Deno code** (`slack-apps/`): use the built-in **`deno fmt`** and
+>   **`deno lint`** — zero-config, no dependencies, already available.
+> - **Node/Apps Scripts JS/TS** (`google-apps-scripts/`): either
+>   - **[Biome](https://biomejs.dev/)** — single fast Rust tool for both format +
+>     lint (closest analog to Ruff), or
+>   - **[Prettier](https://prettier.io/)** (format) + **[ESLint](https://eslint.org/)**
+>     (lint) + `typescript-eslint` — the conventional pairing.
+> - **Hook integration**: **[lint-staged](https://github.com/lint-staged/lint-staged)**
+>   (often with Husky) to run the above only on staged files.
+
+### Backend
+```bash
 make start
-
-# Start with tunnel (new terminal)
-make tunnel
-
-# Combined (server + tunnel)
-make dev
-```
-
-### Testing
-```bash
-# Unit tests (safe, mocked)
 make test-backend-unit
-
-# Integration tests (requires server)
-make test-backend-integration
-
-# Slack message tests
-make test-backend-slack
-
-# All backend tests
-make test-backend-all
-
-# Specific test
-make test-specific TEST=backend/test_orders_api.py::test_fetch_order
 ```
 
-### Code Quality
+### Lambda
 ```bash
-# Check compilation
-make compile backend
-
-# Run all checks
-make ready backend
+cd lambda/functions/<function-name>
+uv run python run_local.py
 ```
-
-### Smart Git Commit (BARS-Only)
-Automatically handles pre-commit formatting fixes so you only need to run `git commit` once:
-
-**Setup (Recommended):**
-```bash
-# Add to your ~/.zshrc file:
-source ~/Documents/scripts/zshrc_scripts
-
-# Reload shell
-source ~/.zshrc
-```
-
-**Alternative Usage:**
-```bash
-# Use script directly
-./scripts/git-commit-bars -m "your commit message"
-```
-
-**How It Works:**
-- ✅ **First Attempt**: Runs `git commit` normally
-- 🔧 **Auto-Recovery**: If only formatting issues, auto-stages fixes and re-commits
-- 🛡️ **Safety**: Only works in BARS_Github directories
-- 🎯 **Result**: No more running commits twice for whitespace fixes!
-
-```bash
-# These now work seamlessly, even with formatting issues:
-git commit -m "feat: add new feature"
-git commit -am "fix: update logic"
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-Create `.env` file in backend directory:
-```bash
-# Required
-SHOPIFY_URL_ADMIN_DOMAIN=your-store.myshopify.com
-SHOPIFY_TOKEN=your_admin_api_token
-SLACK_REFUNDS_BOT_TOKEN=xoxb-your-bot-token
-
-# Optional
-ENVIRONMENT=development
-SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-```
-
-### Slack Configuration
-The system supports multiple Slack channels with different mention strategies:
-- **Channel routing**: Based on request parameters
-- **Mention strategies**: `user|username`, `sport|sport_name`, `none`
-- **Dynamic API clients**: Per-channel configuration
-
-## 📡 API Endpoints
-
-### Orders API
-Complete order management with refunds, cancellations, and inventory:
-
-```bash
-# Get order details with refund calculations
-GET /orders/{order_number}?email={optional_email}
-
-# Cancel order and process refund/credit
-DELETE /orders/{order_number}?refund_type=refund&refund_amount=142.50&restock_inventory=true
-
-# Create refund without canceling order
-POST /orders/{order_number}/refund?refund_type=credit&refund_amount=150.00
-
-# Restock inventory for order variants
-POST /orders/{order_number}/restock?variant_name=open
-```
-
-**Response Format:**
-```json
-{
-  "success": true,
-  "data": {
-    "order": {
-      "orderId": "gid://shopify/Order/...",
-      "orderName": "#1001",
-      "totalAmountPaid": 150.00,
-      "customer": {"email": "customer@example.com"},
-      "product": {"title": "Big Apple Dodgeball - Summer 2025"}
-    },
-    "refund_calculation": {
-      "refund_amount": 142.50,
-      "refund_text": "Estimated Refund Due: $142.50..."
-    },
-    "inventory_summary": {
-      "inventory_list": {"veteran": {...}, "open": {...}}
-    }
-  }
-}
-```
-
-### Refunds API
-```bash
-POST /refunds/send-to-slack
-# Process refund requests and send to Slack
-```
-
-### Webhooks
-```bash
-POST /webhooks/shopify/product/update
-# Handle Shopify product update webhooks
-
-POST /slack/webhook
-# Handle Slack button interactions
-```
-
-**Business Logic:**
-- **Refund Calculation**: Based on season start dates and timing (95%, 90%, 80%, 70%, 60%, 50%)
-- **Inventory Management**: Handles veteran, early, open, and waitlist registration types
-- **Slack Integration**: Automatic notifications to #refunds channel with sport-specific mentions
-
-## 🤖 Google Apps Scripts
-
-7 Google Apps Scripts with proper version control and deployment capabilities.
-
-### Projects
-- **process-refunds-exchanges** (`1JQ9qnEIji4E6t2sBnzZ1CErcWZjfj36Qp-rqqJEZxNa0sXIFtRYo54CS`) - Handles refund and exchange workflows
-- **parse-registration-info** (`17FMYl1kMlOTpZ3jseg5nmoMmREK7IN1CXHKgKW5A-z8Q__nb8VhBWei-`) - Parses and processes registration data
-- **leadership-discount-codes** (`1V46lPoFAUe5gGb1RL5f3TQJxoYnM29Wt1zcGN4hhgbsxCY578mAi-fzP`) - Manages leadership discount code processing
-- **product-variant-creation** (`1ag91SToLXcAFBIbGY_WSze5gdVlBr9qqaJNwO6e9ie7qOXRAcBo607qK`) - Creates products and variants in Shopify
-- **waitlist-script** (`1yL5crj6zjclY7HJPBi6A5owO5mBWoT6kfIHv-MoBHC82h9jmn1Pp9v-4`) - Manages waitlist functionality
-- **payment-assistance-tags** (`1Y3JSpgtgxwF7tfBlCAKgbGmc6qjxfsWA_leE56FUT20mOafY12nqFLb7`) - Processes payment assistance requests and manages customer tags
-- **add-sold-out-product-to-waitlist** - Manages waitlist form options when products sell out
-
-### Key Features
-- **Refactored Structure** - Clean, organized code with proper separation of concerns
-- **Form Management** - Google Forms API interactions and form management
-- **Validation Logic** - Input validation and duplicate checking
-- **Sorting Algorithms** - Complex sorting for waitlist options (sports → day → division)
-- **Backend Integration** - Seamless integration with BARS backend API
-- **Webhook Processing** - HTTP endpoint handling for incoming requests
-
-### Architecture
-Each script follows consistent patterns:
-- **Core Files** - Main orchestrator and endpoint handlers
-- **Helper Modules** - Validation, form helpers, label formatting, sorting logic
-- **Testing** - Comprehensive test functions for all modules
-- **Shared Utilities** - Common functions across all scripts
-
-### Deployment
-```bash
-# Setup authentication
-clasp login
-
-# Deploy specific project
-cd GoogleAppsScripts/projects/[script-directory]
-clasp push && clasp deploy
-
-# Shared utilities are now managed per-project
-# Each project includes shared utilities directly in its src/shared-utilities/ directory
-```
-
-### Secret Management
-All secrets stored in Google Apps Script's PropertiesService:
-```javascript
-// Setting secrets (run once)
-PropertiesService.getScriptProperties().setProperties({
-  'SHOPIFY_TOKEN': 'your_shopify_token_here',
-  'SLACK_TOKEN': 'your_slack_token_here',
-  'API_ENDPOINT': 'your_api_endpoint_here'
-});
-
-// Using secrets in code
-const SHOPIFY_TOKEN = PropertiesService.getScriptProperties().getProperty('SHOPIFY_TOKEN');
-```
-
-## ⚡ Lambda Functions
-
-6 Python Lambda functions automatically deployed to AWS via GitHub Actions.
-
-### Functions
-- **shopifyProductUpdateHandler** - Automatically updates product images to "sold out" versions when all relevant variants are out of stock
-- **changePricesOfOpenAndWaitlistVariants** - Price management for open and waitlist variants
-- **MoveInventoryLambda** - Inventory transfers between variants
-- **setProductLiveByAddingInventory** - Product activation by adding inventory
-- **createScheduledPriceChanges** - Schedule price changes for products
-- **ScheduleChangesForShopifyProductsLambda** - Process scheduled product changes
-
-### Architecture
-Each function has its own directory containing:
-- `lambda_function.py` - Main handler function
-- `requirements.txt` - Python dependencies
-- Modular structure following BARS Lambda patterns
-
-### Key Features
-- **Automatic Deployment** - GitHub Actions detect changed functions and deploy
-- **Shared Layer Integration** - Uses `bars-common-utils` lambda layer for consistency
-- **Sport Detection** - Identifies sports from product titles/tags for appropriate sold-out images
-- **Error Handling** - Graceful degradation and rollback capabilities
-- **Type Safety** - Full type annotations throughout
-
-### Supported Sports (shopifyProductUpdateHandler)
-- **Bowling**: Bowling_ClosedWaitList.png
-- **Dodgeball**: Dodgeball_Closed.png
-- **Kickball**: Kickball_WaitlistOnly.png
-- **Pickleball**: Pickleball_WaitList.png
-
-### Local Development
-```bash
-# Setup lambda development environment (creates symbolic links for imports)
-python3 scripts/setup_local_development.py
-```
-
-**Important**: Run setup script before working with lambda functions locally to enable `bars_common_utils` imports.
-
-## 🚀 Deployment
-
-### Render (Backend)
-Automatic deployment via GitHub Actions on push to `main`:
-- Triggers on: `backend/**`, `requirements.txt`, `render.yaml`
-- Environment: Production with SSL certificates
-- Secrets: Managed via Render dashboard
-
-### Manual Deployment
-```bash
-# Deploy to Render
-./scripts/deployment/deploy_backend.py
-
-# Sync secrets
-./scripts/sync_render_secrets.py
-```
-
-### Lambda Functions
-Deployed via GitHub Actions:
-- **Self-contained**: Auto-deploy on code changes
-- **Layer-based**: Manual deployment only (safety)
 
 ### Google Apps Scripts
 ```bash
-# Deploy using centralized scripts
-bash scripts/deployment/deploy_google.sh project-name
+cd google-apps-scripts
+pnpm install
+pnpm build
 ```
 
-## 🧪 Testing Strategy
-
-### Unit Tests
-- **Location**: `backend/tests/unit/`
-- **Scope**: Individual functions, mocked dependencies
-- **Safe**: No external API calls
-
-### Integration Tests
-- **Location**: `backend/tests/integration/`
-- **Scope**: End-to-end workflows
-- **Requirements**: Running server, valid credentials
-
-### Slack Tests
-- **Message formatting**: Validates Slack block structure
-- **Mock mode**: Tests without real Slack API calls
-- **Block Kit**: Validates against Slack's Block Kit Builder
-
-## 🔒 Security
-
-### Secrets Management
-- **Local**: `.env` files (gitignored)
-- **Production**: Render environment variables
-- **CI/CD**: GitHub Secrets
-- **GAS**: Google Apps Script properties
-
-### API Security
-- **Webhook verification**: Shopify HMAC validation
-- **Rate limiting**: Built into FastAPI
-- **SSL/TLS**: Enforced in production
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-**Import Errors**
+### Slack Apps
 ```bash
-# Ensure virtual environment is activated
-source .venv/bin/activate
+cd slack-apps
+deno task test-all
+```
 
-# Reinstall dependencies
+## Configuration
+
+Create `.env` file at repository root:
+```bash
+SHOPIFY_URL_ADMIN_DOMAIN=your-store.myshopify.com
+SHOPIFY_TOKEN=your_admin_api_token
+SLACK_REFUNDS_BOT_TOKEN=xoxb-your-bot-token
+GOOGLE_DEFAULT_ADMIN_EMAIL=admin@yourdomain.com
+GOOGLE__SERVICE_ACCOUNT='{"type":"service_account",...}'
+```
+
+## API Endpoints
+
+```bash
+GET /orders/{order_number}
+DELETE /orders/{order_number}
+POST /orders/{order_number}/refund
+POST /orders/{order_number}/restock
+POST /refunds/send-to-slack
+POST /webhooks/shopify/product/update
+POST /slack/webhook
+```
+
+## Google Apps Scripts
+
+TypeScript/JavaScript automation for Google Workspace.
+
+### Projects
+- process-refunds-exchanges
+- parse-registration-info
+- leadership-discount-codes
+- product-variant-creation
+- waitlist-script
+- payment-assistance-tags
+- add-sold-out-product-to-waitlist
+
+### Deployment
+```bash
+cd google-apps-scripts/projects/<project-name>
+clasp push && clasp deploy
+```
+
+## Lambda Functions
+
+Python functions deployed to AWS via GitHub Actions.
+
+### Functions
+- shopifyProductUpdateHandler
+- changePricesOfOpenAndWaitlistVariants
+- MoveInventoryLambda
+- updateRegistrationStatus
+- closeRegProductToWaitlist
+- WaitlistManager
+
+### Local Development
+```bash
+cd lambda/functions/<function-name>
+uv run python run_local.py
+```
+
+## Deployment
+
+### Backend
+Automatic via GitHub Actions on push to `main`.
+
+### Lambda
+Automatic via GitHub Actions when function code changes.
+
+### Google Apps Scripts
+```bash
+cd google-apps-scripts/projects/<project-name>
+clasp push && clasp deploy
+```
+
+### Slack Apps
+```bash
+cd slack-apps
+slack deploy
+```
+
+## Testing
+
+```bash
+uv run pytest
+make test-backend-unit
+make test-backend-integration
+```
+
+## Troubleshooting
+
+```bash
 make install
-```
-
-**Compilation Failures**
-```bash
-# Check syntax and imports
 make compile backend
-
-# Fix virtual environment issues
-make install
+make test-backend-unit
 ```
 
-**Slack Integration**
-```bash
-# Test Slack connectivity
-make test-backend-slack
+## Documentation
 
-# Validate message format
-python backend/test_slack_message_formatting.py
-```
+- [UV Guide](UV_GUIDE.md) - Python package management
+- [Monorepo Architecture](MONOREPO_ARCHITECTURE.md) - Multi-language structure
+- [Model Migration](MODEL_MIGRATION_CHECKLIST.md) - Schema migration guide
+- [pnpm vs npx](PNPM_VS_NPX.md) - JavaScript package management
 
-**Lambda Development**
-```bash
-# Setup symlinks for imports
-python3 scripts/setup_local_development.py
+## License
 
-# Test lambda functions
-cd lambda-functions && python3 tests/run_tests.py unit
-```
-
-## 📚 Documentation
-
-This README provides a complete overview of the BARS system. For detailed information on specific topics, see the extended documentation:
-
-| Document | Description | Quick Link |
-|----------|-------------|------------|
-| **[Contributing Guide](README_EXT/1_CONTRIBUTING.md)** | Development setup, workflow, testing standards | 🚀 [Start Here](README_EXT/1_CONTRIBUTING.md#development-setup) |
-| **[Deployment Guide](README_EXT/2_DEPLOYMENT.md)** | Complete deployment procedures for all components | 🚀 [Deploy Now](README_EXT/2_DEPLOYMENT.md#deployment-overview) |
-| **[Security Policy](README_EXT/3_SECURITY.md)** | Security guidelines and vulnerability reporting | 🔒 [Security](README_EXT/3_SECURITY.md) |
-| **[Pre-Commit Guide](README_EXT/4_PRE_COMMIT_GUIDE.md)** | Pre-commit hooks setup and usage | 🔧 [Setup Hooks](README_EXT/4_PRE_COMMIT_GUIDE.md#quick-setup) |
-
-### 📖 Documentation Organization
-
-- **README.md** (this file) - Complete project overview and quick reference
-- **README_EXT/** - Extended documentation for detailed topics
-- **Inline comments** - Code files link back to relevant documentation sections
-
-## 🔗 Quick Links
-
-- [Render Dashboard](https://dashboard.render.com)
-- [Shopify Admin](https://admin.shopify.com)
-- [Slack Block Kit Builder](https://app.slack.com/block-kit-builder)
-- [GitHub Actions](https://github.com/barswebadmin/BigAppleRecSports/actions)
-
-## 📄 License
-
-This project is proprietary to Big Apple Recreational Sports.
-
----
-
-**Need help?** Check the troubleshooting section above or refer to the detailed guides in the root directory.
+Proprietary to Big Apple Recreational Sports.

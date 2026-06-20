@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ColorDefinition
+description: ''
+type: object
+properties:
+  background:
+    type: string
+    description: The background color associated with this color definition.
+  foreground:
+    type: string
+    description: The foreground color that can be used to write on top of a background
+      with 'background' color.

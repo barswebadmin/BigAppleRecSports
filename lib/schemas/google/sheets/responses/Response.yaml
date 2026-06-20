@@ -1,0 +1,80 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Response
+description: A single response from an update.
+type: object
+properties:
+  refreshDataSource:
+    description: A reply from refreshing data source objects.
+    $ref: RefreshDataSourceResponse
+  updateConditionalFormatRule:
+    description: A reply from updating a conditional format rule.
+    $ref: UpdateConditionalFormatRuleResponse
+  addProtectedRange:
+    description: A reply from adding a protected range.
+    $ref: AddProtectedRangeResponse
+  cancelDataSourceRefresh:
+    $ref: CancelDataSourceRefreshResponse
+    description: A reply from cancelling data source object refreshes.
+  addFilterView:
+    $ref: AddFilterViewResponse
+    description: A reply from adding a filter view.
+  addChart:
+    description: A reply from adding a chart.
+    $ref: AddChartResponse
+  deleteDeveloperMetadata:
+    description: A reply from deleting a developer metadata entry.
+    $ref: DeleteDeveloperMetadataResponse
+  createDeveloperMetadata:
+    $ref: CreateDeveloperMetadataResponse
+    description: A reply from creating a developer metadata entry.
+  addSheet:
+    $ref: AddSheetResponse
+    description: A reply from adding a sheet.
+  deleteDuplicates:
+    $ref: DeleteDuplicatesResponse
+    description: A reply from removing rows containing duplicate values.
+  deleteConditionalFormatRule:
+    description: A reply from deleting a conditional format rule.
+    $ref: DeleteConditionalFormatRuleResponse
+  trimWhitespace:
+    description: A reply from trimming whitespace.
+    $ref: TrimWhitespaceResponse
+  duplicateFilterView:
+    description: A reply from duplicating a filter view.
+    $ref: DuplicateFilterViewResponse
+  updateDeveloperMetadata:
+    $ref: UpdateDeveloperMetadataResponse
+    description: A reply from updating a developer metadata entry.
+  updateEmbeddedObjectPosition:
+    description: A reply from updating an embedded object's position.
+    $ref: UpdateEmbeddedObjectPositionResponse
+  addDataSource:
+    $ref: AddDataSourceResponse
+    description: A reply from adding a data source.
+  updateDataSource:
+    description: A reply from updating a data source.
+    $ref: UpdateDataSourceResponse
+  addNamedRange:
+    description: A reply from adding a named range.
+    $ref: AddNamedRangeResponse
+  addBanding:
+    description: A reply from adding a banded range.
+    $ref: AddBandingResponse
+  addDimensionGroup:
+    description: A reply from adding a dimension group.
+    $ref: AddDimensionGroupResponse
+  addSlicer:
+    $ref: AddSlicerResponse
+    description: A reply from adding a slicer.
+  addTable:
+    description: A reply from adding a table.
+    $ref: AddTableResponse
+  findReplace:
+    description: A reply from doing a find/replace.
+    $ref: FindReplaceResponse
+  duplicateSheet:
+    $ref: DuplicateSheetResponse
+    description: A reply from duplicating a sheet.
+  deleteDimensionGroup:
+    description: A reply from deleting a dimension group.
+    $ref: DeleteDimensionGroupResponse

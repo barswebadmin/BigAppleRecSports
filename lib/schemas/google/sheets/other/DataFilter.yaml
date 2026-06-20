@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataFilter
+description: Filter that describes what data should be selected or returned from a
+  request. For more information, see [Read, write, and search metadata](https://developers.google.com/workspace/sheets/api/guides/metadata).
+type: object
+properties:
+  developerMetadataLookup:
+    $ref: DeveloperMetadataLookup
+    description: Selects data associated with the developer metadata matching the
+      criteria described by this DeveloperMetadataLookup.
+  gridRange:
+    $ref: GridRange
+    description: Selects data that matches the range described by the GridRange.
+  a1Range:
+    description: Selects data that matches the specified A1 range.
+    type: string

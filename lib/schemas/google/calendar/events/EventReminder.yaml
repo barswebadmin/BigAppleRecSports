@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: EventReminder
+description: ''
+type: object
+properties:
+  method:
+    type: string
+    description: "The method used by this reminder. Possible values are:  \n- \"email\"\
+      \ - Reminders are sent via email. \n- \"popup\" - Reminders are sent via a UI\
+      \ popup.  \nRequired when adding a reminder."
+  minutes:
+    type: integer
+    description: 'Number of minutes before the start of the event when the reminder
+      should trigger. Valid values are between 0 and 40320 (4 weeks in minutes).
+
+      Required when adding a reminder.'
+    format: int32

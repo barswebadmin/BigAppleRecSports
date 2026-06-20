@@ -1,0 +1,14 @@
+description: Lists the ASPs issued by a user.
+httpMethod: GET
+path: admin/directory/v1/users/{userKey}/asps
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user.security
+parameters:
+  userKey:
+    description: Identifies the user in the API request. The value can be the user's
+      primary email address, alias email address, or unique user ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Asps

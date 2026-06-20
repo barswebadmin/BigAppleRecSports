@@ -1,0 +1,23 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: TeamDriveList
+description: A list of Team Drives.
+type: object
+properties:
+  nextPageToken:
+    description: The page token for the next page of Team Drives. This will be absent
+      if the end of the Team Drives list has been reached. If the token is rejected
+      for any reason, it should be discarded, and pagination should be restarted from
+      the first page of results. The page token is typically valid for several hours.
+      However, if new items are added or removed, your expected results might differ.
+    type: string
+  kind:
+    description: 'Identifies what kind of resource this is. Value: the fixed string
+      `"drive#teamDriveList"`.'
+    default: drive#teamDriveList
+    type: string
+  teamDrives:
+    description: The list of Team Drives. If nextPageToken is populated, then this
+      list may be incomplete and an additional page of results should be fetched.
+    type: array
+    items:
+      $ref: TeamDrive

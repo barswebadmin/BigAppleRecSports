@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: NamedRange
+description: A named range.
+type: object
+properties:
+  name:
+    description: The name of the named range.
+    type: string
+  namedRangeId:
+    description: The ID of the named range.
+    type: string
+  range:
+    description: The range this represents.
+    $ref: GridRange

@@ -1,0 +1,11 @@
+description: 'Deprecated: Use `drives.delete` instead.'
+httpMethod: DELETE
+path: teamdrives/{teamDriveId}
+scopes:
+- https://www.googleapis.com/auth/drive
+parameters:
+  teamDriveId:
+    description: The ID of the Team Drive
+    location: path
+    required: true
+    type: string

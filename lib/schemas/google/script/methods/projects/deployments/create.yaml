@@ -1,0 +1,15 @@
+description: Creates a deployment of an Apps Script project.
+httpMethod: POST
+path: v1/projects/{scriptId}/deployments
+scopes:
+- https://www.googleapis.com/auth/script.deployments
+request:
+  $ref: DeploymentConfig
+parameters:
+  scriptId:
+    description: The script project's Drive ID.
+    location: path
+    type: string
+    required: true
+response:
+  $ref: Deployment

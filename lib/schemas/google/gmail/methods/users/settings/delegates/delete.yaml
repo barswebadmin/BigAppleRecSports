@@ -1,0 +1,22 @@
+description: Removes the specified delegate (which can be of any verification status),
+  and revokes any verification that may have been required for using it. Note that
+  a delegate user must be referred to by their primary email address, and not an email
+  alias. This method is only available to service account clients that have been delegated
+  domain-wide authority.
+httpMethod: DELETE
+path: gmail/v1/users/{userId}/settings/delegates/{delegateEmail}
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.sharing
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  delegateEmail:
+    description: The email address of the user to be removed as a delegate.
+    location: path
+    required: true
+    type: string

@@ -1,0 +1,33 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: LineStyle
+description: Properties that describe the style of a line.
+type: object
+properties:
+  width:
+    description: The thickness of the line, in px.
+    format: int32
+    type: integer
+  type:
+    enum:
+    - LINE_DASH_TYPE_UNSPECIFIED
+    - INVISIBLE
+    - CUSTOM
+    - SOLID
+    - DOTTED
+    - MEDIUM_DASHED
+    - MEDIUM_DASHED_DOTTED
+    - LONG_DASHED
+    - LONG_DASHED_DOTTED
+    description: The dash type of the line.
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - No dash type, which is equivalent to a non-visible line.
+    - A custom dash for a line. Modifying the exact custom dash style is currently
+      unsupported.
+    - A solid line.
+    - A dotted line.
+    - A dashed line where the dashes have "medium" length.
+    - A line that alternates between a "medium" dash and a dot.
+    - A dashed line where the dashes have "long" length.
+    - A line that alternates between a "long" dash and a dot.

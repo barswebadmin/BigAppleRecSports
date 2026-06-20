@@ -1,0 +1,22 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GoogleAppsScriptTypeExecutionApiConfig
+description: API executable entry point configuration.
+type: object
+properties:
+  access:
+    enumDescriptions:
+    - Default value, should not be used.
+    - Only the user who deployed the web app or executable can access it. Note that
+      this is not necessarily the owner of the script project.
+    - Only users in the same domain as the user who deployed the web app or executable
+      can access it.
+    - Any logged in user can access the web app or executable.
+    - Any user, logged in or not, can access the web app or executable.
+    enum:
+    - UNKNOWN_ACCESS
+    - MYSELF
+    - DOMAIN
+    - ANYONE
+    - ANYONE_ANONYMOUS
+    description: Who has permission to run the API executable.
+    type: string

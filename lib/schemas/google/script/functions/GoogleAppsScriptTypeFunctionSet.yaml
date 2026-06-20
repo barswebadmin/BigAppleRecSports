@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GoogleAppsScriptTypeFunctionSet
+description: A set of functions. No duplicates are permitted.
+type: object
+properties:
+  values:
+    items:
+      $ref: GoogleAppsScriptTypeFunction
+    description: A list of functions composing the set.
+    type: array

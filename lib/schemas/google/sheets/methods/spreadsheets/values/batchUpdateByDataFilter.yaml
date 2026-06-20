@@ -1,0 +1,20 @@
+description: Sets values in one or more ranges of a spreadsheet. For more information,
+  see [Read, write, and search metadata](https://developers.google.com/workspace/sheets/api/guides/metadata).
+  The caller must specify the spreadsheet ID, a valueInputOption, and one or more
+  DataFilterValueRanges.
+httpMethod: POST
+path: v4/spreadsheets/{spreadsheetId}/values:batchUpdateByDataFilter
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+request:
+  $ref: BatchUpdateValuesByDataFilterRequest
+parameters:
+  spreadsheetId:
+    location: path
+    type: string
+    required: true
+    description: The ID of the spreadsheet to update.
+response:
+  $ref: BatchUpdateValuesByDataFilterResponse

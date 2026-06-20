@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Metrics
+description: Resource containing usage stats for a given script, based on the supplied
+  filter and mask present in the request.
+type: object
+properties:
+  totalExecutions:
+    items:
+      $ref: MetricsValue
+    description: Number of total executions.
+    type: array
+  failedExecutions:
+    description: Number of failed executions.
+    type: array
+    items:
+      $ref: MetricsValue
+  activeUsers:
+    description: Number of active users.
+    type: array
+    items:
+      $ref: MetricsValue

@@ -1,0 +1,21 @@
+description: Gets the content of the script project, including the code source and
+  metadata for each script file.
+httpMethod: GET
+path: v1/projects/{scriptId}/content
+scopes:
+- https://www.googleapis.com/auth/script.projects
+- https://www.googleapis.com/auth/script.projects.readonly
+parameters:
+  scriptId:
+    type: string
+    description: The script project's Drive ID.
+    location: path
+    required: true
+  versionNumber:
+    type: integer
+    description: The version number of the project to retrieve. If not provided, the
+      project's HEAD version is returned.
+    location: query
+    format: int32
+response:
+  $ref: Content

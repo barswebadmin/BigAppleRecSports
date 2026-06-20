@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchClearValuesRequest
+description: The request for clearing more than one range of values in a spreadsheet.
+type: object
+properties:
+  ranges:
+    type: array
+    description: The ranges to clear, in [A1 notation or R1C1 notation](https://developers.google.com/workspace/sheets/api/guides/concepts#cell).
+    items:
+      type: string

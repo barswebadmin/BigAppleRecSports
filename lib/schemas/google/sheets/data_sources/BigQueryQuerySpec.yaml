@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BigQueryQuerySpec
+description: Specifies a custom BigQuery query.
+type: object
+properties:
+  rawQuery:
+    type: string
+    description: The raw query string.

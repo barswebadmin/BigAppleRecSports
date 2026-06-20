@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SetDataValidationRequest
+description: Sets a data validation rule to every cell in the range. To clear validation
+  in a range, call this with no rule specified.
+type: object
+properties:
+  range:
+    description: The range the data validation rule should apply to.
+    $ref: GridRange
+  rule:
+    $ref: DataValidationRule
+    description: The data validation rule to set on each cell in the range, or empty
+      to clear the data validation in the range.
+  filteredRowsIncluded:
+    description: Optional. If true, the data validation rule will be applied to the
+      filtered rows as well.
+    type: boolean

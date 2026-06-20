@@ -1,0 +1,18 @@
+description: Deletes an ASP issued by a user.
+httpMethod: DELETE
+path: admin/directory/v1/users/{userKey}/asps/{codeId}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user.security
+parameters:
+  userKey:
+    description: Identifies the user in the API request. The value can be the user's
+      primary email address, alias email address, or unique user ID.
+    location: path
+    required: true
+    type: string
+  codeId:
+    description: The unique ID of the ASP to be deleted.
+    location: path
+    required: true
+    type: integer
+    format: int32

@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteConditionalFormatRuleRequest
+description: Deletes a conditional format rule at the given index. All subsequent
+  rules' indexes are decremented.
+type: object
+properties:
+  index:
+    description: The zero-based index of the rule to be deleted.
+    format: int32
+    type: integer
+  sheetId:
+    description: The sheet the rule is being deleted from.
+    format: int32
+    type: integer

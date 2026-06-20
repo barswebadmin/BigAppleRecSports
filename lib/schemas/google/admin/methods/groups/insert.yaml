@@ -1,0 +1,10 @@
+description: Creates a group.
+httpMethod: POST
+path: admin/directory/v1/groups
+scopes:
+- https://www.googleapis.com/auth/admin.directory.group
+request:
+  $ref: Group
+parameters: {}
+response:
+  $ref: Group

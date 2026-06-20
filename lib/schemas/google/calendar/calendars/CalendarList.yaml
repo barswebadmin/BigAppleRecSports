@@ -1,0 +1,26 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CalendarList
+description: ''
+type: object
+properties:
+  etag:
+    type: string
+    description: ETag of the collection.
+  items:
+    type: array
+    description: Calendars that are present on the user's calendar list.
+    items:
+      $ref: CalendarListEntry
+  kind:
+    type: string
+    description: Type of the collection ("calendar#calendarList").
+    default: calendar#calendarList
+  nextPageToken:
+    type: string
+    description: Token used to access the next page of this result. Omitted if no
+      further results are available, in which case nextSyncToken is provided.
+  nextSyncToken:
+    type: string
+    description: Token used at a later point in time to retrieve only the entries
+      that have changed since this result was returned. Omitted if further results
+      are available, in which case nextPageToken is provided.

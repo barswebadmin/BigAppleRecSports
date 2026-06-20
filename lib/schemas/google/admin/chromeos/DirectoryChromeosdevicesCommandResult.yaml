@@ -1,0 +1,38 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DirectoryChromeosdevicesCommandResult
+description: The result of executing a command.
+type: object
+properties:
+  result:
+    description: The result of the command.
+    type: string
+    enumDescriptions:
+    - The command result was unspecified.
+    - The command was ignored as obsolete.
+    - The command could not be executed successfully.
+    - The command was successfully executed.
+    enum:
+    - COMMAND_RESULT_TYPE_UNSPECIFIED
+    - IGNORED
+    - FAILURE
+    - SUCCESS
+  executeTime:
+    description: The time at which the command was executed or failed to execute.
+    type: string
+    format: google-datetime
+  errorMessage:
+    description: The error message with a short explanation as to why the command
+      failed. Only present if the command failed.
+    type: string
+  commandResultPayload:
+    description: 'The payload for the command result. The following commands respond
+      with a payload: * `DEVICE_START_CRD_SESSION`: Payload is a stringified JSON
+      object in the form: { "url": url }. The provided URL links to the Chrome Remote
+      Desktop session and requires authentication using only the `email` associated
+      with the command''s issuance. * `FETCH_CRD_AVAILABILITY_INFO`: Payload is a
+      stringified JSON object in the form: { "deviceIdleTimeInSeconds": number, "userSessionType":
+      string, "remoteSupportAvailability": string, "remoteAccessAvailability": string
+      }. The "remoteSupportAvailability" field is set to "AVAILABLE" if `shared` CRD
+      session to the device is available. The "remoteAccessAvailability" field is
+      set to "AVAILABLE" if `private` CRD session to the device is available.'
+    type: string

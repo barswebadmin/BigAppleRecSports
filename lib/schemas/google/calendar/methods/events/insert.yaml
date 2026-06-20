@@ -1,0 +1,69 @@
+description: Creates an event.
+httpMethod: POST
+path: calendars/{calendarId}/events
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.app.created
+- https://www.googleapis.com/auth/calendar.events
+- https://www.googleapis.com/auth/calendar.events.owned
+request:
+  $ref: Event
+parameters:
+  calendarId:
+    type: string
+    description: Calendar identifier. To retrieve calendar IDs call the calendarList.list
+      method. If you want to access the primary calendar of the currently logged in
+      user, use the "primary" keyword.
+    required: true
+    location: path
+  conferenceDataVersion:
+    type: integer
+    description: Version number of conference data supported by the API client. Version
+      0 assumes no conference data support and ignores conference data in the event's
+      body. Version 1 enables support for copying of ConferenceData as well as for
+      creating new conferences using the createRequest field of conferenceData. The
+      default is 0.
+    format: int32
+    minimum: '0'
+    maximum: '1'
+    location: query
+  maxAttendees:
+    type: integer
+    description: The maximum number of attendees to include in the response. If there
+      are more than the specified number of attendees, only the participant is returned.
+      Optional.
+    format: int32
+    minimum: '1'
+    location: query
+  sendNotifications:
+    type: boolean
+    description: 'Deprecated. Please use sendUpdates instead.
+
+
+      Whether to send notifications about the creation of the new event. Note that
+      some emails might still be sent even if you set the value to false. The default
+      is false.'
+    location: query
+  sendUpdates:
+    type: string
+    description: Whether to send notifications about the creation of the new event.
+      Note that some emails might still be sent. The default is false.
+    enum:
+    - all
+    - externalOnly
+    - none
+    enumDescriptions:
+    - Notifications are sent to all guests.
+    - Notifications are sent to non-Google Calendar guests only.
+    - 'No notifications are sent. Warning: Using the value none can have significant
+      adverse effects, including events not syncing to external calendars or events
+      being lost altogether for some users. For calendar migration tasks, consider
+      using the events.import method instead.'
+    location: query
+  supportsAttachments:
+    type: boolean
+    description: Whether API client performing operation supports event attachments.
+      Optional. The default is False.
+    location: query
+response:
+  $ref: Event

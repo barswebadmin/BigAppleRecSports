@@ -1,0 +1,19 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListMessagesResponse
+description: ''
+type: object
+properties:
+  messages:
+    description: List of messages. Note that each message resource contains only an
+      `id` and a `threadId`. Additional message details can be fetched using the messages.get
+      method.
+    type: array
+    items:
+      $ref: Message
+  nextPageToken:
+    description: Token to retrieve the next page of results in the list.
+    type: string
+  resultSizeEstimate:
+    description: Estimated total number of results.
+    type: integer
+    format: uint32

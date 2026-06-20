@@ -1,0 +1,65 @@
+api: gmail
+version: v1
+title: Gmail API
+description: The Gmail API lets you view and manage Gmail mailbox data like threads,
+  messages, and labels.
+baseUrl: https://gmail.googleapis.com/
+documentationLink: https://developers.google.com/workspace/gmail/api/
+generated: auto-generated from Google Discovery API
+schemas:
+- Draft
+- Message
+- MessagePart
+- MessagePartHeader
+- MessagePartBody
+- ClassificationLabelValue
+- ClassificationLabelFieldValue
+- ListDraftsResponse
+- ListHistoryResponse
+- History
+- HistoryMessageAdded
+- HistoryMessageDeleted
+- HistoryLabelAdded
+- HistoryLabelRemoved
+- BatchDeleteMessagesRequest
+- ListMessagesResponse
+- ModifyMessageRequest
+- BatchModifyMessagesRequest
+- Label
+- LabelColor
+- ListLabelsResponse
+- Profile
+- WatchRequest
+- WatchResponse
+- Thread
+- ListThreadsResponse
+- ModifyThreadRequest
+- ListSendAsResponse
+- SendAs
+- SmtpMsa
+- ListSmimeInfoResponse
+- SmimeInfo
+- CseIdentity
+- SignAndEncryptKeyPairs
+- CseKeyPair
+- CsePrivateKeyMetadata
+- KaclsKeyMetadata
+- HardwareKeyMetadata
+- DisableCseKeyPairRequest
+- EnableCseKeyPairRequest
+- ListCseIdentitiesResponse
+- ListCseKeyPairsResponse
+- ObliterateCseKeyPairRequest
+- ListFiltersResponse
+- Filter
+- FilterCriteria
+- FilterAction
+- ImapSettings
+- PopSettings
+- VacationSettings
+- LanguageSettings
+- ListForwardingAddressesResponse
+- ForwardingAddress
+- AutoForwarding
+- ListDelegatesResponse
+- Delegate

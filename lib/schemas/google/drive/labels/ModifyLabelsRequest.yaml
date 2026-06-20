@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ModifyLabelsRequest
+description: A request to modify the set of labels on a file. This request may contain
+  many modifications that will either all succeed or all fail atomically.
+type: object
+properties:
+  labelModifications:
+    description: The list of modifications to apply to the labels on the file.
+    type: array
+    items:
+      $ref: LabelModification
+  kind:
+    description: This is always `"drive#modifyLabelsRequest"`.
+    type: string

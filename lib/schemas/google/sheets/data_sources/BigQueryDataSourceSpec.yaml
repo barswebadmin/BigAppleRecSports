@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BigQueryDataSourceSpec
+description: The specification of a BigQuery data source that's connected to a sheet.
+type: object
+properties:
+  projectId:
+    description: The ID of a BigQuery enabled Google Cloud project with a billing
+      account attached. For any queries executed against the data source, the project
+      is charged.
+    type: string
+  querySpec:
+    $ref: BigQueryQuerySpec
+    description: A BigQueryQuerySpec.
+  tableSpec:
+    $ref: BigQueryTableSpec
+    description: A BigQueryTableSpec.

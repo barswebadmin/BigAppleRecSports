@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FeatureRename
+description: ''
+type: object
+properties:
+  newName:
+    description: New name of the feature.
+    annotations:
+      required:
+      - directory.resources.features.rename
+    type: string

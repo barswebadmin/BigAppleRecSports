@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddTableRequest
+description: Adds a new table to the spreadsheet.
+type: object
+properties:
+  table:
+    $ref: Table
+    description: Required. The table to add.

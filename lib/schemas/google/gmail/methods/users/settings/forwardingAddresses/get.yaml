@@ -1,0 +1,23 @@
+description: Gets the specified forwarding address.
+httpMethod: GET
+path: gmail/v1/users/{userId}/settings/forwardingAddresses/{forwardingEmail}
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.modify
+- https://www.googleapis.com/auth/gmail.readonly
+- https://www.googleapis.com/auth/gmail.settings.basic
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  forwardingEmail:
+    description: The forwarding address to be retrieved.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: ForwardingAddress

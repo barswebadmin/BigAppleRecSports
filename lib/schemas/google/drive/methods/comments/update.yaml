@@ -1,0 +1,24 @@
+description: 'Updates a comment with patch semantics. For more information, see [Manage
+  comments and replies](https://developers.google.com/workspace/drive/api/guides/manage-comments).
+  Required: The `fields` parameter must be set. To return the exact fields you need,
+  see [Return specific fields](https://developers.google.com/workspace/drive/api/guides/fields-parameter).'
+httpMethod: PATCH
+path: files/{fileId}/comments/{commentId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+request:
+  $ref: Comment
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  commentId:
+    description: The ID of the comment.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Comment

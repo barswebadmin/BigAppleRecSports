@@ -1,0 +1,26 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Basic Contact Details"
+description: "Minimal contact information. Requires firstName and at least one of emailAddress or phoneNumber."
+type: object
+properties:
+    firstName:
+        type: string
+        minLength: 1
+
+    lastName:
+        type: string
+        minLength: 2
+
+    emailAddress:
+        type: string
+        format: email
+
+    phoneNumber:
+        $ref: "./phoneNumber.yaml#/"
+
+required:
+    - firstName
+
+oneOf:
+    - required: [emailAddress]
+    - required: [phoneNumber]

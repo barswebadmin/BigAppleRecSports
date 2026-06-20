@@ -1,0 +1,25 @@
+# Monorepo Render Blueprint — add or adjust services here (single file for all deployables).
+services:
+  - type: web
+    name: bars-backend
+    env: python
+    rootDir: backend
+    buildCommand: uv sync
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: RENDER
+        value: "true"
+      - key: ENVIRONMENT
+        value: "production"
+
+  - type: web
+    name: bars-registrations
+    env: python
+    rootDir: backend/registrations
+    buildCommand: pip install uv && uv sync
+    startCommand: uv run uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.14"
+      - key: RENDER
+        value: "true"

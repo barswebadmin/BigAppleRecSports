@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch
 import requests
-from backend.services.shopify.shopify_service import ShopifyService
+from services.shopify.shopify_service import ShopifyService
 
 
 class TestShopifyServiceErrorHandling:
@@ -183,7 +183,7 @@ class TestCreateProductErrorHandling:
             mock_request.important_dates.closing_party_date = "2025-09-23"
 
             # Import and patch the create_product function to bypass validation
-            from backend.services.products.create_product_complete_proces.create_product.create_product import (
+            from services.products.create_product_complete_proces.create_product.create_product import (
                 create_product,
             )
 
@@ -223,7 +223,7 @@ class TestCreateProductErrorHandling:
             mock_request.important_dates.open_date = "2025-09-22"
             mock_request.important_dates.closing_party_date = "2025-09-23"
 
-            from backend.services.products.create_product_complete_proces.create_product.create_product import (
+            from services.products.create_product_complete_proces.create_product.create_product import (
                 create_product,
             )
 

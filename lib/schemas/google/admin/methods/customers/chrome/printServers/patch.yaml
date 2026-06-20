@@ -1,0 +1,23 @@
+description: Updates a print server's configuration.
+httpMethod: PATCH
+path: admin/directory/v1/{+name}
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+request:
+  $ref: PrintServer
+parameters:
+  name:
+    description: 'Identifier. Resource name of the print server. Leave empty when
+      creating. Format: `customers/{customer.id}/printServers/{print_server.id}`'
+    pattern: ^customers/[^/]+/chrome/printServers/[^/]+$
+    location: path
+    required: true
+    type: string
+  updateMask:
+    description: The list of fields to update. Some fields are read-only and cannot
+      be updated. Values for unspecified fields are patched.
+    location: query
+    type: string
+    format: google-fieldmask
+response:
+  $ref: PrintServer

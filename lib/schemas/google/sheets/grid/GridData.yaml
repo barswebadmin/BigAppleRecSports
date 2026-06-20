@@ -1,0 +1,31 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GridData
+description: Data in the grid, as well as metadata about the dimensions.
+type: object
+properties:
+  rowMetadata:
+    description: Metadata about the requested rows in the grid, starting with the
+      row in start_row.
+    items:
+      $ref: DimensionProperties
+    type: array
+  startColumn:
+    type: integer
+    description: The first column this GridData refers to, zero-based.
+    format: int32
+  rowData:
+    type: array
+    description: The data in the grid, one entry per row, starting with the row in
+      startRow. The values in RowData will correspond to columns starting at start_column.
+    items:
+      $ref: RowData
+  startRow:
+    type: integer
+    description: The first row this GridData refers to, zero-based.
+    format: int32
+  columnMetadata:
+    type: array
+    description: Metadata about the requested columns in the grid, starting with the
+      column in start_column.
+    items:
+      $ref: DimensionProperties

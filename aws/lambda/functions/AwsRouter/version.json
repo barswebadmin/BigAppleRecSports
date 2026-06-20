@@ -1,0 +1,13 @@
+{
+  "version": "0.1.0",
+  "build": 1,
+  "last_updated": "2026-06-18",
+  "codename": "AwsRouter",
+  "version_history": [
+    {
+      "version": "0.1.0",
+      "date": "2026-06-18",
+      "description": "Initial scaffold — general-purpose Lambda Function URL router, migrated from ShopifyWebhookRouter."
+    }
+  ]
+}

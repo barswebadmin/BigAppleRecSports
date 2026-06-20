@@ -1,0 +1,24 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "standard",
+  "exclude": [
+    ".claude",
+    "aws/lambda",
+    "backend",
+    "lambda",
+    "zz_local_dev_plans",
+    "google-apps-scripts",
+    "slack-apps",
+    "shopify-apps",
+    "shopify_exports",
+    "node_modules",
+    "scripts",
+    "lib/domain",
+    "**/tests/**",
+    "**/test_*.py",
+    "**/__pycache__",
+    "**/.venv"
+  ]
+}

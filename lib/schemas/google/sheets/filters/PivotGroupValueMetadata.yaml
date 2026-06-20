@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PivotGroupValueMetadata
+description: Metadata about a value in a pivot grouping.
+type: object
+properties:
+  collapsed:
+    description: True if the data corresponding to the value is collapsed.
+    type: boolean
+  value:
+    description: The calculated value the metadata corresponds to. (Note that formulaValue
+      is not valid, because the values will be calculated.)
+    $ref: ExtendedValue

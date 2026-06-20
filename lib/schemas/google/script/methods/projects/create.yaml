@@ -1,0 +1,11 @@
+description: Creates a new, empty script project with no script files and a base manifest
+  file.
+httpMethod: POST
+path: v1/projects
+scopes:
+- https://www.googleapis.com/auth/script.projects
+request:
+  $ref: CreateProjectRequest
+parameters: {}
+response:
+  $ref: Project

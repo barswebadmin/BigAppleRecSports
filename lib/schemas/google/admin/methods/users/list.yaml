@@ -1,0 +1,118 @@
+description: Retrieves a paginated list of either deleted users or all users in a
+  domain.
+httpMethod: GET
+path: admin/directory/v1/users
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+- https://www.googleapis.com/auth/admin.directory.user.readonly
+- https://www.googleapis.com/auth/cloud-platform
+parameters:
+  customFieldMask:
+    description: A comma-separated list of schema names. All fields from these schemas
+      are fetched. This should only be set when `projection=custom`.
+    location: query
+    type: string
+  customer:
+    description: The unique ID for the customer's Google Workspace account. In case
+      of a multi-domain account, to fetch all users for a customer, use this field
+      instead of `domain`. You can also use the `my_customer` alias to represent your
+      account's `customerId`. The `customerId` is also returned as part of the [Users](https://developers.google.com/workspace/admin/directory/v1/reference/users)
+      resource. You must provide either the `customer` or the `domain` parameter.
+    location: query
+    type: string
+  domain:
+    description: The domain name. Use this field to get users from only one domain.
+      To return all domains for a customer account, use the `customer` query parameter
+      instead. Either the `customer` or the `domain` parameter must be provided.
+    location: query
+    type: string
+  event:
+    description: Event on which subscription is intended (if subscribing)
+    location: query
+    type: string
+    enumDescriptions:
+    - User Created Event
+    - User Deleted Event
+    - User Admin Status Change Event
+    - User Undeleted Event
+    - User Updated Event
+    enum:
+    - add
+    - delete
+    - makeAdmin
+    - undelete
+    - update
+  maxResults:
+    description: Maximum number of results to return.
+    default: '100'
+    minimum: '1'
+    maximum: '500'
+    location: query
+    type: integer
+    format: int32
+  orderBy:
+    description: Property to use for sorting results.
+    location: query
+    type: string
+    enumDescriptions:
+    - Primary email of the user.
+    - User's family name.
+    - User's given name.
+    enum:
+    - email
+    - familyName
+    - givenName
+  pageToken:
+    description: Token to specify next page in the list. The page token is only valid
+      for three days.
+    location: query
+    type: string
+  projection:
+    description: What subset of fields to fetch for this user.
+    default: basic
+    location: query
+    type: string
+    enumDescriptions:
+    - Do not include any custom fields for the user.
+    - Include custom fields from schemas requested in `customFieldMask`.
+    - Include all fields associated with this user.
+    enum:
+    - basic
+    - custom
+    - full
+  query:
+    description: Query string for searching user fields. For more information on constructing
+      user queries, see [Search for Users](https://developers.google.com/workspace/admin/directory/v1/guides/search-users).
+    location: query
+    type: string
+  showDeleted:
+    description: 'If set to `true`, retrieves the list of deleted users. (Default:
+      `false`)'
+    location: query
+    type: string
+  sortOrder:
+    description: Whether to return results in ascending or descending order, ignoring
+      case.
+    location: query
+    type: string
+    enumDescriptions:
+    - Ascending order.
+    - Descending order.
+    enum:
+    - ASCENDING
+    - DESCENDING
+  viewType:
+    description: Whether to fetch the administrator-only or domain-wide public view
+      of the user. For more information, see [Retrieve a user as a non-administrator](https://developers.google.com/workspace/admin/directory/v1/guides/manage-users#retrieve_users_non_admin).
+    default: admin_view
+    location: query
+    type: string
+    enumDescriptions:
+    - Results include both administrator-only and domain-public fields for the user.
+    - Results only include fields for the user that are publicly visible to other
+      users in the domain.
+    enum:
+    - admin_view
+    - domain_public
+response:
+  $ref: Users

@@ -1,0 +1,23 @@
+description: Patch the specified send-as alias.
+httpMethod: PATCH
+path: gmail/v1/users/{userId}/settings/sendAs/{sendAsEmail}
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.basic
+- https://www.googleapis.com/auth/gmail.settings.sharing
+request:
+  $ref: SendAs
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  sendAsEmail:
+    description: The send-as alias to be updated.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: SendAs

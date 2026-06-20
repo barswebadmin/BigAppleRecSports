@@ -1,0 +1,33 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserLocation
+description: JSON template for a location entry.
+type: object
+properties:
+  area:
+    description: Textual location. This is most useful for display purposes to concisely
+      describe the location. For example 'Mountain View, CA', 'Near Seattle', 'US-NYC-9TH
+      9A209A.''
+    type: string
+  buildingId:
+    description: Building Identifier.
+    type: string
+  customType:
+    description: Custom Type.
+    type: string
+  deskCode:
+    description: Most specific textual code of individual desk location.
+    type: string
+  floorName:
+    description: Floor name/number.
+    type: string
+  floorSection:
+    description: Floor section. More specific location within the floor. For example
+      if a floor is divided into sections 'A', 'B' and 'C' this field would identify
+      one of those values.
+    type: string
+  type:
+    description: Each entry can have a type which indicates standard types of that
+      entry. For example location could be of types default and desk. In addition
+      to standard type an entry can have a custom type and can give it any name. Such
+      types should have 'custom' as type and also have a customType value.
+    type: string

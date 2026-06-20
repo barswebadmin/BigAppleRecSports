@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CorrectAnswer
+description: A single correct answer for a question. For multiple-valued (`CHECKBOX`)
+  questions, several `CorrectAnswer`s may be needed to represent a single correct
+  response option.
+type: object
+properties:
+  value:
+    description: Required. The correct answer value. See the documentation for TextAnswer.value
+      for details on how various value types are formatted.
+    type: string

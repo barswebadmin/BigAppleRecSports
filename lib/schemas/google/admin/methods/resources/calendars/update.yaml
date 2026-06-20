@@ -1,0 +1,24 @@
+description: Updates a calendar resource. This method supports patch semantics, meaning
+  you only need to include the fields you wish to update. Fields that are not present
+  in the request will be preserved.
+httpMethod: PUT
+path: admin/directory/v1/customer/{customer}/resources/calendars/{calendarResourceId}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.resource.calendar
+request:
+  $ref: CalendarResource
+parameters:
+  customer:
+    description: The unique ID for the customer's Google Workspace account. As an
+      account administrator, you can also use the `my_customer` alias to represent
+      your account's customer ID.
+    location: path
+    required: true
+    type: string
+  calendarResourceId:
+    description: The unique ID of the calendar resource to update.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: CalendarResource

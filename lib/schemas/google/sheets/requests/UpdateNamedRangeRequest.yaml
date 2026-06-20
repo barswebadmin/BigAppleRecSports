@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UpdateNamedRangeRequest
+description: Updates properties of the named range with the specified namedRangeId.
+type: object
+properties:
+  namedRange:
+    $ref: NamedRange
+    description: The named range to update with the new properties.
+  fields:
+    description: The fields that should be updated. At least one field must be specified.
+      The root `namedRange` is implied and should not be specified. A single `"*"`
+      can be used as short-hand for listing every field.
+    format: google-fieldmask
+    type: string

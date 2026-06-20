@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MatchedDeveloperMetadata
+description: A developer metadata entry and the data filters specified in the original
+  request that matched it.
+type: object
+properties:
+  developerMetadata:
+    description: The developer metadata matching the specified filters.
+    $ref: DeveloperMetadata
+  dataFilters:
+    type: array
+    description: All filters matching the returned developer metadata.
+    items:
+      $ref: DataFilter

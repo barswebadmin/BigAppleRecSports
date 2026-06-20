@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AddDataSourceResponse
+description: The result of adding a data source.
+type: object
+properties:
+  dataSource:
+    description: The data source that was created.
+    $ref: DataSource
+  dataExecutionStatus:
+    $ref: DataExecutionStatus
+    description: The data execution status.

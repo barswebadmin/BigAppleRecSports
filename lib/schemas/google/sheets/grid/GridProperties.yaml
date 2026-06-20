@@ -1,0 +1,30 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: GridProperties
+description: Properties of a grid.
+type: object
+properties:
+  columnGroupControlAfter:
+    description: True if the column grouping control toggle is shown after the group.
+    type: boolean
+  frozenColumnCount:
+    type: integer
+    description: The number of columns that are frozen in the grid.
+    format: int32
+  columnCount:
+    description: The number of columns in the grid.
+    format: int32
+    type: integer
+  hideGridlines:
+    description: True if the grid isn't showing gridlines in the UI.
+    type: boolean
+  frozenRowCount:
+    type: integer
+    description: The number of rows that are frozen in the grid.
+    format: int32
+  rowCount:
+    type: integer
+    description: The number of rows in the grid.
+    format: int32
+  rowGroupControlAfter:
+    description: True if the row grouping control toggle is shown after the group.
+    type: boolean

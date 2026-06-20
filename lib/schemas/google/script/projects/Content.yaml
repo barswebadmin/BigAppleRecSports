@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Content
+description: The Content resource.
+type: object
+properties:
+  scriptId:
+    description: The script project's Drive ID.
+    type: string
+  files:
+    description: The list of script project files. One of the files is a script manifest;
+      it must be named "appsscript", must have type of JSON, and include the manifest
+      configurations for the project.
+    type: array
+    items:
+      $ref: File

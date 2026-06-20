@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteDeveloperMetadataResponse
+description: The response from deleting developer metadata.
+type: object
+properties:
+  deletedDeveloperMetadata:
+    type: array
+    description: The metadata that was deleted.
+    items:
+      $ref: DeveloperMetadata

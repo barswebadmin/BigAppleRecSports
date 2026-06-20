@@ -1,0 +1,99 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: App
+description: The `apps` resource provides a list of apps that a user has installed,
+  with information about each app's supported MIME types, file extensions, and other
+  details. Some resource methods (such as `apps.get`) require an `appId`. Use the
+  `apps.list` method to retrieve the ID for an installed application.
+type: object
+properties:
+  name:
+    description: The name of the app.
+    type: string
+  objectType:
+    description: The type of object this app creates such as a Chart. If empty, the
+      app name should be used instead.
+    type: string
+  supportsCreate:
+    description: Whether this app supports creating objects.
+    type: boolean
+  productUrl:
+    description: A link to the product listing for this app.
+    type: string
+  primaryMimeTypes:
+    description: The list of primary MIME types.
+    type: array
+    items:
+      type: string
+  secondaryMimeTypes:
+    description: The list of secondary MIME types.
+    type: array
+    items:
+      type: string
+  primaryFileExtensions:
+    description: The list of primary file extensions.
+    type: array
+    items:
+      type: string
+  secondaryFileExtensions:
+    description: The list of secondary file extensions.
+    type: array
+    items:
+      type: string
+  id:
+    description: The ID of the app.
+    type: string
+  supportsImport:
+    description: Whether this app supports importing from Google Docs.
+    type: boolean
+  installed:
+    description: Whether the app is installed.
+    type: boolean
+  authorized:
+    description: Whether the app is authorized to access data on the user's Drive.
+    type: boolean
+  icons:
+    description: The various icons for the app.
+    type: array
+    items:
+      $ref: AppIcons
+  useByDefault:
+    description: Whether the app is selected as the default handler for the types
+      it supports.
+    type: boolean
+  kind:
+    description: 'Output only. Identifies what kind of resource this is. Value: the
+      fixed string "drive#app".'
+    default: drive#app
+    type: string
+  shortDescription:
+    description: A short description of the app.
+    type: string
+  longDescription:
+    description: A long description of the app.
+    type: string
+  supportsMultiOpen:
+    description: Whether this app supports opening more than one file.
+    type: boolean
+  productId:
+    description: The ID of the product listing for this app.
+    type: string
+  openUrlTemplate:
+    description: The template URL for opening files with this app. The template contains
+      {ids} or {exportIds} to be replaced by the actual file IDs. For more information,
+      see Open Files for the full documentation.
+    type: string
+  createUrl:
+    description: The URL to create a file with this app.
+    type: string
+  createInFolderTemplate:
+    description: The template URL to create a file with this app in a given folder.
+      The template contains the {folderId} to be replaced by the folder ID house the
+      new file.
+    type: string
+  supportsOfflineCreate:
+    description: Whether this app supports creating files when offline.
+    type: boolean
+  hasDriveWideScope:
+    description: Whether the app has Drive-wide scope. An app with Drive-wide scope
+      can access all files in the user's Drive.
+    type: boolean

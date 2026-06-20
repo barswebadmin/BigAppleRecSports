@@ -1,0 +1,19 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ScaleQuestion
+description: A scale question. The user has a range of numeric values to choose from.
+type: object
+properties:
+  low:
+    format: int32
+    description: Required. The lowest possible value for the scale.
+    type: integer
+  lowLabel:
+    type: string
+    description: The label to display describing the lowest point on the scale.
+  highLabel:
+    type: string
+    description: The label to display describing the highest point on the scale.
+  high:
+    type: integer
+    description: Required. The highest possible value for the scale.
+    format: int32

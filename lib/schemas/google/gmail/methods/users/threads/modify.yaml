@@ -1,0 +1,24 @@
+description: Modifies the labels applied to the thread. This applies to all messages
+  in the thread.
+httpMethod: POST
+path: gmail/v1/users/{userId}/threads/{id}/modify
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.modify
+request:
+  $ref: ModifyThreadRequest
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  id:
+    description: The ID of the thread to modify.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Thread

@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FreeBusyGroup
+description: ''
+type: object
+properties:
+  calendars:
+    type: array
+    description: List of calendars' identifiers within a group.
+    items:
+      type: string
+  errors:
+    type: array
+    description: Optional error(s) (if computation for the group failed).
+    items:
+      $ref: Error

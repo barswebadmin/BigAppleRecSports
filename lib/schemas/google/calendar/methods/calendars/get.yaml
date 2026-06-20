@@ -1,0 +1,19 @@
+description: Returns metadata for a calendar.
+httpMethod: GET
+path: calendars/{calendarId}
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.app.created
+- https://www.googleapis.com/auth/calendar.calendars
+- https://www.googleapis.com/auth/calendar.calendars.readonly
+- https://www.googleapis.com/auth/calendar.readonly
+parameters:
+  calendarId:
+    type: string
+    description: Calendar identifier. To retrieve calendar IDs call the calendarList.list
+      method. If you want to access the primary calendar of the currently logged in
+      user, use the "primary" keyword.
+    required: true
+    location: path
+response:
+  $ref: Calendar

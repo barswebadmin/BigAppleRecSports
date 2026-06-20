@@ -1,44 +1,37 @@
 """Repository path resolution utilities for compilation checks."""
 
+import sys
 from pathlib import Path
 from typing import List
+
+import sys
+from pathlib import Path
+
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
 
 
 def find_repo_root() -> Path:
     """Find the repository root directory by looking for .git."""
-    current = Path.cwd().resolve()
-    while current != current.parent:
-        if (current / '.git').exists():
-            return current
-        current = current.parent
-    return Path.cwd().resolve()
+    return get_repo_root()
 
 
 def find_all_python_files(repo_root: Path) -> List[Path]:
-    """Find all Python files in backend/ and lambda/functions/ directories.
-    
+    """Find all Python files in backend/ and aws/lambda/functions/.
+
     Args:
         repo_root: Repository root directory
-        
+
     Returns:
         List of Python file paths
     """
     python_files: List[Path] = []
-    
-    # Check backend/
-    backend_dir = repo_root / "backend"
-    if backend_dir.exists():
-        python_files.extend(backend_dir.rglob("*.py"))
-    
-    # Check lambda/functions/
-    lambda_dir = repo_root / "lambda" / "functions"
-    if lambda_dir.exists():
-        python_files.extend(lambda_dir.rglob("*.py"))
-    
-    # Check bars_cli/
-    bars_cli_dir = repo_root / "bars_cli"
-    if bars_cli_dir.exists():
-        python_files.extend(bars_cli_dir.rglob("*.py"))
+
+    for subpath in ("backend", "aws/lambda/functions"):
+        candidate = repo_root / subpath
+        if candidate.exists():
+            python_files.extend(candidate.rglob("*.py"))
     
     # Filter out __pycache__ and test files if needed
     filtered = [
@@ -72,10 +65,10 @@ def path_to_module(file_path: Path, src_root: Path) -> str:
     
     Args:
         file_path: Path to Python file
-        src_root: Root directory (backend/, lambda/functions/, or bars_cli/)
-        
+        src_root: Root directory (backend/ or aws/lambda/functions/)
+
     Returns:
-        Module name (e.g., "backend.modules.auth" or "lambda.functions.handler")
+        Module name (e.g., "backend.modules.auth" or "ShopifyProductUpdates.main")
     """
     try:
         rel_path = file_path.relative_to(src_root)
@@ -97,9 +90,6 @@ def path_to_module(file_path: Path, src_root: Path) -> str:
             module_parts = parts[idx + 1:]
         elif "lambda" in parts and "functions" in parts:
             idx = parts.index("lambda")
-            module_parts = parts[idx:]
-        elif "bars_cli" in parts:
-            idx = parts.index("bars_cli")
             module_parts = parts[idx:]
         else:
             return file_path.stem

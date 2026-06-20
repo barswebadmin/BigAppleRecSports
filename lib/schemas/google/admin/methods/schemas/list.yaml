@@ -1,0 +1,18 @@
+description: Retrieves all schemas for a customer.
+httpMethod: GET
+path: admin/directory/v1/customer/{customerId}/schemas
+scopes:
+- https://www.googleapis.com/auth/admin.directory.userschema
+- https://www.googleapis.com/auth/admin.directory.userschema.readonly
+parameters:
+  customerId:
+    description: The unique ID for the customer's Google Workspace account. In case
+      of a multi-domain account, to fetch all groups for a customer, use this field
+      instead of `domain`. You can also use the `my_customer` alias to represent your
+      account's `customerId`. The `customerId` is also returned as part of the [Users](https://developers.google.com/workspace/admin/directory/v1/reference/users)
+      resource. You must provide either the `customer` or the `domain` parameter.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Schemas

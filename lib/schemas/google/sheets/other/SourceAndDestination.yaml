@@ -1,0 +1,25 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SourceAndDestination
+description: A combination of a source range and how to extend that source.
+type: object
+properties:
+  dimension:
+    description: The dimension that data should be filled into.
+    enum:
+    - DIMENSION_UNSPECIFIED
+    - ROWS
+    - COLUMNS
+    enumDescriptions:
+    - The default value, do not use.
+    - Operates on the rows of a sheet.
+    - Operates on the columns of a sheet.
+    type: string
+  source:
+    description: The location of the data to use as the source of the autofill.
+    $ref: GridRange
+  fillLength:
+    description: The number of rows or columns that data should be filled into. Positive
+      numbers expand beyond the last row or last column of the source. Negative numbers
+      expand before the first row or first column of the source.
+    format: int32
+    type: integer

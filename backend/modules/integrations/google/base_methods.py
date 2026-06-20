@@ -7,45 +7,105 @@ shared across all Google API services.
 
 import logging
 import json
+import sys
 from typing import Optional, Dict, Any, NoReturn, Callable, TypeVar, cast, TypedDict
 from functools import wraps
 
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError
 
-from backend.config import config
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
 
 logger = logging.getLogger(__name__)
 
 F = TypeVar('F', bound=Callable[..., Any])
 
 
-class GoogleServiceAccountInfo(TypedDict, total=False):
-    """Google service account JSON structure.
-    
-    All fields are strings. The 'subject' field is optional (for domain-wide delegation).
+def _handle_refresh_error(error: RefreshError, required_scopes: Optional[list[str]] = None, service_name: Optional[str] = None) -> NoReturn:
     """
-    type: str  # 'service_account'
-    project_id: str
-    private_key_id: str
-    private_key: str
-    client_email: str
-    client_id: str
-    auth_uri: str
-    token_uri: str
-    auth_provider_x509_cert_url: str
-    client_x509_cert_url: str
-    universe_domain: str
-    subject: str  # Optional - for domain-wide delegation
+    Handle RefreshError exceptions that occur during credential refresh.
+    
+    Provides detailed scope authorization diagnostics to help users fix the issue.
+    
+    Args:
+        error: RefreshError from Google auth library
+        required_scopes: Optional list of scopes that were requested
+        service_name: Optional name of the service that failed (for diagnostics)
+    
+    Raises:
+        RefreshError: Re-raises the original RefreshError after logging diagnostics
+    """
+    error_type = type(error).__name__
+    error_msg = str(error)
+    
+    # Extract error details if available
+    # RefreshError typically has error details in error.args[1] as a dict
+    error_details = {}
+    if hasattr(error, 'args') and len(error.args) > 1:
+        if isinstance(error.args[1], dict):
+            error_details = error.args[1]
+    
+    logger.error(f"Credential refresh error: {error_type}: {error_msg}", exc_info=True)
+    
+    print(f"[ERROR] ========== SCOPE AUTHORIZATION ERROR ==========", file=sys.stderr)
+    if service_name:
+        print(f"[ERROR] Service: {service_name}", file=sys.stderr)
+    print(f"[ERROR] Error Type: {error_type}", file=sys.stderr)
+    print(f"[ERROR] Error Message: {error_msg}", file=sys.stderr)
+    print(f"[ERROR] ", file=sys.stderr)
+    
+    if required_scopes:
+        print(f"[ERROR] REQUESTED SCOPES ({len(required_scopes)} total):", file=sys.stderr)
+        for i, scope in enumerate(required_scopes, 1):
+            print(f"[ERROR]   {i}. {scope}", file=sys.stderr)
+        print(f"[ERROR] ", file=sys.stderr)
+        print(f"[ERROR] 💡 TIP: Run 'python -m backend.modules.integrations.google.test_scopes' to test", file=sys.stderr)
+        print(f"[ERROR]    which scopes are actually authorized for this service account.", file=sys.stderr)
+        print(f"[ERROR] ", file=sys.stderr)
+    
+    # Check for unauthorized_client error
+    if 'unauthorized_client' in error_msg.lower():
+        print(f"[ERROR] ❌ UNAUTHORIZED CLIENT ERROR", file=sys.stderr)
+        print(f"[ERROR] ", file=sys.stderr)
+        print(f"[ERROR] This means the service account is not authorized for the requested scopes.", file=sys.stderr)
+        print(f"[ERROR] ", file=sys.stderr)
+        print(f"[ERROR] TO FIX:", file=sys.stderr)
+        print(f"[ERROR] 1. Go to Google Admin Console: https://admin.google.com", file=sys.stderr)
+        print(f"[ERROR] 2. Navigate: Security > API Controls > Domain-wide Delegation", file=sys.stderr)
+        print(f"[ERROR] 3. Find your service account (check the service account email in the logs above)", file=sys.stderr)
+        if required_scopes:
+            print(f"[ERROR] 4. Add the following scopes (one per line):", file=sys.stderr)
+            for scope in required_scopes:
+                print(f"[ERROR]    {scope}", file=sys.stderr)
+        else:
+            print(f"[ERROR] 4. Add the required scopes for this API", file=sys.stderr)
+        print(f"[ERROR] 5. Ensure domain-wide delegation is enabled for this service account", file=sys.stderr)
+    else:
+        print(f"[ERROR] Common causes:", file=sys.stderr)
+        print(f"[ERROR]   1. Domain-wide delegation not enabled in Google Admin Console", file=sys.stderr)
+        if required_scopes:
+            print(f"[ERROR]   2. Required scopes not granted to service account", file=sys.stderr)
+        print(f"[ERROR]   3. Service account credentials are invalid or expired", file=sys.stderr)
+        print(f"[ERROR]   4. Service account doesn't have necessary permissions", file=sys.stderr)
+    
+    if error_details:
+        print(f"[ERROR] ", file=sys.stderr)
+        print(f"[ERROR] Error details:", file=sys.stderr)
+        print(f"[ERROR] {json.dumps(error_details, indent=2)}", file=sys.stderr)
+    
+    print(f"[ERROR] =========================================================", file=sys.stderr)
+    
+    raise
 
 
 def handle_http_errors(func: F) -> F:
     """
-    Decorator to automatically handle HttpError exceptions in Google API client methods.
+    Decorator to automatically handle HttpError and RefreshError exceptions in Google API client methods.
     
-    Catches HttpError, calls _raise_for_status to log and re-raise, ensuring consistent
-    error handling across all API methods without requiring try/except blocks.
+    Catches HttpError and RefreshError, calls appropriate error handlers to log and re-raise,
+    ensuring consistent error handling across all API methods without requiring try/except blocks.
+    
+    Automatically passes required_scopes to error handler if available on the service instance.
     
     Usage:
         @handle_http_errors
@@ -54,96 +114,64 @@ def handle_http_errors(func: F) -> F:
     """
     @wraps(func)
     def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        service_name = getattr(self, '__class__', type(self)).__name__
+        method_name = func.__name__
+        
         try:
             return func(self, *args, **kwargs)
+        except RefreshError as e:
+            # Handle credential refresh errors (scope authorization issues)
+            required_scopes = getattr(self, 'required_scopes', None)
+            _handle_refresh_error(e, required_scopes=required_scopes, service_name=service_name)
+        except (TimeoutError, OSError) as e:
+            # Handle timeout and network errors
+            error_type = type(e).__name__
+            error_msg = str(e)
+            
+            # Check if this is happening during credential refresh
+            import traceback
+            tb_str = ''.join(traceback.format_exc())
+            is_credential_refresh = 'refresh' in tb_str.lower() or 'before_request' in tb_str.lower()
+            
+            print(f"[ERROR] ========== TIMEOUT/NETWORK ERROR ==========", file=sys.stderr)
+            print(f"[ERROR] Service: {service_name}", file=sys.stderr)
+            print(f"[ERROR] Method: {method_name}", file=sys.stderr)
+            print(f"[ERROR] Error Type: {error_type}", file=sys.stderr)
+            print(f"[ERROR] Error Message: {error_msg}", file=sys.stderr)
+            if is_credential_refresh:
+                print(f"[ERROR] ", file=sys.stderr)
+                print(f"[ERROR] ⚠️ This timeout occurred during credential refresh (not the API call itself)", file=sys.stderr)
+                print(f"[ERROR]    The credentials are trying to get an access token from Google's OAuth2 endpoint.", file=sys.stderr)
+            print(f"[ERROR] ", file=sys.stderr)
+            print(f"[ERROR] This is a network connectivity or timeout issue.", file=sys.stderr)
+            print(f"[ERROR] ", file=sys.stderr)
+            print(f"[ERROR] Possible causes:", file=sys.stderr)
+            print(f"[ERROR]   1. Network connectivity issues (firewall, VPN, proxy)", file=sys.stderr)
+            print(f"[ERROR]   2. Google API service temporarily unavailable", file=sys.stderr)
+            print(f"[ERROR]   3. httplib2 timeout too short (default may be very short)", file=sys.stderr)
+            print(f"[ERROR]   4. DNS resolution problems", file=sys.stderr)
+            print(f"[ERROR]   5. Intermittent network issue (curl works, but Python httplib2 times out)", file=sys.stderr)
+            print(f"[ERROR] ", file=sys.stderr)
+            print(f"[ERROR] Try:", file=sys.stderr)
+            print(f"[ERROR]   - Retry the operation (may be intermittent)", file=sys.stderr)
+            print(f"[ERROR]   - Check internet connectivity: curl https://oauth2.googleapis.com/token", file=sys.stderr)
+            print(f"[ERROR]   - Check firewall/proxy settings", file=sys.stderr)
+            print(f"[ERROR]   - Check if other services can refresh credentials successfully", file=sys.stderr)
+            print(f"[ERROR] =========================================================", file=sys.stderr)
+            
+            logger.error(f"Timeout/Network error in {service_name}.{method_name}: {e}", exc_info=True)
+            raise
         except HttpError as e:
-            self._raise_for_status(e)
+            # Get required_scopes from service instance if available
+            required_scopes = getattr(self, 'required_scopes', None)
+            if hasattr(self, '_raise_for_status'):
+                # If service has custom _raise_for_status, use it (it should handle scopes)
+                self._raise_for_status(e, required_scopes=required_scopes)
+            else:
+                # Fallback to global raise_for_status
+                raise_for_status(e, required_scopes=required_scopes)
     
     return cast(F, wrapper)
-
-
-def get_service_account_info(
-    service_account_info: Optional[GoogleServiceAccountInfo]
-) -> GoogleServiceAccountInfo:
-    """Load service account info from config if not provided."""
-    if service_account_info is not None:
-        if not isinstance(service_account_info, dict):
-            raise ValueError(
-                f"service_account_info must be a dict, got {type(service_account_info).__name__}"
-            )
-        return service_account_info
-    
-    google_config = getattr(config, 'GOOGLE', None)
-    if not google_config:
-        raise ValueError(
-            "Google service account credentials not found in config. "
-            "Please ensure google-service-account.json exists in the backend/ directory."
-        )
-    
-    if not hasattr(google_config, 'SERVICE_ACCOUNT'):
-        raise ValueError(
-            "Google service account credentials not found in config.GOOGLE. "
-            "Please ensure google-service-account.json exists in the backend/ directory."
-        )
-    
-    service_account: Optional[GoogleServiceAccountInfo] = getattr(google_config, 'SERVICE_ACCOUNT')
-    
-    if service_account is None:
-        raise ValueError(
-            "Google service account credentials are None in config.GOOGLE.SERVICE_ACCOUNT. "
-            "Please ensure google-service-account.json exists in the backend/ directory and is valid JSON."
-        )
-    
-    if not isinstance(service_account, dict):
-        raise ValueError(
-            f"Google service account credentials must be a dict, got {type(service_account).__name__}. "
-            "Please check that google-service-account.json contains valid JSON."
-        )
-    
-    return service_account
-
-
-def initialize_credentials(
-    service_account_info: Optional[GoogleServiceAccountInfo],
-    scopes: list[str],
-    subject: Optional[str] = None
-) -> tuple[service_account.Credentials, service_account.Credentials]:
-    """
-    Initialize Google service account credentials.
-    
-    Args:
-        service_account_info: Service account JSON dict. If None, uses config.
-        scopes: List of OAuth scopes required
-        subject: Email address of the user to impersonate (for domain-wide delegation)
-    
-    Returns:
-        Tuple of (base_credentials, credentials)
-    """
-    service_account_info = get_service_account_info(service_account_info)
-    
-    # Get subject from parameter first, then fall back to service_account_info dict
-    if subject is None and isinstance(service_account_info, dict):
-        subject = service_account_info.get("subject", None)
-    
-    # Pass subject directly to from_service_account_info (this works, with_subject() doesn't)
-    base_credentials = service_account.Credentials.from_service_account_info(
-        service_account_info,
-        subject=subject,
-        scopes=scopes
-    )
-    credentials = base_credentials
-    
-    if subject:
-        logger.info(f"✅ Using domain-wide delegation with subject: {subject}")
-    else:
-        logger.warning("⚠️ No subject provided - using service account directly (may have limited permissions)")
-    
-    return base_credentials, credentials
-
-
-def build_service(service_name: str, version: str, credentials: service_account.Credentials) -> Any:
-    """Build and return the Google API service instance."""
-    return build(service_name, version, credentials=credentials)
 
 
 def paginate_api_call(
@@ -245,18 +273,22 @@ def execute_batch_request(
     return ordered_responses
 
 
-def raise_for_status(error: HttpError) -> NoReturn:
+def raise_for_status(error: HttpError, required_scopes: Optional[list[str]] = None) -> NoReturn:
     """
     Centralized error handling for Google API HTTP errors.
     
     Converts HttpError to JSON and logs it, then re-raises the original HttpError.
+    Detects and reports insufficient scope errors when scopes are provided.
     
     Args:
         error: HttpError from Google API
+        required_scopes: Optional list of scopes that were requested for this API call
     
     Raises:
         HttpError: Re-raises the original HttpError after logging JSON representation
     """
+    import sys
+    
     error_dict = {
         'status_code': error.resp.status,
         'reason': error.reason,
@@ -265,8 +297,56 @@ def raise_for_status(error: HttpError) -> NoReturn:
         'content': error.content.decode('utf-8') if error.content else None
     }
     
+    error_content = error_dict.get('content', '')
+    error_reason = error_dict.get('reason', '')
+    status_code = error_dict.get('status_code', 0)
+    
+    # Detect scope-related errors
+    is_scope_error = False
+    scope_indicators = [
+        'insufficient permissions',
+        'insufficient scope',
+        'access denied',
+        'permission denied',
+        'forbidden',
+        'unauthorized',
+        'scope',
+        '403'
+    ]
+    
+    error_text = f"{error_reason} {error_content}".lower()
+    if status_code == 403 or any(indicator in error_text for indicator in scope_indicators):
+        is_scope_error = True
+    
     logger.error(
         f"Google API error:\n{json.dumps(error_dict, indent=2)}"
     )
+    
+    # Print scope diagnostics if this appears to be a scope error
+    if is_scope_error and required_scopes:
+        print(f"[ERROR] ========== INSUFFICIENT SCOPE ERROR DETECTED ==========", file=sys.stderr)
+        print(f"[ERROR] Status Code: {status_code}", file=sys.stderr)
+        print(f"[ERROR] Error: {error_reason}", file=sys.stderr)
+        print(f"[ERROR] ", file=sys.stderr)
+        print(f"[ERROR] The API method attempted requires scopes that were not authorized.", file=sys.stderr)
+        print(f"[ERROR] ", file=sys.stderr)
+        print(f"[ERROR] REQUESTED SCOPES ({len(required_scopes)} total):", file=sys.stderr)
+        for i, scope in enumerate(required_scopes, 1):
+            print(f"[ERROR]   {i}. {scope}", file=sys.stderr)
+        print(f"[ERROR] ", file=sys.stderr)
+        print(f"[ERROR] TO FIX:", file=sys.stderr)
+        print(f"[ERROR] 1. Go to Google Admin Console: https://admin.google.com", file=sys.stderr)
+        print(f"[ERROR] 2. Navigate: Security > API Controls > Domain-wide Delegation", file=sys.stderr)
+        print(f"[ERROR] 3. Find your service account and ensure ALL scopes above are authorized", file=sys.stderr)
+        print(f"[ERROR] 4. The API endpoint attempted: {error_dict.get('uri', 'Unknown')}", file=sys.stderr)
+        if error_content:
+            print(f"[ERROR] ", file=sys.stderr)
+            print(f"[ERROR] Error details from Google:", file=sys.stderr)
+            try:
+                error_json = json.loads(error_content)
+                print(f"[ERROR] {json.dumps(error_json, indent=2)}", file=sys.stderr)
+            except:
+                print(f"[ERROR] {error_content[:500]}", file=sys.stderr)
+        print(f"[ERROR] =========================================================", file=sys.stderr)
     
     raise

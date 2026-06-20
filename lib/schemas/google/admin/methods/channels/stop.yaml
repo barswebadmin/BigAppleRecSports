@@ -1,0 +1,12 @@
+description: Stops watching resources through this channel.
+httpMethod: POST
+path: admin/directory_v1/channels/stop
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+- https://www.googleapis.com/auth/admin.directory.user.alias
+- https://www.googleapis.com/auth/admin.directory.user.alias.readonly
+- https://www.googleapis.com/auth/admin.directory.user.readonly
+- https://www.googleapis.com/auth/cloud-platform
+request:
+  $ref: Channel
+parameters: {}

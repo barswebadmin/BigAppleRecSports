@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Asps
+description: ''
+type: object
+properties:
+  kind:
+    description: The type of the API resource. This is always `admin#directory#aspList`.
+    default: admin#directory#aspList
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  items:
+    description: A list of ASP resources.
+    type: array
+    items:
+      $ref: Asp

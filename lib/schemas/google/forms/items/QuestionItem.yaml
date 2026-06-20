@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: QuestionItem
+description: A form item containing a single question.
+type: object
+properties:
+  question:
+    $ref: Question
+    description: Required. The displayed question.
+  image:
+    $ref: Image
+    description: The image displayed within the question.

@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PrinterModel
+description: Printer manufacturer and model
+type: object
+properties:
+  manufacturer:
+    description: Manufacturer. eq. "Brother"
+    type: string
+  displayName:
+    description: Display name. eq. "Brother MFC-8840D"
+    type: string
+  makeAndModel:
+    description: Make and model as represented in "make_and_model" field in Printer
+      object. eq. "brother mfc-8840d"
+    type: string

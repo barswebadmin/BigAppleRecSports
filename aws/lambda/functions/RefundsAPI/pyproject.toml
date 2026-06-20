@@ -1,0 +1,50 @@
+[project]
+name = "shopify-refund-handler"
+version = "0.1.0"
+description = "Big Apple Rec Sports - Refund request handler. Receives webhooks from Google Sheets, fetches Shopify order, validates email/name against order line-item attributes, returns refund estimate."
+requires-python = ">=3.14"
+# aws-lambda-powertools is intentionally NOT listed here — it is provided by the
+# official Powertools Lambda layer (see layers below). skip-deps=true means pip
+# deps are never bundled into the zip; adding it here would only affect local
+# development installs (uv sync), not the deployed function.
+dependencies = [
+    "aws-lambda-powertools>=3.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.deploy]
+# Runtime deps come from layers; do not bundle into the function zip.
+# shopify_client and registrations are local source symlinks resolved on deploy
+# (see scripts/deploy rsync -aL).
+#
+# Layers match what ShopifyProductUpdates uses (proven working with the same
+# shopify_client). The aspirational ``lib-httpx`` / ``lib-pydantic`` layers
+# referenced in earlier drafts aren't actually published — only ``bars-common-utils``,
+# ``google-apis``, ``http-clients``, ``shared-utilities-deps``, and ``slack`` exist
+# in the account today. Re-point when the lib-* layers get published.
+skip-deps = true
+runtime = "python3.14"
+handler = "main.lambda_handler"
+role = "arn:aws:iam::084375563770:role/service-role/Amazon_EventBridge_Scheduler_LAMBDA_3bc414251c"
+timeout = 30
+memory-size = 256
+architectures = ["arm64"]
+layers = [
+    # Official Powertools v3 layer (Python 3.14, arm64). Look up the current
+    # version at https://docs.powertools.aws.dev/lambda/python/latest/#lambda-layer
+    # Format: arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:{version}
+    # TODO: pin version once confirmed against v3.29.0 release.
+    "arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:23",
+    # Custom BARS Powertools config layer (observability + middleware + parameters).
+    # Source: aws/lambda/layers/lib/aws-powertools/. Build + publish first, then add ARN.
+    # "arn:aws:lambda:us-east-1:084375563770:layer:aws-powertools:1",  # TODO: publish
+    "arn:aws:lambda:us-east-1:084375563770:layer:bars-common-utils:22",
+    "arn:aws:lambda:us-east-1:084375563770:layer:shared-utilities-deps:2",
+    # http-clients provides httpx + httpx-retries. shared-utilities-deps has
+    # httpx but NOT httpx-retries, which shopify_client.client imports for its
+    # retry middleware — without this layer the lambda 502s at import time.
+    "arn:aws:lambda:us-east-1:084375563770:layer:http-clients:1",
+]

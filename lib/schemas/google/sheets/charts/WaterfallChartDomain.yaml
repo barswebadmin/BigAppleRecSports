@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: WaterfallChartDomain
+description: The domain of a waterfall chart.
+type: object
+properties:
+  data:
+    description: The data of the WaterfallChartDomain.
+    $ref: ChartData
+  reversed:
+    type: boolean
+    description: True to reverse the order of the domain values (horizontal axis).

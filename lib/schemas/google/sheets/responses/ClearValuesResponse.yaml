@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ClearValuesResponse
+description: The response when clearing a range of values in a spreadsheet.
+type: object
+properties:
+  spreadsheetId:
+    description: The spreadsheet the updates were applied to.
+    type: string
+  clearedRange:
+    type: string
+    description: The range (in A1 notation) that was cleared. (If the request was
+      for an unbounded range or a range larger than the bounds of the sheet, this
+      will be the actual range that was cleared, bounded to the sheet's limits.)

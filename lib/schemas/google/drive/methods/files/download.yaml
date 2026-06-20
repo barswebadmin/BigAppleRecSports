@@ -1,0 +1,31 @@
+description: Downloads the content of a file. For more information, see [Download
+  and export files](https://developers.google.com/workspace/drive/api/guides/manage-downloads).
+  Operations are valid for 24 hours from the time of creation.
+httpMethod: POST
+path: files/{fileId}/download
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  fileId:
+    description: Required. The ID of the file to download.
+    location: path
+    required: true
+    type: string
+  mimeType:
+    description: Optional. The MIME type the file should be downloaded as. This field
+      can only be set when downloading Google Workspace documents. For a list of supported
+      MIME types, see [Export MIME types for Google Workspace documents](/workspace/drive/api/guides/ref-export-formats).
+      If not set, a Google Workspace document is downloaded with a default MIME type.
+      The default MIME type might change in the future.
+    location: query
+    type: string
+  revisionId:
+    description: Optional. The revision ID of the file to download. This field can
+      only be set when downloading blob files, Google Docs, and Google Sheets. Returns
+      `INVALID_ARGUMENT` if downloading a specific revision on the file is unsupported.
+    location: query
+    type: string
+response:
+  $ref: Operation

@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FreeBusyRequestItem
+description: ''
+type: object
+properties:
+  id:
+    type: string
+    description: The identifier of a calendar or a group.

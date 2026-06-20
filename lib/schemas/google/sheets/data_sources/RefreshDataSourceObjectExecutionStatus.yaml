@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RefreshDataSourceObjectExecutionStatus
+description: The execution status of refreshing one data source object.
+type: object
+properties:
+  reference:
+    description: Reference to a data source object being refreshed.
+    $ref: DataSourceObjectReference
+  dataExecutionStatus:
+    $ref: DataExecutionStatus
+    description: The data execution status.

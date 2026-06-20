@@ -1,0 +1,20 @@
+description: Lists the send-as aliases for the specified account. The result includes
+  the primary send-as address associated with the account as well as any custom "from"
+  aliases.
+httpMethod: GET
+path: gmail/v1/users/{userId}/settings/sendAs
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.modify
+- https://www.googleapis.com/auth/gmail.readonly
+- https://www.googleapis.com/auth/gmail.settings.basic
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: ListSendAsResponse

@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: HardwareKeyMetadata
+description: Metadata for hardware keys. If [hardware key encryption](https://support.google.com/a/answer/14153163)
+  is set up for the Google Workspace organization, users can optionally store their
+  private key on their smart card and use it to sign and decrypt email messages in
+  Gmail by inserting their smart card into a reader attached to their Windows device.
+type: object
+properties:
+  description:
+    description: Description about the hardware key.
+    type: string

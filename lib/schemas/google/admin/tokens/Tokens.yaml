@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Tokens
+description: JSON response template for List tokens operation in Directory API.
+type: object
+properties:
+  kind:
+    description: The type of the API resource. This is always `admin#directory#tokenList`.
+    default: admin#directory#tokenList
+    type: string
+  etag:
+    description: ETag of the resource.
+    type: string
+  items:
+    description: A list of Token resources.
+    type: array
+    items:
+      $ref: Token

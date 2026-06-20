@@ -1,0 +1,59 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Approval
+description: Metadata for an approval. An approval is a review/approve process for
+  a Drive item.
+type: object
+properties:
+  kind:
+    description: This is always drive#approval.
+    type: string
+  approvalId:
+    description: The Approval ID.
+    type: string
+  targetFileId:
+    description: Target file id of the approval.
+    type: string
+  createTime:
+    description: Output only. The time the approval was created.
+    readOnly: true
+    type: string
+    format: google-datetime
+  modifyTime:
+    description: Output only. The most recent time the approval was modified.
+    readOnly: true
+    type: string
+    format: google-datetime
+  completeTime:
+    description: Output only. The time the approval was completed.
+    readOnly: true
+    type: string
+    format: google-datetime
+  dueTime:
+    description: The time that the approval is due.
+    type: string
+    format: google-datetime
+  status:
+    description: Output only. The status of the approval at the time this resource
+      was requested.
+    readOnly: true
+    type: string
+    enumDescriptions:
+    - Approval status has not been set or was set to an invalid value.
+    - The approval process has started and not finished.
+    - The approval process is finished and the target was approved.
+    - The approval process was cancelled before it finished.
+    - The approval process is finished and the target was declined.
+    enum:
+    - STATUS_UNSPECIFIED
+    - IN_PROGRESS
+    - APPROVED
+    - CANCELLED
+    - DECLINED
+  initiator:
+    description: The user that requested the Approval.
+    $ref: User
+  reviewerResponses:
+    description: The responses made on the Approval by reviewers.
+    type: array
+    items:
+      $ref: ReviewerResponse

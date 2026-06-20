@@ -17,7 +17,7 @@ def _run_ruff(file_path: Path, repo_root: Path, timeout: int = 30) -> tuple[subp
     if errors:
         # Handle FileNotFoundError specifically for ruff
         if any("Command not found" in err.get("message", "") for err in errors):
-            return None, [create_error(rel_path, "ERROR", "Syntax checker not found - install with: pip install ruff")]
+            return None, [create_error(rel_path, "ERROR", "Syntax checker not found - install with: uv tool install ruff")]
         return None, errors
     return result, []
 

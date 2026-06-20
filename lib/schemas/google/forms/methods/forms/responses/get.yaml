@@ -1,0 +1,20 @@
+description: Get one response from the form.
+httpMethod: GET
+path: v1/forms/{formId}/responses/{responseId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/forms.responses.readonly
+parameters:
+  formId:
+    description: Required. The form ID.
+    type: string
+    location: path
+    required: true
+  responseId:
+    description: Required. The response ID within the form.
+    type: string
+    location: path
+    required: true
+response:
+  $ref: FormResponse

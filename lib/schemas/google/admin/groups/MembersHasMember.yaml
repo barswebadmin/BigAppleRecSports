@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: MembersHasMember
+description: JSON template for Has Member response in Directory API.
+type: object
+properties:
+  isMember:
+    description: Output only. Identifies whether the given user is a member of the
+      group. Membership can be direct or nested.
+    readOnly: true
+    type: boolean

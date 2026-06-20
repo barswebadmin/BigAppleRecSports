@@ -1,0 +1,21 @@
+description: Clears one or more ranges of values from a spreadsheet. For more information,
+  see [Read, write, and search metadata](https://developers.google.com/workspace/sheets/api/guides/metadata).
+  The caller must specify the spreadsheet ID and one or more DataFilters. Ranges matching
+  any of the specified data filters will be cleared. Only values are cleared -- all
+  other properties of the cell (such as formatting, data validation, etc.) are kept.
+httpMethod: POST
+path: v4/spreadsheets/{spreadsheetId}/values:batchClearByDataFilter
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+request:
+  $ref: BatchClearValuesByDataFilterRequest
+parameters:
+  spreadsheetId:
+    location: path
+    type: string
+    description: The ID of the spreadsheet to update.
+    required: true
+response:
+  $ref: BatchClearValuesByDataFilterResponse

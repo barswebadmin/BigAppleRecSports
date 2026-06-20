@@ -38,6 +38,11 @@ jobs:
         with:
           python-version: ${{ steps.python-version.outputs.version }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
       - name: Install dependencies
         run: python scripts/ci/install_dependencies.py lambda
 
@@ -47,4 +52,4 @@ jobs:
 
       - name: Run Lambda tests
         if: steps.compile.outcome == 'success'
-        run: python scripts/ci/run_script.py scripts.testing.run_tests run_lambda_tests
+        run: python lambda/functions/tests/run_tests.py

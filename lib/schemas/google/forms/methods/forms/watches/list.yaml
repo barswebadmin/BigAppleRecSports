@@ -1,0 +1,20 @@
+description: 'Return a list of the watches owned by the invoking project. The maximum
+  number of watches is two: For each invoker, the limit is one for each event type
+  per form.'
+httpMethod: GET
+path: v1/forms/{formId}/watches
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.readonly
+- https://www.googleapis.com/auth/forms.body
+- https://www.googleapis.com/auth/forms.body.readonly
+- https://www.googleapis.com/auth/forms.responses.readonly
+parameters:
+  formId:
+    location: path
+    required: true
+    description: Required. ID of the Form whose watches to list.
+    type: string
+response:
+  $ref: ListWatchesResponse

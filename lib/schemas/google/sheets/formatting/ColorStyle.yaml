@@ -1,0 +1,35 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ColorStyle
+description: A color value.
+type: object
+properties:
+  rgbColor:
+    $ref: Color
+    description: RGB color. The [`alpha`](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/other#Color.FIELDS.alpha)
+      value in the [`Color`](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/other#color)
+      object isn't generally supported.
+  themeColor:
+    enum:
+    - THEME_COLOR_TYPE_UNSPECIFIED
+    - TEXT
+    - BACKGROUND
+    - ACCENT1
+    - ACCENT2
+    - ACCENT3
+    - ACCENT4
+    - ACCENT5
+    - ACCENT6
+    - LINK
+    description: Theme color.
+    type: string
+    enumDescriptions:
+    - Unspecified theme color
+    - Represents the primary text color
+    - Represents the primary background color
+    - Represents the first accent color
+    - Represents the second accent color
+    - Represents the third accent color
+    - Represents the fourth accent color
+    - Represents the fifth accent color
+    - Represents the sixth accent color
+    - Represents the color to use for hyperlinks

@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PivotGroupRule
+description: An optional setting on a PivotGroup that defines buckets for the values
+  in the source data column rather than breaking out each individual value. Only one
+  PivotGroup with a group rule may be added for each column in the source data, though
+  on any given column you may add both a PivotGroup that has a rule and a PivotGroup
+  that does not.
+type: object
+properties:
+  manualRule:
+    description: A ManualRule.
+    $ref: ManualRule
+  histogramRule:
+    description: A HistogramRule.
+    $ref: HistogramRule
+  dateTimeRule:
+    description: A DateTimeRule.
+    $ref: DateTimeRule

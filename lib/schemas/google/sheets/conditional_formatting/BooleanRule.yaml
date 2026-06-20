@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BooleanRule
+description: A rule that may or may not match, depending on the condition.
+type: object
+properties:
+  condition:
+    description: The condition of the rule. If the condition evaluates to true, the
+      format is applied.
+    $ref: BooleanCondition
+  format:
+    $ref: CellFormat
+    description: 'The format to apply. Conditional formatting can only apply a subset
+      of formatting: bold, italic, strikethrough, foreground color and, background
+      color.'

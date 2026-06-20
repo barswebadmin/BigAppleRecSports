@@ -1,0 +1,34 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Domains
+description: ''
+type: object
+properties:
+  kind:
+    description: Kind of resource this is.
+    default: admin#directory#domain
+    type: string
+  domainAliases:
+    description: A list of domain alias objects. (Read-only)
+    type: array
+    items:
+      $ref: DomainAlias
+  verified:
+    description: Indicates the verification state of a domain. (Read-only).
+    type: boolean
+  etag:
+    description: ETag of the resource.
+    type: string
+  creationTime:
+    description: Creation time of the domain. Expressed in [Unix time](https://en.wikipedia.org/wiki/Epoch_time)
+      format. (Read-only).
+    type: string
+    format: int64
+  isPrimary:
+    description: Indicates if the domain is a primary domain (Read-only).
+    type: boolean
+  domainName:
+    description: The domain name of the customer.
+    annotations:
+      required:
+      - directory.domains.insert
+    type: string

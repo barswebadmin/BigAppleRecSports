@@ -1,0 +1,40 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Question
+description: Any question. The specific type of question is known by its `kind`.
+type: object
+properties:
+  scaleQuestion:
+    $ref: ScaleQuestion
+    description: A respondent can choose a number from a range.
+  ratingQuestion:
+    description: A respondent can choose a rating from a pre-defined set of icons.
+    $ref: RatingQuestion
+  timeQuestion:
+    description: A respondent can enter a time.
+    $ref: TimeQuestion
+  questionId:
+    type: string
+    description: Read only. The question ID. On creation, it can be provided but the
+      ID must not be already used in the form. If not provided, a new ID is assigned.
+  required:
+    description: Whether the question must be answered in order for a respondent to
+      submit their response.
+    type: boolean
+  grading:
+    $ref: Grading
+    description: Grading setup for the question.
+  rowQuestion:
+    description: A row of a QuestionGroupItem.
+    $ref: RowQuestion
+  fileUploadQuestion:
+    description: A respondent can upload one or more files.
+    $ref: FileUploadQuestion
+  textQuestion:
+    description: A respondent can enter a free text response.
+    $ref: TextQuestion
+  dateQuestion:
+    description: A respondent can enter a date.
+    $ref: DateQuestion
+  choiceQuestion:
+    description: A respondent can choose from a pre-defined set of options.
+    $ref: ChoiceQuestion

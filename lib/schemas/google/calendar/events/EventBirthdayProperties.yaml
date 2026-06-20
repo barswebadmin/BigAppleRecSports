@@ -1,0 +1,26 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: EventBirthdayProperties
+description: ''
+type: object
+properties:
+  contact:
+    type: string
+    description: 'Resource name of the contact this birthday event is linked to. This
+      can be used to fetch contact details from People API. Format: "people/c12345".
+      Read-only.'
+  customTypeName:
+    type: string
+    description: Custom type label specified for this event. This is populated if
+      birthdayProperties.type is set to "custom". Read-only.
+  type:
+    type: string
+    description: "Type of birthday or special event. Possible values are:  \n- \"\
+      anniversary\" - An anniversary other than birthday. Always has a contact. \n\
+      - \"birthday\" - A birthday event. This is the default value. \n- \"custom\"\
+      \ - A special date whose label is further specified in the customTypeName field.\
+      \ Always has a contact. \n- \"other\" - A special date which does not fall into\
+      \ the other categories, and does not have a custom label. Always has a contact.\
+      \ \n- \"self\" - Calendar owner's own birthday. Cannot have a contact.  The\
+      \ Calendar API only supports creating events with the type \"birthday\". The\
+      \ type cannot be changed after the event is created."
+    default: birthday

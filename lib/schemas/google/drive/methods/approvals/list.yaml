@@ -1,0 +1,29 @@
+description: Lists the Approvals on a file.
+httpMethod: GET
+path: files/{fileId}/approvals
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.appdata
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  fileId:
+    description: Required. The ID of the file the Approval is on.
+    location: path
+    required: true
+    type: string
+  pageSize:
+    description: The maximum number of Approvals to return. When not set, at most
+      100 Approvals will be returned.
+    location: query
+    type: integer
+    format: int32
+  pageToken:
+    description: The token for continuing a previous list request on the next page.
+      This should be set to the value of nextPageToken from a previous response.
+    location: query
+    type: string
+response:
+  $ref: ApprovalList

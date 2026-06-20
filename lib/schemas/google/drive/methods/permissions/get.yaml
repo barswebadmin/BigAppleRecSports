@@ -1,0 +1,46 @@
+description: Gets a permission by ID. For more information, see [Share files, folders,
+  and drives](https://developers.google.com/workspace/drive/api/guides/manage-sharing).
+httpMethod: GET
+path: files/{fileId}/permissions/{permissionId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/drive.meet.readonly
+- https://www.googleapis.com/auth/drive.metadata
+- https://www.googleapis.com/auth/drive.metadata.readonly
+- https://www.googleapis.com/auth/drive.photos.readonly
+- https://www.googleapis.com/auth/drive.readonly
+parameters:
+  fileId:
+    description: The ID of the file.
+    location: path
+    required: true
+    type: string
+  permissionId:
+    description: The ID of the permission.
+    location: path
+    required: true
+    type: string
+  supportsAllDrives:
+    description: Whether the requesting application supports both My Drives and shared
+      drives.
+    default: 'false'
+    location: query
+    type: boolean
+  supportsTeamDrives:
+    description: 'Deprecated: Use `supportsAllDrives` instead.'
+    default: 'false'
+    location: query
+    deprecated: true
+    type: boolean
+  useDomainAdminAccess:
+    description: 'Issue the request as a domain administrator. If set to `true`, and
+      if the following additional conditions are met, the requester is granted access:
+      1. The file ID parameter refers to a shared drive. 2. The requester is an administrator
+      of the domain to which the shared drive belongs. For more information, see [Manage
+      shared drives as domain administrators](https://developers.google.com/workspace/drive/api/guides/manage-shareddrives#manage-administrators).'
+    default: 'false'
+    location: query
+    type: boolean
+response:
+  $ref: Permission

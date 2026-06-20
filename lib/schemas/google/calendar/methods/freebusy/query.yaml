@@ -1,0 +1,12 @@
+description: Returns free/busy information for a set of calendars.
+httpMethod: POST
+path: freeBusy
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.events.freebusy
+- https://www.googleapis.com/auth/calendar.freebusy
+- https://www.googleapis.com/auth/calendar.readonly
+request:
+  $ref: FreeBusyRequest
+response:
+  $ref: FreeBusyResponse

@@ -1,0 +1,23 @@
+description: Returns the developer metadata with the specified ID. The caller must
+  specify the spreadsheet ID and the developer metadata's unique metadataId. For more
+  information, see [Read, write, and search metadata](https://developers.google.com/workspace/sheets/api/guides/metadata).
+httpMethod: GET
+path: v4/spreadsheets/{spreadsheetId}/developerMetadata/{metadataId}
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+parameters:
+  spreadsheetId:
+    description: The ID of the spreadsheet to retrieve metadata from.
+    required: true
+    location: path
+    type: string
+  metadataId:
+    type: integer
+    format: int32
+    description: The ID of the developer metadata to retrieve.
+    location: path
+    required: true
+response:
+  $ref: DeveloperMetadata

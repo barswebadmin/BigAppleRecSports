@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CreateConferenceRequest
+description: ''
+type: object
+properties:
+  conferenceSolutionKey:
+    $ref: ConferenceSolutionKey
+    description: The conference solution, such as Hangouts or Google Meet.
+  requestId:
+    type: string
+    description: 'The client-generated unique ID for this request.
+
+      Clients should regenerate this ID for every new request. If an ID provided is
+      the same as for the previous request, the request is ignored.'
+  status:
+    $ref: ConferenceRequestStatus
+    description: The status of the conference create request.

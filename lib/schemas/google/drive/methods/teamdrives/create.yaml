@@ -1,0 +1,19 @@
+description: 'Deprecated: Use `drives.create` instead.'
+httpMethod: POST
+path: teamdrives
+scopes:
+- https://www.googleapis.com/auth/drive
+request:
+  $ref: TeamDrive
+parameters:
+  requestId:
+    description: Required. An ID, such as a random UUID, which uniquely identifies
+      this user's request for idempotent creation of a Team Drive. A repeated request
+      by the same user and with the same request ID will avoid creating duplicates
+      by attempting to create the same Team Drive. If the Team Drive already exists
+      a 409 error will be returned.
+    location: query
+    required: true
+    type: string
+response:
+  $ref: TeamDrive

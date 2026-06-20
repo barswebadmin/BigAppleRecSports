@@ -1,0 +1,14 @@
+description: Deletes a print server.
+httpMethod: DELETE
+path: admin/directory/v1/{+name}
+scopes:
+- https://www.googleapis.com/auth/admin.chrome.printers
+parameters:
+  name:
+    description: 'Required. The name of the print server to be deleted. Format: `customers/{customer.id}/chrome/printServers/{print_server.id}`'
+    pattern: ^customers/[^/]+/chrome/printServers/[^/]+$
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Empty

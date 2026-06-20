@@ -1,0 +1,58 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: PivotTable
+description: A pivot table.
+type: object
+properties:
+  source:
+    description: The range the pivot table is reading data from.
+    $ref: GridRange
+  values:
+    description: A list of values to include in the pivot table.
+    items:
+      $ref: PivotValue
+    type: array
+  valueLayout:
+    type: string
+    enumDescriptions:
+    - Values are laid out horizontally (as columns).
+    - Values are laid out vertically (as rows).
+    enum:
+    - HORIZONTAL
+    - VERTICAL
+    description: Whether values should be listed horizontally (as columns) or vertically
+      (as rows).
+  rows:
+    description: Each row grouping in the pivot table.
+    items:
+      $ref: PivotGroup
+    type: array
+  columns:
+    description: Each column grouping in the pivot table.
+    items:
+      $ref: PivotGroup
+    type: array
+  filterSpecs:
+    type: array
+    description: The filters applied to the source columns before aggregating data
+      for the pivot table. Both criteria and filter_specs are populated in responses.
+      If both fields are specified in an update request, this field takes precedence.
+    items:
+      $ref: PivotFilterSpec
+  dataSourceId:
+    type: string
+    description: The ID of the data source the pivot table is reading data from.
+  dataExecutionStatus:
+    readOnly: true
+    $ref: DataExecutionStatus
+    description: Output only. The data execution status for data source pivot tables.
+  criteria:
+    description: An optional mapping of filters per source column offset. The filters
+      are applied before aggregating data into the pivot table. The map's key is the
+      column offset of the source range that you want to filter, and the value is
+      the criteria for that column. For example, if the source was `C10:E15`, a key
+      of `0` will have the filter for column `C`, whereas the key `1` is for column
+      `D`. This field is deprecated in favor of filter_specs.
+    deprecated: true
+    additionalProperties:
+      $ref: PivotFilterCriteria
+    type: object

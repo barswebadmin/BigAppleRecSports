@@ -54,11 +54,8 @@ cd BigAppleRecSports-alt
 make install
 
 # Setup pre-commit hooks
-pip install pre-commit
+uv tool install pre-commit
 pre-commit install
-
-# Setup lambda development
-python3 scripts/setup_local_development.py
 ```
 
 ## 🔄 Development Workflow
@@ -323,7 +320,7 @@ def test_refund_api_endpoint():
 ./scripts/deployment/deploy_backend.py
 
 # Google Apps Scripts
-bash scripts/deployment/deploy_google.sh project-name
+bash scripts/deployment/deploy project-name
 
 # Lambda (if needed)
 # Use GitHub Actions manual trigger
@@ -360,12 +357,9 @@ ENVIRONMENT=development
 
 ### Lambda Development
 ```bash
-# Setup imports (run once)
-python3 scripts/setup_local_development.py
-
 # Test lambda locally
-cd lambda-functions/shopifyProductUpdateHandler
-python3 lambda_function.py
+cd lambda/functions/shopifyProductUpdateHandler
+python3 main.py
 ```
 
 ### Google Apps Scripts
@@ -374,7 +368,7 @@ python3 lambda_function.py
 bash scripts/deployment/google/setup_auth.sh
 
 # Deploy project (from repo root)
-bash scripts/deployment/deploy_google.sh project-name
+bash scripts/deployment/deploy project-name
 ```
 
 ## 🐛 Debugging
@@ -401,7 +395,7 @@ python3 tests/run_tests.py unit
 
 # Test specific function
 cd shopifyProductUpdateHandler
-python3 -c "import lambda_function; print(lambda_function.lambda_handler({}, {}))"
+python3 -c "import main; print(main.lambda_handler({}, {}))"
 ```
 
 ### Slack Issues

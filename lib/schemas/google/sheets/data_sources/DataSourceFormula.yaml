@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataSourceFormula
+description: A data source formula.
+type: object
+properties:
+  dataExecutionStatus:
+    readOnly: true
+    $ref: DataExecutionStatus
+    description: Output only. The data execution status.
+  dataSourceId:
+    description: The ID of the data source the formula is associated with.
+    type: string

@@ -1,0 +1,13 @@
+{
+  "version": "0.1.0",
+  "build": 1,
+  "last_updated": "2026-06-13",
+  "codename": "Shopify Product Updates",
+  "version_history": [
+    {
+      "version": "0.1.0",
+      "date": "2026-06-13",
+      "description": "Initial deployment — schema-driven registration phase transitions"
+    }
+  ]
+}

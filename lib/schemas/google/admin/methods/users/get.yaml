@@ -1,0 +1,46 @@
+description: Retrieves a user.
+httpMethod: GET
+path: admin/directory/v1/users/{userKey}
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+- https://www.googleapis.com/auth/admin.directory.user.readonly
+parameters:
+  userKey:
+    description: Identifies the user in the API request. The value can be the user's
+      primary email address, alias email address, or unique user ID.
+    location: path
+    required: true
+    type: string
+  customFieldMask:
+    description: A comma-separated list of schema names. All fields from these schemas
+      are fetched. This should only be set when `projection=custom`.
+    location: query
+    type: string
+  projection:
+    description: What subset of fields to fetch for this user.
+    default: basic
+    location: query
+    type: string
+    enumDescriptions:
+    - Do not include any custom fields for the user.
+    - Include custom fields from schemas requested in `customFieldMask`.
+    - Include all fields associated with this user.
+    enum:
+    - basic
+    - custom
+    - full
+  viewType:
+    description: Whether to fetch the administrator-only or domain-wide public view
+      of the user. For more information, see [Retrieve a user as a non-administrator](https://developers.google.com/workspace/admin/directory/v1/guides/manage-users#retrieve_users_non_admin).
+    default: admin_view
+    location: query
+    type: string
+    enumDescriptions:
+    - Results include both administrator-only and domain-public fields for the user.
+    - Results only include fields for the user that are publicly visible to other
+      users in the domain.
+    enum:
+    - admin_view
+    - domain_public
+response:
+  $ref: User

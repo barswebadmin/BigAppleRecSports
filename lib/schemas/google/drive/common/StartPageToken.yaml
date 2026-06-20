@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: StartPageToken
+description: ''
+type: object
+properties:
+  startPageToken:
+    description: The starting page token for listing future changes. The page token
+      doesn't expire.
+    type: string
+  kind:
+    description: 'Identifies what kind of resource this is. Value: the fixed string
+      `"drive#startPageToken"`.'
+    default: drive#startPageToken
+    type: string

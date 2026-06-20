@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ConferenceRequestStatus
+description: ''
+type: object
+properties:
+  statusCode:
+    type: string
+    description: "The current status of the conference create request. Read-only.\n\
+      The possible values are:  \n- \"pending\": the conference create request is\
+      \ still being processed.\n- \"success\": the conference create request succeeded,\
+      \ the entry points are populated.\n- \"failure\": the conference create request\
+      \ failed, there are no entry points."

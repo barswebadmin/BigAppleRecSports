@@ -6,13 +6,13 @@ Import from here to get sgqlc Type classes for query generation.
 """
 
 # Import direct sgqlc Type definitions
-from backend.modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import (
+from modules.integrations.shopify.models.sgqlc_models.customer_sgqlc import (
     Address,
     Customer,
     CustomerConnection,
 )
 
-from backend.modules.integrations.shopify.models.sgqlc_models.order_sgqlc import (
+from modules.integrations.shopify.models.sgqlc_models.order_sgqlc import (
     MoneySet,
     MoneySetWrapper,
     InventoryItem,
@@ -33,11 +33,11 @@ from backend.modules.integrations.shopify.models.sgqlc_models.order_sgqlc import
 )
 
 # Import Pydantic models (for data validation/parsing)
-from backend.modules.integrations.shopify.models.sgqlc_models.customer_pydantic import (
+from modules.integrations.shopify.models.sgqlc_models.customer_pydantic import (
     Address as AddressPydantic,
     Customer as CustomerPydantic,
 )
-from backend.modules.integrations.shopify.models.sgqlc_models.order_pydantic import (
+from modules.integrations.shopify.models.sgqlc_models.order_pydantic import (
     MoneySet as MoneySetPydantic,
     MoneySetWrapper as MoneySetWrapperPydantic,
     RefundTransaction as RefundTransactionPydantic,
@@ -53,7 +53,7 @@ from backend.modules.integrations.shopify.models.sgqlc_models.order_pydantic imp
 )
 
 # Import Pydantic models for products (for data validation/parsing)
-from backend.modules.integrations.shopify.models.sgqlc_models.product_pydantic import (
+from modules.integrations.shopify.models.sgqlc_models.product_pydantic import (
     Image as ImagePydantic,
     ProductOptionValue as ProductOptionValuePydantic,
     Metafield as MetafieldPydantic,
@@ -61,19 +61,39 @@ from backend.modules.integrations.shopify.models.sgqlc_models.product_pydantic i
     Product as ProductPydantic,
 )
 
-# Product models - TODO: Create separate sgqlc types when needed
-# For now, keep using bridge for products
-from backend.modules.integrations.shopify.models.sgqlc_models.sgqlc_bridge import get_sgqlc_type, get_connection_type
+# Import direct sgqlc Type definitions for products
+from modules.integrations.shopify.models.sgqlc_models.product_sgqlc import (
+    Image,
+    ImageConnection,
+    ProductOption,
+    Metafield,
+    MetafieldConnection,
+    Collection,
+    CollectionConnection,
+    SEO,
+    Money,
+    PriceRange,
+    CompareAtPriceRange,
+    SellingPlanGroup,
+    SellingPlanGroupConnection,
+    InventoryItem,
+    ProductVariant,
+    ProductVariantConnection,
+    Product,
+    ProductConnection,
+)
 
-Image = get_sgqlc_type(ImagePydantic)
-ImageConnection = get_connection_type(ImagePydantic)  # Used in Product.images
-ProductOptionValue = get_sgqlc_type(ProductOptionValuePydantic)
-Metafield = get_sgqlc_type(MetafieldPydantic)
-MetafieldConnection = get_connection_type(MetafieldPydantic)  # Used in Product.metafields
-Collection = get_sgqlc_type(CollectionPydantic)
-CollectionConnection = get_connection_type(CollectionPydantic)  # Used in Product.collections
-Product = get_sgqlc_type(ProductPydantic)
-ProductConnection = get_connection_type(ProductPydantic)
+# Import direct sgqlc Type definitions for locations
+from modules.integrations.shopify.models.sgqlc_models.location_sgqlc import (
+    Location,
+    LocationConnection,
+)
+
+# Import direct sgqlc Type definitions for files
+from modules.integrations.shopify.models.sgqlc_models.file_sgqlc import (
+    File,
+    FileConnection,
+)
 
 __all__ = [
     # Customer models
@@ -100,11 +120,26 @@ __all__ = [
     # Product models
     'Image',
     'ImageConnection',
-    'ProductOptionValue',
+    'ProductOption',
     'Metafield',
     'MetafieldConnection',
     'Collection',
     'CollectionConnection',
+    'SEO',
+    'Money',
+    'PriceRange',
+    'CompareAtPriceRange',
+    'SellingPlanGroup',
+    'SellingPlanGroupConnection',
+    'InventoryItem',
+    'ProductVariant',
+    'ProductVariantConnection',
     'Product',
     'ProductConnection',
+    # Location models
+    'Location',
+    'LocationConnection',
+    # File models
+    'File',
+    'FileConnection',
 ]

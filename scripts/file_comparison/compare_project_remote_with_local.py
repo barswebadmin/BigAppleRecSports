@@ -5,15 +5,22 @@ Takes remote_origin_type (google/aws) and project_name as parameters.
 """
 
 import argparse
-import shutil
 import sys
 import tempfile
 from pathlib import Path
 from typing import Optional
 
-from .fetchers import fetch_from_remote, check_credentials
-from .comparison_logic import compare_directories, ComparisonResult
-from .formatters import display_comparison_result
+# Add parent directory to path for imports
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir))
+
+# Add shared utilities to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
+from paths import get_repo_root
+
+from fetchers import fetch_from_remote, check_credentials
+from comparison_logic import compare_directories, ComparisonResult
+from formatters import display_comparison_result
 
 
 def compare_project_remote_with_local(
@@ -22,6 +29,7 @@ def compare_project_remote_with_local(
     local_path: Optional[Path] = None,
     show_diffs: bool = False,
     keep_temp: bool = False,
+    should_handle_cleanup: bool = True,
     max_diff_lines: int = 50,
     output_format: str = "text",
     **kwargs
@@ -35,6 +43,7 @@ def compare_project_remote_with_local(
         local_path: Path to local project directory (auto-detected if None)
         show_diffs: Whether to include diff content in output
         keep_temp: Whether to keep temporary directory after comparison
+        should_handle_cleanup: Passed through to fetcher when temp_dir is auto-created
         max_diff_lines: Maximum diff lines to show per file
         output_format: Output format ("text" or "json")
         **kwargs: Additional arguments (region, project_root, etc.)
@@ -51,13 +60,12 @@ def compare_project_remote_with_local(
     
     # Auto-detect local_path if not provided
     if local_path is None:
-        script_dir = Path(__file__).parent
-        repo_root = script_dir.parent.parent
+        repo_root = get_repo_root()
         
         if remote_origin_type == "aws":
             local_path = repo_root / "lambda" / "functions" / project_name
         else:  # google
-            local_path = repo_root / "GoogleAppsScripts" / "projects" / project_name
+            local_path = repo_root / "google-apps-scripts" / "projects" / project_name
     
     if not local_path.exists():
         raise ValueError(f"Local path does not exist: {local_path}")
@@ -72,46 +80,41 @@ def compare_project_remote_with_local(
         else:
             raise RuntimeError("clasp not installed or not authenticated. Run: clasp login")
     
-    # Create temp directory for remote code
-    temp_dir = Path(tempfile.mkdtemp(prefix=f'{remote_origin_type}_compare_'))
-    
-    try:
-        # Fetch remote code
-        remote_path = fetch_from_remote(
-            remote_origin_type=remote_origin_type,
-            project_name=project_name,
-            temp_dir=temp_dir,
-            **kwargs
+    temp_dir: Optional[Path] = None
+    if keep_temp:
+        temp_dir = Path(tempfile.mkdtemp(prefix=f"{remote_origin_type}_compare_"))
+
+    remote_path = fetch_from_remote(
+        remote_origin_type=remote_origin_type,
+        project_name=project_name,
+        temp_dir=temp_dir,
+        should_handle_cleanup=should_handle_cleanup,
+        **kwargs
+    )
+
+    # Determine local compare path (handle build/ directories for GAS)
+    local_compare_path = local_path
+    if remote_origin_type == "google":
+        build_dir = local_path / "build"
+        if build_dir.exists():
+            local_compare_path = build_dir
+
+    # Compare directories
+    result = compare_directories(
+        local_path=local_compare_path,
+        remote_path=remote_path,
+        remote_origin_type=remote_origin_type
+    )
+
+    # Display results (unless JSON output requested)
+    if output_format != 'json':
+        display_comparison_result(
+            result,
+            show_diffs=show_diffs,
+            max_diff_lines=max_diff_lines
         )
-        
-        # Determine local compare path (handle build/ directories for GAS)
-        local_compare_path = local_path
-        if remote_origin_type == "google":
-            build_dir = local_path / "build"
-            if build_dir.exists():
-                local_compare_path = build_dir
-        
-        # Compare directories
-        result = compare_directories(
-            local_path=local_compare_path,
-            remote_path=remote_path,
-            remote_origin_type=remote_origin_type
-        )
-        
-        # Display results (unless JSON output requested)
-        if output_format != 'json':
-            display_comparison_result(
-                result,
-                show_diffs=show_diffs,
-                max_diff_lines=max_diff_lines
-            )
-        
-        return result
-    
-    finally:
-        # Cleanup temp directory
-        if not keep_temp and temp_dir.exists():
-            shutil.rmtree(temp_dir)
+
+    return result
 
 
 def main():
@@ -128,7 +131,7 @@ Examples:
   %(prog)s --remote-origin-type google --project-name waitlist-script-comprehensive
   
   # With explicit local path
-  %(prog)s --remote-origin-type aws --project-name MoveInventoryLambda --local-path lambda/functions/MoveInventoryLambda
+  %(prog)s --remote-origin-type aws --project-name MoveInventoryLambda --local-path aws/lambda/functions/MoveInventoryLambda
         """
     )
     
@@ -167,6 +170,7 @@ Examples:
             local_path=args.local_path,
             show_diffs=args.show_diffs,
             keep_temp=args.keep_temp,
+            should_handle_cleanup=False,
             max_diff_lines=args.max_diff_lines,
             output_format=args.output_format,
             **kwargs

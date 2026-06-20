@@ -4,6 +4,7 @@ from sgqlc.types import Type, Field, String, ID, list_of
 from sgqlc.types.relay import Connection
 
 
+
 class Location(Type):
     """Location model."""
     id = Field(ID)

@@ -1,0 +1,31 @@
+description: Get metrics data for scripts, such as number of executions and active
+  users.
+httpMethod: GET
+path: v1/projects/{scriptId}/metrics
+scopes:
+- https://www.googleapis.com/auth/script.metrics
+parameters:
+  scriptId:
+    required: true
+    description: Required field indicating the script to get metrics for.
+    location: path
+    type: string
+  metricsFilter.deploymentId:
+    description: Optional field indicating a specific deployment to retrieve metrics
+      from.
+    location: query
+    type: string
+  metricsGranularity:
+    enumDescriptions:
+    - Default metric granularity used to query no metrics.
+    - Represents weekly metrics.
+    - Represents daily metrics over a period of 7 days.
+    type: string
+    enum:
+    - UNSPECIFIED_GRANULARITY
+    - WEEKLY
+    - DAILY
+    description: Required field indicating what granularity of metrics are returned.
+    location: query
+response:
+  $ref: Metrics

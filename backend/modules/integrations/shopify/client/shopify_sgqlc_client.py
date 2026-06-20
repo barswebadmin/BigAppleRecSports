@@ -7,16 +7,10 @@ against the Shopify Admin API using sgqlc operations.
 
 from typing import Dict, Any, Optional
 import urllib.error
-import sys
-from pathlib import Path
 from sgqlc.operation import Operation
 from sgqlc.endpoint.http import HTTPEndpoint
 
-# Import from backend config
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-from config import config as global_config  # type: ignore[import-untyped]
+from config import config as global_config
 
 
 class ShopifySGQLCClient:
@@ -45,6 +39,13 @@ class ShopifySGQLCClient:
         Raises:
             RuntimeError: If environment loading fails or required credentials are missing
         """
+        import sys
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        print(f"[DEBUG] ShopifySGQLCClient.__init__: Entry with environment={environment}, config provided={config is not None}", file=sys.stderr)
+        logger.debug(f"ShopifySGQLCClient.__init__: Entry with environment={environment}, config provided={config is not None}")
+        
         if config is None:
             # Get config from global config singleton
             env = environment.lower()
@@ -95,6 +96,8 @@ class ShopifySGQLCClient:
                     token = token or os.getenv("SHOPIFY_DEV_TOKEN")
             
             if not store_id or not token:
+                print(f"[DEBUG] ShopifySGQLCClient.__init__: Missing credentials - store_id={store_id is not None}, token={token is not None}", file=sys.stderr)
+                logger.debug(f"ShopifySGQLCClient.__init__: Missing credentials - store_id={store_id is not None}, token={token is not None}")
                 raise RuntimeError(f"Missing Shopify credentials for environment: {env}")
             
             config = {
@@ -107,13 +110,21 @@ class ShopifySGQLCClient:
                 }
             }
         
+        print(f"[DEBUG] ShopifySGQLCClient.__init__: Config prepared - graphql_url={config.get('graphql_url', 'N/A')}, store_id={config.get('store_id', 'N/A')}, token_present={bool(config.get('token'))}", file=sys.stderr)
+        logger.debug(f"ShopifySGQLCClient.__init__: Config prepared - graphql_url={config.get('graphql_url', 'N/A')}, store_id={config.get('store_id', 'N/A')}, token_present={bool(config.get('token'))}")
+        
         self.config = config
         self.environment = environment
+        
+        print("[DEBUG] ShopifySGQLCClient.__init__: Creating HTTPEndpoint with timeout=30", file=sys.stderr)
+        logger.debug("ShopifySGQLCClient.__init__: Creating HTTPEndpoint with timeout=30")
         self.endpoint = HTTPEndpoint(
             config["graphql_url"],
             base_headers=config["headers"].copy(),
             timeout=30
         )
+        print(f"[DEBUG] ShopifySGQLCClient.__init__: HTTPEndpoint created successfully", file=sys.stderr)
+        logger.debug("ShopifySGQLCClient.__init__: HTTPEndpoint created successfully")
     
     def execute(self, operation: Operation) -> Dict[str, Any]:
         """Execute a GraphQL operation and return the GraphQL response body.
@@ -137,19 +148,42 @@ class ShopifySGQLCClient:
         
         Raises:
             RuntimeError: If the HTTP request fails (non-200 status, network errors, timeouts)
-                This does NOT raise for GraphQL errors - those are returned in the response.
+                OR if GraphQL query cost limit is exceeded (MAX_COST_EXCEEDED).
+                Other GraphQL errors are returned in the response, not raised.
         """
+        import sys
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        print(f"[DEBUG] ShopifySGQLCClient.execute: Entry with operation={type(operation)}", file=sys.stderr)
+        logger.debug(f"ShopifySGQLCClient.execute: Entry with operation={type(operation)}")
+        print(f"[DEBUG] ShopifySGQLCClient.execute: Endpoint URL={self.config['graphql_url']}", file=sys.stderr)
+        logger.debug(f"ShopifySGQLCClient.execute: Endpoint URL={self.config['graphql_url']}")
+        print(f"[DEBUG] ShopifySGQLCClient.execute: Headers present: {list(self.config['headers'].keys())}", file=sys.stderr)
+        logger.debug(f"ShopifySGQLCClient.execute: Headers present: {list(self.config['headers'].keys())}")
+        
         try:
+            print("[DEBUG] ShopifySGQLCClient.execute: Calling endpoint(operation) - this is the HTTP request", file=sys.stderr)
+            logger.debug("ShopifySGQLCClient.execute: Calling endpoint(operation) - this is the HTTP request")
+            import time
+            start_time = time.time()
             response_data = self.endpoint(operation)
+            elapsed = time.time() - start_time
+            print(f"[DEBUG] ShopifySGQLCClient.execute: HTTP request completed in {elapsed:.2f}s, response type: {type(response_data)}", file=sys.stderr)
+            logger.debug(f"ShopifySGQLCClient.execute: HTTP request completed in {elapsed:.2f}s, response type: {type(response_data)}")
         except urllib.error.HTTPError as e:
             # HTTPError is raised for non-200 status codes
             status = getattr(e, 'code', 'unknown')
             reason = getattr(e, 'reason', str(e))
+            print(f"[DEBUG] ShopifySGQLCClient.execute: HTTPError caught - status={status}, reason={reason}", file=sys.stderr)
+            logger.debug(f"ShopifySGQLCClient.execute: HTTPError caught - status={status}, reason={reason}", exc_info=True)
             raise RuntimeError(
                 f"Shopify API request failed with status {status}: {reason}"
             ) from e
         except Exception as e:
             # Catch any other exceptions (network errors, timeouts, etc.)
+            print(f"[DEBUG] ShopifySGQLCClient.execute: Exception caught - {type(e).__name__}: {e}", file=sys.stderr)
+            logger.debug(f"ShopifySGQLCClient.execute: Exception caught - {type(e).__name__}: {e}", exc_info=True)
             raise RuntimeError(f"Shopify API request failed: {str(e)}") from e
         
         # Return full GraphQL response (data, errors, extensions)
@@ -159,6 +193,25 @@ class ShopifySGQLCClient:
             for key, value in response_data.items() 
             if key in ('data', 'errors', 'extensions')
         }
+        
+        # Check for GraphQL errors and raise exceptions for critical errors
+        errors = graphql_response.get('errors', [])
+        if errors:
+            # Check for query cost limit errors (MAX_COST_EXCEEDED)
+            for error in errors:
+                extensions = error.get('extensions', {})
+                error_code = extensions.get('code')
+                
+                if error_code == 'MAX_COST_EXCEEDED':
+                    cost = extensions.get('cost', 'unknown')
+                    max_cost = extensions.get('maxCost', 'unknown')
+                    message = error.get('message', 'Query cost exceeded limit')
+                    raise RuntimeError(
+                        f"Shopify GraphQL query cost limit exceeded: {message}\n"
+                        f"Query cost: {cost} (limit: {max_cost})\n"
+                        f"See https://shopify.dev/docs/api/usage/rate-limits for more information.\n"
+                        f"Consider reducing the number of fields or using bulk operations."
+                    )
         
         return graphql_response
 

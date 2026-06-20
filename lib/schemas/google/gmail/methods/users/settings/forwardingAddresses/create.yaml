@@ -1,0 +1,21 @@
+description: Creates a forwarding address. If ownership verification is required,
+  a message will be sent to the recipient and the resource's verification status will
+  be set to `pending`; otherwise, the resource will be created with verification status
+  set to `accepted`. This method is only available to service account clients that
+  have been delegated domain-wide authority.
+httpMethod: POST
+path: gmail/v1/users/{userId}/settings/forwardingAddresses
+scopes:
+- https://www.googleapis.com/auth/gmail.settings.sharing
+request:
+  $ref: ForwardingAddress
+parameters:
+  userId:
+    description: User's email address. The special value "me" can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+response:
+  $ref: ForwardingAddress

@@ -1,0 +1,42 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FormResponse
+description: A form response.
+type: object
+properties:
+  formId:
+    description: Output only. The form ID.
+    readOnly: true
+    type: string
+  lastSubmittedTime:
+    readOnly: true
+    format: google-datetime
+    description: Output only. Timestamp for the most recent time the response was
+      submitted. Does not track changes to grades.
+    type: string
+  respondentEmail:
+    type: string
+    readOnly: true
+    description: Output only. The email address (if collected) for the respondent.
+  answers:
+    readOnly: true
+    description: Output only. The actual answers to the questions, keyed by question_id.
+    additionalProperties:
+      $ref: Answer
+    type: object
+  responseId:
+    readOnly: true
+    description: Output only. The response ID.
+    type: string
+  createTime:
+    type: string
+    description: Output only. Timestamp for the first time the response was submitted.
+    readOnly: true
+    format: google-datetime
+  totalScore:
+    type: number
+    readOnly: true
+    format: double
+    description: Output only. The total number of points the respondent received for
+      their submission Only set if the form was a quiz and the response was graded.
+      This includes points automatically awarded via autograding adjusted by any manual
+      corrections entered by the form owner.

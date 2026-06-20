@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CreatePrintServerRequest
+description: Request for adding a new print server.
+type: object
+properties:
+  parent:
+    description: 'Required. The [unique ID](https://developers.google.com/workspace/admin/directory/reference/rest/v1/customers)
+      of the customer''s Google Workspace account. Format: `customers/{id}`'
+    type: string
+  printServer:
+    description: Required. A print server to create. If you want to place the print
+      server under a specific organizational unit (OU), then populate the `org_unit_id`.
+      Otherwise the print server is created under the root OU. The `org_unit_id` can
+      be retrieved using the [Directory API](https://developers.google.com/workspace/admin/directory/v1/guides/manage-org-units).
+    $ref: PrintServer

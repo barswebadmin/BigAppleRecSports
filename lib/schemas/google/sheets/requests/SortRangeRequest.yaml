@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SortRangeRequest
+description: Sorts data in rows based on a sort order per column.
+type: object
+properties:
+  range:
+    description: The range to sort.
+    $ref: GridRange
+  sortSpecs:
+    description: The sort order per column. Later specifications are used when values
+      are equal in the earlier specifications.
+    items:
+      $ref: SortSpec
+    type: array

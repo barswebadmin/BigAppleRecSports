@@ -1,0 +1,25 @@
+description: Lists the deployments of an Apps Script project.
+httpMethod: GET
+path: v1/projects/{scriptId}/deployments
+scopes:
+- https://www.googleapis.com/auth/script.deployments
+- https://www.googleapis.com/auth/script.deployments.readonly
+parameters:
+  pageSize:
+    format: int32
+    type: integer
+    description: The maximum number of deployments on each returned page. Defaults
+      to 50.
+    location: query
+  scriptId:
+    type: string
+    description: The script project's Drive ID.
+    location: path
+    required: true
+  pageToken:
+    description: The token for continuing a previous list request on the next page.
+      This should be set to the value of `nextPageToken` from a previous response.
+    location: query
+    type: string
+response:
+  $ref: ListDeploymentsResponse

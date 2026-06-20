@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Profile
+description: Profile for a Gmail user.
+type: object
+properties:
+  emailAddress:
+    description: The user's email address.
+    type: string
+  messagesTotal:
+    description: The total number of messages in the mailbox.
+    type: integer
+    format: int32
+  threadsTotal:
+    description: The total number of threads in the mailbox.
+    type: integer
+    format: int32
+  historyId:
+    description: The ID of the mailbox's current history record.
+    type: string
+    format: uint64

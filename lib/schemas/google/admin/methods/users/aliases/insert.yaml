@@ -1,0 +1,17 @@
+description: Adds an alias.
+httpMethod: POST
+path: admin/directory/v1/users/{userKey}/aliases
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+- https://www.googleapis.com/auth/admin.directory.user.alias
+request:
+  $ref: Alias
+parameters:
+  userKey:
+    description: Identifies the user in the API request. The value can be the user's
+      primary email address, alias email address, or unique user ID.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Alias

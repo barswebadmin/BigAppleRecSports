@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: TextPosition
+description: Position settings for text.
+type: object
+properties:
+  horizontalAlignment:
+    enum:
+    - HORIZONTAL_ALIGN_UNSPECIFIED
+    - LEFT
+    - CENTER
+    - RIGHT
+    description: Horizontal alignment setting for the piece of text.
+    type: string
+    enumDescriptions:
+    - The horizontal alignment is not specified. Do not use this.
+    - The text is explicitly aligned to the left of the cell.
+    - The text is explicitly aligned to the center of the cell.
+    - The text is explicitly aligned to the right of the cell.

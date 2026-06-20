@@ -1,0 +1,53 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: HistogramChartSpec
+description: A histogram chart. A histogram chart groups data items into bins, displaying
+  each bin as a column of stacked items. Histograms are used to display the distribution
+  of a dataset. Each column of items represents a range into which those items fall.
+  The number of bins can be chosen automatically or specified explicitly.
+type: object
+properties:
+  legendPosition:
+    description: The position of the chart legend.
+    enum:
+    - HISTOGRAM_CHART_LEGEND_POSITION_UNSPECIFIED
+    - BOTTOM_LEGEND
+    - LEFT_LEGEND
+    - RIGHT_LEGEND
+    - TOP_LEGEND
+    - NO_LEGEND
+    - INSIDE_LEGEND
+    enumDescriptions:
+    - Default value, do not use.
+    - The legend is rendered on the bottom of the chart.
+    - The legend is rendered on the left of the chart.
+    - The legend is rendered on the right of the chart.
+    - The legend is rendered on the top of the chart.
+    - No legend is rendered.
+    - The legend is rendered inside the chart area.
+    type: string
+  showItemDividers:
+    description: Whether horizontal divider lines should be displayed between items
+      in each column.
+    type: boolean
+  series:
+    type: array
+    description: The series for a histogram may be either a single series of values
+      to be bucketed or multiple series, each of the same length, containing the name
+      of the series followed by the values to be bucketed for that series.
+    items:
+      $ref: HistogramSeries
+  outlierPercentile:
+    type: number
+    description: The outlier percentile is used to ensure that outliers do not adversely
+      affect the calculation of bucket sizes. For example, setting an outlier percentile
+      of 0.05 indicates that the top and bottom 5% of values when calculating buckets.
+      The values are still included in the chart, they will be added to the first
+      or last buckets instead of their own buckets. Must be between 0.0 and 0.5.
+    format: double
+  bucketSize:
+    description: By default the bucket size (the range of values stacked in a single
+      column) is chosen automatically, but it may be overridden here. E.g., A bucket
+      size of 1.5 results in buckets from 0 - 1.5, 1.5 - 3.0, etc. Cannot be negative.
+      This field is optional.
+    format: double
+    type: number

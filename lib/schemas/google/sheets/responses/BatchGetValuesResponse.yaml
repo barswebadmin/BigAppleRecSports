@@ -1,0 +1,14 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchGetValuesResponse
+description: The response when retrieving more than one range of values in a spreadsheet.
+type: object
+properties:
+  valueRanges:
+    description: The requested values. The order of the ValueRanges is the same as
+      the order of the requested ranges.
+    items:
+      $ref: ValueRange
+    type: array
+  spreadsheetId:
+    description: The ID of the spreadsheet the data was retrieved from.
+    type: string

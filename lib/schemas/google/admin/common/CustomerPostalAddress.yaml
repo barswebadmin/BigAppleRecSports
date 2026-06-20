@@ -1,0 +1,37 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: CustomerPostalAddress
+description: ''
+type: object
+properties:
+  countryCode:
+    description: This is a required property. For `countryCode` information see the
+      [ISO 3166 country code elements](https://www.iso.org/iso/country_codes.htm).
+    type: string
+  addressLine2:
+    description: Address line 2 of the address.
+    type: string
+  region:
+    description: Name of the region. An example of a region value is `NY` for the
+      state of New York.
+    type: string
+  addressLine3:
+    description: Address line 3 of the address.
+    type: string
+  locality:
+    description: Name of the locality. An example of a locality value is the city
+      of `San Francisco`.
+    type: string
+  postalCode:
+    description: 'The postal code. A postalCode example is a postal zip code such
+      as `10009`. This is in accordance with - http: //portablecontacts.net/draft-spec.html#address_element.'
+    type: string
+  addressLine1:
+    description: A customer's physical address. The address can be composed of one
+      to three lines.
+    type: string
+  organizationName:
+    description: The company or company division name.
+    type: string
+  contactName:
+    description: The customer contact's name.
+    type: string

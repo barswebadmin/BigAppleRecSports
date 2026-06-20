@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserName
+description: ''
+type: object
+properties:
+  fullName:
+    description: The user's full name formed by concatenating the first and last name
+      values.
+    type: string
+  familyName:
+    description: The user's last name. Required when creating a user account.
+    annotations:
+      required:
+      - directory.users.insert
+    type: string
+  givenName:
+    description: The user's first name. Required when creating a user account.
+    annotations:
+      required:
+      - directory.users.insert
+    type: string
+  displayName:
+    description: 'The user''s display name. Limit: 256 characters.'
+    type: string

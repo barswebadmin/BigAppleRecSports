@@ -1,0 +1,32 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: WaterfallChartSeries
+description: A single series of data for a waterfall chart.
+type: object
+properties:
+  dataLabel:
+    description: Information about the data labels for this series.
+    $ref: DataLabel
+  hideTrailingSubtotal:
+    description: True to hide the subtotal column from the end of the series. By default,
+      a subtotal column will appear at the end of each series. Setting this field
+      to true will hide that subtotal column for this series.
+    type: boolean
+  data:
+    $ref: ChartData
+    description: The data being visualized in this series.
+  subtotalColumnsStyle:
+    description: Styles for all subtotal columns in this series.
+    $ref: WaterfallChartColumnStyle
+  positiveColumnsStyle:
+    $ref: WaterfallChartColumnStyle
+    description: Styles for all columns in this series with positive values.
+  negativeColumnsStyle:
+    $ref: WaterfallChartColumnStyle
+    description: Styles for all columns in this series with negative values.
+  customSubtotals:
+    type: array
+    description: Custom subtotal columns appearing in this series. The order in which
+      subtotals are defined is not significant. Only one subtotal may be defined for
+      each data point.
+    items:
+      $ref: WaterfallChartCustomSubtotal

@@ -1,0 +1,57 @@
+# Registration period display configuration.
+#
+# Each period defines:
+#   displayBracket  Title bracket appended to the base product title.
+#                   May contain {division} which is interpolated from the
+#                   divisions table below.
+#   requiredTags    Tags that must be present on the product during this period
+#                   (merged with the season's permanent tags at transition time).
+#   statusValue     Value written to DynamoDB RegularSeason.status after a
+#                   successful transition.
+#
+# Adding a new period: add an entry here and re-deploy — no code change needed.
+
+periods:
+  veteran:
+    displayBracket: "[VETERAN REGISTRATION OPEN]"
+    requiredTags: ["veterans-only"]
+    statusValue: "veteran"
+
+  wtnb:
+    displayBracket: "[WTNB+ REGISTRATION OPEN]"
+    requiredTags: ["wtnb-only"]
+    statusValue: "wtnb"
+
+  bipoc:
+    displayBracket: "[BIPOC REGISTRATION OPEN]"
+    requiredTags: ["bipoc-only"]
+    statusValue: "bipoc"
+
+  early:
+    displayBracket: "[EARLY BIRD REGISTRATION OPEN]"
+    requiredTags: []
+    statusValue: "early"
+
+  open:
+    displayBracket: "[OPEN REGISTRATION - {division}]"
+    requiredTags: []
+    statusValue: "open"
+
+  waitlist:
+    displayBracket: "[WAITLIST ONLY - {division}]"
+    requiredTags: ["waitlist-only"]
+    statusValue: "waitlist"
+
+  closed:
+    displayBracket: "[REGISTRATION CLOSED - {division}]"
+    requiredTags: []
+    statusValue: "closed"
+
+# Division codes map to the display string interpolated into displayBracket.
+# The DynamoDB RegularSeason.division field must match a key here.
+divisions:
+  A: "A Division"
+  B: "B Division"
+  C: "C Division"
+  Open: "Open Division"
+  "": ""

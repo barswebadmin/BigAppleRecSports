@@ -1,0 +1,23 @@
+description: Create a new form using the title given in the provided form message
+  in the request. *Important:* Only the form.info.title and form.info.document_title
+  fields are copied to the new form. All other fields including the form description,
+  items and settings are disallowed. To create a new form and add items, you must
+  first call forms.create to create an empty form with a title and (optional) document
+  title, and then call forms.update to add the items.
+httpMethod: POST
+path: v1/forms
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/forms.body
+request:
+  $ref: Form
+parameters:
+  unpublished:
+    location: query
+    description: Optional. Whether the form is unpublished. If set to `true`, the
+      form doesn't accept responses. If set to `false` or unset, the form is published
+      and accepts responses.
+    type: boolean
+response:
+  $ref: Form

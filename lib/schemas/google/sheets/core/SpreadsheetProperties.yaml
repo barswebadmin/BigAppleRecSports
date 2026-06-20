@@ -1,0 +1,50 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: SpreadsheetProperties
+description: Properties of a spreadsheet.
+type: object
+properties:
+  timeZone:
+    description: The time zone of the spreadsheet, in CLDR format such as `America/New_York`.
+      If the time zone isn't recognized, this may be a custom time zone such as `GMT-07:00`.
+    type: string
+  defaultFormat:
+    $ref: CellFormat
+    description: The default format of all cells in the spreadsheet. CellData.effectiveFormat
+      will not be set if the cell's format is equal to this default format. This field
+      is read-only.
+  spreadsheetTheme:
+    $ref: SpreadsheetTheme
+    description: Theme applied to the spreadsheet.
+  title:
+    description: The title of the spreadsheet.
+    type: string
+  importFunctionsExternalUrlAccessAllowed:
+    description: Whether to allow external URL access for image and import functions.
+      Read only when true. When false, you can set to true. This value will be bypassed
+      and always return true if the admin has enabled the [allowlisting feature](https://support.google.com/a?p=url_allowlist).
+    type: boolean
+  locale:
+    type: string
+    description: 'The locale of the spreadsheet in one of the following formats: *
+      an ISO 639-1 language code such as `en` * an ISO 639-2 language code such as
+      `fil`, if no 639-1 code exists * a combination of the ISO language code and
+      country code, such as `en_US` Note: when updating this field, not all locales/languages
+      are supported.'
+  autoRecalc:
+    type: string
+    enumDescriptions:
+    - Default value. This value must not be used.
+    - Volatile functions are updated on every change.
+    - Volatile functions are updated on every change and every minute.
+    - Volatile functions are updated on every change and hourly.
+    enum:
+    - RECALCULATION_INTERVAL_UNSPECIFIED
+    - ON_CHANGE
+    - MINUTE
+    - HOUR
+    description: The amount of time to wait before volatile functions are recalculated.
+  iterativeCalculationSettings:
+    $ref: IterativeCalculationSettings
+    description: Determines whether and how circular references are resolved with
+      iterative calculation. Absence of this field means that circular references
+      result in calculation errors.

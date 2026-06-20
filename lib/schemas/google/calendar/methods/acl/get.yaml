@@ -1,0 +1,23 @@
+description: Returns an access control rule.
+httpMethod: GET
+path: calendars/{calendarId}/acl/{ruleId}
+scopes:
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/calendar.acls
+- https://www.googleapis.com/auth/calendar.acls.readonly
+- https://www.googleapis.com/auth/calendar.readonly
+parameters:
+  calendarId:
+    type: string
+    description: Calendar identifier. To retrieve calendar IDs call the calendarList.list
+      method. If you want to access the primary calendar of the currently logged in
+      user, use the "primary" keyword.
+    required: true
+    location: path
+  ruleId:
+    type: string
+    description: ACL rule identifier.
+    required: true
+    location: path
+response:
+  $ref: AclRule

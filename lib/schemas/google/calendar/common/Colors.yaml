@@ -1,0 +1,30 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Colors
+description: ''
+type: object
+properties:
+  calendar:
+    type: object
+    description: A global palette of calendar colors, mapping from the color ID to
+      its definition. A calendarListEntry resource refers to one of these color IDs
+      in its colorId field. Read-only.
+    additionalProperties:
+      $ref: ColorDefinition
+      description: A calendar color definition.
+  event:
+    type: object
+    description: A global palette of event colors, mapping from the color ID to its
+      definition. An event resource may refer to one of these color IDs in its colorId
+      field. Read-only.
+    additionalProperties:
+      $ref: ColorDefinition
+      description: An event color definition.
+  kind:
+    type: string
+    description: Type of the resource ("calendar#colors").
+    default: calendar#colors
+  updated:
+    type: string
+    description: Last modification time of the color palette (as a RFC3339 timestamp).
+      Read-only.
+    format: date-time

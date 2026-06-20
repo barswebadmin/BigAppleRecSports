@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DeleteItemRequest
+description: Delete an item in a form.
+type: object
+properties:
+  location:
+    description: Required. The location of the item to delete.
+    $ref: Location

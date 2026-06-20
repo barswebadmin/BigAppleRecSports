@@ -3,14 +3,30 @@ Slack-related Pydantic models for the Big Apple Rec Sports system.
 Provides type-safe models for Slack notifications, interactions, and data structures.
 """
 
-from pydantic import field_validator, ConfigDict
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import List, Optional, Dict, Union, Any
 from enum import Enum
-import re
 
-from shared.model_config import ApiModel
+from shared_utilities.pydantic_config import DEFAULT_CONFIG_DICT
+
+from shared_utilities.validators import validators
 
 
+def validate_email_with_results(email):
+    """Validate email and return a simple result object."""
+    class Result:
+        def __init__(self, value, is_valid):
+            self.input_after_validation = value
+            self.is_valid = is_valid
+    try:
+        validated = validators.validate(email, 'email', strict=True, allow_empty=False)
+        return Result(validated, True)
+    except ValueError:
+        return Result(None, False)
+
+
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
+# Check if RefundType is used elsewhere before deleting
 class RefundType(str, Enum):
     """Enum for refund types"""
     REFUND = "refund"
@@ -26,8 +42,11 @@ class SlackActionType(str, Enum):
 
 class SlackMessageType(str, Enum):
     """Enum for Slack message types"""
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     REFUND_REQUEST = "refund_request"
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     REFUND_CONFIRMATION = "refund_confirmation"
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     REFUND_DENIAL = "refund_denial"
     ORDER_UPDATE = "order_update"
     LEADERSHIP_NOTIFICATION = "leadership_notification"
@@ -37,7 +56,9 @@ from .slack_user import SlackUser
 from .slack_channel import SlackChannel
 
 
-class RefundSlackNotificationRequest(ApiModel):
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
+class RefundSlackNotificationRequest(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """
     Request model for sending refund notifications to Slack.
     This is the main model for refund-related Slack notifications.
@@ -88,14 +109,17 @@ class RefundSlackNotificationRequest(ApiModel):
     @field_validator('requestor_email')
     @classmethod
     def validate_email(cls, v):
-        """Validate email format"""
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, v):
-            raise ValueError(f"Invalid email format: {v}")
-        return v
+        """Validate email format using centralized validators."""
+        from shared.validators import validate_email_with_results
+        result = validate_email_with_results(v)
+        if not result.is_valid:
+            raise ValueError(result.error_message)
+        return result.input_after_validation
 
 
-class SlackRefundConfirmation(ApiModel):
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
+class SlackRefundConfirmation(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """
     Model for refund confirmation messages sent to Slack.
     Used when a refund has been processed and confirmed.
@@ -126,7 +150,9 @@ class SlackRefundConfirmation(ApiModel):
     shopify_refund_id: Optional[str] = None
 
 
-class SlackRefundDenial(ApiModel):
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
+class SlackRefundDenial(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """
     Model for refund denial messages sent to Slack.
     Used when a refund request has been denied.
@@ -154,7 +180,8 @@ class SlackRefundDenial(ApiModel):
     notes: Optional[str] = None
 
 
-class SlackOrderUpdate(ApiModel):
+class SlackOrderUpdate(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """
     Model for order update notifications sent to Slack.
     Used for general order status changes and updates.
@@ -185,7 +212,8 @@ class SlackOrderUpdate(ApiModel):
     order_data: Optional[Dict[str, Any]] = None
 
 
-class ProcessLeadershipCSVRequest(ApiModel):
+class ProcessLeadershipCSVRequest(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """
     Request model for processing leadership CSV data.
     Originally from requests.py, now part of the Slack models system.
@@ -210,7 +238,8 @@ class ProcessLeadershipCSVRequest(ApiModel):
     year: Optional[int] = None
 
 
-class SlackLeadershipNotification(ApiModel):
+class SlackLeadershipNotification(BaseModel):
+    model_config = DEFAULT_CONFIG_DICT
     """
     Model for leadership-related notifications sent to Slack.
     Used for leadership CSV processing and updates.
@@ -243,6 +272,7 @@ class SlackLeadershipNotification(ApiModel):
     csv_data: Optional[List[List[str]]] = None
 
 
+# TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
 class RefundButtons:
     """Button definitions for refund-related actions"""
     
@@ -330,11 +360,14 @@ class Slack:
     """
     
     # Request models
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundNotification = RefundSlackNotificationRequest
     ProcessLeadershipCSV = ProcessLeadershipCSVRequest
     
     # Confirmation/Status models
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundConfirmation = SlackRefundConfirmation
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundDenial = SlackRefundDenial
     OrderUpdate = SlackOrderUpdate
     LeadershipNotification = SlackLeadershipNotification
@@ -344,9 +377,11 @@ class Slack:
     Channel = SlackChannel
     
     # Button classes
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundButtons = RefundButtons
     
     # Enums
+    # TODO: Delete if unused post-migration - Legacy Slack refund functionality removed
     RefundType = RefundType
     ActionType = SlackActionType
     MessageType = SlackMessageType

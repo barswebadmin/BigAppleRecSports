@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: LabelList
+description: A list of labels applied to a file.
+type: object
+properties:
+  labels:
+    description: The list of labels.
+    type: array
+    items:
+      $ref: Label
+  nextPageToken:
+    description: The page token for the next page of labels. This field will be absent
+      if the end of the list has been reached. If the token is rejected for any reason,
+      it should be discarded, and pagination should be restarted from the first page
+      of results. The page token is typically valid for several hours. However, if
+      new items are added or removed, your expected results might differ.
+    type: string
+  kind:
+    description: This is always `"drive#labelList"`.
+    type: string

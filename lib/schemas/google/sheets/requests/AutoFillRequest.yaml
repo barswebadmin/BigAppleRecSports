@@ -1,0 +1,18 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: AutoFillRequest
+description: Fills in more data based on existing data.
+type: object
+properties:
+  range:
+    $ref: GridRange
+    description: The range to autofill. This will examine the range and detect the
+      location that has data and automatically fill that data in to the rest of the
+      range.
+  sourceAndDestination:
+    $ref: SourceAndDestination
+    description: The source and destination areas to autofill. This explicitly lists
+      the source of the autofill and where to extend that data.
+  useAlternateSeries:
+    description: True if we should generate data with the "alternate" series. This
+      differs based on the type and amount of source data.
+    type: boolean

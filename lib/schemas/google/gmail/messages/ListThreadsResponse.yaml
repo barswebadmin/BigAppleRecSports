@@ -1,0 +1,20 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: ListThreadsResponse
+description: ''
+type: object
+properties:
+  threads:
+    description: List of threads. Note that each thread resource does not contain
+      a list of `messages`. The list of `messages` for a given thread can be fetched
+      using the [`threads.get`](https://developers.google.com/workspace/gmail/api/v1/reference/users/threads/get)
+      method.
+    type: array
+    items:
+      $ref: Thread
+  nextPageToken:
+    description: Page token to retrieve the next page of results in the list.
+    type: string
+  resultSizeEstimate:
+    description: Estimated total number of results.
+    type: integer
+    format: uint32

@@ -1,0 +1,63 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Message
+description: An email message.
+type: object
+properties:
+  id:
+    description: The immutable ID of the message.
+    type: string
+  threadId:
+    description: 'The ID of the thread the message belongs to. To add a message or
+      draft to a thread, the following criteria must be met: 1. The requested `threadId`
+      must be specified on the `Message` or `Draft.Message` you supply with your request.
+      2. The `References` and `In-Reply-To` headers must be set in compliance with
+      the [RFC 2822](https://tools.ietf.org/html/rfc2822) standard. 3. The `Subject`
+      headers must match. '
+    type: string
+  labelIds:
+    description: List of IDs of labels applied to this message.
+    type: array
+    items:
+      type: string
+  snippet:
+    description: A short part of the message text.
+    type: string
+  historyId:
+    description: The ID of the last history record that modified this message.
+    type: string
+    format: uint64
+  internalDate:
+    description: The internal message creation timestamp (epoch ms), which determines
+      ordering in the inbox. For normal SMTP-received email, this represents the time
+      the message was originally accepted by Google, which is more reliable than the
+      `Date` header. However, for API-migrated mail, it can be configured by client
+      to be based on the `Date` header.
+    type: string
+    format: int64
+  payload:
+    description: The parsed email structure in the message parts.
+    $ref: MessagePart
+  sizeEstimate:
+    description: Estimated size in bytes of the message.
+    type: integer
+    format: int32
+  raw:
+    description: The entire email message in an RFC 2822 formatted and base64url encoded
+      string. Returned in `messages.get` and `drafts.get` responses when the `format=RAW`
+      parameter is supplied.
+    annotations:
+      required:
+      - gmail.users.drafts.create
+      - gmail.users.drafts.update
+      - gmail.users.messages.insert
+      - gmail.users.messages.send
+    type: string
+    format: byte
+  classificationLabelValues:
+    description: Classification Label values on the message. Available Classification
+      Label schemas can be queried using the Google Drive Labels API. Each classification
+      label ID must be unique. If duplicate IDs are provided, only one will be retained,
+      and the selection is arbitrary. Only used for Google Workspace accounts.
+    type: array
+    items:
+      $ref: ClassificationLabelValue

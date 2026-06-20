@@ -1,0 +1,12 @@
+description: Create a guest user with access to a [subset of Workspace capabilities](https://support.google.com/a/answer/16558545).
+  This feature is currently in Alpha. Please reach out to support if you are interested
+  in trying this feature.
+httpMethod: POST
+path: admin/directory/v1/users:createGuest
+scopes:
+- https://www.googleapis.com/auth/admin.directory.user
+request:
+  $ref: DirectoryUsersCreateGuestRequest
+parameters: {}
+response:
+  $ref: User

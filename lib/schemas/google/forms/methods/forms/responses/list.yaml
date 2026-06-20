@@ -1,0 +1,36 @@
+description: List a form's responses.
+httpMethod: GET
+path: v1/forms/{formId}/responses
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/forms.responses.readonly
+parameters:
+  pageSize:
+    description: The maximum number of responses to return. The service may return
+      fewer than this value. If unspecified or zero, at most 5000 responses are returned.
+    type: integer
+    location: query
+    format: int32
+  formId:
+    description: Required. ID of the Form whose responses to list.
+    type: string
+    location: path
+    required: true
+  filter:
+    description: 'Which form responses to return. Currently, the only supported filters
+      are: * timestamp > *N* which means to get all form responses submitted after
+      (but not at) timestamp *N*. * timestamp >= *N* which means to get all form responses
+      submitted at and after timestamp *N*. For both supported filters, timestamp
+      must be formatted in RFC3339 UTC "Zulu" format. Examples: "2014-10-02T15:01:23Z"
+      and "2014-10-02T15:01:23.045123456Z".'
+    type: string
+    location: query
+  pageToken:
+    location: query
+    description: A page token returned by a previous list response. If this field
+      is set, the form and the values of the filter must be the same as for the original
+      request.
+    type: string
+response:
+  $ref: ListFormResponsesResponse

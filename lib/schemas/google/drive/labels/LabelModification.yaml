@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: LabelModification
+description: A modification to a label on a file. A `LabelModification` can be used
+  to apply a label to a file, update an existing label on a file, or remove a label
+  from a file.
+type: object
+properties:
+  labelId:
+    description: The ID of the label to modify.
+    annotations:
+      required:
+      - drive.files.modifyLabels
+    type: string
+  fieldModifications:
+    description: The list of modifications to this label's fields.
+    type: array
+    items:
+      $ref: LabelFieldModification
+  removeLabel:
+    description: If true, the label will be removed from the file.
+    type: boolean
+  kind:
+    description: This is always `"drive#labelModification"`.
+    type: string

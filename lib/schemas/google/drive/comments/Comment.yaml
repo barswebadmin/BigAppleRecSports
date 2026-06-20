@@ -1,0 +1,82 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Comment
+description: A comment on a file. Some resource methods (such as `comments.update`)
+  require a `commentId`. Use the `comments.list` method to retrieve the ID for a comment
+  in a file.
+type: object
+properties:
+  id:
+    description: Output only. The ID of the comment.
+    type: string
+  kind:
+    description: 'Output only. Identifies what kind of resource this is. Value: the
+      fixed string `"drive#comment"`.'
+    default: drive#comment
+    type: string
+  createdTime:
+    description: The time at which the comment was created (RFC 3339 date-time).
+    type: string
+    format: date-time
+  modifiedTime:
+    description: The last time the comment or any of its replies was modified (RFC
+      3339 date-time).
+    type: string
+    format: date-time
+  resolved:
+    description: Output only. Whether the comment has been resolved by one of its
+      replies.
+    type: boolean
+  anchor:
+    description: A region of the document represented as a JSON string. For details
+      on defining anchor properties, refer to [Manage comments and replies](https://developers.google.com/workspace/drive/api/v3/manage-comments).
+    type: string
+  replies:
+    description: Output only. The full list of replies to the comment in chronological
+      order.
+    type: array
+    items:
+      $ref: Reply
+  author:
+    description: Output only. The author of the comment. The author's email address
+      and permission ID will not be populated.
+    $ref: User
+  deleted:
+    description: Output only. Whether the comment has been deleted. A deleted comment
+      has no content.
+    type: boolean
+  htmlContent:
+    description: Output only. The content of the comment with HTML formatting.
+    type: string
+  content:
+    description: The plain text content of the comment. This field is used for setting
+      the content, while `htmlContent` should be displayed.
+    annotations:
+      required:
+      - drive.comments.create
+      - drive.comments.update
+    type: string
+  quotedFileContent:
+    description: The file content to which the comment refers, typically within the
+      anchor region. For a text file, for example, this would be the text at the location
+      of the comment.
+    type: object
+    properties:
+      mimeType:
+        description: The MIME type of the quoted content.
+        type: string
+      value:
+        description: The quoted content itself. This is interpreted as plain text
+          if set through the API.
+        type: string
+  mentionedEmailAddresses:
+    description: Output only. A list of email addresses for users mentioned in this
+      comment. If no users are mentioned, the list is empty.
+    readOnly: true
+    type: array
+    items:
+      type: string
+  assigneeEmailAddress:
+    description: Output only. The email address of the user assigned to this comment.
+      If no user is assigned, the field is unset.
+    readOnly: true
+    type: string

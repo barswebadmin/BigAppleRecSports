@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: DataSourceParameter
+description: A parameter in a data source's query. The parameter allows the user to
+  pass in values from the spreadsheet into a query.
+type: object
+properties:
+  namedRangeId:
+    type: string
+    description: ID of a NamedRange. Its size must be 1x1.
+  range:
+    $ref: GridRange
+    description: A range that contains the value of the parameter. Its size must be
+      1x1.
+  name:
+    description: Named parameter. Must be a legitimate identifier for the DataSource
+      that supports it. For example, [BigQuery identifier](https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical#identifiers).
+    type: string

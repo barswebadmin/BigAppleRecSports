@@ -98,7 +98,7 @@ def ensure_cli_paths_setup() -> None:
     repo_root = find_repo_root()
     ensure_path_in_sys_path(repo_root)
     
-    for python_dir in ["backend", "lambda/functions", "bars_cli"]:
+    for python_dir in ["backend", "aws/lambda/functions"]:
         python_path = repo_root / python_dir
         if python_path.exists():
             ensure_path_in_sys_path(python_path)
@@ -112,7 +112,7 @@ def get_src_root_for_file(file_path: Path, repo_root: Path) -> Path:
         repo_root: Repository root directory
         
     Returns:
-        Path to the source root directory (backend/, lambda/functions/, or bars_cli/)
+        Path to the source root directory (backend/ or aws/lambda/functions/)
     """
     abs_path = file_path.resolve() if not file_path.is_absolute() else file_path
     abs_repo_root = repo_root.resolve()
@@ -127,8 +127,6 @@ def get_src_root_for_file(file_path: Path, repo_root: Path) -> Path:
         return abs_repo_root / "backend"
     elif "lambda" in parts and "functions" in parts:
         return abs_repo_root / "lambda" / "functions"
-    elif "bars_cli" in parts:
-        return abs_repo_root / "bars_cli"
     else:
         return abs_repo_root
 
@@ -218,13 +216,13 @@ def run_all_checks(
     max_workers: int = 8,
     target_path: str = "all"
 ) -> CompilationCheckResults:
-    """Run all compilation checks on Python files in backend/, lambda/functions/, or bars_cli/."""
+    """Run all compilation checks on Python files in backend/ or aws/lambda/functions/."""
     console = Console()
     repo_root = find_repo_root()
     
     python_dirs = []
     if target_path == "all":
-        for dir_name in ["backend", "lambda/functions", "bars_cli"]:
+        for dir_name in ["backend", "aws/lambda/functions"]:
             dir_path = repo_root / dir_name
             if dir_path.exists():
                 python_dirs.append(dir_path)
@@ -232,10 +230,8 @@ def run_all_checks(
         python_dirs = [repo_root / "backend"] if (repo_root / "backend").exists() else []
     elif target_path == "lambda":
         python_dirs = [repo_root / "lambda" / "functions"] if (repo_root / "lambda" / "functions").exists() else []
-    elif target_path == "bars_cli":
-        python_dirs = [repo_root / "bars_cli"] if (repo_root / "bars_cli").exists() else []
     else:
-        raise RuntimeError(f"Unknown target_path: {target_path}. Must be 'backend', 'lambda', 'bars_cli', or 'all'")
+        raise RuntimeError(f"Unknown target_path: {target_path}. Must be 'backend', 'lambda', or 'all'")
     
     if not python_dirs:
         raise RuntimeError(f"No Python directories found for target_path={target_path}")
@@ -250,8 +246,6 @@ def run_all_checks(
             if target_path == "backend" and "backend" in file_path.parts:
                 filtered_files.append(file_path)
             elif target_path == "lambda" and "lambda" in file_path.parts and "functions" in file_path.parts:
-                filtered_files.append(file_path)
-            elif target_path == "bars_cli" and "bars_cli" in file_path.parts:
                 filtered_files.append(file_path)
         files = filtered_files
     
@@ -453,7 +447,7 @@ def _print_gas_errors(errors: List[str], phase: str) -> None:
 
 def compile_gas() -> int:
     """Compile Google Apps Scripts by running esbuild (catches syntax errors)."""
-    gas_root = PROJECT_ROOT / "GoogleAppsScripts"
+    gas_root = PROJECT_ROOT / "google-apps-scripts"
     projects_dir = gas_root / "projects"
     build_script = PROJECT_ROOT / "scripts" / "deployment" / "google" / "build.js"
     
@@ -509,7 +503,7 @@ def compile_for_path(path: str) -> int:
     """Compile for a specific path.
     
     Args:
-        path: Path to compile (e.g., "backend", "lambda/functions", "GoogleAppsScripts")
+        path: Path to compile (e.g., "backend", "aws/lambda/functions", "google-apps-scripts")
         
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -522,7 +516,7 @@ def compile_for_path(path: str) -> int:
         return compile_gas()
     else:
         print(f"⚠️  Unknown path: {path}")
-        print("   Supported paths: backend, lambda/functions, GoogleAppsScripts")
+        print("   Supported paths: backend, aws/lambda/functions, google-apps-scripts")
         return 1
 
 
@@ -540,8 +534,6 @@ if __name__ == "__main__":
         target_path = "backend"
     elif "--lambda" in sys.argv:
         target_path = "lambda"
-    elif "--bars-cli" in sys.argv or "--bars_cli" in sys.argv:
-        target_path = "bars_cli"
     
     try:
         results = run_all_checks(check_types=check_types, target_path=target_path)

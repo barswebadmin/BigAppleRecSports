@@ -1,0 +1,17 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: UserKeyword
+description: JSON template for a keyword entry.
+type: object
+properties:
+  customType:
+    description: Custom Type.
+    type: string
+  type:
+    description: Each entry can have a type which indicates standard type of that
+      entry. For example keyword could be of type occupation or outlook. In addition
+      to the standard type an entry can have a custom type and can give it any name.
+      Such types should have the CUSTOM value as type and also have a customType value.
+    type: string
+  value:
+    description: Keyword.
+    type: string

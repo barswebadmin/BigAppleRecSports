@@ -12,7 +12,7 @@ from modules.integrations.slack.bot_apps import leadership_bot
 from modules.integrations.slack.bot_apps.handlers import *  # noqa: F401, F403
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/slack", tags=["slack"])
+router = APIRouter(prefix="/webhooks/slack", tags=["slack-webhooks"])
 
 orders_service = OrdersService()
 slack_service = SlackService()

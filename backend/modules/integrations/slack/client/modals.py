@@ -4,11 +4,33 @@ Pure functions for opening, updating, and managing Slack modals.
 """
 
 import logging
+import sys
+from pathlib import Path
 from typing import Any, Optional
 
 from slack_sdk.models.views import View
 
-from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
+# Lazy import to avoid circular dependencies - import when actually used
+def _get_slack_block_builder():
+    """Lazy import of SlackBlockBuilder to avoid circular dependencies."""
+    # Import from backend modules directly
+    try:
+        from modules.integrations.slack.builders.block_builders import SlackBlockBuilder
+        return SlackBlockBuilder
+    except ImportError:
+        # Try relative import as fallback
+        try:
+            from ..builders.block_builders import SlackBlockBuilder
+            return SlackBlockBuilder
+        except ImportError:
+            # If all else fails, raise a helpful error
+            raise ImportError(
+                "SlackBlockBuilder not found. "
+                "Make sure backend/modules/integrations/slack/builders/block_builders.py exists."
+            )
+
+# Import lazily when actually used
+SlackBlockBuilder = None
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +56,11 @@ def show_modal(
         view_id of the displayed modal, or None if failed
     
     Example:
+        # Lazy load SlackBlockBuilder
+        global SlackBlockBuilder
+        if SlackBlockBuilder is None:
+            SlackBlockBuilder = _get_slack_block_builder()
+        
         modal_view = SlackBlockBuilder.modal(
             title="My Modal",
             blocks=[...],

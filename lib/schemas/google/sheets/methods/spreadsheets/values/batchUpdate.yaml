@@ -1,0 +1,18 @@
+description: Sets values in one or more ranges of a spreadsheet. The caller must specify
+  the spreadsheet ID, a valueInputOption, and one or more ValueRanges.
+httpMethod: POST
+path: v4/spreadsheets/{spreadsheetId}/values:batchUpdate
+scopes:
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/drive.file
+- https://www.googleapis.com/auth/spreadsheets
+request:
+  $ref: BatchUpdateValuesRequest
+parameters:
+  spreadsheetId:
+    description: The ID of the spreadsheet to update.
+    required: true
+    location: path
+    type: string
+response:
+  $ref: BatchUpdateValuesResponse

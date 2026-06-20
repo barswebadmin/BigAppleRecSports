@@ -1,0 +1,10 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchChangeChromeOsDeviceStatusResponse
+description: The response of changing the status of a batch of ChromeOS devices.
+type: object
+properties:
+  changeChromeOsDeviceStatusResults:
+    description: The results for each of the ChromeOS devices provided in the request.
+    type: array
+    items:
+      $ref: ChangeChromeOsDeviceStatusResult

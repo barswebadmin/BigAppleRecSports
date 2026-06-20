@@ -1,0 +1,36 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: OsUpdateStatus
+description: Contains information regarding the current OS update status.
+type: object
+properties:
+  state:
+    description: The update state of an OS update.
+    type: string
+    enumDescriptions:
+    - The update state is unspecified.
+    - There is an update pending but it hasn't started.
+    - The pending update is being downloaded.
+    - The device is ready to install the update, but must reboot.
+    enum:
+    - updateStateUnspecified
+    - updateStateNotStarted
+    - updateStateDownloadInProgress
+    - updateStateNeedReboot
+  targetOsVersion:
+    description: New platform version of the OS image being downloaded and applied.
+      It is only set when update status is UPDATE_STATUS_DOWNLOAD_IN_PROGRESS or UPDATE_STATUS_NEED_REBOOT.
+      Note this could be a dummy "0.0.0.0" for UPDATE_STATUS_NEED_REBOOT for some
+      edge cases, e.g. update engine is restarted without a reboot.
+    type: string
+  targetKioskAppVersion:
+    description: New required platform version from the pending updated kiosk app.
+    type: string
+  updateTime:
+    description: Date and time of the last successful OS update.
+    type: string
+  updateCheckTime:
+    description: Date and time of the last update check.
+    type: string
+  rebootTime:
+    description: Date and time of the last reboot.
+    type: string

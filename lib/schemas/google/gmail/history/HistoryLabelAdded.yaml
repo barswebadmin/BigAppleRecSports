@@ -1,0 +1,12 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: HistoryLabelAdded
+description: ''
+type: object
+properties:
+  message:
+    $ref: Message
+  labelIds:
+    description: Label IDs added to the message.
+    type: array
+    items:
+      type: string

@@ -1,0 +1,23 @@
+description: Modifies the labels on the specified message.
+httpMethod: POST
+path: gmail/v1/users/{userId}/messages/{id}/modify
+scopes:
+- https://mail.google.com/
+- https://www.googleapis.com/auth/gmail.modify
+request:
+  $ref: ModifyMessageRequest
+parameters:
+  userId:
+    description: The user's email address. The special value `me` can be used to indicate
+      the authenticated user.
+    default: me
+    location: path
+    required: true
+    type: string
+  id:
+    description: The ID of the message to modify.
+    location: path
+    required: true
+    type: string
+response:
+  $ref: Message

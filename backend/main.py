@@ -25,17 +25,18 @@ if os.getenv("ENVIRONMENT") == "production":
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routers import webhooks, refunds, orders, slack, products
+from routers import shopify, slack, products
+from services.orders.routes import router as services_orders_router
+from services.refunds.routes import router as services_refunds_router
+from services.waitlists.routes import router as services_waitlists_router
 from config import config
 import logging
 import json
-import sys
 from pathlib import Path
 
-# Import version manager functions
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root / "scripts" / "deployment"))
-from version_manager import get_version_info
+version_file = Path(__file__).parent / "version.json"
+with open(version_file, "r") as f:
+    version_data = json.load(f)
 
 # Configure logging for all modules
 logging.basicConfig(
@@ -45,17 +46,17 @@ logging.basicConfig(
 # Set specific loggers to INFO level to ensure they show up
 logging.getLogger("services.products").setLevel(logging.INFO)
 logging.getLogger("services.shopify").setLevel(logging.INFO)
-logging.getLogger("backend.services").setLevel(logging.INFO)
+logging.getLogger("services").setLevel(logging.INFO)
 
 app = FastAPI(
     title="Big Apple Rec Sports API",
     description="Backend API for Big Apple Rec Sports operations",
-    version=get_version_info()["version"],
+    version=version_data["version"],
     docs_url="/docs"
-    if config.environment != "production"
+    if config['ENVIRONMENT'] != "production"
     else None,  # Disable docs in production
     redoc_url="/redoc"
-    if config.environment != "production"
+    if config['ENVIRONMENT'] != "production"
     else None,  # Disable redoc in production
 )
 
@@ -67,7 +68,7 @@ allowed_origins = [
     "http://localhost:8000",  # For local backend development
 ]
 
-if config.environment == "development":
+if config['ENVIRONMENT'] == "development":
     allowed_origins.append("*")
 
 app.add_middleware(
@@ -117,29 +118,47 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# Include routers (prefix is already defined in the router)
-app.include_router(orders.router)
-app.include_router(products.router)
-app.include_router(slack.router)
-app.include_router(webhooks.router)
-app.include_router(refunds.router)
+# Mounted in include order; FastAPI first-match resolves overlapping paths,
+# so per-service routers come first.
+ROUTERS = [
+    services_orders_router,
+    services_refunds_router,
+    services_waitlists_router,
+    products.router,
+    slack.router,
+    shopify.router,
+]
+for r in ROUTERS:
+    app.include_router(r)
+
+# Include new API routers
+from routers.shopify_api import router as shopify_api_router
+from routers.slack_api import router as slack_api_router
+from routers.admin import router as admin_router
+
+app.include_router(shopify_api_router)
+app.include_router(slack_api_router)
+app.include_router(admin_router)
+from routers.shopify_api import health_check as shopify_health_check
+
+# Theme template editing
+from routers import theme_templates
+app.include_router(theme_templates.router)
 
 
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
-    version_file = str(project_root / "backend" / "version.json")
-    version_info = get_version_info(version_file)
     return {
         "message": "Big Apple Rec Sports API",
-        "version": version_info["version"],
-        "build": version_info["build"],
-        "full_version": version_info["full_version"],
-        "codename": version_info["codename"],
-        "last_updated": version_info["last_updated"],
-        "environment": config.environment,
+        "version": version_data["version"],
+        "build": version_data["build"],
+        "full_version": f"{version_data['version']}.{version_data['build']}",
+        "codename": version_data["codename"],
+        "last_updated": version_data["last_updated"],
+        "environment": config['ENVIRONMENT'],
         "docs_url": "/docs"
-        if config.environment != "production"
+        if config['ENVIRONMENT'] != "production"
         else "Contact admin for documentation",
         "health_check": "/health",
     }
@@ -148,29 +167,26 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring"""
-    version_file = str(project_root / "backend" / "version.json")
-    version_info = get_version_info(version_file)
     return {
         "status": "healthy",
-        "version": version_info["version"],
-        "build": version_info["build"],
-        "full_version": version_info["full_version"],
-        "environment": config.environment,
-        "last_updated": version_info["last_updated"],
+        "version": version_data["version"],
+        "build": version_data["build"],
+        "full_version": f"{version_data['version']}.{version_data['build']}",
+        "environment": config['ENVIRONMENT'],
+        "last_updated": version_data["last_updated"],
     }
 
 
 @app.get("/version")
 async def get_version():
     """Get detailed version information"""
-    version_file = str(project_root / "backend" / "version.json")
-    return get_version_info(version_file)
+    return version_data
 
 
 if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        app, host="0.0.0.0", port=8000, reload=config.environment == "development"
+        app, host="0.0.0.0", port=8000, reload=config['ENVIRONMENT'] == "development"
     )
 # Test change

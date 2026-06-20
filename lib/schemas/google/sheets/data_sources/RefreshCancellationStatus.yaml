@@ -1,0 +1,35 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RefreshCancellationStatus
+description: The status of a refresh cancellation. You can send a cancel request to
+  explicitly cancel one or multiple data source object refreshes.
+type: object
+properties:
+  state:
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - The API call to Sheets to cancel a refresh has succeeded. This does not mean
+      that the cancel happened successfully, but that the call has been made successfully.
+    - The API call to Sheets to cancel a refresh has failed.
+    enum:
+    - REFRESH_CANCELLATION_STATE_UNSPECIFIED
+    - CANCEL_SUCCEEDED
+    - CANCEL_FAILED
+    description: The state of a call to cancel a refresh in Sheets.
+  errorCode:
+    type: string
+    enumDescriptions:
+    - Default value, do not use.
+    - Execution to be cancelled not found in the query engine or in Sheets.
+    - The user does not have permission to cancel the query.
+    - The query execution has already completed and thus could not be cancelled.
+    - There is already another cancellation in process.
+    - All other errors.
+    enum:
+    - REFRESH_CANCELLATION_ERROR_CODE_UNSPECIFIED
+    - EXECUTION_NOT_FOUND
+    - CANCEL_PERMISSION_DENIED
+    - QUERY_EXECUTION_COMPLETED
+    - CONCURRENT_CANCELLATION
+    - CANCEL_OTHER_ERROR
+    description: The error code.

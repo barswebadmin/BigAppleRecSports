@@ -6,7 +6,7 @@ import json
 import os
 import pytest
 
-from shared import check_dict_equivalence
+from shared_utilities.dict_utils import check_dict_equivalence
 from .test_helpers import (
     process_csv_to_hierarchy,
     normalize_hierarchy_for_comparison

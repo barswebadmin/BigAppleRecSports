@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: RandomizeRangeRequest
+description: Randomizes the order of the rows in a range.
+type: object
+properties:
+  range:
+    $ref: GridRange
+    description: The range to randomize.

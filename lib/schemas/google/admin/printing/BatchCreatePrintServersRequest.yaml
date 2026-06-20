@@ -1,0 +1,11 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: BatchCreatePrintServersRequest
+description: Request to add multiple new print servers in a batch.
+type: object
+properties:
+  requests:
+    description: Required. A list of `PrintServer` resources to be created (max `50`
+      per batch).
+    type: array
+    items:
+      $ref: CreatePrintServerRequest

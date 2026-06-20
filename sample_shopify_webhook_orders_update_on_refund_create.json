@@ -1,0 +1,566 @@
+{
+  "kind": "orders-update",
+  "headers":
+  {
+      "x-forwarded-for": "34.63.171.129",
+      "x-forwarded-proto": "https",
+      "x-forwarded-port": "443",
+      "host": "bars-backend.loca.lt",
+      "x-shopify-webhook-id": "041bd46b-e15c-502d-9a4a-937893191f04",
+      "x-shopify-triggered-at": "2026-01-24T13:35:34.434727850Z",
+      "x-shopify-topic": "orders/updated",
+      "x-shopify-test": "false",
+      "x-shopify-shop-domain": "09fe59-3.myshopify.com",
+      "x-shopify-order-id": "6087214923870",
+      "x-shopify-hmac-sha256": "1rIMOkUz8ViPlijMF5zQIOXYLnw52vJDFdSsHi+NtkY=",
+      "x-shopify-event-id": "cabe3df3-5c8b-46e7-b123-00f9e4f3f65b",
+      "x-shopify-api-version": "2026-01",
+      "content-type": "application/json",
+      "accept-encoding": "gzip;q=1.0,deflate;q=0.6,identity;q=0.3",
+      "accept": "*/*",
+      "content-length": "8807",
+      "user-agent": "Shopify-Captain-Hook",
+      "x-forwarded-host": "bars-backend.loca.lt",
+      "connection": "keep-alive"
+  },
+  "body":
+  {
+      "id": 6087214923870,
+      "admin_graphql_api_id": "gid://shopify/Order/6087214923870",
+      "app_id": 580111,
+      "browser_ip": "198.199.88.6",
+      "buyer_accepts_marketing": true,
+      "cancel_reason": "customer",
+      "cancelled_at": "2026-01-24T08:32:59-05:00",
+      "cart_token": "hWN7yifv8lGy3Xe3lDzGFAg6",
+      "checkout_id": 34235613872222,
+      "checkout_token": "0ce5bdf97056430d40a7bcf1d339a093",
+      "client_details":
+      {
+          "accept_language": "en-US",
+          "browser_height": null,
+          "browser_ip": "198.199.88.6",
+          "browser_width": null,
+          "session_hash": null,
+          "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+      },
+      "closed_at": null,
+      "confirmation_number": "DVK8KQA0E",
+      "confirmed": true,
+      "contact_email": "jdazz87@gmail.com",
+      "created_at": "2026-01-24T08:07:57-05:00",
+      "currency": "USD",
+      "current_shipping_price_set":
+      {
+          "shop_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          }
+      },
+      "current_subtotal_price": "5.00",
+      "current_subtotal_price_set":
+      {
+          "shop_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          }
+      },
+      "current_total_additional_fees_set": null,
+      "current_total_discounts": "0.00",
+      "current_total_discounts_set":
+      {
+          "shop_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          }
+      },
+      "current_total_duties_set": null,
+      "current_total_price": "5.00",
+      "current_total_price_set":
+      {
+          "shop_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          }
+      },
+      "current_total_tax": "0.00",
+      "current_total_tax_set":
+      {
+          "shop_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          }
+      },
+      "customer_locale": "en-US",
+      "device_id": null,
+      "discount_codes":
+      [],
+      "duties_included": false,
+      "email": "jdazz87@gmail.com",
+      "estimated_taxes": false,
+      "financial_status": "refunded",
+      "fulfillment_status": null,
+      "landing_site": "/online_store_preview",
+      "landing_site_ref": null,
+      "location_id": null,
+      "merchant_business_entity_id": "MTU1NDc1NTM1OTY2",
+      "merchant_of_record_app_id": null,
+      "name": "#45501",
+      "note": null,
+      "note_attributes":
+      [],
+      "number": 44501,
+      "order_number": 45501,
+      "order_status_url": "https://www.bigapplerecsports.com/55475535966/orders/76d50625f9382cb540b8438186632d73/authenticate?key=e0395a7cd52a356f0e9e67cc01352b6b",
+      "original_total_additional_fees_set": null,
+      "original_total_duties_set": null,
+      "payment_gateway_names":
+      [
+          "shopify_store_credit"
+      ],
+      "phone": "+19177021216",
+      "po_number": null,
+      "presentment_currency": "USD",
+      "processed_at": "2026-01-24T08:07:54-05:00",
+      "reference": null,
+      "referring_site": "https://www.bigapplerecsports.com/",
+      "source_identifier": null,
+      "source_name": "web",
+      "source_url": null,
+      "subtotal_price": "5.00",
+      "subtotal_price_set":
+      {
+          "shop_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          }
+      },
+      "tags": "Magical Form Fields",
+      "tax_exempt": false,
+      "tax_lines":
+      [],
+      "taxes_included": false,
+      "test": false,
+      "token": "76d50625f9382cb540b8438186632d73",
+      "total_cash_rounding_payment_adjustment_set":
+      {
+          "shop_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          }
+      },
+      "total_cash_rounding_refund_adjustment_set":
+      {
+          "shop_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          }
+      },
+      "total_discounts": "0.00",
+      "total_discounts_set":
+      {
+          "shop_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          }
+      },
+      "total_line_items_price": "5.00",
+      "total_line_items_price_set":
+      {
+          "shop_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          }
+      },
+      "total_outstanding": "0.00",
+      "total_price": "5.00",
+      "total_price_set":
+      {
+          "shop_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "5.00",
+              "currency_code": "USD"
+          }
+      },
+      "total_shipping_price_set":
+      {
+          "shop_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          }
+      },
+      "total_tax": "0.00",
+      "total_tax_set":
+      {
+          "shop_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          },
+          "presentment_money":
+          {
+              "amount": "0.00",
+              "currency_code": "USD"
+          }
+      },
+      "total_tip_received": "0.00",
+      "total_weight": 0,
+      "updated_at": "2026-01-24T08:35:34-05:00",
+      "user_id": null,
+      "billing_address":
+      {
+          "first_name": "Joseph",
+          "address1": "245 Grand St Apt 1",
+          "phone": "+19177021216",
+          "city": "Brooklyn",
+          "zip": "11211",
+          "province": "New York",
+          "country": "United States",
+          "last_name": "Randazzo",
+          "address2": "Door 23455#",
+          "company": null,
+          "latitude": 40.7181278,
+          "longitude": -73.9943694,
+          "name": "Joseph Randazzo",
+          "country_code": "US",
+          "province_code": "NY"
+      },
+      "customer":
+      {
+          "id": 7103723110494,
+          "created_at": "2024-05-29T12:45:07-04:00",
+          "updated_at": "2026-01-24T08:08:01-05:00",
+          "first_name": "Joe",
+          "last_name": "Randazzo",
+          "state": "enabled",
+          "note": "",
+          "verified_email": true,
+          "multipass_identifier": null,
+          "tax_exempt": false,
+          "email": "jdazz87@gmail.com",
+          "phone": "+19177021216",
+          "currency": "USD",
+          "tax_exemptions":
+          [],
+          "admin_graphql_api_id": "gid://shopify/Customer/7103723110494",
+          "default_address":
+          {
+              "id": 9044696694878,
+              "customer_id": 7103723110494,
+              "first_name": "Joseph",
+              "last_name": "Randazzo",
+              "company": null,
+              "address1": "245 Grand St Apt 1",
+              "address2": "Door 23455#",
+              "city": "Brooklyn",
+              "province": "New York",
+              "country": "United States",
+              "zip": "11211",
+              "phone": "+19177021216",
+              "name": "Joseph Randazzo",
+              "province_code": "NY",
+              "country_code": "US",
+              "country_name": "United States",
+              "default": true
+          }
+      },
+      "discount_applications":
+      [],
+      "fulfillments":
+      [],
+      "line_items":
+      [
+          {
+              "id": 14512023699550,
+              "admin_graphql_api_id": "gid://shopify/LineItem/14512023699550",
+              "attributed_staffs":
+              [],
+              "current_quantity": 1,
+              "fulfillable_quantity": 1,
+              "fulfillment_service": "manual",
+              "fulfillment_status": null,
+              "gift_card": false,
+              "grams": 0,
+              "name": "Test Product - Open",
+              "price": "5.00",
+              "price_set":
+              {
+                  "shop_money":
+                  {
+                      "amount": "5.00",
+                      "currency_code": "USD"
+                  },
+                  "presentment_money":
+                  {
+                      "amount": "5.00",
+                      "currency_code": "USD"
+                  }
+              },
+              "product_exists": true,
+              "product_id": 7378842255454,
+              "properties":
+              [
+                  {
+                      "name": "_Form Fields",
+                      "value": " "
+                  },
+                  {
+                      "name": "Preferred First Name",
+                      "value": "Joe"
+                  },
+                  {
+                      "name": "Last Name",
+                      "value": "Test"
+                  },
+                  {
+                      "name": "Date of Birth",
+                      "value": "08/14/1987"
+                  },
+                  {
+                      "name": "Best Contact Number (Cell Phone Number Preferred)",
+                      "value": "7144743513"
+                  },
+                  {
+                      "name": "Best Contact Email Address",
+                      "value": "jdazz87@gmail.com"
+                  },
+                  {
+                      "name": "Gender Identity ",
+                      "value": "Cis Male"
+                  },
+                  {
+                      "name": "Pronouns",
+                      "value": "He/Him"
+                  },
+                  {
+                      "name": "Please select the one that best applies: Which racial categories best describe you?",
+                      "value": "Two or More Races"
+                  },
+                  {
+                      "name": "If you chose &quot;Two or More Races&quot;, please identify those races",
+                      "value": "white/asian"
+                  },
+                  {
+                      "name": "Emergency Contact Name",
+                      "value": "myself"
+                  },
+                  {
+                      "name": "Emergency Contact Phone Number",
+                      "value": "9177021216"
+                  },
+                  {
+                      "name": "Have you ever played any sports with Big Apple Rec Sports before?",
+                      "value": "Yes"
+                  }
+              ],
+              "quantity": 1,
+              "requires_shipping": false,
+              "sales_line_item_group_id": null,
+              "sku": null,
+              "taxable": false,
+              "title": "Test Product",
+              "total_discount": "0.00",
+              "total_discount_set":
+              {
+                  "shop_money":
+                  {
+                      "amount": "0.00",
+                      "currency_code": "USD"
+                  },
+                  "presentment_money":
+                  {
+                      "amount": "0.00",
+                      "currency_code": "USD"
+                  }
+              },
+              "variant_id": 42030154481758,
+              "variant_inventory_management": "shopify",
+              "variant_title": "Open",
+              "vendor": "Big Apple Recreational Sports",
+              "tax_lines":
+              [],
+              "duties":
+              [],
+              "discount_allocations":
+              []
+          }
+      ],
+      "payment_terms": null,
+      "refunds":
+      [
+          {
+              "id": 959531974750,
+              "admin_graphql_api_id": "gid://shopify/Refund/959531974750",
+              "created_at": "2026-01-24T08:35:34-05:00",
+              "note": "",
+              "order_id": 6087214923870,
+              "processed_at": "2026-01-24T08:35:34-05:00",
+              "restock": false,
+              "total_duties_set":
+              {
+                  "shop_money":
+                  {
+                      "amount": "0.00",
+                      "currency_code": "USD"
+                  },
+                  "presentment_money":
+                  {
+                      "amount": "0.00",
+                      "currency_code": "USD"
+                  }
+              },
+              "user_id": 76289638494,
+              "order_adjustments":
+              [
+                  {
+                      "id": 336224551006,
+                      "amount": "-5.00",
+                      "amount_set":
+                      {
+                          "shop_money":
+                          {
+                              "amount": "-5.00",
+                              "currency_code": "USD"
+                          },
+                          "presentment_money":
+                          {
+                              "amount": "-5.00",
+                              "currency_code": "USD"
+                          }
+                      },
+                      "kind": "refund_discrepancy",
+                      "order_id": 6087214923870,
+                      "reason": "Refund discrepancy",
+                      "refund_id": 959531974750,
+                      "tax_amount": "0.00",
+                      "tax_amount_set":
+                      {
+                          "shop_money":
+                          {
+                              "amount": "0.00",
+                              "currency_code": "USD"
+                          },
+                          "presentment_money":
+                          {
+                              "amount": "0.00",
+                              "currency_code": "USD"
+                          }
+                      }
+                  }
+              ],
+              "transactions":
+              [
+                  {
+                      "id": 7868866527326,
+                      "admin_graphql_api_id": "gid://shopify/OrderTransaction/7868866527326",
+                      "amount": "5.00",
+                      "authorization": "39092318",
+                      "created_at": "2026-01-24T08:35:34-05:00",
+                      "currency": "USD",
+                      "device_id": null,
+                      "error_code": null,
+                      "gateway": "shopify_store_credit",
+                      "kind": "refund",
+                      "location_id": null,
+                      "message": "Refunded $5.00 USD to store credit.",
+                      "order_id": 6087214923870,
+                      "parent_id": 7868839493726,
+                      "payment_id": "#45501.2",
+                      "processed_at": "2026-01-24T08:35:34-05:00",
+                      "receipt":
+                      {
+                          "account_id": 39092318,
+                          "revert_operation_id": 349962334
+                      },
+                      "source_name": "1830279",
+                      "status": "success",
+                      "test": false,
+                      "user_id": 76289638494
+                  }
+              ],
+              "refund_line_items":
+              [],
+              "duties":
+              []
+          }
+      ],
+      "shipping_address": null,
+      "shipping_lines":
+      [],
+      "returns":
+      [],
+      "line_item_groups":
+      []
+  }
+}
