@@ -3,14 +3,8 @@
 import sys
 from pathlib import Path
 
-# Add shared utilities to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
-from paths import get_repo_root
-
-project_root = get_repo_root()
-sys.path.insert(0, str(project_root))
-
-from scripts._shared.path_utils import PROJECT_ROOT
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_REPO_ROOT))
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -32,4 +26,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Error running function: {e}")
         sys.exit(1)
-

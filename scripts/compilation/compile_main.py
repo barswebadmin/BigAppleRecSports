@@ -12,8 +12,6 @@ from typing import Dict, List, Optional, Tuple
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
-from scripts._shared.path_utils import PROJECT_ROOT
-
 from .repo_path_resolvers import (
     find_all_python_files,
     find_repo_root,
@@ -125,10 +123,9 @@ def get_src_root_for_file(file_path: Path, repo_root: Path) -> Path:
     
     if "backend" in parts:
         return abs_repo_root / "backend"
-    elif "lambda" in parts and "functions" in parts:
-        return abs_repo_root / "lambda" / "functions"
-    else:
-        return abs_repo_root
+    if "aws" in parts and "lambda" in parts and "functions" in parts:
+        return abs_repo_root / "aws" / "lambda" / "functions"
+    return abs_repo_root
 
 
 # ============================================================================
@@ -229,7 +226,8 @@ def run_all_checks(
     elif target_path == "backend":
         python_dirs = [repo_root / "backend"] if (repo_root / "backend").exists() else []
     elif target_path == "lambda":
-        python_dirs = [repo_root / "lambda" / "functions"] if (repo_root / "lambda" / "functions").exists() else []
+        fn_root = repo_root / "aws" / "lambda" / "functions"
+        python_dirs = [fn_root] if fn_root.exists() else []
     else:
         raise RuntimeError(f"Unknown target_path: {target_path}. Must be 'backend', 'lambda', or 'all'")
     
@@ -245,7 +243,7 @@ def run_all_checks(
         for file_path in files:
             if target_path == "backend" and "backend" in file_path.parts:
                 filtered_files.append(file_path)
-            elif target_path == "lambda" and "lambda" in file_path.parts and "functions" in file_path.parts:
+            elif target_path == "lambda" and "aws" in file_path.parts and "lambda" in file_path.parts and "functions" in file_path.parts:
                 filtered_files.append(file_path)
         files = filtered_files
     
@@ -339,7 +337,7 @@ def _compile_python_code(target_path: str) -> int:
     Returns:
         Exit code (0 for success, non-zero for failure)
     """
-    sys.path.insert(0, str(PROJECT_ROOT))
+    sys.path.insert(0, str(find_repo_root()))
     ensure_cli_paths_setup()
     
     try:
@@ -447,9 +445,10 @@ def _print_gas_errors(errors: List[str], phase: str) -> None:
 
 def compile_gas() -> int:
     """Compile Google Apps Scripts by running esbuild (catches syntax errors)."""
-    gas_root = PROJECT_ROOT / "google-apps-scripts"
+    repo = find_repo_root()
+    gas_root = repo / "google-apps-scripts"
     projects_dir = gas_root / "projects"
-    build_script = PROJECT_ROOT / "scripts" / "deployment" / "google" / "build.js"
+    build_script = repo / "scripts" / "deployment" / "google" / "build.js"
     
     if not projects_dir.exists():
         print(f"❌ GAS projects directory not found: {projects_dir}")

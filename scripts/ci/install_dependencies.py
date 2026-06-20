@@ -8,30 +8,24 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared_utilities"))
-from paths import get_repo_root
-
-project_root = get_repo_root()
-sys.path.insert(0, str(project_root))
-
-from scripts._shared.path_utils import PROJECT_ROOT
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def install_backend_deps():
     """Install backend dependencies including dev dependencies for testing."""
-    backend_dir = PROJECT_ROOT / "backend"
+    backend_dir = _REPO_ROOT / "backend"
 
     subprocess.run(
         ["uv", "sync"],
         cwd=backend_dir,
         env={**os.environ, "UV_NO_PROGRESS": "1"},
-        check=True
+        check=True,
     )
 
     subprocess.run(
         ["uv", "tool", "install", "rich"],
         env={**os.environ, "UV_NO_PROGRESS": "1"},
-        check=True
+        check=True,
     )
 
 
@@ -40,22 +34,22 @@ def install_lambda_deps():
     subprocess.run(
         ["uv", "tool", "install", "pytest"],
         env={**os.environ, "UV_NO_PROGRESS": "1"},
-        check=True
+        check=True,
     )
     subprocess.run(
         ["uv", "tool", "install", "pytest-asyncio"],
         env={**os.environ, "UV_NO_PROGRESS": "1"},
-        check=True
+        check=True,
     )
     subprocess.run(
         ["uv", "tool", "install", "rich"],
         env={**os.environ, "UV_NO_PROGRESS": "1"},
-        check=True
+        check=True,
     )
     subprocess.run(
         ["uv", "tool", "install", "ruff==0.14.0"],
         env={**os.environ, "UV_NO_PROGRESS": "1"},
-        check=True
+        check=True,
     )
 
 
@@ -64,12 +58,12 @@ def install_deploy_deps():
     subprocess.run(
         ["uv", "tool", "install", "boto3"],
         env={**os.environ, "UV_NO_PROGRESS": "1"},
-        check=True
+        check=True,
     )
     subprocess.run(
         ["uv", "tool", "install", "requests"],
         env={**os.environ, "UV_NO_PROGRESS": "1"},
-        check=True
+        check=True,
     )
 
 

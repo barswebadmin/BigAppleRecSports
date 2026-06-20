@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'lambda/functions/**'
+      - 'aws/lambda/**'
       - '.github/workflows/test-aws.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'lambda/functions/**'
+      - 'aws/lambda/**'
       - '.github/workflows/test-aws.yml'
     types: [opened, synchronize, reopened]
 
@@ -42,6 +42,7 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+          ignore-nothing-to-cache: true
 
       - name: Install dependencies
         run: python scripts/ci/install_dependencies.py lambda
@@ -52,4 +53,4 @@ jobs:
 
       - name: Run Lambda tests
         if: steps.compile.outcome == 'success'
-        run: python lambda/functions/tests/run_tests.py
+        run: pytest aws/lambda/tests -q

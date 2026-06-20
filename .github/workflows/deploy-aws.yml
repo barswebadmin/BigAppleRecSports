@@ -5,7 +5,7 @@ on:
   # push:
   #   branches: [ main ]
   #   paths:
-  #     - 'lambda/functions/**'
+  #     - 'aws/lambda/**'
   #     - '.github/workflows/deploy-aws.yml'
 
   workflow_dispatch:
@@ -29,7 +29,7 @@ on:
 #   pull_request:
 #     branches: [main]
 #     paths:
-#       - 'lambda/functions/**'
+#       - 'aws/lambda/**'
 #     types: [opened, synchronize, reopened]
 
 jobs:
@@ -64,6 +64,7 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+          ignore-nothing-to-cache: true
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -80,11 +81,11 @@ jobs:
             FUNCTION_INPUT="${{ github.event.inputs.function }}"
             if [ "$FUNCTION_INPUT" == "all" ] || [ -z "$FUNCTION_INPUT" ]; then
               echo "📦 Manual deployment: all functions"
-              CHANGED=$(find lambda/functions -maxdepth 1 -type d -not -name "functions" -not -name "tests" -not -name "SyncSecretsToLambda" | sed 's|lambda/functions/||' | sort)
+              CHANGED=$(find aws/lambda/functions -mindepth 1 -maxdepth 1 -type d ! -name tests | sed 's|aws/lambda/functions/||' | sort)
             else
               echo "📦 Manual deployment: $FUNCTION_INPUT"
               # Validate function exists
-              if [ ! -d "lambda/functions/$FUNCTION_INPUT" ]; then
+              if [ ! -d "aws/lambda/functions/$FUNCTION_INPUT" ]; then
                 echo "❌ Function $FUNCTION_INPUT not found"
                 echo "has_changes=false" >> $GITHUB_OUTPUT
                 exit 1
@@ -93,7 +94,7 @@ jobs:
             fi
           else
             # Automatic trigger: only deploy changed functions
-            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- lambda/functions/ | grep -E '^lambda/functions/[^/]+/' | cut -d/ -f3 | sort -u)
+            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- aws/lambda/functions/ | grep -E '^aws/lambda/functions/[^/]+/' | cut -d/ -f4 | sort -u)
           fi
           
           if [ -z "$CHANGED" ]; then
