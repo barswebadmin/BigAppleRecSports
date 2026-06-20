@@ -44,7 +44,8 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 8
+          # Must match google-apps-scripts/package.json "packageManager" / lockfileVersion 9.
+          version: 10.16.0
 
       - name: Get pnpm store directory
         shell: bash

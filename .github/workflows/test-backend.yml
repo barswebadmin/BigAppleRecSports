@@ -45,6 +45,8 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+          # Root uv.lock is gitignored; cache glob would otherwise fail the step.
+          ignore-nothing-to-cache: true
 
       - name: Install dependencies
         run: python scripts/ci/install_dependencies.py backend
