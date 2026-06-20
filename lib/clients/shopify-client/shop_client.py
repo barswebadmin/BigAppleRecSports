@@ -484,6 +484,14 @@ ORDER_DETAIL_FIELDS = [
     "line_items.nodes.variant.id",
     "line_items.nodes.variant.title",
     "line_items.nodes.product.id",
+    "line_items.nodes.product.title",
+    "line_items.nodes.product.handle",
+    "line_items.nodes.product.description_html",
+    "transactions.id",
+    "transactions.kind",
+    "transactions.status",
+    "transactions.gateway",
+    "transactions.parent_transaction.id",
     "refunds.id",
     "refunds.note",
     "refunds.created_at",
@@ -501,7 +509,7 @@ orders = Resource(
         "note", "tags",
         "total_price_set", "subtotal_price_set", "total_tax_set",
         "total_discounts_set", "total_refunded_set",
-        "customer", "custom_attributes", "line_items", "refunds",
+        "customer", "custom_attributes", "line_items", "refunds", "transactions",
     ],
     queries={
         "by_id": QueryOp(
