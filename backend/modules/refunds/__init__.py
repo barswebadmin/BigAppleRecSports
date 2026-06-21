@@ -1,5 +1,1 @@
-from .app.main import RefundsService
-
-__all__ = ["RefundsService"]
-
-
+"""Refunds module — refund estimate + Shopify refund/cancel orchestration."""  # noqa: N999

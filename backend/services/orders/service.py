@@ -2,10 +2,9 @@ import os
 from typing import Any
 
 from box import Box
-from shopify_client.shop_client import ShopifyClient, schema
-
 from services.orders.requests import CancelOrderRequest, GetOrderQuery
 from shared.exceptions import NotFoundError, UnprocessableError
+from shopify_client.shop_client import ShopifyClient, schema
 
 client = ShopifyClient(
     store_id=os.environ.get("SHOPIFY__STORE_ID", ""),
@@ -41,17 +40,34 @@ async def validate_cancellation(q: GetOrderQuery) -> dict[str, Any]:
 
 
 async def cancel(order_id: str, body: CancelOrderRequest) -> dict[str, Any]:
-    payload = client.run(
-        schema.orders.mutations.cancel,
+    """Cancel a Shopify order.
+
+    Stage 5 § 5.k.0 migration: ``ShopifyRefundService`` is gone. This
+    legacy compatibility shim now invokes
+    ``client.run(schema.orders.mutations.cancel, **kwargs)`` directly via
+    the new ``modules.refunds.inputs.build_cancel_kwargs`` builder.
+    ``ShopifyUserError`` (from ``utils.shopify_refunds``) is converted to
+    the legacy ``UnprocessableError`` so existing route handlers continue
+    to see the same exception type. Until callers carry an ``approved_by``
+    identity, we fall back to ``"system"``.
+    """
+    from modules.refunds.inputs import build_cancel_kwargs
+    from utils.shopify_refunds import ShopifyUserError
+
+    cancel_kwargs = build_cancel_kwargs(
         order_id=order_id,
+        approved_by="system",
         reason=body.reason,
         restock=body.restock,
         notify_customer=body.notify_customer,
-        staff_note=body.staff_note,
     )
-    if payload.user_errors:
-        raise UnprocessableError(f"Order cancel failed: {list(payload.user_errors)}")
-    return payload.to_dict()
+    try:
+        payload = client.run(schema.orders.mutations.cancel, **cancel_kwargs)
+        if payload.user_errors:
+            raise ShopifyUserError("orderCancel", list(payload.user_errors))
+        return payload.to_dict()
+    except ShopifyUserError as exc:
+        raise UnprocessableError(f"Order cancel failed: {exc.errors}") from exc
 
 
 ACCEPTED_WEBHOOK_TOPICS = frozenset({

@@ -4,14 +4,6 @@ from typing import Any
 
 import httpx
 from box import Box
-from lib.domain.registrations.refunds import (
-    EstimateTierKind,
-    RefundResult,
-    SeasonDates,
-    estimate_refund_due,
-)
-from shopify_client.shop_client import ShopifyClient, schema
-
 from services.refunds.evaluation import (
     build_found_payload,
     build_not_found_payload,
@@ -21,7 +13,6 @@ from services.refunds.evaluation import (
 )
 from services.refunds.matching import validate_against_order
 from services.refunds.requests import (
-    CreateRefundRequest,
     EstimateRefundRequest,
     Ladder,
     RefundEstimate,
@@ -31,6 +22,14 @@ from services.refunds.requests import (
     RefundSubmitRequest,
 )
 from shared.exceptions import NotFoundError, UnprocessableError
+from shopify_client.shop_client import ShopifyClient, schema
+
+from lib.domain.registrations.refunds import (
+    EstimateTierKind,
+    RefundResult,
+    SeasonDates,
+    estimate_refund_due,
+)
 
 client = ShopifyClient(
     store_id=os.environ.get("SHOPIFY__STORE_ID", ""),
@@ -134,12 +133,9 @@ async def estimate(req: EstimateRefundRequest) -> RefundEstimate:
 
 
 def _parent_capture_txn(transactions: list[dict]) -> dict | None:
-    for txn in transactions:
-        kind = (txn.get("kind") or "").upper()
-        status = (txn.get("status") or "").upper()
-        if kind in {"CAPTURE", "SALE"} and status == "SUCCESS":
-            return txn
-    return None
+    from utils.shopify_refunds import parent_capture_txn
+
+    return parent_capture_txn(transactions)
 
 
 def _build_refund_transactions_for_shopify(
@@ -147,54 +143,61 @@ def _build_refund_transactions_for_shopify(
     amount: float,
     transactions: list[dict],
 ) -> list[dict]:
-    cap = _parent_capture_txn(transactions)
-    if not cap:
-        raise UnprocessableError("No successful SALE/CAPTURE transaction found for refund to original payment")
-    gateway = cap.get("gateway") or "shopify_payments"
-    parent = cap.get("parent_id")
-    parent_id = parent if parent else cap.get("id")
-    if not parent_id:
-        raise UnprocessableError("Could not determine parent transaction id for refund")
-    return [
-        {
-            "order_id": order_id,
-            "parent_id": parent_id,
-            "amount": f"{amount:.2f}",
-            "kind": "REFUND",
-            "gateway": gateway,
-        }
-    ]
+    from decimal import Decimal
+
+    from utils.shopify_refunds import (
+        ShopifyUserError,
+        build_refund_transactions_for_shopify,
+    )
+
+    try:
+        return build_refund_transactions_for_shopify(
+            order_id, Decimal(str(amount)), transactions,
+        )
+    except ShopifyUserError as exc:
+        msg = exc.errors[0]["message"] if exc.errors else "Refund transaction build failed"
+        raise UnprocessableError(msg) from exc
 
 
 def _build_store_credit_refund_methods(amount: float, currency: str) -> list[dict]:
-    return [
-        {
-            "storeCreditRefund": {
-                "amount": {"amount": f"{amount:.2f}", "currencyCode": currency},
-            }
-        }
-    ]
+    from decimal import Decimal
+
+    from utils.shopify_refunds import build_store_credit_refund_methods
+
+    return build_store_credit_refund_methods(Decimal(str(amount)), currency)
 
 
 async def execute_refund_create(body: RefundExecuteRequest) -> dict[str, Any]:
-    """Cancel the order when requested, then create a refund if amount > 0."""
+    """Cancel the order when requested, then create a refund if amount > 0.
+
+    Stage 5 § 5.k.0 migration: the Stage 3 ``ShopifyRefundService`` class
+    is gone. The legacy compatibility shim now invokes
+    ``client.run(schema.x.y.z, **kwargs)`` directly via the new
+    ``modules.refunds.inputs`` builders. ``ShopifyUserError`` (now imported
+    from ``utils.shopify_refunds``) is converted to the legacy
+    ``UnprocessableError`` so existing callers (controllers / routes)
+    continue to see the same exception type until this legacy module is
+    retired.
+    """
+    from decimal import Decimal
+
+    from modules.refunds.inputs import build_cancel_kwargs, build_refund_kwargs
+    from utils.shopify_refunds import ShopifyUserError
+
     out: dict[str, Any] = {"cancel": None, "refund": None}
-    idem = body.idempotency_key
 
     if body.cancel_order:
-        cancel_key = f"{idem}:cancel" if idem else None
-        cancel_payload = client.run(
-            schema.orders.mutations.cancel,
+        cancel_kwargs = build_cancel_kwargs(
             order_id=body.order_id,
-            reason="CUSTOMER",
-            restock=False,
-            notify_customer=False,
-            staff_note=f"Slack-approved cancel (by {body.approved_by})",
-            idempotency_key=cancel_key,
+            approved_by=body.approved_by,
         )
-        if cancel_payload.user_errors:
-            raise UnprocessableError(f"Order cancel failed: {list(cancel_payload.user_errors)}")
-        out["cancel"] = cancel_payload.to_dict()
+        try:
+            cancel_payload = client.run(schema.orders.mutations.cancel, **cancel_kwargs)
+            if cancel_payload.user_errors:
+                raise ShopifyUserError("orderCancel", list(cancel_payload.user_errors))
+            out["cancel"] = cancel_payload.to_dict()
+        except ShopifyUserError as exc:
+            raise UnprocessableError(f"Order cancel failed: {exc.errors}") from exc
 
     if body.amount <= 0:
         return out
@@ -202,45 +205,32 @@ async def execute_refund_create(body: RefundExecuteRequest) -> dict[str, Any]:
     currency = (body.currency or "USD").upper()
     note = body.note or f"Refund approved via Slack ({body.approved_by})"
 
-    if body.refund_to == "store_credit":
-        create_body = CreateRefundRequest(
-            order_id=body.order_id,
-            currency=currency,
-            note=note,
-            notify=body.notify,
-            refund_methods=_build_store_credit_refund_methods(body.amount, currency),
-        )
-    else:
-        txns = _build_refund_transactions_for_shopify(body.order_id, body.amount, body.transactions)
-        create_body = CreateRefundRequest(
-            order_id=body.order_id,
-            currency=currency,
-            note=note,
-            notify=body.notify,
-            transactions=txns,
-        )
-
-    refund_key = f"{idem}:refund" if idem else None
-    refund_payload = client.run(
-        schema.refunds.mutations.create,
-        idempotency_key=refund_key,
-        **create_body.model_dump(exclude_none=True),
+    refund_kwargs = build_refund_kwargs(
+        order_id=body.order_id,
+        amount=Decimal(str(body.amount)),
+        refund_to=body.refund_to,
+        currency=currency,
+        notify=body.notify,
+        note=note,
+        transactions=body.transactions if body.refund_to != "store_credit" else None,
     )
-    if refund_payload.user_errors:
-        raise UnprocessableError(f"Refund create failed: {list(refund_payload.user_errors)}")
-    out["refund"] = refund_payload.to_dict()
+    try:
+        refund_payload = client.run(schema.refunds.mutations.create, **refund_kwargs)
+        if refund_payload.user_errors:
+            raise ShopifyUserError("refundCreate", list(refund_payload.user_errors))
+        out["refund"] = refund_payload.to_dict()
+    except ShopifyUserError as exc:
+        raise UnprocessableError(f"Refund create failed: {exc.errors}") from exc
     return out
 
 
-async def create(body: CreateRefundRequest) -> dict[str, Any]:
-    """Create a Shopify refund (low-level). Raises UnprocessableError on user_errors."""
-    payload = client.run(
-        schema.refunds.mutations.create,
-        **body.model_dump(exclude_none=True),
-    )
-    if payload.user_errors:
-        raise UnprocessableError(f"Refund create failed: {list(payload.user_errors)}")
-    return payload.to_dict()
+# NOTE: The low-level ``create()`` helper that previously called the
+# Shopify ``refundCreate`` mutation directly was deleted in Stage 3 —
+# Stage 5 § 5.k.0 deletes the ``ShopifyRefundService`` class entirely;
+# the helpers here now invoke ``client.run(schema.refunds.mutations.create, ...)``
+# via the ``modules.refunds.inputs`` builders. A repo grep confirmed no
+# other consumer (no imports of ``services.refunds.service.create`` anywhere).
+# See progress-stage-3.md / progress-stage-5-impl.md.
 
 
 async def _post_slack_evaluation(url: str | None, evaluation: dict[str, Any]) -> tuple[bool, int, str]:

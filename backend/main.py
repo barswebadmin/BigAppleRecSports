@@ -25,6 +25,7 @@ if os.getenv("ENVIRONMENT") == "production":
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from routers import shopify, slack, products
 from services.orders.routes import router as services_orders_router
 from services.refunds.routes import router as services_refunds_router
@@ -33,6 +34,8 @@ from config import config
 import logging
 import json
 from pathlib import Path
+
+from utils.shopify_refunds import ShopifyUserError
 
 version_file = Path(__file__).parent / "version.json"
 with open(version_file, "r") as f:
@@ -59,6 +62,19 @@ app = FastAPI(
     if config['ENVIRONMENT'] != "production"
     else None,  # Disable redoc in production
 )
+
+
+@app.exception_handler(ShopifyUserError)
+async def handle_shopify_user_error(request: Request, exc: ShopifyUserError) -> JSONResponse:
+    """Map Shopify user-error responses to HTTP 422 (Stage 3 / D31)."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "ok": False,
+            "mutation": exc.mutation,
+            "errors": exc.errors,
+        },
+    )
 
 # Configure CORS
 allowed_origins = [

@@ -1,123 +1,243 @@
 /**
- * Wire contract for the payload the ShopifyRefundHandler Lambda POSTs to the
- * Deno evaluation webhook.
+ * Refund-domain types. Two layers of types live here:
  *
- * Field names are snake_case to mirror the Lambda's `RefundResponse.to_json()`
- * output verbatim (see aws/lambda/functions/ShopifyRefundHandler/handler.py).
- * The Lambda only needs to echo the requester fields it received — no other
- * reshaping, and no channel (Slack owns routing).
+ *   1. Slack-side domain objects for the sheet-driven `/eval-refund-request`
+ *      flow (sheet rows, sheet snapshot, reviewer decision).
+ *
+ *   2. Wire-shape types for the BARS API `/refunds/validate` and
+ *      `/refunds/create` endpoints. These mirror the camelCase JSON the
+ *      backend emits/accepts. They have no transport dependency — the
+ *      domain-agnostic HTTP wrapper (`clients/bars_api/client.ts`) is
+ *      called by parameterizing it with these inputs at the call site.
+ *
+ * Wire-shape sources of truth (per design.md):
+ *   - `ValidateRefundRequest` ↔ POST /refunds/validate body
+ *   - `RefundRequestEval` ↔ POST /refunds/validate response (plain dict on
+ *     the backend; this Slack-side interface mirrors the camelCase wire JSON)
+ *   - `CreateRefundRequest` ↔ POST /refunds/create body
+ *   - `CreateRefundResponse` ↔ POST /refunds/create response
  */
 
-import type { ActionRef } from "../../shared/action_ref.ts";
+// ════════════════════════════════════════════════════════════════════════════
+// Sheet-driven /eval-refund-request flow — domain objects
+// ════════════════════════════════════════════════════════════════════════════
 
-export type RefundType = "original_method" | "store_credit";
+/** Canonical refund-target enum. */
+export type RefundTo = "original_method" | "store_credit";
 
-/** Identity and audit context for a Shopify order action (cancel or refund). */
-export type OrderActionRef = ActionRef<{
-    /** Shopify GID — what `orderCancel` / `refundCreate` take. */
-    orderId: string;
-    /** Display name (e.g. "#1234") — logs, idempotency, human reference. */
-    orderNumber: string;
-}>;
-
-/** Mirror of `_estimate_payload()` in handler.py. */
-export interface RefundEstimate {
-    success: boolean;
-    amount: number;
-    percentage: number | null;
-    penalty: number | null;
-    timing: string | null;
-    has_processing_fee: boolean;
-    no_payment: boolean;
-    message: string | null;
+/** One unprocessed entry parsed from the `Refund_Requests` sheet's data area.
+ *
+ *  No `policyConfirmation` field — the loader does NOT capture the "refund
+ *  policy" column. The form gates submission on it but no consumer requires
+ *  it; per design we ignore it. */
+export interface RefundSheetEntry {
+  /** 1-based row number in the sheet (header is row 1). */
+  rowNumber: number;
+  /** Raw "Timestamp" cell. */
+  timestamp: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  /** Normalized — leading "#" stripped. */
+  orderNumber: string;
+  /** RAW cell value (e.g. "Store credit for a future order") from the
+   *  "store credit" / "original form" / "refund" substring column.
+   *  Normalization to `RefundTo` happens via
+   *  `domain/refund/normalizers.ts#normalizeRefundOrCredit` before the
+   *  validate request body is built — NOT here. The sheet entry stays
+   *  faithful to the spreadsheet so unexpected answer strings are visible
+   *  in logs. */
+  refundOrCredit: string | null;
+  /** Resolved from the "anything else" / "note about" substring column. */
+  notes: string | null;
+  /** OPTIONAL — resolved from the "transfer to another day" / "sport, day,
+   *  and division" substring column. No consumer requires it; round-tripped
+   *  to the backend on the validate request body for diagnostic logging. */
+  transferRequest: string | null;
+  /** Raw value of the Status cell, or null if the column is absent.
+   *  Unprocessed predicate is inlined at every call site as
+   *  `!!row.statusCellValue?.trim()` — no helper function. */
+  statusCellValue: string | null;
+  /** Derived: `!!statusCellValue?.trim()`. */
+  isProcessed: boolean;
 }
 
-/**
- * An order payment transaction, mirroring `find_orders.graphql`'s `transactions`
- * selection. The eval already fetches these; echoing them on the payload lets the
- * approval pass parent transaction ids down to `refundCreate` without a re-fetch.
- */
-export interface RefundTransaction {
-    id: string;
-    kind: string; // SALE | CAPTURE | AUTHORIZATION | REFUND | ...
-    status: string; // SUCCESS | PENDING | ...
-    gateway: string | null;
-    parent_id: string | null; // parentTransaction.id
-}
-
-/** Mirror of `RefundResponse.to_json()` + echoed request fields. */
-export interface RefundEvaluationPayload {
-    // When true, the review message routes to the test channel instead of the
-    // league channel. Lets the Lambda (or a manual post) exercise the flow safely.
-    is_test?: boolean;
-
-    // ── Echoed from the original request (Lambda adds these) ───────────────
-    email: string;
-    first_name: string;
-    last_name: string;
-    refund_to: string; // "original_method" | "store_credit"
-    notes?: string | null;
-
-    /** E.164 phone when the evaluator supplies it (optional). */
-    phone?: string | null;
-
-    // ── League identity (Lambda resolves from the order's product) ───────
-    sport: string | null;
-    season: string | null;
-    day: string | null;
-    division: string | null;
-
-    // ── Product (Lambda echoes the order's first line-item product) ────────-
-    // product_id is the Shopify GID (gid://shopify/Product/<n>); Deno builds the
-    // admin URL from it. product_title is the link text.
-    product_id: string | null;
-    product_title: string | null;
-
-    // ── Order facts ────────────────────────────────────────────────────────
-    order_number: string;
-    order_id: string | null;
-    order_found: boolean;
-    order_total: number | null;
-    total_refunded: number | null;
-    refundable_balance: number | null;
-    is_cancelled: boolean | null;
-
-    // ── Validation ───────────────────────────────────────────────────────--
-    validation_passed: boolean;
-    warnings: string[];
-    email_matched_against?: string | null;
-    first_name_matched_against?: string | null;
-    last_name_matched_against?: string | null;
-
-    // ── Refund-timing diagnostics ────────────────────────────────────────--
-    // What the Lambda parsed as the season start (null = unparseable from the
-    // product description) and where the submission landed in the week ladder.
-    season_start_date: string | null;
-    season_week_resolved: string | null;
-
-    // ── Estimates (both ladders) ─────────────────────────────────────────--
-    estimated_refund_to_original: RefundEstimate | null;
-    estimated_store_credit: RefundEstimate | null;
-
-    // Order payment transactions (Lambda echoes from its order fetch). Passed
-    // back down on approval so refundCreate is built without re-querying Shopify.
-    transactions?: RefundTransaction[];
-    currency_code?: string | null;
-
-    error?: string | null;
+/** Sheet snapshot returned by `fetchRefundRequests(env)`. Diagnostic fields
+ *  are intentionally absent — operator UX is "the row appears or it doesn't"
+ *  (D25). */
+export interface RefundSheetData {
+  /** Deep-link to the tab. */
+  url: string;
+  spreadsheetId: string;
+  tabId: string;
+  /** Rows where `isProcessed === false`. */
+  unprocessed: RefundSheetEntry[];
 }
 
 /** Final reviewer decision; consumed by the eval card view to render a status
  *  line and drop the action buttons. Pure data — UI mapping lives in views/. */
 export interface RefundDecision {
-    status: "approved" | "denied";
-    by: string; // Slack user id
-    amount?: number;
-    refundType?: string;
-    /** True when the approval only previewed payloads (didn't send to the Lambda). */
-    dryRun?: boolean;
-    /** Modal action: cancel_refund | cancel_only | refund_only. */
-    approveAction?: string;
-    restock?: string;
-    sendNotification?: boolean;
+  status: "approved" | "denied";
+  by: string; // Slack user id
+  amount?: number;
+  refundType?: string;
+  /** True when the approval only previewed payloads (didn't post a live
+   *  /refunds/create request). */
+  dryRun?: boolean;
+  /** Modal action: cancel_refund | cancel_only | refund_only. */
+  approveAction?: string;
+  restock?: string;
+  sendNotification?: boolean;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BARS API wire shapes — POST /refunds/validate
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface ValidateRefundSheetRowRef {
+  spreadsheetId: string;
+  tabId: string;
+  rowNumber: number;
+}
+
+export interface ValidateRefundRequest {
+  orderNumber: string;
+  requestedRefundTo: RefundTo;
+  /** REQUIRED — the requester's email from the sheet row. */
+  requesterEmail: string;
+  /** REQUIRED. */
+  requesterFirstName: string;
+  /** REQUIRED. */
+  requesterLastName: string;
+  /** OPTIONAL. */
+  notes?: string | null;
+  /** OPTIONAL — round-trips the sheet's "transfer to another day" cell for
+   *  diagnostic logging on the backend. No consumer requires it. */
+  transferRequest?: string | null;
+  /** OPTIONAL. */
+  sheetRowRef?: ValidateRefundSheetRowRef;
+  /** OPTIONAL — defaults to false on the backend. Slack handler omits when
+   *  not in test mode. */
+  isTest?: boolean;
+}
+
+/** Per-tier estimate output. */
+export interface TierEstimate {
+  amount: number;
+  percentage: number;
+  tierLabel: string;
+  appliedProcessingFee: number;
+  notes: string[];
+}
+
+/** Order summary block embedded in the validate response. */
+export interface RefundEvalOrder {
+  /** Shopify order GID. */
+  id: string;
+  number: string;
+  customerName: string;
+  /** The order's customer email. */
+  email: string;
+  /** Total paid on the order, in dollars. */
+  amountPaid: number;
+  currency: string;
+}
+
+/** Product summary block embedded in the validate response. */
+export interface RefundEvalProduct {
+  /** Shopify product GID. */
+  id: string;
+  /** Canonical product URL. */
+  url: string;
+  year: number;
+  /** "Winter" | "Spring" | "Summer" | "Fall". */
+  season: string;
+  sport: string;
+  day: string;
+  /** "WTNB+" | "Open" | … */
+  division: string;
+  /** ISO date — first session. Null when unparseable. */
+  week1Start: string | null;
+  week2Start: string | null;
+  week3Start: string | null;
+  week4Start: string | null;
+  week5Start: string | null;
+}
+
+export interface RefundEvalEstimate {
+  original: TierEstimate;
+  storeCredit: TierEstimate;
+}
+
+export interface RefundRequestEval {
+  ok: boolean;
+  /** Replaces `validation.matched`. */
+  isValid: boolean;
+  /** Replaces `validation.mismatches[]`; flat string[] only. Absent on the
+   *  happy path; populated when `isValid` is false. */
+  validationErrors?: string[] | null;
+  order: RefundEvalOrder;
+  product: RefundEvalProduct;
+  estimate: RefundEvalEstimate;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BARS API wire shapes — POST /refunds/create
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Restock destination for the line item being refunded. Omit the field
+ *  entirely when no restock is intended — there is no "none" sentinel. */
+export type RefundRestockTo =
+  | "veteran"
+  | "early"
+  | "general"
+  | "waitlist"
+  | "full";
+
+export interface CreateRefundRequest {
+  /** REQUIRED — round-tripped from /validate. */
+  orderId: string;
+  /** REQUIRED — round-tripped from /validate. */
+  productId: string;
+  refundTo: RefundTo;
+  /** REQUIRED on refund; null when cancel-only. */
+  amount: number | null;
+  /** OPTIONAL — defaults to false. */
+  cancel?: boolean;
+  /** OPTIONAL — defaults to false. */
+  refund?: boolean;
+  /** OPTIONAL — omit when no restock is intended. */
+  restockTo?: RefundRestockTo;
+  /** OPTIONAL — defaults to false. */
+  notify?: boolean;
+  /** REQUIRED — Slack user id of the approver. */
+  approvedBy: string;
+  /** OPTIONAL — defaults to false. */
+  isTest?: boolean;
+}
+
+export interface ShopifyUserError {
+  field: string[] | null;
+  message: string;
+  code?: string | null;
+}
+
+export interface CancelOutcome {
+  jobId: string;
+  jobDone: boolean;
+}
+
+export interface RefundOutcome {
+  refundId: string;
+  amount: number;
+  currency: string;
+  /** ISO timestamp from Shopify. */
+  createdAt: string;
+}
+
+export interface CreateRefundResponse {
+  ok: boolean;
+  cancel: CancelOutcome | null;
+  refund: RefundOutcome | null;
+  errors: ShopifyUserError[];
 }
