@@ -1,0 +1,23 @@
+{
+  "actionType": "create-scheduled-inventory-movements",
+  "sport": "Kickball",
+  "day": "Monday",
+  "division": "Social",
+  "scheduleName": "auto-move-123456789-kb-monday-vet-to-early",
+  "groupName": "move-inventory-between-variants-kb",
+  "productUrl": "https://09fe59-3.myshopify.com/admin/products/123456789",
+  "sourceVariant": {
+    "type": "vet",
+    "name": "Vet Registration",
+    "gid": "gid://shopify/ProductVariant/111111111"
+  },
+  "destinationVariant": {
+    "type": "early",
+    "name": "Early Registration",
+    "gid": "gid://shopify/ProductVariant/222222222"
+  },
+  "newDatetime": "2025-01-15T14:00:00",
+  "note": "newDatetime is UTC; ET is earlier",
+  "totalInventory": 100,
+  "numberVetSpotsToReleaseAtGoLive": 40
+}
