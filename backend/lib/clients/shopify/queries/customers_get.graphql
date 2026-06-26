@@ -1,0 +1,22 @@
+query CustomersGet($query: String!, $first: Int!, $after: String) {
+  customers(query: $query, first: $first, after: $after) {
+    nodes {
+      id
+      email
+      firstName
+      lastName
+      phone
+      createdAt
+      updatedAt
+      numberOfOrders
+      note
+      tags
+      verifiedEmail
+      state
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# Example Admin GraphQL curl snippets. Never commit real tokens.
+# Usage: load env (e.g. `set -a && source ../../.env && set +a` from repo root) then run a block.
+# Required: SHOPIFY__STORE_ID (subdomain only, e.g. my-store), SHOPIFY__API_VERSION, SHOPIFY__TOKEN__ADMIN
+
+curl -X POST \
+  "https://${SHOPIFY__STORE_ID:?set SHOPIFY__STORE_ID}.myshopify.com/admin/api/${SHOPIFY__API_VERSION:-2025-04}/graphql.json" \
+  -H "Content-Type: application/json" \
+  -H "X-Shopify-Access-Token: ${SHOPIFY__TOKEN__ADMIN:?set SHOPIFY__TOKEN__ADMIN}" \
+  -d '{
+    "query": "{ orders(first: 250, query: \"product_id:7678746230878\") { edges { node { id name createdAt cancelledAt } } } }"
+  }'
+
+curl -X POST \
+  "https://${SHOPIFY__STORE_ID:?set SHOPIFY__STORE_ID}.myshopify.com/admin/api/${SHOPIFY__API_VERSION:-2025-04}/graphql.json" \
+  -H "Content-Type: application/json" \
+  -H "X-Shopify-Access-Token: ${SHOPIFY__TOKEN__ADMIN:?set SHOPIFY__TOKEN__ADMIN}" \
+  -d '{
+    "query": "{ orders(first: 250, query: \"product_id:7678746132574\") { edges { node { id name createdAt cancelledAt } } } }"
+  }' | jq '{
+    total: (.data.orders.edges | length),
+    active: (.data.orders.edges | map(select(.node.cancelledAt == null)) | length),
+    cancelled: (.data.orders.edges | map(select(.node.cancelledAt != null)) | length),
+    orders: [.data.orders.edges[].node | {id, name, createdAt, cancelledAt}]
+  }'

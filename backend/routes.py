@@ -6,11 +6,15 @@ Domain exceptions bubble up and are handled by the global exception
 handler registered in main.py (see core/api_errors.py).
 """
 
-from fastapi import APIRouter, Response
-from modules.orders.controllers.orders_controller import router as orders_router
-from modules.refunds.controllers.refunds_controller import router as refunds_router
+from fastapi import APIRouter, HTTPException, Response
 
-router = APIRouter()
+from core.clients import shopify
+
+# from services.refunds import handlers as refunds_handlers
+# from services.refunds import service as refunds_service
+
+
+router_main = APIRouter()
 
 
 # ── Products ─────────────────────────────────────────────────────────────────
@@ -42,22 +46,50 @@ async def create_product_schedule():
 async def update_product_schedule():
     return Response(status_code=204)
 
+
 @products.delete("/schedules/delete")
 async def delete_product_schedule():
     return Response(status_code=204)
 
 
 # ── Orders ───────────────────────────────────────────────────────────────────
-# Stage 5 — orders router lives in modules.orders.controllers.orders_controller.
-# The inline stubs (`@orders.get`, `@orders.patch`, `@orders.delete`) that
-# previously lived here have been removed. The new controller owns
-# DELETE /orders/{order_id}; GET / PATCH placeholders are not re-added
-# because no current consumer relies on them.
+
+orders = APIRouter(prefix="/orders", tags=["orders"])
+
+
+@orders.get("/{order_identifier}")
+async def get_order(order_identifier: str):
+    """Fetch a single order by numeric ID (Shopify search syntax: ``id:<n>``)."""
+    result = await shopify.orders_get(query=f"id:{order_identifier}", first=1)
+    if not result.orders.nodes:
+        raise HTTPException(status_code=404, detail=f"Order not found: {order_identifier}")
+    return result.orders.nodes[0]
+
+
+# @orders.delete("/{order_id}")
+# async def cancel_order(order_id: str, body: CancelOrderRequest):
+#     ...
+
+
+# @orders.post("/webhooks")
+# async def handle_order_webhook(req: Request):
+#     ...
 
 
 # ── Refunds ──────────────────────────────────────────────────────────────────
-# Stage 2 — refunds router lives in modules.refunds.controllers.refunds_controller.
-# The inline stubs that previously lived here have been removed.
+# Refunds service still uses the legacy shopify_client.shop_client + box import
+# paths. Re-enable once it's migrated to the typed ShopifyClient.
+
+# refunds = APIRouter(prefix="/refunds", tags=["refunds"])
+#
+# REFUND_ROUTES = [
+#     ("POST", "/submit", refunds_service.submit),
+#     ("POST", "/create", refunds_service.execute_refund_create),
+#     ("POST", "/request", refunds_service.submit_request),
+#     ("POST", "/webhooks", refunds_handlers.handle_webhook),
+# ]
+# for method, path, fn in REFUND_ROUTES:
+#     refunds.add_api_route(path, fn, methods=[method])
 
 
 # ── Waitlists ────────────────────────────────────────────────────────────────
@@ -85,16 +117,9 @@ async def remove_waitlist_entry():
     return Response(status_code=204)
 
 
-# ── Health ───────────────────────────────────────────────────────────────────
-
-@router.get("/health")
-async def health():
-    return {"status": "healthy"}
-
-
 # ── Aggregate ────────────────────────────────────────────────────────────────
 
-router.include_router(products)
-router.include_router(orders_router)
-router.include_router(refunds_router)
-router.include_router(waitlists)
+router_main.include_router(products)
+router_main.include_router(orders)
+# router_main.include_router(refunds)
+router_main.include_router(waitlists)

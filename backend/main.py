@@ -1,208 +1,58 @@
 """
 BARS Backend API - Main FastAPI Application
 
-📚 Documentation: See README.md#api-endpoints for API documentation
-🚀 Development: See README_EXT/1_CONTRIBUTING.md#backend-development for setup
-🔧 Configuration: See README.md#configuration for environment variables
-🚀 Deployment: See README_EXT/2_DEPLOYMENT.md#backend-deployment-render for deployment
+Local dev:    just start
+Render prod:  uvicorn main:app --host 0.0.0.0 --port $PORT
 """
 
-# CRITICAL: Configure SSL certificates and load .env file BEFORE any other imports that might need environment variables
-import os
-from dotenv import load_dotenv
-if os.getenv("ENVIRONMENT") != "production":
-    load_dotenv('../.env')
-
-if os.getenv("ENVIRONMENT") == "production":
-    # Force SSL certificate paths for Render (Ubuntu) deployment
-    os.environ["SSL_CERT_FILE"] = "/etc/ssl/certs/ca-certificates.crt"
-    os.environ["REQUESTS_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
-    os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt"
-    # Clear any existing SSL environment variables that might point to wrong paths
-    for env_var in ["SSL_CERT_DIR", "OPENSSL_CONF"]:
-        if env_var in os.environ:
-            del os.environ[env_var]
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from routers import shopify, slack, products
-from services.orders.routes import router as services_orders_router
-from services.refunds.routes import router as services_refunds_router
-from services.waitlists.routes import router as services_waitlists_router
-from config import config
-import logging
-import json
-from pathlib import Path
 
-from utils.shopify_refunds import ShopifyUserError
+from core.api_errors import handle_unhandled_exception
+from core.clients import lifespan
+from core.config import settings
+from routes import router_main
 
-version_file = Path(__file__).parent / "version.json"
-with open(version_file, "r") as f:
-    version_data = json.load(f)
-
-# Configure logging for all modules
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
-# Set specific loggers to INFO level to ensure they show up
-logging.getLogger("services.products").setLevel(logging.INFO)
-logging.getLogger("services.shopify").setLevel(logging.INFO)
-logging.getLogger("services").setLevel(logging.INFO)
+# ── App ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="Big Apple Rec Sports API",
-    description="Backend API for Big Apple Rec Sports operations",
-    version=version_data["version"],
-    docs_url="/docs"
-    if config['ENVIRONMENT'] != "production"
-    else None,  # Disable docs in production
-    redoc_url="/redoc"
-    if config['ENVIRONMENT'] != "production"
-    else None,  # Disable redoc in production
+    description="Backend API for BARS operations",
+    version="1.0.0",
+    docs_url="/docs" if settings.environment != "production" else None,
+    redoc_url="/redoc" if settings.environment != "production" else None,
+    lifespan=lifespan,
 )
 
+# ── Middleware ────────────────────────────────────────────────────────────────
 
-@app.exception_handler(ShopifyUserError)
-async def handle_shopify_user_error(request: Request, exc: ShopifyUserError) -> JSONResponse:
-    """Map Shopify user-error responses to HTTP 422 (Stage 3 / D31)."""
-    return JSONResponse(
-        status_code=422,
-        content={
-            "ok": False,
-            "mutation": exc.mutation,
-            "errors": exc.errors,
-        },
-    )
-
-# Configure CORS
 allowed_origins = [
-    "https://docs.google.com",  # For Google Apps Script
-    "https://script.google.com",  # For Google Apps Script
-    "http://localhost:3000",  # For local frontend development
-    "http://localhost:8000",  # For local backend development
+    "https://docs.google.com",
+    "https://script.google.com",
+    "http://localhost:3000",
+    "http://localhost:8000",
 ]
 
-if config['ENVIRONMENT'] == "development":
+if settings.environment == "development":
     allowed_origins.append("*")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 
 
-# Request logging middleware
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    logger = logging.getLogger(__name__)
-
-    # Log incoming request details (refunds logging removed)
-    if False:  # Disabled refunds-specific logging
-        logger.info("🌐 === INCOMING REQUEST ===")
-        logger.info(f"🌐 Method: {request.method}")
-        logger.info(f"🌐 URL: {request.url}")
-        headers = dict(request.headers)
-        auth_header = headers.pop("Authorization", None)
-        safe_headers = {**headers, "Authorization": f"****{auth_header[-5:]}" if auth_header else None}
-        logger.info(f"🌐 Headers: {safe_headers}")
-
-        # Read and log the request body for POST requests
-        if request.method == "POST":
-            body = await request.body()
-            if body:
-                try:
-                    body_json = json.loads(body.decode())
-                    logger.info(
-                        f"🌐 Request Body (JSON): {json.dumps(body_json, indent=2)}"
-                    )
-                except json.JSONDecodeError:
-                    logger.info(f"🌐 Request Body (Raw): {body.decode()}")
-            else:
-                logger.info("🌐 Request Body: (empty)")
-
-    response = await call_next(request)
-
-    if request.url.path.startswith("/refunds/"):
-        logger.info(f"🌐 Response Status: {response.status_code}")
-        logger.info("🌐 === END REQUEST ===")
-
-    return response
-
-
-# Mounted in include order; FastAPI first-match resolves overlapping paths,
-# so per-service routers come first.
-ROUTERS = [
-    services_orders_router,
-    services_refunds_router,
-    services_waitlists_router,
-    products.router,
-    slack.router,
-    shopify.router,
-]
-for r in ROUTERS:
-    app.include_router(r)
-
-# Include new API routers
-from routers.shopify_api import router as shopify_api_router
-from routers.slack_api import router as slack_api_router
-from routers.admin import router as admin_router
-
-app.include_router(shopify_api_router)
-app.include_router(slack_api_router)
-app.include_router(admin_router)
-from routers.shopify_api import health_check as shopify_health_check
-
-# Theme template editing
-from routers import theme_templates
-app.include_router(theme_templates.router)
+# ── Health ────────────────────────────────────────────────────────────────────
 
 
 @app.get("/")
-async def root():
-    """Root endpoint with API information"""
-    return {
-        "message": "Big Apple Rec Sports API",
-        "version": version_data["version"],
-        "build": version_data["build"],
-        "full_version": f"{version_data['version']}.{version_data['build']}",
-        "codename": version_data["codename"],
-        "last_updated": version_data["last_updated"],
-        "environment": config['ENVIRONMENT'],
-        "docs_url": "/docs"
-        if config['ENVIRONMENT'] != "production"
-        else "Contact admin for documentation",
-        "health_check": "/health",
-    }
+async def health():
+    return {"name": "BARS backend", "status": "healthy"}
 
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for monitoring"""
-    return {
-        "status": "healthy",
-        "version": version_data["version"],
-        "build": version_data["build"],
-        "full_version": f"{version_data['version']}.{version_data['build']}",
-        "environment": config['ENVIRONMENT'],
-        "last_updated": version_data["last_updated"],
-    }
+app.include_router(router_main)
 
-
-@app.get("/version")
-async def get_version():
-    """Get detailed version information"""
-    return version_data
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        app, host="0.0.0.0", port=8000, reload=config['ENVIRONMENT'] == "development"
-    )
-# Test change
+app.add_exception_handler(Exception, handle_unhandled_exception)

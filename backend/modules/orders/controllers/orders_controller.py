@@ -24,7 +24,7 @@ import os
 from fastapi import APIRouter, Depends
 from modules.refunds.inputs import build_cancel_kwargs
 from pydantic import BaseModel, ConfigDict, Field
-from shopify_client.shop_client import ShopifyClient, schema
+# from shopify_client.shop_client import ShopifyClient, schema
 from utils.shopify_refunds import ShopifyUserError
 
 router = APIRouter(prefix="/orders", tags=["orders"])
