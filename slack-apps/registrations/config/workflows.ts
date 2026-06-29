@@ -16,7 +16,7 @@ interface WorkflowConfig {
     /** Where the workflow's Slack channel is resolved from. */
     channels:
         | { source: "per_league" }
-        | { source: "static"; test: string; review: string };
+        | { source: "static"; test: string; review: string; default?: string };
     /** Where league identity comes from. */
     leagueSource: "config" | "shopify";
 }
@@ -47,6 +47,7 @@ export const WORKFLOWS: Record<WorkflowName, WorkflowConfig> = {
             source: "static",
             test: envOr("REFUND_TEST_CHANNEL", "#joe-test"),
             review: envOr("REFUND_REVIEW_CHANNEL", "#exec-leadership-2026"),
+            default: envOr("SLACK_CHANNEL__REFUNDS__DEFAULT", "#joe-test"),
         },
         leagueSource: "shopify",
     },
@@ -54,7 +55,10 @@ export const WORKFLOWS: Record<WorkflowName, WorkflowConfig> = {
 
 /** Resolve a workflow's static test/review channel pair, throwing if the
  *  workflow is configured for a different routing mode (e.g. `per_league`). */
-export function getStaticChannels(workflow: WorkflowName): { test: string; review: string } {
+export function getStaticChannels(workflow: WorkflowName): {
+    test: string;
+    review: string;
+} {
     const ch = WORKFLOWS[workflow].channels;
     if (ch.source !== "static") {
         throw new Error(

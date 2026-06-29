@@ -1,0 +1,29 @@
+---
+description: Revert only session edits — never blanket-restore unstaged work
+alwaysApply: true
+---
+
+# Surgical revert
+
+When the user asks to undo or revert changes, **identify and revert only edits from the current session** — never blanket-restore all unstaged work.
+
+## Procedure
+
+1. **List candidates** — files you created or modified this session (not the whole `git diff`).
+2. **Per-file diff** — `git diff -- <path>` for each tracked file; compare against what you changed vs what was already unstaged before you started.
+3. **Classify each hunk:**
+   - **Session edit** → revert (manual edit or `git checkout HEAD -- <path>` if the entire file diff is yours).
+   - **Pre-existing unstaged work** → leave alone.
+4. **Untracked files you created** → delete.
+5. **Codegen artifacts** — if you ran `just codegen-shopify`, re-run after reverting `.graphql` source changes so `generated/` matches the intended query set.
+6. **Verify** — `git diff -- <each reverted path>` should be empty for session-only files; pre-session diffs (e.g. `orders_get.graphql` `...Order` fragment) may remain.
+
+## Forbidden
+
+- `git checkout .` or `git restore .` without per-file review
+- `git checkout HEAD --` on directories or globs that include unrelated pre-session changes
+- Assuming all unstaged changes belong to the current session
+
+## When uncertain
+
+Show the per-file diff summary and ask which hunks to keep before reverting.

@@ -16,6 +16,8 @@ Recurring failure modes flagged by the user in past sessions. Grouped by theme. 
 
 **Rule:** Name the external consumer before exporting. None → leave un-exported (and delete the file if nothing in it has any consumer). Add `export` only when a real second consumer appears.
 
+**Python `__init__.py`:** Re-export shims are forbidden — see `.claude/rules/package-init.md`. The `package-init` hook denies `import` / `__all__` in `__init__.py` edits; the Stop quality gate re-checks touched `__init__.py` files on disk.
+
 **Exception:** SDK / framework entrypoints whose consumer is the runtime (Slack `DefineFunction`, Lambda handler, FastAPI route, pytest fixture).
 
 ---

@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Slack Block Builder Reminder",
+  "description": "After editing files under slack-apps/, reminds to prefer slack-block-builder for Block Kit. Workspace-specific — this repo has slack-apps/registrations/.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["slack-apps/**/*.ts", "slack-apps/**/*.tsx", "slack-apps/**/*.js"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "slack-apps edit policy: Prefer slack-block-builder for Block Kit (modals, messages, home views).\n- Import via the Deno import map key `slack-block-builder` (npm:slack-block-builder).\n- Use Surfaces, Blocks, Elements, Bits, Utilities from the library where they fit; see https://blockbuilder.dev\n- Hand-rolled block JSON is a last resort when the library cannot express the shape.\n- Keep Slack API payloads typed and consistent at boundaries (e.g. .build() where applicable)."
+  }
+}

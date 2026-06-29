@@ -5,6 +5,72 @@ Reference documentation showing example JSON responses for different order state
 and how to access the fields needed for frontend display.
 
 This file serves as documentation only and is not executed.
+
+# =============================================================================
+# LONG-TERM MIGRATION NOTES (codegen client + thin routes)
+# =============================================================================
+#
+# KEEP / MIGRATE TO modules/orders/ (domain), NOT integrations/:
+#
+# 1. Identifier parsing — 5-digit order number vs 11–16-digit order ID → GraphQL
+#    query string (`name:#12345` vs `id:…`). Today duplicated in:
+#    - ShopifyOrderIdentifierRequest.parse() (requests.py)
+#    - ShopifyAPIController._parse_order_identifier()
+#    Target: one function e.g. order_search_query(identifier: str) -> str
+#
+# 2. Display / presenter logic (from OrderResponse @validator in api_models.py):
+#    - order number (strip # from name)
+#    - admin URLs (orders/products) — NOT in GraphQL; use config + gid digits
+#    - form_email from line_items[0].custom_attributes (key contains "email")
+#    - cancellation_status / refund_status formatted strings (see scenarios below)
+#    Target: present_order_for_refund_form(order: Order) -> dict | Pydantic DTO
+#    Do NOT keep SuccessResponse envelope or dict validators.
+#
+# 3. Refund eligibility business rules — stay in modules/refunds/, not GraphQL models.
+#
+# 4. These scenario dicts — keep as fixtures until presenter has tests; then optional.
+#
+# DELETE WITH LEGACY STACK (no long-term home):
+# - SuccessResponse / OrderResponse / api_models.py envelope tree
+# - ShopifyAPIController + shopify_api routers
+# - integrations/shopify/models/requests.py (after #1 migrated)
+# - parse_shopify_response / ShopifyResponse (already deleted)
+#
+# NEW STACK (lib.clients.shopify generated Order):
+# - Routes: response_model=Order | OrderCancel; errors via core/api_errors
+# - Service: shopify.orders_get / order_cancel; raise or ApiFailure, never None
+#
+# =============================================================================
+# FIELD MAP: examples below vs generated Order fragment (order.graphql)
+# =============================================================================
+#
+# COVERED by codegen Order (snake_case in Python) — same shape for every orders query:
+#   id, name, email, created_at, cancelled_at, cancel_reason
+#   total_price_set.shop_money.amount, total_refunded_set.shop_money.amount
+#   total_discounts_set.shop_money.amount
+#   line_items.nodes[].title, custom_attributes, variant, product.id/title
+#   transactions[] (id, kind, status, gateway, parent_transaction)
+#   refunds[].id, note, created_at, total_refunded_set.shop_money.amount
+#   refunds[].transactions.nodes[].gateway, kind, status, created_at, amount_set
+#
+# GAP — money field naming:
+#   Examples: totalPriceSet.presentmentMoney, totalRefundedSet.presentmentMoney
+#   Fragment: shopMoney only. For single-currency USD shop often identical;
+#   use presentmentMoney if GAS must match historical display exactly.
+#
+# IN FRAGMENT but NOT in examples / GAS display guide (kept for one Order shape):
+#   phone, updated_at, note, tags, total_discounts_set
+#   order.transactions[] (refund UI uses refund.transactions; unused fields OK)
+#
+# INTENTIONALLY NOT on Order fragment (fetch elsewhere):
+#   customer { email } — use customers_get / customer_update; scenarios use order.email
+#   product.description_html — use products_get / product_update
+#   display_financial_status, subtotal_price_set, total_tax_set — dropped
+#   line_items.quantity, line_items.product.handle — dropped
+#   order.custom_attributes — line-item customAttributes only
+#
+# ADD only if a consumer needs them — do not bloat default Order fragment.
+# =============================================================================
 """
 
 # =============================================================================

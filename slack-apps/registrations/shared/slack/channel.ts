@@ -18,3 +18,28 @@ export function resolveChannel(
     const useTest = ENV !== "prod" || is_test;
     return useTest ? channels.test : channels.review;
 }
+
+/**
+ * Refund-flow channel resolver. Precedence (highest first):
+ *
+ *   1. `args.requested` — operator-supplied via the picker modal's
+ *      "post to channel" input.
+ *   2. `args.env.SLACK_CHANNEL__REFUNDS__DEFAULT` — env override (canonical
+ *      double-underscore name; matches the workspace convention).
+ *   3. Hardcoded fallback `"#joe-test"`.
+ *
+ * The new `/eval-refund-request` flow reads ONLY this var. The existing
+ * webhook-driven refund-evaluation flow continues to use
+ * `REFUND_TEST_CHANNEL` / `REFUND_REVIEW_CHANNEL` (consumed via
+ * `getStaticChannels("refund")`).
+ */
+export function resolveRefundChannel(args: {
+    requested: string | null;
+    env: Record<string, string>;
+}): string {
+    return (
+        args.requested?.trim() ||
+        args.env.SLACK_CHANNEL__REFUNDS__DEFAULT ||
+        "#joe-test"
+    );
+}

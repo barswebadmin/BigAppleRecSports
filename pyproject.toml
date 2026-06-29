@@ -26,7 +26,7 @@ dependencies = [
     "google-auth>=2.49.1",
     "google-api-python-client>=2.192.0",
     "boto3>=1.34.0",
-    "httpx[cli,http2]",
+    "httpx2[cli,http2]",
     "httpx-retries>=0.4.6",
     "aiohttp>=3.9",
     "gql>=4.0.0",
@@ -42,18 +42,15 @@ dependencies = [
     "prompt-toolkit>=3.0.52",
 ]
 
-[project.optional-dependencies]
-firebase = [
-    "firebase-admin>=7.2.0",
-]
+
+
+[dependency-groups]
 dev = [
     # Linting & formatting
     "ruff>=0.1.0",
-
     # Type checking
     "mypy>=1.0.0",
     "pyright>=1.1.409",
-
     # Testing
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
@@ -61,52 +58,38 @@ dev = [
     "pytest-mock>=3.11.0",
     "pytest-rich",
     "hypothesis",
-
     # Import analysis
     "import-linter>=2.6",
     "knot-imports>=0.1.0",
-
-    # AWS mocking (for lambda tests)
+    # client mocking
     "moto>=4.0.0",
-
+    "httpx2-pytest",
+    # GraphQL codegen (typed clients from .graphql queries)
+    "ariadne-codegen>=0.14.0",
     # Pre-commit hooks
     "pre-commit>=3.0.0",
-]
-
-[dependency-groups]
-dev = [
     "boto3-stubs[scheduler]>=1.43.33",
+    "basedpyright>=1.39.9",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
-# =============================================================================
-# UV SOURCES CONFIGURATION
-# =============================================================================
+
+[tool.uv]
+package = false
+
 [tool.uv.sources]
 # Centralized local package resolution for monorepo.
 # Workspace members can be referenced by name from any other member via
 # `<name> = { workspace = true }` in that member's [tool.uv.sources]; the
 # entries below only exist for the root project's own dependencies.
-bars-shared-utilities = { workspace = true }
+# bars-shared-utilities = { workspace = true }
 
 [tool.uv.workspace]
-# `backend` and `backend/registrations` are excluded: backend pins 10 deps to
-# exact versions that conflict with the rest of the monorepo's resolution.
-# They stay standalone projects with their own [tool.uv.sources] path entries.
-# When backend's pins are relaxed it can be added here as a member.
 members = [
-    "lib/clients/shopify-client",
-    "scripts",
-    "shared_utilities",
-    "aws/lambda/functions/AwsRouter",
-    "aws/lambda/functions/ShopifyProductUpdates",
-    "aws/lambda/functions/ShopifyRefundHandler",
+    # "scripts",
+    "backend",
 ]
 exclude = [
-    "backend",
     "slack-apps",
 ]
 
@@ -139,6 +122,7 @@ select = [
 ]
 ignore = [
     "E501",  # Line too long (handled by formatter)
+    "E303",  # Too many blank lines
 ]
 
 # =============================================================================
@@ -147,20 +131,20 @@ ignore = [
 [tool.pytest.ini_options]
 # Test discovery paths for all projects
 testpaths = [
-    "backend/tests",
-    "backend/routers/tests",
-    "lambda/functions/tests",
-    "shared_utilities/tests",
-    "lib/tests",
+    "backend/test",
+    # "backend/routers/tests",
+    # "lambda/functions/tests",
+    # "shared_utilities/tests",
+    # "lib/tests",
 ]
 
 # Python path for imports
 pythonpath = [
     ".",
     "backend",
-    "lambda/functions",
-    "lambda/layers/bars_common_utils",
-    "shared_utilities",
+    # "lambda/functions",
+    # "lambda/layers/bars_common_utils",
+    # "shared_utilities",
 ]
 
 # Test execution options
@@ -184,8 +168,8 @@ markers = [
 [tool.coverage.run]
 source = [
     "backend",
-    "lambda/functions",
-    "shared_utilities",
+    # "lambda/functions",
+    # "shared_utilities",
 ]
 omit = [
     "*/tests/*",
@@ -204,20 +188,5 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "@abstractmethod",
 ]
-
-# =============================================================================
-# MYPY CONFIGURATION
-# =============================================================================
-[tool.mypy]
-python_version = "3.14"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false  # Gradually enable
-ignore_missing_imports = true
-
-# Per-module options
-[[tool.mypy.overrides]]
-module = "tests.*"
-ignore_errors = true
 
 
