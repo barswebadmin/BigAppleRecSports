@@ -1,0 +1,36 @@
+---
+description: Domain logic lives in modules/<domain>/, not lib/utils or utils
+alwaysApply: true
+---
+
+# Domain logic placement
+
+## Rule
+
+**Domain-specific logic belongs in `backend/modules/<domain>/` (or `lib/domain/` for cross-cutting domain models), never in `lib/utils/` or `utils/`.**
+
+`lib/utils/` and `utils/` are for **generic primitives only** — things with no business meaning:
+
+- Date/time parsing and formatting
+- Money scalar formatting
+- Dict flattening / equivalence checks
+- Terminal / interactive shell helpers
+
+## Examples
+
+| Belongs in `modules/refunds/` | Belongs in `lib/utils/` |
+|---|---|
+| `build_refund_input()`, cancel kwargs | `parse_iso_datetime()` |
+| `EstimateService`, refund calculators | `flatten_dict_data()` |
+| Shopify order lookup for refund flow | Generic `money` helpers |
+| `order_transactions_for_refund()` | — |
+
+## Imports
+
+- Prefer `from lib.utils.<module> import ...` for generic helpers (no bare `utils.*` — that package may not exist on `PYTHONPATH`).
+- Prefer `from core.clients import shopify` for the Shopify singleton.
+- Prefer `from lib.clients.shopify.generated.fragments import Order` for typed response shapes.
+
+## When migrating
+
+Do not add legacy adapters (`order_as_box`, Box shims) to utils. Migrate call sites to typed models or leave legacy code untouched until deleted.

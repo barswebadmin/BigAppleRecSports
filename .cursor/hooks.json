@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": ".cursor/hooks/package-init.sh",
+        "matcher": "AskQuestion|Write|StrReplace|Edit",
+        "timeout": 5,
+        "failClosed": true
+      }
+    ]
+  }
+}
