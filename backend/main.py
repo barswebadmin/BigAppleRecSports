@@ -5,12 +5,11 @@ Local dev:    just start
 Render prod:  uvicorn main:app --host 0.0.0.0 --port $PORT
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
 from core.api_errors import handle_unhandled_exception
 from core.clients import lifespan
 from core.config import settings
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from routes import router_main
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -18,7 +17,7 @@ from routes import router_main
 app = FastAPI(
     title="Big Apple Rec Sports API",
     description="Backend API for BARS operations",
-    version="1.0.0",
+    version=settings.version,
     docs_url="/docs" if settings.environment != "production" else None,
     redoc_url="/redoc" if settings.environment != "production" else None,
     lifespan=lifespan,

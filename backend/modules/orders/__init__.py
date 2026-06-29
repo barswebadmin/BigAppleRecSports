@@ -1,11 +1,19 @@
-"""Orders module — controllers and services.
+from modules.orders.orders_service import (
+    CancelOrderRequest,
+    cancel_order,
+    find_orders,
+    get_order,
+)
+from lib.clients.shopify.generated.fragments import Order
+from lib.clients.shopify.generated.orders_get import OrdersGetOrdersNodes
+from lib.clients.shopify.generated.order_cancel import OrderCancel
 
-Stage 5 § 5.f added ``modules.orders.controllers.orders_controller`` for
-the ``DELETE /orders/{order_id}`` route. Importers should target the
-specific submodule they need (``modules.orders.controllers.orders_controller``
-for the router, ``modules.orders.services.orders_service`` for the
-service class) — the package-level eager re-export of ``OrdersService``
-that previously lived here was removed because it pulled in
-``modules.integrations.shopify`` transitively at import time, which
-broke any code path that only needed the new controllers.
-"""
+__all__ = [
+    "CancelOrderRequest",
+    "Order",
+    "OrderCancel",
+    "OrdersGetOrdersNodes",
+    "cancel_order",
+    "find_orders",
+    "get_order",
+]

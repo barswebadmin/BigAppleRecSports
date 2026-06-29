@@ -9,8 +9,10 @@ def handle_unhandled_exception(request: Request, exc: Exception) -> JSONResponse
     Routes should raise domain exceptions; this converts them
     to appropriate status codes without try/except in every route.
     """
-    if isinstance(exc, ValueError):
+    if isinstance(exc, KeyError):
         return JSONResponse(status_code=400, content={"detail": str(exc)})
+    if isinstance(exc, ModuleNotFoundError):
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
     if isinstance(exc, PermissionError):
         return JSONResponse(status_code=403, content={"detail": str(exc)})
     if isinstance(exc, FileNotFoundError):

@@ -1,72 +1,78 @@
 [project]
 name = "bars-backend"
-version = "1.0.0"
+version = "2.0.0"
 description = "Big Apple Rec Sports - Backend Service"
 requires-python = ">=3.14"
 dependencies = [
-    # Monorepo Dependencies
-    "bars-shared-utilities",
-    "shopify-client",
-    
+
     # Web Framework & Server
     "fastapi==0.115.6",
     "uvicorn[standard]>=0.38.0",
     "python-multipart==0.0.20",
-    
+
     # HTTP Clients & Utilities
-    "requests>=2.32.3",
-    "httpx>=0.27.0",
+    "httpx2[http2, cli]",
+    "httpx-retries>=0.4.6",
+    "httpx-auth",
     "tenacity>=8.0.0",
     "decorator>=5.1.0",
-    
+
     # API Clients
-    "google-api-python-client==2.154.0",
-    "google-auth==2.37.0",
-    "google-auth-oauthlib==1.2.1",
-    "google-auth-httplib2==0.2.0",
+    "google-api-python-client>=2.154.0",
+    "google-auth>=2.37.0",
+    "google-auth-oauthlib>=1.2.1",
+    "google-auth-httplib2>=0.2.0",
     "slack-sdk==3.30.0",
     "slack-bolt==1.20.1",
-    "sgqlc>=17.0",
-    
+    "gql[httpx]==4.0.0",
+    "graphql-core==3.2.11",
+    "python-box>=7.0.0",
+
     # Data Processing & Parsing
     "beautifulsoup4==4.12.3",
-    "lxml==5.3.0",
+    "lxml==5.3.0", # for procesing html
     "PyYAML==6.0.2",
     "python-dotenv>=1.0.1",
     "python-dateutil>=2.9.0",
-    
+    "python-box",
+
     # Data Validation
-    "pydantic>=2.12.0",
-    "validator-collection>=1.5.0",
+    "adaptix",
+    "pydantic[email, timezone]",
+    "pydantic-settings>=2.13.1",
+    "validator-collection>=1.5.0", # deprecated, work on removing
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     # Project-specific dev dependencies only
     # (monorepo-wide tools like ruff, pytest, mypy are in root pyproject.toml)
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.setuptools]
-packages = ["backend"]
-package-dir = {"backend" = "."}
+# Backend is not distributed as a wheel — it's consumed via local imports only.
+# No [build-system] block. See root pyproject.toml workspace config.
 
 [tool.pytest.ini_options]
 # Project-specific pytest config
 # (monorepo-wide config is in root pyproject.toml)
 pythonpath = ["."]
-testpaths = ["tests", "routers/tests"]
+testpaths = ["test"]
 addopts = "-v --tb=short"
 
-# =============================================================================
-# UV SOURCES CONFIGURATION
-# =============================================================================
-[tool.uv.sources]
-# Local package resolution for monorepo
-bars-shared-utilities = { path = "../shared_utilities", editable = true }
-shopify-client = { path = "../lib/clients/shopify-client" }
+[tool.uv]
+package = false
+
+# Pydantic has no separate pyright plugin — it uses PEP 681 @dataclass_transform.
+# basedpyright adds enableBasedFeatures for extra dataclass_transform support.
+# See backend/basedpyrightconfig.json (used when type-checking from backend/).
+[tool.basedpyright]
+include = ["."]
+exclude = ["**/__pycache__", "**/.venv", "test"]
+venvPath = ".."
+venv = ".venv"
+pythonVersion = "3.14"
+typeCheckingMode = "standard"
+enableBasedFeatures = true
+extraPaths = ["."]
 
 # Note: Ruff configuration moved to root pyproject.toml for consistency

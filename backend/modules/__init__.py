@@ -7,8 +7,8 @@ Usage examples:
 - from ../../modules.integrations.slack import SlackService
 """
 
+# from orders.orders_service import OrdersService
+
 __all__ = [
-    # namespaces only; concrete exports live in subpackages
+    # "OrdersService"
 ]
-
-

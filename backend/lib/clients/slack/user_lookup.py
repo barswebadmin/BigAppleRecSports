@@ -17,10 +17,6 @@ from shared_utilities.clients.slack.models.slack_user import SlackUser
 logger = logging.getLogger(__name__)
 
 
-def normalize_email(email: str) -> str:
-    return email.strip().lower()
-
-
 def _call_slack_api(
     client: WebClient,
     api_method: Callable,

@@ -1,0 +1,11 @@
+query OrdersGet($query: String!, $first: Int!, $after: String) {
+  orders(query: $query, first: $first, after: $after) {
+    nodes {
+      ...Order
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
