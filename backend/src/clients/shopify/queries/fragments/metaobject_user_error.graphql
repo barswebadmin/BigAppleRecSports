@@ -1,0 +1,7 @@
+fragment MetaobjectUserError on MetaobjectUserError {
+  field
+  message
+  code
+  elementIndex
+  elementKey
+}

@@ -1,0 +1,22 @@
+mutation TagsUpdate(
+  $gid: ID!
+  $tagsToAdd: [String!]!
+  $tagsToRemove: [String!]!
+) {
+  added: tagsAdd(id: $gid, tags: $tagsToAdd) {
+    node {
+      id
+    }
+    userErrors {
+      ...UserError
+    }
+  }
+  removed: tagsRemove(id: $gid, tags: $tagsToRemove) {
+    node {
+      id
+    }
+    userErrors {
+      ...UserError
+    }
+  }
+}

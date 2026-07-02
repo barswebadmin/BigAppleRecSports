@@ -1,0 +1,10 @@
+query FindCustomers($query: String!, $first: Int!, $after: String) {
+  customers(query: $query, first: $first, after: $after) {
+    nodes {
+      ...Customer
+    }
+    pageInfo {
+      ...PageInfo
+    }
+  }
+}

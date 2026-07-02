@@ -1,0 +1,10 @@
+mutation RefundCreate($input: RefundInput!, $idempotencyKey: String!) {
+  refundCreate(input: $input) @idempotent(key: $idempotencyKey) {
+    refund {
+      ...Refund
+    }
+    userErrors {
+      ...UserError
+    }
+  }
+}

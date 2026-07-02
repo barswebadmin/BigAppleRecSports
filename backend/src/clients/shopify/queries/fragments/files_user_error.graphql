@@ -1,0 +1,5 @@
+fragment FilesUserError on FilesUserError {
+  field
+  message
+  code
+}

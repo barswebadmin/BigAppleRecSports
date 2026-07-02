@@ -1,0 +1,24 @@
+fragment Refund on Refund {
+  id
+  note
+  createdAt
+  totalRefundedSet {
+    ...MoneyBag
+  }
+  transactions(first: 10) {
+    nodes {
+      id
+      gateway
+      kind
+      status
+      createdAt
+      amountSet {
+        ...MoneyBag
+      }
+    }
+  }
+  order {
+    id
+    name
+  }
+}

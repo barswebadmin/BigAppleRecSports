@@ -1,0 +1,10 @@
+query FindOrders($query: String!, $first: Int!, $after: String) {
+  orders(query: $query, first: $first, after: $after) {
+    nodes {
+      ...Order
+    }
+    pageInfo {
+      ...PageInfo
+    }
+  }
+}

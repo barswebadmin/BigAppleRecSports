@@ -1,0 +1,6 @@
+fragment ImageContent on Image {
+  url
+  altText
+  width
+  height
+}

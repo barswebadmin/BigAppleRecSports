@@ -1,0 +1,12 @@
+fragment Metaobject on Metaobject {
+  id
+  handle
+  type
+  displayName
+  updatedAt
+  fields {
+    key
+    type
+    value
+  }
+}

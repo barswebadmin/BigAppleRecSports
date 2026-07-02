@@ -1,0 +1,23 @@
+mutation MetaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) {
+  metaobjectDefinitionCreate(definition: $definition) {
+    metaobjectDefinition {
+      id
+      type
+      name
+      description
+      displayNameKey
+      fieldDefinitions {
+        key
+        name
+        type {
+          name
+          category
+        }
+        required
+      }
+    }
+    userErrors {
+      ...MetaobjectUserError
+    }
+  }
+}

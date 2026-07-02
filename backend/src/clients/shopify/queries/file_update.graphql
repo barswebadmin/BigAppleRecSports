@@ -1,0 +1,17 @@
+mutation FileUpdate($files: [FileUpdateInput!]!) {
+  fileUpdate(files: $files) {
+    files {
+      id
+      alt
+      fileStatus
+      ... on MediaImage {
+        image {
+          ...ImageContent
+        }
+      }
+    }
+    userErrors {
+      ...FilesUserError
+    }
+  }
+}

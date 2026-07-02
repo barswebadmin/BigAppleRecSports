@@ -1,0 +1,7 @@
+query GetVariant($id: ID!) {
+  node(id: $id) {
+    ... on ProductVariant {
+      ...ProductVariant
+    }
+  }
+}

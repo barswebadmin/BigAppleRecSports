@@ -1,0 +1,18 @@
+fragment Customer on Customer {
+  id
+  firstName
+  lastName
+  defaultEmailAddress {
+    emailAddress
+  }
+  defaultPhoneNumber {
+    phoneNumber
+  }
+  createdAt
+  updatedAt
+  numberOfOrders
+  note
+  tags
+  verifiedEmail
+  state
+}

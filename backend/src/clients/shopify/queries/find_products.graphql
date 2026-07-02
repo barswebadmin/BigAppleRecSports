@@ -1,0 +1,10 @@
+query FindProducts($query: String!, $first: Int!, $after: String) {
+  products(query: $query, first: $first, after: $after) {
+    nodes {
+      ...Product
+    }
+    pageInfo {
+      ...PageInfo
+    }
+  }
+}

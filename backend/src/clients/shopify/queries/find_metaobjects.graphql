@@ -1,0 +1,22 @@
+query FindMetaobjects(
+  $type: String!
+  $first: Int!
+  $after: String
+  $query: String
+  $sortKey: String
+) {
+  metaobjects(
+    type: $type
+    first: $first
+    after: $after
+    query: $query
+    sortKey: $sortKey
+  ) {
+    nodes {
+      ...Metaobject
+    }
+    pageInfo {
+      ...PageInfo
+    }
+  }
+}

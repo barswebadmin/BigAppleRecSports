@@ -1,0 +1,43 @@
+fragment Product on Product {
+  id
+  title
+  handle
+  descriptionHtml
+  status
+  tags
+  totalInventory
+  createdAt
+  updatedAt
+  importantDates: metafield(namespace: "custom", key: "important_dates") {
+    reference {
+      __typename
+      ... on Metaobject {
+        ...Metaobject
+      }
+    }
+  }
+  variants(first: 5) {
+    nodes {
+      ...ProductVariant
+    }
+  }
+  media(first: 10) {
+    nodes {
+      __typename
+      id
+      ... on MediaImage {
+        image {
+          url
+        }
+      }
+    }
+  }
+  publications: resourcePublicationsV2(first: 10) {
+    nodes {
+      isPublished
+      publication {
+        name
+      }
+    }
+  }
+}

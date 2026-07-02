@@ -1,0 +1,5 @@
+query GetCustomer($id: ID!) {
+  customer(id: $id) {
+    ...Customer
+  }
+}

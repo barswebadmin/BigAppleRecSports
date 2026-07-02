@@ -1,0 +1,8 @@
+fragment MoneyBag on MoneyBag {
+  shopMoney {
+    ...MoneyV2
+  }
+  presentmentMoney {
+    ...MoneyV2
+  }
+}

@@ -1,0 +1,10 @@
+mutation CustomerUpdate($input: CustomerInput!) {
+  customerUpdate(input: $input) {
+    customer {
+      ...Customer
+    }
+    userErrors {
+      ...UserError
+    }
+  }
+}

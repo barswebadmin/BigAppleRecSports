@@ -1,0 +1,13 @@
+query GetMediaImage($id: ID!) {
+  node(id: $id) {
+    ... on MediaImage {
+      id
+      alt
+      status
+      mediaContentType
+      image {
+        ...ImageContent
+      }
+    }
+  }
+}

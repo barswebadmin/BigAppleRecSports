@@ -1,0 +1,13 @@
+fragment ProductVariant on ProductVariant {
+  id
+  title
+  sku
+  price
+  inventoryQuantity
+  inventoryPolicy
+  availableForSale
+  inventoryItem {
+    id
+    sku
+  }
+}
